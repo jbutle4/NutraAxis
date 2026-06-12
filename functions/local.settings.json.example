@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "WEBSITE_TIME_ZONE": "America/Chicago",
+    "NUTRAAXIS_CRON_URL": "https://nutraaxisweb.azurewebsites.net/cron/weekly-demand.php",
+    "CRON_SECRET": "paste-same-value-as-php-app-service"
+  }
+}
