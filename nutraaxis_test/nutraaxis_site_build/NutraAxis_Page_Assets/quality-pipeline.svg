@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760" role="img" aria-labelledby="title desc">
+<title id="title">NutraAxis quality proof pipeline</title><desc id="desc">Quality pipeline from ingredient intent to QR proof layer.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FAF8F3"/><stop offset="1" stop-color="#F1FAF8"/></linearGradient>
+  <linearGradient id="bottle" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#E9F0EF"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#18383A" flood-opacity="0.14"/></filter>
+  <style>.h{font:800 58px Inter,Arial,sans-serif; fill:#243746}.sub{font:400 24px Inter,Arial,sans-serif; fill:#5C6B73}.label{font:800 24px Inter,Arial,sans-serif; fill:#243746}.small{font:400 17px Inter,Arial,sans-serif; fill:#5C6B73}.circleNum{font:900 14px Inter,Arial,sans-serif; fill:white}</style>
+</defs>
+<rect width="1440" height="760" rx="34" fill="url(#bg)"/>
+<text x="84" y="102" class="h">Quality you can see</text>
+<text x="86" y="147" class="sub">A proof-first system for practitioner-grade formulations, batch documentation, and patient confidence.</text>
+<g transform="translate(150 190)" filter="url(#shadow)">
+  <rect x="120" y="0" width="240" height="70" rx="26" fill="url(#bottle)"/>
+  <rect x="95" y="52" width="290" height="385" rx="48" fill="url(#bottle)"/>
+  <rect x="132" y="138" width="216" height="220" rx="22" fill="#FAF8F3" stroke="#D9E4E2"/>
+  <rect x="132" y="138" width="16" height="220" rx="8" fill="#4A9B9B"/>
+  <rect x="148" y="138" width="10" height="220" fill="#9B8FB9"/>
+  <text x="178" y="196" style="font:800 35px Inter,Arial; fill:#243746">BalanceAxis</text>
+  <text x="178" y="232" style="font:500 20px Inter,Arial; fill:#5C6B73">Hormone metabolism support</text>
+  <rect x="178" y="264" width="136" height="34" rx="17" fill="#4A9B9B"/><text x="196" y="287" style="font:700 15px Inter,Arial; fill:white">QR VERIFIED</text>
+  <g transform="translate(178 320)"><rect width="52" height="52" fill="white" stroke="#243746"/><path d="M7 7h13v13H7zM32 7h13v13H32zM7 32h13v13H7zM31 31h5v5h-5zM39 31h6v14h-6zM31 39h5v6h-5z" fill="#243746"/></g>
+</g>
+<path d="M720 148 V636" stroke="#D9E4E2" stroke-width="6" stroke-linecap="round"/>
+<g transform="translate(780 155)"><circle cx="0" cy="22" r="22" fill="#4A9B9B"/><text x="-11" y="30" class="circleNum">01</text><rect x="50" y="-18" width="520" height="82" rx="20" fill="white" filter="url(#shadow)"/><text x="78" y="16" class="label">Ingredient intent</text><text x="78" y="46" class="small">Start with the mechanism and form needed for the therapy stack.</text></g><g transform="translate(780 285)"><circle cx="0" cy="22" r="22" fill="#4A9B9B"/><text x="-11" y="30" class="circleNum">02</text><rect x="50" y="-18" width="520" height="82" rx="20" fill="white" filter="url(#shadow)"/><text x="78" y="16" class="label">Clean formulation</text><text x="78" y="46" class="small">Prioritize bioavailable forms, clinically rational doses, and no unnecessary clutter.</text></g><g transform="translate(780 415)"><circle cx="0" cy="22" r="22" fill="#4A9B9B"/><text x="-11" y="30" class="circleNum">03</text><rect x="50" y="-18" width="520" height="82" rx="20" fill="white" filter="url(#shadow)"/><text x="78" y="16" class="label">Batch verification</text><text x="78" y="46" class="small">Use testing documentation and lot controls to make proof visible.</text></g><g transform="translate(780 545)"><circle cx="0" cy="22" r="22" fill="#4A9B9B"/><text x="-11" y="30" class="circleNum">04</text><rect x="50" y="-18" width="520" height="82" rx="20" fill="white" filter="url(#shadow)"/><text x="78" y="16" class="label">QR proof layer</text><text x="78" y="46" class="small">Let providers and patients scan, verify, and trust the protocol.</text></g>
+<rect x="1020" y="76" width="262" height="44" rx="22" fill="#FF8A65"/><text x="1045" y="105" style="font:800 18px Inter,Arial; fill:white">Scan. Verify. Trust.</text>
+</svg>

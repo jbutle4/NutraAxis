@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Support Center – NutraAxis Labs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --nx-teal:        #4A9B9B;
+      --nx-teal-dark:   #2D5C60;
+      --nx-coral:       #FF8A65;
+      --nx-coral-dark:  #e06040;
+      --nx-cream:       #FAF8F3;
+      --nx-navy:        #243746;
+      --nx-mist:        #E6F2F1;
+      --nx-ink:         #1F2E36;
+      --nx-gray:        #5C6B73;
+      --nx-line:        #D9E4E2;
+      --white:          #ffffff;
+      --radius-sm:      10px;
+      --radius-md:      18px;
+      --radius-lg:      28px;
+      --shadow-sm:      0 4px 16px rgba(36,55,70,0.07);
+      --shadow-md:      0 12px 36px rgba(36,55,70,0.11);
+      --shadow-lg:      0 20px 55px rgba(36,55,70,0.15);
+      --transition:     all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background: var(--nx-cream);
+      color: var(--nx-ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Header / Nav ── */
+    .site-header {
+      background: var(--white);
+      border-bottom: 1px solid var(--nx-line);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 32px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-wordmark {
+      font-family: Inter, Arial, sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--nx-navy);
+    }
+
+    .logo-wordmark span { color: var(--nx-coral); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--nx-gray);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .nav-links a:hover { color: var(--nx-teal); }
+
+    .nav-cta {
+      background: var(--nx-teal) !important;
+      color: var(--white) !important;
+      padding: 9px 20px;
+      border-radius: 999px;
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      transition: var(--transition) !important;
+      box-shadow: 0 6px 18px rgba(74,155,155,0.22);
+    }
+
+    .nav-cta:hover {
+      background: var(--nx-teal-dark) !important;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, var(--nx-navy) 0%, var(--nx-teal-dark) 100%);
+      position: relative;
+      overflow: hidden;
+      padding: 80px 32px 88px;
+      text-align: center;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 700px 420px at 80% 50%, rgba(255,138,101,0.13) 0%, transparent 65%),
+        radial-gradient(ellipse 400px 300px at 10% 80%, rgba(74,155,155,0.18) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -80px; right: -80px;
+      width: 340px; height: 340px;
+      border-radius: 50%;
+      border: 40px solid rgba(255,255,255,0.04);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.88);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: 7px 18px;
+      border-radius: 999px;
+      margin-bottom: 28px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--nx-coral);
+      border-radius: 50%;
+    }
+
+    .hero h1 {
+      font-size: clamp(38px, 5.5vw, 62px);
+      font-weight: 850;
+      color: var(--white);
+      line-height: .98;
+      letter-spacing: -.04em;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--nx-coral);
+    }
+
+    .hero p {
+      font-size: 17px;
+      color: rgba(255,255,255,0.72);
+      max-width: 520px;
+      margin: 0 auto 44px;
+      line-height: 1.65;
+      font-weight: 400;
+    }
+
+    /* Search bar */
+    .search-wrap {
+      max-width: 480px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 17px 56px 17px 24px;
+      border: none;
+      border-radius: 999px;
+      font-family: Inter, Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--nx-ink);
+      background: var(--white);
+      box-shadow: var(--shadow-lg);
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-wrap input::placeholder { color: #a0b0b0; }
+    .search-wrap input:focus { box-shadow: 0 0 0 3px rgba(255,138,101,0.4), var(--shadow-lg); }
+
+    .search-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--nx-teal);
+      pointer-events: none;
+    }
+
+    /* ── Stats Bar ── */
+    .stats-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--nx-line);
+    }
+
+    .stats-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px 32px;
+      display: flex;
+      justify-content: center;
+      gap: 52px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--nx-gray);
+    }
+
+    .stat-icon {
+      width: 36px; height: 36px;
+      background: var(--nx-mist);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+    }
+
+    .stat strong {
+      color: var(--nx-navy);
+      font-weight: 700;
+      display: block;
+      font-size: 13.5px;
+    }
+
+    /* ── Main Content ── */
+    .main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 72px 32px 88px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--nx-coral);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 850;
+      letter-spacing: -.035em;
+      color: var(--nx-navy);
+      margin-bottom: 10px;
+      line-height: 1;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--nx-gray);
+      margin-bottom: 48px;
+      max-width: 560px;
+      line-height: 1.65;
+    }
+
+    /* ── Support Cards Grid ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 64px;
+    }
+
+    .support-card {
+      background: var(--white);
+      border: 1px solid rgba(74,155,155,0.13);
+      border-radius: var(--radius-lg);
+      padding: 30px 28px 26px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .support-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: var(--nx-teal);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 4px 4px 0 0;
+    }
+
+    .support-card:hover {
+      border-color: rgba(74,155,155,0.3);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-4px);
+    }
+
+    .support-card:hover::before { transform: scaleX(1); }
+
+    .support-card.featured {
+      border-color: rgba(255,138,101,0.25);
+      background: linear-gradient(135deg, #fff7f3 0%, var(--white) 100%);
+    }
+
+    .support-card.featured::before { background: var(--nx-coral); }
+
+    .card-icon-wrap {
+      width: 50px; height: 50px;
+      border-radius: var(--radius-md);
+      background: var(--nx-mist);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+
+    .support-card:hover .card-icon-wrap {
+      background: var(--nx-teal);
+      transform: scale(1.08);
+    }
+
+    .support-card.featured .card-icon-wrap { background: rgba(255,138,101,0.15); }
+    .support-card.featured:hover .card-icon-wrap { background: var(--nx-coral); }
+
+    .card-body { flex: 1; }
+
+    .card-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--nx-navy);
+      margin-bottom: 7px;
+      transition: var(--transition);
+    }
+
+    .support-card:hover .card-title { color: var(--nx-teal); }
+    .support-card.featured:hover .card-title { color: var(--nx-coral-dark); }
+
+    .card-desc {
+      font-size: 13.5px;
+      color: var(--nx-gray);
+      line-height: 1.55;
+    }
+
+    .card-sla {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--nx-teal-dark);
+      background: var(--nx-mist);
+      padding: 4px 11px;
+      border-radius: 999px;
+      margin-top: 4px;
+      letter-spacing: .02em;
+    }
+
+    .support-card.featured .card-sla {
+      color: var(--nx-coral-dark);
+      background: rgba(255,138,101,0.12);
+    }
+
+    .card-arrow {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: #eef4f4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-self: flex-end;
+      font-size: 14px;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .support-card:hover .card-arrow {
+      background: var(--nx-teal);
+      color: var(--white);
+      transform: translateX(3px);
+    }
+
+    .support-card.featured:hover .card-arrow { background: var(--nx-coral); }
+
+    .support-card:nth-child(1) { animation-delay: 0.05s; }
+    .support-card:nth-child(2) { animation-delay: 0.10s; }
+    .support-card:nth-child(3) { animation-delay: 0.15s; }
+    .support-card:nth-child(4) { animation-delay: 0.20s; }
+    .support-card:nth-child(5) { animation-delay: 0.25s; }
+    .support-card:nth-child(6) { animation-delay: 0.30s; }
+
+    /* ── Emergency Banner ── */
+    .emergency-banner {
+      background: linear-gradient(135deg, var(--nx-navy) 0%, #1a4a4a 100%);
+      border-radius: var(--radius-lg);
+      padding: 36px 40px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 72px;
+      text-decoration: none;
+      color: inherit;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 55px rgba(36,55,70,0.18);
+    }
+
+    .emergency-banner::after {
+      content: '';
+      position: absolute;
+      right: -40px; top: -40px;
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      border: 30px solid rgba(255,138,101,0.08);
+    }
+
+    .emergency-banner:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .emergency-icon {
+      width: 58px; height: 58px;
+      background: rgba(255,138,101,0.18);
+      border: 1px solid rgba(255,138,101,0.28);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+
+    .emergency-text { flex: 1; }
+
+    .emergency-text h3 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.025em;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .emergency-text p {
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.58);
+      line-height: 1.5;
+    }
+
+    .emergency-cta {
+      background: var(--nx-coral);
+      color: var(--white);
+      padding: 13px 26px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: var(--transition);
+      box-shadow: 0 8px 22px rgba(255,138,101,0.3);
+    }
+
+    .emergency-banner:hover .emergency-cta {
+      background: var(--nx-coral-dark);
+      box-shadow: 0 4px 14px rgba(255,138,101,0.45);
+    }
+
+    /* ── Contact Strip ── */
+    .contact-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 72px;
+    }
+
+    .contact-item {
+      background: var(--white);
+      border: 1px solid rgba(74,155,155,0.13);
+      border-radius: var(--radius-md);
+      padding: 22px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .contact-item-icon {
+      font-size: 20px;
+      width: 44px; height: 44px;
+      background: var(--nx-mist);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .contact-item-text { font-size: 13px; }
+    .contact-item-text strong { display: block; font-size: 14px; font-weight: 700; color: var(--nx-navy); margin-bottom: 2px; }
+    .contact-item-text span { color: var(--nx-gray); }
+
+    /* ── Practitioner CTA ── */
+    .practitioner-cta {
+      background: linear-gradient(135deg, #eef8f6 0%, var(--nx-mist) 100%);
+      border: 1px solid rgba(74,155,155,0.2);
+      border-radius: var(--radius-lg);
+      padding: 44px 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .practitioner-cta-text h3 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      color: var(--nx-navy);
+      margin-bottom: 10px;
+    }
+
+    .practitioner-cta-text p {
+      font-size: 14.5px;
+      color: var(--nx-gray);
+      line-height: 1.65;
+      max-width: 440px;
+    }
+
+    .practitioner-btn {
+      background: var(--nx-teal);
+      color: var(--white);
+      padding: 15px 30px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: var(--transition);
+      box-shadow: 0 12px 30px rgba(74,155,155,0.22);
+    }
+
+    .practitioner-btn:hover {
+      background: var(--nx-teal-dark);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    /* ── Footer ── */
+    .site-footer {
+      background: var(--nx-navy);
+      padding: 32px;
+    }
+
+    .footer-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      color: var(--white);
+    }
+
+    .footer-text {
+      font-size: 12.5px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 12.5px;
+      color: rgba(255,255,255,0.38);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .footer-links a:hover { color: rgba(255,255,255,0.75); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-eyebrow { animation: fadeUp 0.5s ease both; }
+    .hero h1      { animation: fadeUp 0.5s 0.1s ease both; }
+    .hero p       { animation: fadeUp 0.5s 0.2s ease both; }
+    .search-wrap  { animation: fadeUp 0.5s 0.3s ease both; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .header-inner { padding: 0 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 52px 20px 64px; }
+      .main { padding: 52px 20px 72px; }
+      .stats-inner { gap: 24px; }
+      .emergency-banner { flex-direction: column; text-align: center; }
+      .practitioner-cta { flex-direction: column; text-align: center; padding: 32px 28px; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-eyebrow">Support Center</div>
+    <h1>How can we<br><em>help you today?</em></h1>
+    <p>Choose a support category below or search for answers in our knowledge base. Our team typically responds within one business day.</p>
+    <div class="search-wrap">
+      <input type="text" placeholder="Search for help articles, order info, returns…">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ── Stats Bar ── -->
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat">
+        <div class="stat-icon">⏱</div>
+        <div>
+          <strong>Under 4 Hours</strong>
+          Avg. first response
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">✅</div>
+        <div>
+          <strong>First-Touch Resolution</strong>
+          Our support goal
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🔒</div>
+        <div>
+          <strong>HIPAA-Aware</strong>
+          Quality & adverse event handling
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🩺</div>
+        <div>
+          <strong>Practitioner Portal</strong>
+          Dedicated clinical support
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Content ── -->
+  <main class="main">
+
+    <!-- Section: Submit a Request -->
+    <div class="section-label">Submit a Request</div>
+    <h2 class="section-title">Select a support category</h2>
+    <p class="section-sub">Each form collects the right information upfront to resolve your request without additional back-and-forth.</p>
+
+    <!-- Cards -->
+    <div class="cards-grid">
+
+      <a class="support-card"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49023444770580"
+         target="_blank">
+        <div class="card-icon-wrap">📦</div>
+        <div class="card-body">
+          <div class="card-title">Order Inquiry</div>
+          <div class="card-desc">Check order status, request changes or cancellations, report missing or incorrect items.</div>
+          <div class="card-sla">⚡ SLA: 4–8 business hours</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="support-card"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49023876305172"
+         target="_blank">
+        <div class="card-icon-wrap">🔄</div>
+        <div class="card-body">
+          <div class="card-title">Returns &amp; RMA</div>
+          <div class="card-desc">Initiate a return or exchange, request a prepaid label, or check refund status.</div>
+          <div class="card-sla">⚡ SLA: 1 business day</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="support-card"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49023984607252"
+         target="_blank">
+        <div class="card-icon-wrap">💳</div>
+        <div class="card-body">
+          <div class="card-title">Billing &amp; Invoicing</div>
+          <div class="card-desc">Request an invoice copy, resolve a billing discrepancy, or submit a tax exemption certificate.</div>
+          <div class="card-sla">⚡ SLA: 4 business hours</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="support-card"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49025808390036"
+         target="_blank">
+        <div class="card-icon-wrap">🩺</div>
+        <div class="card-body">
+          <div class="card-title">Practitioner &amp; Science Support</div>
+          <div class="card-desc">Portal access, account setup, clinical protocols, CE training, and science inquiries.</div>
+          <div class="card-sla">⚡ SLA: 2–4 business hours</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="support-card"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49028209940500"
+         target="_blank">
+        <div class="card-icon-wrap">💼</div>
+        <div class="card-body">
+          <div class="card-title">Sales &amp; New Accounts</div>
+          <div class="card-desc">Wholesale inquiries, distributor applications, new practitioner accounts, and bulk pricing.</div>
+          <div class="card-sla">⚡ SLA: 4 business hours</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a class="support-card featured"
+         href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=46691963435668"
+         target="_blank">
+        <div class="card-icon-wrap">❓</div>
+        <div class="card-body">
+          <div class="card-title">General Support</div>
+          <div class="card-desc">Product questions, account access, website issues, and anything else we can help with.</div>
+          <div class="card-sla">⚡ SLA: 1–2 business days</div>
+        </div>
+        <div class="card-arrow">→</div>
+      </a>
+
+    </div>
+
+    <!-- Quality / Safety Emergency Banner -->
+    <a class="emergency-banner"
+       href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49024092325268"
+       target="_blank">
+      <div class="emergency-icon">⚠️</div>
+      <div class="emergency-text">
+        <h3>Report a Quality, Safety, or Adverse Event</h3>
+        <p>For product quality issues, adverse reactions, or regulatory concerns. Our Quality &amp; Compliance team responds within <strong style="color:var(--coral)">1 hour</strong> for urgent cases.</p>
+      </div>
+      <div class="emergency-cta">Report Now →</div>
+    </a>
+
+    <!-- Alt Contact Row -->
+    <div class="section-label">Other Ways to Reach Us</div>
+    <h2 class="section-title">Contact information</h2>
+    <p class="section-sub">Prefer to reach us directly? Use the options below.</p>
+
+    <div class="contact-strip">
+      <div class="contact-item">
+        <div class="contact-item-icon">📧</div>
+        <div class="contact-item-text">
+          <strong>General Support</strong>
+          <span><a href="mailto:support@nutraaxislabs.com?subject=General Support Request&body=Please describe your issue below:">
+          	support@nutraaxislabs.com
+          	</a></span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-item-icon">📦</div>
+        <div class="contact-item-text">
+          <strong>Order &amp; Returns</strong>
+          <span>
+          	<a href="mailto:orders@nutraaxislabs.com?subject=Order Support Request&body=Please describe your issue below:">
+          	orders@nutraaxislabs.com
+          	</a>
+          	</span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-item-icon">💼</div>
+        <div class="contact-item-text">
+          <strong>Sales Inquiries</strong>
+          <span>
+          	<a href="mailto:sales@nutraaxislabs.com?subject=Sales Support Request&body=Please describe your issue below:">
+          	sales@nutraaxislabs.com
+          	</a>
+          	</span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-item-icon">🔬</div>
+        <div class="contact-item-text">
+          <strong>Quality &amp; Safety</strong>
+          <span>
+          	<a href="mailto:quality@nutraaxislabs.com?subject=Quality Support Request&body=Please describe your issue below:">
+          	quality@nutraaxislabs.com
+          	</a>
+          	</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Practitioner Portal CTA -->
+    <div class="practitioner-cta">
+      <div class="practitioner-cta-text">
+        <h3>Are you a licensed healthcare practitioner?</h3>
+        <p>Access your dedicated practitioner portal for clinical resources, protocol guides, CE education, volume pricing, and a direct line to our Medical Affairs team.</p>
+      </div>
+      <a href="https://nutraaxislabs.zendesk.com/hc/en-us/requests/new?ticket_form_id=49025808390036"
+         target="_blank"
+         class="practitioner-btn">Access Practitioner Support →</a>
+    </div>
+
+  </main>
+
+  
+
+  <!-- ZenDesk Messaging Widget -->
+  <script id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=421d62c2-49a5-450a-a5bc-5986e1e6a706"></script>
+
+</body>
+</html>

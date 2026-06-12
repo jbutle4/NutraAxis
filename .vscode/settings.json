@@ -1,0 +1,4 @@
+{
+    "sftp.debug": true,
+    "sftp.printDebugLog": true
+}

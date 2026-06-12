@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+<title id="title">NutraAxis therapy stack product visual</title><desc id="desc">Warm clinical bottle stack with therapeutic pillar colors.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FAF8F3"/><stop offset="1" stop-color="#E9F6F5"/></linearGradient>
+  <linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#E9EEEE"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#18383A" flood-opacity="0.15"/></filter>
+  <style>.name{font:800 31px Inter,Arial,sans-serif;fill:#243746}.type{font:500 16px Inter,Arial,sans-serif;fill:#5C6B73}.badge{font:800 12px Inter,Arial,sans-serif;fill:white}</style>
+</defs>
+<rect width="1280" height="720" rx="36" fill="url(#bg)"/>
+<g transform="translate(125 120) rotate(-5)" filter="url(#shadow)"><rect x="68" y="0" width="162" height="52" rx="20" fill="url(#b)"/><rect x="45" y="42" width="210" height="420" rx="45" fill="url(#b)"/><rect x="72" y="138" width="156" height="220" rx="20" fill="#FAF8F3" stroke="#D9E4E2"/><rect x="72" y="138" width="12" height="220" rx="6" fill="#4A9B9B"/><rect x="84" y="138" width="8" height="220" fill="#D4A574"/><text x="105" y="196" class="name">LeanAxis</text><text x="105" y="228" class="type">Metabolic support</text><rect x="105" y="260" width="96" height="26" rx="13" fill="#4A9B9B"/><text x="119" y="278" class="badge">TESTED</text></g>
+<g transform="translate(420 90)" filter="url(#shadow)"><rect x="78" y="0" width="184" height="58" rx="22" fill="url(#b)"/><rect x="50" y="48" width="240" height="480" rx="50" fill="url(#b)"/><rect x="82" y="154" width="176" height="252" rx="22" fill="#FAF8F3" stroke="#D9E4E2"/><rect x="82" y="154" width="14" height="252" rx="7" fill="#4A9B9B"/><rect x="96" y="154" width="9" height="252" fill="#9B8FB9"/><text x="122" y="224" class="name">BalanceAxis</text><text x="122" y="258" class="type">Hormone metabolism</text><rect x="122" y="298" width="126" height="29" rx="15" fill="#4A9B9B"/><text x="141" y="318" class="badge">QR VERIFIED</text></g>
+<g transform="translate(752 132) rotate(5)" filter="url(#shadow)"><rect x="68" y="0" width="162" height="52" rx="20" fill="url(#b)"/><rect x="45" y="42" width="210" height="420" rx="45" fill="url(#b)"/><rect x="72" y="138" width="156" height="220" rx="20" fill="#FAF8F3" stroke="#D9E4E2"/><rect x="72" y="138" width="12" height="220" rx="6" fill="#4A9B9B"/><rect x="84" y="138" width="8" height="220" fill="#6BA3D9"/><text x="105" y="196" class="name">LongevityAxis</text><text x="105" y="228" class="type">Cellular resilience</text><rect x="105" y="260" width="96" height="26" rx="13" fill="#4A9B9B"/><text x="119" y="278" class="badge">TESTED</text></g>
+<text x="88" y="640" style="font:800 58px Inter,Arial; fill:#243746">Therapy stacks, not random supplements.</text>
+<text x="92" y="684" style="font:400 24px Inter,Arial; fill:#5C6B73">Clean visual system with warm clinical colors and QR proof cues.</text>
+</svg>

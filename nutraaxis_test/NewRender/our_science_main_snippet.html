@@ -1,0 +1,297 @@
+<style>
+  main:has(.nx-page){max-width:none!important;padding:0!important;}
+  .nx-page, .nx-page *{box-sizing:border-box;}
+  .nx-page{
+    --nx-teal:#0f6f7b; --nx-teal-2:#4A9B9B; --nx-teal-dark:#0a4651;
+    --nx-coral:#FF8A65; --nx-coral-dark:#df7256; --nx-cream:#FAF8F3;
+    --nx-ink:#123442; --nx-muted:#58717a; --nx-line:#dbeaec; --nx-mist:#ecf6f7;
+    --nx-card:#ffffff; --nx-amber:#D4A574; --nx-lav:#9B8FB9; --nx-mint:#7EC4A3; --nx-blue:#6BA3D9;
+    font-family:Inter, Arial, Helvetica, sans-serif; color:var(--nx-ink); background:#fff;
+    line-height:1.55; overflow:hidden; width:100%;
+  }
+  .nx-page h1,.nx-page h2,.nx-page h3{font-family:Georgia, 'Times New Roman', serif; font-weight:500; color:var(--nx-ink); line-height:1.05; margin:0; letter-spacing:-.02em;}
+  .nx-page h1{font-size:clamp(2.65rem, 6vw, 5.8rem); max-width:760px;}
+  .nx-page h2{font-size:clamp(2rem, 3.8vw, 3.7rem); text-align:center;}
+  .nx-page h3{font-size:clamp(1.25rem, 1.8vw, 2rem);}
+  .nx-page p{margin:0; font-size:clamp(1rem, 1.05vw, 1.18rem); color:var(--nx-muted);}
+  .nx-page a{color:inherit;}
+  .nx-wrap{width:min(1180px, calc(100% - 44px)); margin:0 auto;}
+  .nx-section{padding:clamp(54px, 7vw, 92px) 0; position:relative;}
+  .nx-eyebrow{font-size:.86rem; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:var(--nx-teal); margin-bottom:16px;}
+  .nx-lead{font-size:clamp(1.08rem, 1.4vw, 1.35rem); color:#2e5360; max-width:720px;}
+  .nx-btn{display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:48px; padding:0 26px; border-radius:999px; background:linear-gradient(135deg,var(--nx-teal),#1b8791); color:#fff!important; text-decoration:none; font-weight:800; box-shadow:0 14px 28px rgba(15,111,123,.22); transition:.18s ease transform,.18s ease box-shadow;}
+  .nx-btn:hover{transform:translateY(-2px); box-shadow:0 18px 36px rgba(15,111,123,.28);}
+  .nx-btn.nx-btn-coral{background:linear-gradient(135deg,var(--nx-coral),#f07165); box-shadow:0 14px 28px rgba(255,138,101,.28);}
+  .nx-hero{padding:clamp(34px, 5vw, 84px) 0 clamp(50px, 7vw, 94px); background:linear-gradient(100deg,rgba(255,255,255,.96) 0%,rgba(245,251,252,.94) 45%,rgba(229,244,247,.92) 100%); position:relative; overflow:hidden;}
+  .nx-hero:before{content:""; position:absolute; inset:0; background:radial-gradient(circle at 82% 10%,rgba(74,155,155,.17),transparent 32%), radial-gradient(circle at 4% 95%,rgba(255,138,101,.1),transparent 36%); pointer-events:none;}
+  .nx-hero-grid{position:relative; display:grid; grid-template-columns:minmax(0, .95fr) minmax(360px, 1.05fr); gap:clamp(28px,5vw,74px); align-items:center;}
+  .nx-hero-copy{padding:clamp(18px,3vw,30px) 0;}
+  .nx-hero-copy .nx-lead{margin:26px 0 32px;}
+  .nx-hero-art{min-width:0;}
+  .nx-hero-svg{width:100%; height:auto; display:block; filter:drop-shadow(0 26px 34px rgba(13,64,76,.12));}
+  .nx-pill-row{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:-34px; position:relative; z-index:3;}
+  .nx-pill-card{background:#fff; border:1px solid var(--nx-line); border-radius:24px; padding:25px 22px; text-align:center; box-shadow:0 16px 34px rgba(12,52,64,.08);}
+  .nx-icon-circle{width:58px; height:58px; border-radius:50%; display:inline-grid; place-items:center; border:2px solid #a8cbd0; background:#f8fcfc; color:var(--nx-teal); margin-bottom:13px;}
+  .nx-icon-circle svg{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;}
+  .nx-pill-card h3{font-size:1.32rem; margin-bottom:8px;}
+  .nx-pill-card p{font-size:.98rem;}
+  .nx-center-text{max-width:760px; margin:0 auto 34px; text-align:center;}
+  .nx-center-text p{margin-top:14px;}
+  .nx-process-box{background:#fff; border:1px solid var(--nx-line); border-radius:30px; padding:clamp(20px,3vw,36px); box-shadow:0 18px 45px rgba(12,52,64,.08); overflow:auto;}
+  .nx-process-svg{width:100%; min-width:780px; height:auto; display:block;}
+  .nx-split{display:grid; grid-template-columns:1fr 1fr; gap:clamp(24px,4vw,58px); align-items:center;}
+  .nx-soft{background:linear-gradient(180deg,#f7fbfc 0%,#fff 100%);}
+  .nx-lab-bg{background:linear-gradient(100deg,#fff 0%,#f6fbfb 45%,#e8f4f6 100%);}
+  .nx-list{display:grid; gap:13px; margin-top:28px;}
+  .nx-list-item{display:flex; gap:14px; align-items:center; background:#fff; border:1px solid var(--nx-line); border-radius:999px; padding:14px 18px; box-shadow:0 12px 24px rgba(12,52,64,.06); color:#234957; font-weight:700;}
+  .nx-list-item .dot{width:36px;height:36px;flex:0 0 36px;border-radius:50%;display:grid;place-items:center;background:#dceff2;color:var(--nx-teal);}
+  .nx-list-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .nx-feature-card{background:#fff;border:1px solid var(--nx-line);border-radius:28px;padding:clamp(25px,3.3vw,42px);box-shadow:0 18px 45px rgba(12,52,64,.08);}
+  .nx-check-list{display:grid;gap:16px;margin-top:24px;}
+  .nx-check{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:flex-start;color:#294f5a;font-weight:700;}
+  .nx-check:before{content:"✓";display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--nx-coral);color:white;font-weight:900;font-size:14px;}
+  .nx-use-card{display:flex; gap:16px; align-items:flex-start; padding:15px; border-radius:16px; background:#f5fbfb; border:1px solid #d8ebee; margin-top:12px;}
+  .nx-use-card .nx-icon-circle{margin:0; width:48px; height:48px; flex:0 0 48px;}
+  .nx-art-panel{min-height:360px;border-radius:32px;background:linear-gradient(135deg,#f9ffff,#e5f3f4);border:1px solid #d7e8eb;display:grid;place-items:center;padding:28px;overflow:hidden;}
+  .nx-art-panel svg{max-width:100%;height:auto;}
+  .nx-banner{background:linear-gradient(135deg,var(--nx-teal-dark),var(--nx-teal)); color:#fff; padding:clamp(42px,5vw,66px) 0;}
+  .nx-banner-grid{display:grid;grid-template-columns:72px 1fr auto;gap:28px;align-items:center;}
+  .nx-banner h2,.nx-banner h3,.nx-banner p{color:#fff;text-align:left;}
+  .nx-banner h2{font-size:clamp(1.9rem,3.5vw,3.2rem);}
+  .nx-banner p{opacity:.9;margin-top:8px;}
+  .nx-banner-icon{width:72px;height:72px;border:1.5px solid rgba(255,255,255,.65);border-radius:50%;display:grid;place-items:center;}
+  .nx-banner-icon svg{width:38px;height:38px;stroke:#fff;fill:none;stroke-width:1.8;}
+  .nx-mini-footer{padding:26px 0 36px;background:#f6fbfb;border-top:1px solid var(--nx-line);}
+  .nx-mini-footer-grid{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;}
+  .nx-brand-mark{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.35rem;color:#194653;}
+  .nx-brand-mark .mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--nx-teal),var(--nx-teal-2));position:relative;}
+  .nx-brand-mark .mark:after{content:"";position:absolute;width:8px;height:23px;background:var(--nx-coral);right:6px;top:2px;border-radius:5px;transform:rotate(-22deg);}
+  .nx-seals{display:flex;flex-wrap:wrap;gap:18px;justify-content:flex-end;}
+  .nx-seal{width:86px;height:86px;border-radius:50%;border:2px solid #a7c9cf;display:grid;place-items:center;text-align:center;color:var(--nx-teal);font-weight:900;font-size:.68rem;line-height:1.05;background:#fff;}
+  .nx-seal span{font-size:1rem;display:block;}
+  .nx-disclaimer{font-size:.8rem;color:#6c7f86;margin-top:12px;max-width:820px;}
+  @media (max-width: 1024px){
+    .nx-wrap{width:min(920px, calc(100% - 38px));}
+    .nx-hero-grid,.nx-split{grid-template-columns:1fr;}
+    .nx-hero-copy{text-align:center;}
+    .nx-hero-copy h1,.nx-hero-copy .nx-lead{margin-left:auto;margin-right:auto;}
+    .nx-hero-art{max-width:760px;margin:0 auto;}
+    .nx-pill-row{grid-template-columns:1fr; margin-top:24px;}
+    .nx-process-box{padding:18px;}
+    .nx-banner-grid{grid-template-columns:62px 1fr;}
+    .nx-banner-grid .nx-btn{grid-column:1 / -1; justify-self:start; margin-left:90px;}
+  }
+  @media (max-width: 767px){
+    .nx-wrap{width:min(100% - 28px, 640px);} .nx-section{padding:46px 0;} .nx-hero{padding:32px 0 48px;}
+    .nx-page h1{font-size:clamp(2.35rem,13vw,3.8rem);} .nx-page h2{font-size:clamp(1.9rem,9vw,2.7rem);} .nx-page p{font-size:1rem;}
+    .nx-btn{width:100%;max-width:330px;} .nx-hero-grid{gap:18px;} .nx-hero-svg{min-width:520px; transform:translateX(-8%);} .nx-hero-art{overflow:hidden;border-radius:24px;}
+    .nx-pill-card{padding:22px 18px;} .nx-process-box{border-radius:20px;} .nx-process-svg{min-width:700px;}
+    .nx-list-item{border-radius:18px;align-items:flex-start;} .nx-split{gap:28px;} .nx-feature-card{border-radius:22px;padding:22px 18px;}
+    .nx-art-panel{min-height:260px;border-radius:24px;} .nx-banner-grid{grid-template-columns:1fr;text-align:center;gap:16px;} .nx-banner h2,.nx-banner h3,.nx-banner p{text-align:center;} .nx-banner-icon{margin:0 auto;} .nx-banner-grid .nx-btn{margin:8px auto 0;justify-self:center;}
+    .nx-mini-footer-grid{grid-template-columns:1fr;text-align:center;} .nx-brand-mark{justify-content:center;} .nx-seals{justify-content:center;gap:12px;} .nx-seal{width:74px;height:74px;font-size:.58rem;} .nx-disclaimer{margin-left:auto;margin-right:auto;}
+  }
+</style>
+<div class="nx-page nx-science-page">
+<section class="nx-hero">
+<div class="nx-wrap nx-hero-grid">
+<div class="nx-hero-copy">
+<div class="nx-eyebrow">Our Science</div>
+<h1>Science That Drives Our Formulas</h1>
+<p class="nx-lead">Our products are developed through a rigorous, evidence-based approach grounded in clinical relevance and human physiology.</p>
+<a class="nx-btn" href="https://main--nutrasync-eds-staging--capocommerce.aem.live/categories">Explore Our Products</a>
+</div>
+<div class="nx-hero-art">
+<svg aria-labelledby="scienceHeroTitle" class="nx-hero-svg" role="img" viewbox="0 0 720 430" xmlns="http://www.w3.org/2000/svg">
+<title id="scienceHeroTitle">NutraAxis supplement bottles in a clean laboratory setting</title>
+<defs>
+<lineargradient id="labBg" x1="0" x2="1" y1="0" y2="1">
+<stop offset="0" stop-color="#ffffff"></stop>
+<stop offset="1" stop-color="#dceff2"></stop>
+</lineargradient>
+<lineargradient id="bottle" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0" stop-color="#ffffff"></stop>
+<stop offset="1" stop-color="#eef4f5"></stop>
+</lineargradient>
+<filter height="140%" id="softShadow" width="140%" x="-20%" y="-20%">
+<fedropshadow dx="0" dy="18" flood-color="#0b3b46" flood-opacity=".16" stddeviation="14"></fedropshadow>
+</filter>
+</defs>
+<rect fill="url(#labBg)" height="430" rx="34" width="720"></rect>
+<g fill="none" opacity=".28" stroke="#7aaeb4" stroke-width="3">
+<path d="M70 80h120M98 80v180c0 35 65 35 65 0V80"></path>
+<path d="M520 58h74M548 58v118l-54 120c-14 31 6 62 40 62h75c34 0 54-31 40-62l-54-120V58"></path>
+<path d="M246 42h122M290 42v92l-66 150c-16 36 6 74 46 74h126c40 0 62-38 46-74l-66-150V42"></path>
+</g>
+<g fill="none" opacity=".35" stroke="#9db7bd" stroke-width="2">
+<circle cx="588" cy="95" r="10"></circle><circle cx="646" cy="145" r="8"></circle><circle cx="610" cy="205" r="7"></circle>
+<path d="M598 103l39 35M642 153l-25 46"></path>
+<circle cx="120" cy="330" r="8"></circle><circle cx="164" cy="302" r="7"></circle><circle cx="196" cy="345" r="9"></circle>
+<path d="M127 326l31-20M169 309l22 30"></path>
+</g>
+<ellipse cx="398" cy="360" fill="#b7d3d6" opacity=".35" rx="230" ry="34"></ellipse>
+<g filter="url(#softShadow)">
+<g transform="translate(278 112)">
+<rect fill="url(#bottle)" height="214" rx="22" stroke="#c8d9dc" width="118" x="0" y="35"></rect>
+<rect fill="#eef3f4" height="54" rx="12" stroke="#ccd7da" width="74" x="22" y="0"></rect>
+<path d="M22 18h74M22 30h74M22 42h74" stroke="#cad7da"></path>
+<rect fill="#fff" height="98" rx="10" stroke="#dde8ea" width="90" x="14" y="86"></rect>
+<path d="M30 110l18-18 18 18 18-18 18 18" fill="none" stroke="#4A9B9B" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"></path>
+<text fill="#173945" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" x="59" y="145">NutraAxis</text>
+<text fill="#55707a" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" x="59" y="166">MitoAxis</text>
+<rect fill="#4A9B9B" height="8" opacity=".8" rx="4" width="58" x="30" y="196"></rect>
+</g>
+<g transform="translate(410 82) scale(1.15)">
+<rect fill="url(#bottle)" height="236" rx="24" stroke="#c8d9dc" width="126" x="0" y="35"></rect>
+<rect fill="#eef3f4" height="56" rx="12" stroke="#ccd7da" width="78" x="24" y="0"></rect>
+<path d="M24 18h78M24 31h78M24 44h78" stroke="#cad7da"></path>
+<rect fill="#fff" height="116" rx="10" stroke="#dde8ea" width="98" x="14" y="88"></rect>
+<path d="M31 116l20-20 20 20 20-20 20 20" fill="none" stroke="#4A9B9B" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"></path>
+<path d="M91 96l20 20" stroke="#FF8A65" stroke-linecap="round" stroke-width="9"></path>
+<text fill="#173945" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" x="63" y="151">NutraAxis</text>
+<text fill="#55707a" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" x="63" y="174">MultiAxis</text>
+<rect fill="#4A9B9B" height="8" opacity=".8" rx="4" width="64" x="31" y="216"></rect>
+</g>
+</g>
+<g transform="translate(76 264)">
+<path d="M55 52c28-52 70-78 125-77-36 12-67 38-93 77h-32z" fill="#6da98f" opacity=".8"></path>
+<path d="M70 52c18-26 46-49 82-67" fill="none" stroke="#2f7664" stroke-width="3"></path>
+<rect fill="#d4d1c6" height="18" rx="9" width="205" x="0" y="50"></rect>
+</g>
+</svg>
+</div>
+</div>
+</section>
+<section aria-label="Science pillars" class="nx-wrap nx-pill-row">
+<article class="nx-pill-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><path d="M5 4h14v16H5z"></path><path d="M8 8h8M8 12h8M8 16h4"></path></svg></div><h3>Evidence-Led</h3><p>Formulation begins with a review of scientific literature, clinical relevance, and ingredient rationale.</p></article>
+<article class="nx-pill-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"></path></svg></div><h3>Mechanism-Driven</h3><p>Each formula is designed around biological systems, nutrient pathways, and targeted support.</p></article>
+<article class="nx-pill-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><path d="M12 21s8-4.8 8-11V5l-8-3-8 3v5c0 6.2 8 11 8 11z"></path><path d="M9 12l2 2 4-5"></path></svg></div><h3>Clinically Relevant</h3><p>We prioritize forms, doses, and combinations that make sense for practitioner-guided protocols.</p></article>
+</section>
+<section class="nx-section">
+<div class="nx-wrap">
+<div class="nx-center-text"><h2>From Research to Final Formula</h2><p>Each product moves through a practical formulation logic before it becomes part of the NutraAxis system.</p></div>
+<div class="nx-process-box">
+<svg aria-labelledby="scienceProcessTitle" class="nx-process-svg" role="img" viewbox="0 0 980 250" xmlns="http://www.w3.org/2000/svg">
+<title id="scienceProcessTitle">Research to final formula process</title>
+<defs><marker id="arrow" markerheight="10" markerwidth="10" orient="auto" refx="5" refy="3"><path d="M0,0 L0,6 L6,3 z" fill="#7baeb5"></path></marker></defs>
+<line marker-end="url(#arrow)" stroke="#b8d1d5" stroke-width="4" x1="116" x2="866" y1="92" y2="92"></line>
+<g fill="#173945" font-family="Arial, sans-serif" text-anchor="middle">
+<g transform="translate(100 92)"><circle fill="#fff" r="54" stroke="#74a7ae" stroke-width="3"></circle><path d="M-15 20V-20h30v40M-24 20h48M-7 -9h14M-7 3h14" fill="none" stroke="#2f7c87" stroke-linecap="round" stroke-width="4"></path><text font-size="18" font-weight="700" y="86">Research Review</text><text fill="#5f747b" font-size="12" y="111">Evidence and literature scan</text></g>
+<g transform="translate(295 92)"><circle fill="#fff" r="54" stroke="#74a7ae" stroke-width="3"></circle><path d="M-23 12c24-14 38-32 42-52 5 30-3 55-24 75-12-4-19-11-18-23z" fill="#79b19b"></path><path d="M-4 16c-10-9-14-24-10-42" fill="none" stroke="#2f7c87" stroke-width="4"></path><text font-size="18" font-weight="700" y="86">Ingredient Selection</text><text fill="#5f747b" font-size="12" y="111">Purposeful actives</text></g>
+<g transform="translate(490 92)"><circle fill="#fff" r="54" stroke="#74a7ae" stroke-width="3"></circle><path d="M-25 22h50M-14 22V-23M0 22V-5M14 22V-35" stroke="#2f7c87" stroke-linecap="round" stroke-width="6"></path><text font-size="18" font-weight="700" y="86">Dose Confirmation</text><text fill="#5f747b" font-size="12" y="111">Relevant daily amounts</text></g>
+<g transform="translate(685 92)"><circle fill="#fff" r="54" stroke="#74a7ae" stroke-width="3"></circle><circle cx="-17" cy="-8" fill="#b7d9d7" r="12"></circle><circle cx="15" cy="-11" fill="#ffb09b" r="12"></circle><circle cx="-1" cy="18" fill="#d4e9e8" r="12"></circle><path d="M-6 -6l11-2M-11 3l7 11M9 0L3 12" stroke="#2f7c87" stroke-width="3"></path><text font-size="18" font-weight="700" y="86">Synergy &amp; Composition</text><text fill="#5f747b" font-size="12" y="111">Designed to work together</text></g>
+<g transform="translate(880 92)"><circle fill="#fff" r="54" stroke="#74a7ae" stroke-width="3"></circle><path d="M-28 6l18 18L30-24" fill="none" stroke="#2f7c87" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"></path><text font-size="18" font-weight="700" y="86">Final Formula</text><text fill="#5f747b" font-size="12" y="111">Ready for review</text></g>
+</g>
+</svg>
+</div>
+</div>
+</section>
+<section class="nx-section nx-soft">
+<div class="nx-wrap nx-split">
+<div>
+<h2 style="text-align:left">Targeting Core Physiological Systems</h2>
+<p class="nx-lead" style="margin-top:18px">Our formulas are designed to support key areas of foundational health, with each formula aligned to a specific protocol need.</p>
+<div class="nx-list">
+<div class="nx-list-item"><span class="dot"><svg viewbox="0 0 24 24"><path d="M4 16c5-9 11-9 16-8M7 17c4-4 8-4 12-2"></path><path d="M4 16h5M4 16l2-5"></path></svg></span><span>Metabolic function and nutrient utilization</span></div>
+<div class="nx-list-item"><span class="dot"><svg viewbox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M12 11v10M8 17h8"></path></svg></span><span>Hormonal balance and healthy aging</span></div>
+<div class="nx-list-item"><span class="dot"><svg viewbox="0 0 24 24"><path d="M12 3c4 4 6 7 6 11a6 6 0 0 1-12 0c0-4 2-7 6-11z"></path><path d="M9 14c1.5 1.2 4.5 1.2 6 0"></path></svg></span><span>Stress response and neurological function</span></div>
+<div class="nx-list-item"><span class="dot"><svg viewbox="0 0 24 24"><path d="M12 21s8-4.8 8-11V5l-8-3-8 3v5c0 6.2 8 11 8 11z"></path></svg></span><span>Immune and inflammatory balance</span></div>
+<div class="nx-list-item"><span class="dot"><svg viewbox="0 0 24 24"><path d="M8 4c-4 5-1 11 4 11 4 0 5 5 1 6"></path><path d="M15 4c4 5 1 11-4 11"></path></svg></span><span>Gastrointestinal health and microbiome support</span></div>
+</div>
+</div>
+<div class="nx-art-panel">
+<svg aria-labelledby="scienceHeroTitle" class="nx-hero-svg" role="img" viewbox="0 0 720 430" xmlns="http://www.w3.org/2000/svg">
+<title id="scienceHeroTitle">NutraAxis supplement bottles in a clean laboratory setting</title>
+<defs>
+<lineargradient id="labBg" x1="0" x2="1" y1="0" y2="1">
+<stop offset="0" stop-color="#ffffff"></stop>
+<stop offset="1" stop-color="#dceff2"></stop>
+</lineargradient>
+<lineargradient id="bottle" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0" stop-color="#ffffff"></stop>
+<stop offset="1" stop-color="#eef4f5"></stop>
+</lineargradient>
+<filter height="140%" id="softShadow" width="140%" x="-20%" y="-20%">
+<fedropshadow dx="0" dy="18" flood-color="#0b3b46" flood-opacity=".16" stddeviation="14"></fedropshadow>
+</filter>
+</defs>
+<rect fill="url(#labBg)" height="430" rx="34" width="720"></rect>
+<g fill="none" opacity=".28" stroke="#7aaeb4" stroke-width="3">
+<path d="M70 80h120M98 80v180c0 35 65 35 65 0V80"></path>
+<path d="M520 58h74M548 58v118l-54 120c-14 31 6 62 40 62h75c34 0 54-31 40-62l-54-120V58"></path>
+<path d="M246 42h122M290 42v92l-66 150c-16 36 6 74 46 74h126c40 0 62-38 46-74l-66-150V42"></path>
+</g>
+<g fill="none" opacity=".35" stroke="#9db7bd" stroke-width="2">
+<circle cx="588" cy="95" r="10"></circle><circle cx="646" cy="145" r="8"></circle><circle cx="610" cy="205" r="7"></circle>
+<path d="M598 103l39 35M642 153l-25 46"></path>
+<circle cx="120" cy="330" r="8"></circle><circle cx="164" cy="302" r="7"></circle><circle cx="196" cy="345" r="9"></circle>
+<path d="M127 326l31-20M169 309l22 30"></path>
+</g>
+<ellipse cx="398" cy="360" fill="#b7d3d6" opacity=".35" rx="230" ry="34"></ellipse>
+<g filter="url(#softShadow)">
+<g transform="translate(278 112)">
+<rect fill="url(#bottle)" height="214" rx="22" stroke="#c8d9dc" width="118" x="0" y="35"></rect>
+<rect fill="#eef3f4" height="54" rx="12" stroke="#ccd7da" width="74" x="22" y="0"></rect>
+<path d="M22 18h74M22 30h74M22 42h74" stroke="#cad7da"></path>
+<rect fill="#fff" height="98" rx="10" stroke="#dde8ea" width="90" x="14" y="86"></rect>
+<path d="M30 110l18-18 18 18 18-18 18 18" fill="none" stroke="#4A9B9B" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"></path>
+<text fill="#173945" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" x="59" y="145">NutraAxis</text>
+<text fill="#55707a" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" x="59" y="166">MitoAxis</text>
+<rect fill="#4A9B9B" height="8" opacity=".8" rx="4" width="58" x="30" y="196"></rect>
+</g>
+<g transform="translate(410 82) scale(1.15)">
+<rect fill="url(#bottle)" height="236" rx="24" stroke="#c8d9dc" width="126" x="0" y="35"></rect>
+<rect fill="#eef3f4" height="56" rx="12" stroke="#ccd7da" width="78" x="24" y="0"></rect>
+<path d="M24 18h78M24 31h78M24 44h78" stroke="#cad7da"></path>
+<rect fill="#fff" height="116" rx="10" stroke="#dde8ea" width="98" x="14" y="88"></rect>
+<path d="M31 116l20-20 20 20 20-20 20 20" fill="none" stroke="#4A9B9B" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"></path>
+<path d="M91 96l20 20" stroke="#FF8A65" stroke-linecap="round" stroke-width="9"></path>
+<text fill="#173945" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle" x="63" y="151">NutraAxis</text>
+<text fill="#55707a" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" x="63" y="174">MultiAxis</text>
+<rect fill="#4A9B9B" height="8" opacity=".8" rx="4" width="64" x="31" y="216"></rect>
+</g>
+</g>
+<g transform="translate(76 264)">
+<path d="M55 52c28-52 70-78 125-77-36 12-67 38-93 77h-32z" fill="#6da98f" opacity=".8"></path>
+<path d="M70 52c18-26 46-49 82-67" fill="none" stroke="#2f7664" stroke-width="3"></path>
+<rect fill="#d4d1c6" height="18" rx="9" width="205" x="0" y="50"></rect>
+</g>
+</svg>
+</div>
+</div>
+</section>
+<section class="nx-section">
+<div class="nx-wrap nx-split">
+<article class="nx-feature-card">
+<h2 style="text-align:left">Purposeful Ingredient Selection</h2>
+<div class="nx-check-list">
+<div class="nx-check">Ingredients selected based on scientific evidence and clinical rationale</div>
+<div class="nx-check">Preference for bioavailable and active nutrient forms</div>
+<div class="nx-check">Use of branded or specialized ingredients where supported by data</div>
+<div class="nx-check">Avoidance of unnecessary or non-purposeful additives</div>
+</div>
+</article>
+<article class="nx-feature-card" style="background:#edf6f7">
+<h2 style="text-align:left">Built for Clinical Use</h2>
+<div class="nx-use-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"></path><path d="M14 3v4h4M9 12h6M9 16h4"></path></svg></div><div><h3>Transparent labeling</h3><p>Clear product logic and straightforward ingredient communication.</p></div></div>
+<div class="nx-use-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><path d="M12 21s8-4.8 8-11V5l-8-3-8 3v5c0 6.2 8 11 8 11z"></path><path d="M9 12l2 2 4-5"></path></svg></div><div><h3>Provider-guided protocols</h3><p>Designed to integrate into practitioner-supervised wellness plans.</p></div></div>
+<div class="nx-use-card"><div class="nx-icon-circle"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"></path></svg></div><div><h3>Consistent methodology</h3><p>Every formula follows the same evidence-to-formula discipline.</p></div></div>
+</article>
+</div>
+</section>
+<section class="nx-section nx-lab-bg" style="padding-top:60px;padding-bottom:60px">
+<div class="nx-wrap nx-center-text" style="margin-bottom:0"><h2>A Commitment to Continuous Learning</h2><p>We continually monitor emerging research to refine future product development and education.</p></div>
+</section>
+<section class="nx-banner">
+<div class="nx-wrap nx-banner-grid">
+<div class="nx-banner-icon"><svg viewbox="0 0 24 24"><path d="M9 2h6v4l2 2v13H7V8l2-2z"></path><path d="M8 11h8M10 5h4"></path></svg></div>
+<div><h2>Explore Our Formulations</h2><p>Discover products designed with an intentional, evidence-informed approach.</p></div>
+<a class="nx-btn nx-btn-coral" href="https://main--nutrasync-eds-staging--capocommerce.aem.live/categories">View Products</a>
+</div>
+</section>
+<footer class="nx-mini-footer">
+<div class="nx-wrap nx-mini-footer-grid">
+<div><div class="nx-brand-mark"><span class="mark"></span><span>NutraAxis</span></div><p class="nx-disclaimer">These statements have not been evaluated by the Food and Drug Administration. Products are not intended to diagnose, treat, cure, or prevent any disease.</p></div>
+<div class="nx-seals"><div class="nx-seal"><span>GMP</span> Certified</div><div class="nx-seal"><span>FDA</span> Registered Facility</div><div class="nx-seal"><span>USA</span> Made</div><div class="nx-seal"><span>3rd</span> Party Tested</div></div>
+</div>
+</footer>
+</div>

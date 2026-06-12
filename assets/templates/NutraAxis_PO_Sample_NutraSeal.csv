@@ -1,0 +1,29 @@
+[HEADER]
+Field,Value
+PO Number,NS20251111
+PO Date,2025-11-11
+Supplier Name,"NutraSeal, Inc"
+Supplier Address,"794 Sunrise Blvd., Mount Bethel, PA 18343"
+Supplier Contact Name,Thomas Chapman
+Supplier Contact Email,chapmansan@hotmail.com
+Supplier Contact Phone,310-413-1169
+Buyer Name,NutraSync / Wells Specialty Pharmacy
+Buyer Address,"3420 Fairlane Farms Road, Suite 200, Wellington, Florida 33414"
+Buyer Contact Name,Joe Butler
+Buyer Contact Email,nutrateam@nfcllc.com
+Buyer Contact Phone,754-210-1723
+Payment Terms,Net 30 Days
+Delivery Terms,"FOB Mt. Bethel, PA"
+Reference Documents,Purchase is subject to all terms and conditions contained in the Quality Agreement and Master Supply Agreement between Buyer and Supplier.
+Shipping & Handling,
+Special Instructions,"Ship all products with COA and lot traceability documentation. All packaging, labeling, and lot information must conform to specifications outlined in the Quality Agreement. Any substitutions, lead-time changes, or partial shipments must be pre-approved in writing by Buyer."
+[LINES]
+Line,Product / Bottle Title,Quote Number,Per Bottle Price (USD),Exp Date,Order Quantity (Bottles)
+1,Multi + Thyroid/HRT Cofactors,SPFQWN446,4.3,2028-03-01,15000
+2,HRT Metabolism Support (DIM + Myrosinase),SPFQWN447,10.6,2028-03-01,15000
+3,Mito Support (CoQ10/PQQ/Astaxanthin),SPFQWN448,12.44,2028-03-01,10000
+4,Omega-3,SPFQWN449,6.86,2028-03-01,10000
+5,Longevity (NAD+/Senolytic Blend),SPFQWN451,11.32,2028-03-01,7500
+6,Adrenal Stress,SPFQWN450,5.9,2028-03-01,7500
+7,Iron,SPFQWN453,4.2,2028-03-01,7500
+8,PRM Inflammation,SPFQWN454,9.45,2028-03-01,7500

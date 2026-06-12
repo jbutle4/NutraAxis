@@ -1,0 +1,370 @@
+<!--
+=================================================================
+  NUTRAAXIS — ABOUT US PAGE  |  INJECTABLE SNIPPET
+=================================================================
+  HOW TO INJECT:
+  1. STYLES  →  Copy the <style> block below into the <head>
+               of the host page (or your site's CSS file).
+  2. CONTENT →  Copy everything between the
+               "CONTENT START" and "CONTENT END" markers
+               into the <body> / page template.
+  3. IMAGES  →  Place any referenced images in the images/
+               folder at the same level as the HTML file.
+               Required files:
+                 • images/about-system-map.png
+  4. REMOVE  →  Do NOT include <html>, <head>, <body>, site
+               <header>, or site <footer> — the host page
+               already supplies all of those.
+=================================================================
+-->
+
+<!-- ═══════════════════════════════════════════════════════════
+     STYLES — place inside the host page's <head>
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+  /* Palette aligned to brand baseline (matches our-science-updated.html).
+     Accent colors --nx-amber/lavender/mint/sky kept as unique decorative step borders. */
+  .nutra-page {
+    --nx-teal:      #3d8b85;
+    --nx-teal-dark: #2a6b65;
+    --nx-coral:     #b35632;  /* a11y: 4.86:1 on white (was #FF8A65, 2.31:1) */
+    --nx-cream:     #ffffff;  /* unified to white (was warm #FAF8F3) */
+    --nx-navy:      #1a2e2d;
+    --nx-mist:      #e8f5f4;
+    --nx-amber:     #D4A574;
+    --nx-lavender:  #9B8FB9;
+    --nx-mint:      #7EC4A3;
+    --nx-sky:       #6BA3D9;
+    --nx-ink:       #1a2e2d;
+    --nx-gray:      #5a7170;
+    --nx-line:      #d6ecea;
+    font-family: Inter, Arial, sans-serif;
+    color: var(--nx-ink); background: var(--nx-cream);
+  }
+  .nutra-page * { box-sizing: border-box; }
+  .nutra-page a { color: inherit; }
+  .nutra-page .nx-section { padding: 76px 24px; position: relative; }
+  .nutra-page .nx-wrap { width: min(1180px, 100%); margin: 0 auto; }
+  .nutra-page .nx-hero {
+    min-height: 650px; display: grid; align-items: center;
+    /* Three-layer stack: subtle teal radial glow (top), white→pale-teal gradient (middle, semi-transparent),
+       molecule hexagon pattern (bottom). Matches the hero treatment on our-science and our-quality.
+       rgba updated to brand teal (61,139,133) — was (74,155,155) from the old --nx-teal. */
+    background:
+      radial-gradient(circle at 85% 18%, rgba(61,139,133,.16), transparent 26%),
+      linear-gradient(135deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 48%, rgba(238,248,246,.55) 100%),
+      url('images/molecule-bg-teal.jpg') center/cover no-repeat;
+  }
+  .nutra-page .nx-hero-grid { display:grid; grid-template-columns: 1.04fr .96fr; gap: 56px; align-items:center; }
+  .nutra-page .nx-kicker { color: var(--nx-teal-dark); text-transform: uppercase; letter-spacing: .14em; font-weight: 800; font-size: 13px; margin: 0 0 16px; } /* a11y: 6.12:1 on white */
+  /* Type scale aligned with our-science-updated.html for cross-page consistency */
+  .nutra-page h1 { color: var(--nx-navy); font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; margin: 0 0 20px; font-weight: 800; }
+  .nutra-page h2 { color: var(--nx-navy); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.2; margin: 0 0 14px; font-weight: 800; }
+  .nutra-page h3 { color: var(--nx-navy); font-size: 1.2rem; line-height: 1.3; margin: 0 0 10px; font-weight: 700; }
+  .nutra-page p { font-size: 1.05rem; line-height: 1.6; margin: 0 0 16px; color: var(--nx-ink); } /* darkened from --nx-gray; dark-section overrides below preserve light text */
+  .nutra-page .nx-lead { font-size: 1.15rem; line-height: 1.55; color: var(--nx-ink); max-width: 720px; }
+  .nutra-page .nx-actions { display:flex; gap: 14px; flex-wrap: wrap; margin-top: 28px; }
+  .nutra-page .nx-btn { display:inline-flex; align-items:center; gap:10px; padding: 15px 22px; border-radius:999px; font-weight:800; text-decoration:none; background:var(--nx-teal-dark); color:#fff; box-shadow: 0 12px 30px rgba(42,107,101,.22); } /* a11y: 6.12:1 on teal-dark (was 3.24:1 on teal) */
+  .nutra-page .nx-btn.secondary { background:#fff; color:var(--nx-navy); border:1px solid var(--nx-line); box-shadow:none; }
+  .nutra-page .nx-card { background:#fff; border: 1px solid rgba(61,139,133,.13); border-radius: 28px; padding: 28px; box-shadow: 0 20px 55px rgba(26,46,45,.08); }
+
+  /* Quality credential card — mirrors .quality-card on our-quality.html */
+  .nutra-page .quality-card {
+    width: 100%; max-width: 460px; margin-left: auto;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(42,107,101,.16), 0 4px 20px rgba(42,107,101,.08);
+    overflow: hidden;
+  }
+  .nutra-page .qc-header {
+    background: linear-gradient(135deg, var(--nx-navy) 0%, var(--nx-teal-dark) 100%);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .nutra-page .qc-header-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    background: rgba(255,255,255,.15); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+  }
+  .nutra-page .qc-header-text strong {
+    display: block; color: #fff;
+    font-size: 1.05rem; font-weight: 700; margin: 0;
+  }
+  .nutra-page .qc-header-text span {
+    font-size: .78rem; color: rgba(255,255,255,.7);
+    letter-spacing: .06em; text-transform: uppercase; font-weight: 700;
+  }
+  .nutra-page .qc-verified-pill {
+    margin-left: auto; flex-shrink: 0;
+    background: rgba(255,255,255,.18); color: #fff;
+    font-size: .72rem; font-weight: 700;
+    padding: 5px 13px; border-radius: 50px;
+    letter-spacing: .05em;
+    border: 1px solid rgba(255,255,255,.28);
+  }
+  .nutra-page .qc-body { padding: 4px 0; }
+  .nutra-page .qc-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--nx-line);
+  }
+  .nutra-page .qc-row:last-child { border-bottom: none; }
+  .nutra-page .qc-dot {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: var(--nx-mist); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--nx-teal);
+  }
+  .nutra-page .qc-row-text { flex: 1; }
+  .nutra-page .qc-row-text strong {
+    display: block; font-size: .88rem; font-weight: 700; color: var(--nx-ink);
+    margin: 0;
+  }
+  .nutra-page .qc-row-text span { font-size: .75rem; color: var(--nx-gray); }
+  .nutra-page .qc-pass {
+    font-size: .72rem; font-weight: 700; color: var(--nx-teal-dark);
+    background: var(--nx-mist);
+    padding: 3px 10px; border-radius: 50px; white-space: nowrap;
+  }
+  .nutra-page .qc-footer {
+    background: #f5fafa; border-top: 1px solid var(--nx-line);
+    padding: 14px 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .nutra-page .qc-footer-label {
+    font-size: .7rem; font-weight: 700; color: var(--nx-gray);
+    text-transform: uppercase; letter-spacing: .07em; margin-right: 4px;
+  }
+  .nutra-page .qc-tag {
+    font-size: .72rem; font-weight: 600; color: var(--nx-gray);
+    background: #fff; border: 1px solid var(--nx-line);
+    padding: 4px 10px; border-radius: 6px;
+  }
+  .nutra-page .nx-card-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 34px; }
+  .nutra-page .nx-card-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nutra-page .nx-card-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .nutra-page .nx-card .nx-num { color: var(--nx-coral); font-size: 16px; font-weight: 850; letter-spacing:.08em; margin-bottom:14px; display:block; }
+  .nutra-page .nx-teal-section { background: var(--nx-navy); color: #fff; }
+  .nutra-page .nx-teal-section h2, .nutra-page .nx-teal-section h3 { color:#fff; }
+  .nutra-page .nx-teal-section p { color:#DCECEA; }
+  /* Cards inside teal section get their own readable colours */
+  .nutra-page .nx-teal-section .nx-card { background:#fff; }
+  .nutra-page .nx-teal-section .nx-card h3 { color: var(--nx-navy); }
+  .nutra-page .nx-teal-section .nx-card p  { color: var(--nx-gray); }
+  .nutra-page .nx-pill-row { display:flex; gap:12px; flex-wrap:wrap; margin: 24px 0 0; }
+  .nutra-page .nx-pill { padding: 9px 14px; border-radius:999px; background:rgba(74,155,155,.11); color:var(--nx-teal-dark); font-size:14px; font-weight:800; }
+  .nutra-page .nx-teal-section .nx-pill { background:rgba(255,255,255,.12); color:#fff; }
+  .nutra-page .nx-split { display:grid; grid-template-columns: .9fr 1.1fr; gap: 42px; align-items:center; }
+  .nutra-page .nx-image-panel { background:#fff; border-radius:34px; padding: 20px; box-shadow:0 24px 70px rgba(36,55,70,.1); border:1px solid rgba(74,155,155,.14); }
+  .nutra-page .nx-image-panel img { width:100%; height:auto; display:block; border-radius:26px; }
+  .nutra-page .nx-stat-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:18px; margin-top: 30px; }
+  .nutra-page .nx-stat { padding:22px; border-radius:24px; background:#fff; border:1px solid var(--nx-line); }
+  .nutra-page .nx-stat strong { display:block; color:var(--nx-navy); font-size: 34px; line-height:1; margin-bottom:8px; }
+  .nutra-page .nx-stat span { color:var(--nx-gray); font-size: 15px; line-height:1.35; }
+  .nutra-page .nx-band { background:linear-gradient(90deg, var(--nx-teal), #5aaca7); color:#fff; padding: 52px 24px; }
+  .nutra-page .nx-band .nx-wrap { display:flex; align-items:center; justify-content:space-between; gap: 24px; }
+  .nutra-page .nx-band h2 { color:#fff; font-size: clamp(30px,4vw,52px); max-width:860px; }
+  .nutra-page .nx-band p { color:#EBFFFC; max-width: 720px; }
+  .nutra-page .nx-timeline { display:grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top:34px; }
+  .nutra-page .nx-step { background:#fff; border-radius:24px; padding:22px; border-top:8px solid var(--nx-teal); min-height:180px; }
+  .nutra-page .nx-step:nth-child(2){border-color:var(--nx-amber)} .nutra-page .nx-step:nth-child(3){border-color:var(--nx-lavender)} .nutra-page .nx-step:nth-child(4){border-color:var(--nx-mint)} .nutra-page .nx-step:nth-child(5){border-color:var(--nx-sky)}
+  .nutra-page .nx-note { padding: 20px 24px; border-left: 5px solid var(--nx-coral); background: #fff7f2; border-radius: 18px; margin-top: 28px; color:#5a4b45; }
+  .nutra-page .nx-note p { color:#5a4b45; font-size: 15px; line-height:1.5; margin:0; }
+  .nutra-page .nx-check-list { margin: 20px 0 0; padding:0; list-style:none; display:grid; gap:12px; }
+  .nutra-page .nx-check-list li { display:flex; gap:12px; align-items:flex-start; color:var(--nx-ink); font-size:17px; line-height:1.45; } /* darkened from --nx-gray */
+  .nutra-page .nx-check-list li::before { content:'\2713'; color:#fff; background:var(--nx-teal); min-width:25px; height:25px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-weight:900; }
+  .nutra-page .nx-footer-disclaimer { background:#fff; border-top: 1px solid var(--nx-line); padding: 28px 24px; }
+  .nutra-page .nx-footer-disclaimer p { font-size:13px; line-height:1.55; color:#5a7170; max-width:1180px; margin:0 auto; }
+  @media (max-width: 900px) { .nutra-page .nx-hero-grid, .nutra-page .nx-split { grid-template-columns:1fr; } .nutra-page .nx-card-grid, .nutra-page .nx-card-grid.two, .nutra-page .nx-card-grid.four, .nutra-page .nx-stat-grid { grid-template-columns:1fr; } .nutra-page .nx-timeline { grid-template-columns:1fr; } .nutra-page .nx-section { padding: 56px 20px; } .nutra-page .nx-band .nx-wrap { display:block; } }
+  /* ───── Text contrast utilities (scoped to .nutra-page) ─────
+     .text-on-light → for light backgrounds (white, cream, mist). 14:1 on white (AA ✓).
+     .text-on-dark  → for dark backgrounds (nx-teal-section, nx-band gradient). 6.1:1+ (AA ✓).
+     !important wins over per-component rules like `.nutra-page p { color: var(--nx-gray); }`. */
+  .nutra-page .text-on-light { color: #1a2e2d !important; }
+  .nutra-page .text-on-dark  { color: #ffffff !important; }
+  /* a11y: honor reduced-motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .nutra-page * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="nutra-page nutra-about">
+<!-- ===== SECTION 1: HERO ===== -->
+<section class="nx-section nx-hero">
+<div class="nx-wrap nx-hero-grid">
+<div>
+<p class="nx-kicker">About NutraAxis</p>
+<h1>Science-led. Quality-focused. Practitioner-trusted.</h1>
+<p class="nx-lead">NutraAxis is a practitioner-focused supplement brand dedicated to developing high-quality nutritional formulations grounded in scientific research and human physiology. Our products are designed to support wellness protocols through clinically studied ingredients, quality-focused manufacturing, and transparent testing standards.</p>
+<div class="nx-actions">
+<a class="nx-btn" href="https://main--nutrasync-eds-staging--capocommerce.aem.live/categories">Explore Our Products</a>
+<a class="nx-btn secondary" href="/our-quality">See Our Quality Standards</a>
+</div>
+<div class="nx-pill-row">
+<span class="nx-pill">Science</span>
+<span class="nx-pill">Quality</span>
+<span class="nx-pill">Testing</span>
+<span class="nx-pill">Education</span>
+<span class="nx-pill">Integrity</span>
+</div>
+</div>
+<div class="quality-card">
+  <div class="qc-header">
+    <div class="qc-header-icon">
+      <svg aria-hidden="true" focusable="false" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div class="qc-header-text">
+      <strong>NutraAxis Standard</strong>
+      <span>Practitioner-Trusted</span>
+    </div>
+    <div class="qc-verified-pill">Verified &#10003;</div>
+  </div>
+  <div class="qc-body">
+    <div class="qc-row">
+      <div class="qc-dot">
+        <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="qc-row-text">
+        <strong>3rd-Party Tested</strong>
+        <span>Every production batch, independently verified</span>
+      </div>
+      <span class="qc-pass">Passed</span>
+    </div>
+    <div class="qc-row">
+      <div class="qc-dot">
+        <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="qc-row-text">
+        <strong>cGMP Certified Manufacturing</strong>
+        <span>FDA-registered, current Good Manufacturing Practices</span>
+      </div>
+      <span class="qc-pass">Passed</span>
+    </div>
+    <div class="qc-row">
+      <div class="qc-dot">
+        <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="qc-row-text">
+        <strong>COA Available on Request</strong>
+        <span>Full certificate of analysis, every lot</span>
+      </div>
+      <span class="qc-pass">On File</span>
+    </div>
+    <div class="qc-row">
+      <div class="qc-dot">
+        <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="qc-row-text">
+        <strong>ISO-Accredited Labs</strong>
+        <span>Independent testing at accredited facilities</span>
+      </div>
+      <span class="qc-pass">Certified</span>
+    </div>
+  </div>
+  <div class="qc-footer">
+    <span class="qc-footer-label">Tests:</span>
+    <span class="qc-tag">Heavy Metals</span>
+    <span class="qc-tag">Microbials</span>
+    <span class="qc-tag">Potency</span>
+    <span class="qc-tag">Purity</span>
+  </div>
+</div>
+</div>
+</section>
+<!-- ===== SECTION 2: WHY WE EXIST ===== -->
+<section class="nx-section">
+<div class="nx-wrap nx-split">
+<div>
+<p class="nx-kicker">Why we exist</p>
+<h2>Wellness support goes beyond a single product.</h2>
+<p>Healthcare practitioners often combine lifestyle guidance, nutritional support, and wellness strategies alongside broader care plans. Choosing high-quality, evidence-informed supplements can help support consistency, confidence, and long-term wellness routines.</p>
+<p>NutraAxis was created to support practitioners and wellness-focused individuals with thoughtfully formulated nutritional products designed around ingredient quality, scientific rationale, and everyday usability.</p>
+</div>
+<div class="nx-card">
+<span class="nx-num">OUR APPROACH</span>
+<h3>Science-informed formulation. Quality-focused standards.</h3>
+<p>We develop nutritional supplements using clinically studied ingredients, intentional formulation strategies, and transparent quality practices designed to support practitioner-guided wellness protocols.</p>
+<ul class="nx-check-list">
+<li>Evidence-informed formulation approach</li>
+<li>Clinically relevant ingredient selection</li>
+<li>Practitioner-focused education and support</li>
+<li>Third-party LOT testing and transparent quality standards</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- ===== SECTION 3: THE NUTRAAXIS DIFFERENCE ===== -->
+<section class="nx-section nx-teal-section">
+<div class="nx-wrap">
+<p class="nx-kicker" style="color:#9DE0D9">The NutraAxis difference</p>
+<h2>Built for wellness professionals and the people they serve.</h2>
+<p class="nx-lead">The market is full of products. NutraAxis is designed as a system: evidence-informed, quality-focused, and practical enough to fit inside a practitioner workflow.</p>
+<div class="nx-card-grid four">
+<div class="nx-card">
+<span class="nx-num">01</span>
+<h3>Practitioner-guided</h3>
+<p>Supports recommendations that originate from a qualified clinical or wellness relationship, not a consumer quiz alone.</p>
+</div>
+<div class="nx-card">
+<span class="nx-num">02</span>
+<h3>Wellness aligned</h3>
+<p>Organized around six evidence-informed wellness pillars: Metabolic &amp; Weight Health, Hormonal &amp; Reproductive Health, Mood, Stress &amp; Sleep, Healthy Aging &amp; Longevity, Digestive &amp; Gut Health, and Physical Comfort &amp; Recovery.</p>
+</div>
+<div class="nx-card">
+<span class="nx-num">03</span>
+<h3>Clear, accessible communication</h3>
+<p>Evidence-based and specific, but clear enough that individuals understand what to do next and why it matters for their wellness goals.</p>
+</div>
+<div class="nx-card">
+<span class="nx-num">04</span>
+<h3>Visible proof</h3>
+<p>LOT testing, quality documentation, and compliance discipline are built into the experience from the start.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- ===== SECTION 4: FOR PROVIDERS AND INDIVIDUALS ===== -->
+<section class="nx-section">
+<div class="nx-wrap">
+<p class="nx-kicker">One system, two audiences</p>
+<h2>Designed for practitioners and the individuals they support.</h2>
+<div class="nx-card-grid two">
+<div class="nx-card">
+<span class="nx-num">FOR PRACTITIONERS</span>
+<h3>Fewer steps. More confidence.</h3>
+<p>NutraAxis is built to reduce fragmentation across supplement selection, quality verification, education, and reorder workflows.</p>
+<ul class="nx-check-list">
+<li>Clinic Store model</li>
+<li>Wellness-pillar product architecture</li>
+<li>Education resources that do not require retranslation</li>
+</ul>
+</div>
+<div class="nx-card">
+<span class="nx-num">FOR INDIVIDUALS</span>
+<h3>Quality and clarity, from day one.</h3>
+<p>Wellness-focused individuals get a simpler path to high-quality nutritional support &mdash; with transparent ingredient information and testing documentation that is easy to understand.</p>
+<ul class="nx-check-list">
+<li>Simple, pillar-based product organization</li>
+<li>Clear usage guidance</li>
+<li>Visible quality proof on every product</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<!-- ===== SECTION 5: CTA BAND ===== -->
+<section class="nx-band">
+<div class="nx-wrap">
+<div>
+<h2>Quality you can see. Science you can trust.</h2>
+<p>Practitioner-focused supplements built on evidence-informed formulations, LOT-tested quality, and transparent standards &mdash; available now.</p>
+</div>
+<a class="nx-btn secondary" href="https://main--nutrasync-eds-staging--capocommerce.aem.live/categories">Explore Our Products</a>
+</div>
+</section>
+<!-- ===== FOOTER DISCLAIMER ===== -->
+<div class="nx-footer-disclaimer">
+<p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. All product claims, ingredients, and labeling are subject to applicable DSHEA and FTC guidelines. Consult a qualified healthcare provider before beginning any supplementation program.</p>
+</div>
+</div>
+

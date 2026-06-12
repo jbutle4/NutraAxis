@@ -1,0 +1,666 @@
+<!-- ═══════════════════════════════════════════════════════════
+     STYLES — place inside the host page's <head>
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+  /* ===== RESET & BASE (scope to page if host already resets) ===== */
+  .na-quality *, .na-quality *::before, .na-quality *::after {
+    box-sizing: border-box; margin: 0; padding: 0;
+  }
+  .na-quality {
+    /* Aligned to brand baseline (matches our-science-updated.html) */
+    --navy:        #1a2e2d;  /* was #1b3f52 — unified with --text */
+    --teal:        #3d8b85;
+    --teal-dark:   #2a6b65;
+    --teal-light:  #5aaca7;
+    --teal-pale:   #e8f5f4;
+    --salmon:      #b35632;  /* darkened for AA contrast (was #e07a5a, 2.96:1 → 4.86:1 with white) */
+    --salmon-dark: #8f4225;
+    --text:        #1a2e2d;
+    --text-muted:  #5a7170;
+    --border:      #d6ecea;
+    --white:       #ffffff;
+    --bg-light:    #f5fafa;
+    --radius:      12px;
+    --shadow:      0 4px 24px rgba(42,107,101,.10);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .na-quality a { color: inherit; text-decoration: none; }
+  .na-quality img { display: block; max-width: 100%; }
+  .na-quality ul { list-style: none; }
+  .na-quality .container {
+    width: 100%; max-width: 1160px;
+    margin: 0 auto; padding: 0 24px;
+  }
+
+  /* ===== SECTION UTILITIES ===== */
+  .na-quality .section-label {
+    display: inline-block;
+    background: var(--teal-pale); color: var(--teal-dark); /* a11y: 5.48:1 */
+    font-size: .78rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 50px; margin-bottom: 12px;
+  }
+  .na-quality .section-heading {
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    font-weight: 800; line-height: 1.2;
+    color: var(--text); margin-bottom: 14px;
+  }
+  .na-quality .section-sub {
+    font-size: 1rem; color: var(--text); /* darkened from --text-muted for readability on light bg */
+    max-width: 600px; margin: 0 auto 56px;
+  }
+  .na-quality .section-header { text-align: center; }
+
+  /* ===== BUTTONS ===== */
+  .na-quality .btn-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--salmon); color: var(--white);
+    font-size: .88rem; font-weight: 600;
+    padding: 10px 22px; border-radius: 50px;
+    border: none; cursor: pointer;
+    transition: background .2s, transform .15s;
+    white-space: nowrap;
+  }
+  .na-quality .btn-cta:hover { background: var(--salmon-dark); transform: translateY(-1px); }
+  .na-quality .btn-white {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--white); color: var(--navy);
+    font-size: .95rem; font-weight: 700;
+    padding: 14px 32px; border-radius: 50px;
+    border: none; cursor: pointer; white-space: nowrap;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  }
+  .na-quality .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+
+  /* ===== HERO ===== */
+  .na-quality .hero {
+    /* Soft brand gradient layered above the teal molecule pattern (same treatment as our-science).
+       Semi-transparent stops let the hexagons show through subtly while preserving text contrast. */
+    background:
+      linear-gradient(135deg, rgba(232,246,249,.62) 0%, rgba(240,250,251,.45) 40%, rgba(254,248,246,.62) 100%),
+      url('images/molecule-bg-teal.jpg') center/cover no-repeat;
+    padding: 72px 0; overflow: hidden;
+  }
+  .na-quality .hero-inner {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 56px; align-items: center;
+  }
+  .na-quality .hero-text h1 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 800; line-height: 1.12;
+    color: var(--navy); margin-bottom: 20px;
+  }
+  .na-quality .hero-text h1 span { color: var(--teal); }
+  .na-quality .hero-text p {
+    font-size: 1.05rem; color: var(--text); /* darkened from --text-muted for readability over molecule pattern */
+    margin-bottom: 32px; max-width: 460px;
+  }
+
+  /* ── QUALITY CREDENTIAL CARD ── */
+  .na-quality .hero-visual {
+    display: flex; justify-content: center; align-items: center;
+  }
+  .na-quality .quality-card {
+    width: 100%; max-width: 460px;
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(28,95,110,.16), 0 4px 20px rgba(28,95,110,.08);
+    overflow: hidden;
+  }
+  .na-quality .qc-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--teal-dark) 100%);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .na-quality .qc-header-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    background: rgba(255,255,255,.15); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white);
+  }
+  .na-quality .qc-header-text strong {
+    display: block; color: var(--white);
+    font-size: 1.05rem; font-weight: 700;
+  }
+  .na-quality .qc-header-text span { font-size: .78rem; color: rgba(255,255,255,.65); }
+  .na-quality .qc-verified-pill {
+    margin-left: auto; flex-shrink: 0;
+    background: rgba(255,255,255,.18); color: var(--white);
+    font-size: .72rem; font-weight: 700;
+    padding: 5px 13px; border-radius: 50px;
+    letter-spacing: .05em;
+    border: 1px solid rgba(255,255,255,.28);
+  }
+  .na-quality .qc-body { padding: 4px 0; }
+  .na-quality .qc-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .na-quality .qc-row:last-child { border-bottom: none; }
+  .na-quality .qc-row:hover { background: var(--bg-light); }
+  .na-quality .qc-dot {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: var(--teal-pale); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--teal);
+  }
+  .na-quality .qc-row-text { flex: 1; }
+  .na-quality .qc-row-text strong {
+    display: block; font-size: .88rem; font-weight: 700; color: var(--text);
+  }
+  .na-quality .qc-row-text span { font-size: .75rem; color: var(--text-muted); }
+  .na-quality .qc-pass {
+    font-size: .72rem; font-weight: 700; color: var(--teal-dark); /* a11y: 5.48:1 */
+    background: var(--teal-pale);
+    padding: 3px 10px; border-radius: 50px; white-space: nowrap;
+  }
+  .na-quality .qc-footer {
+    background: var(--bg-light); border-top: 1px solid var(--border);
+    padding: 14px 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .na-quality .qc-footer-label {
+    font-size: .7rem; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-right: 4px;
+  }
+  .na-quality .qc-tag {
+    font-size: .72rem; font-weight: 600; color: var(--text-muted);
+    background: var(--white); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 6px;
+  }
+
+  /* ===== QUALITY PROCESS ===== */
+  .na-quality .quality-process { padding: 80px 0; background: var(--white); }
+  .na-quality .process-track {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 0; margin-top: 48px; position: relative;
+  }
+  .na-quality .process-track::before {
+    content: ''; position: absolute;
+    top: 36px; left: 10%; right: 10%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--teal-dark) 0%, var(--teal-light) 100%);
+    z-index: 0;
+  }
+  .na-quality .process-step {
+    display: flex; flex-direction: column;
+    align-items: center; text-align: center;
+    padding: 0 10px; position: relative; z-index: 1;
+  }
+  .na-quality .process-num {
+    width: 72px; height: 72px;
+    background: var(--white); border: 3px solid var(--teal);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+    box-shadow: 0 0 0 6px var(--white);
+    color: var(--teal);
+  }
+  .na-quality .process-num.filled { background: var(--teal); color: var(--white); }
+  .na-quality .process-step h3 {
+    font-size: .85rem; font-weight: 700;
+    color: var(--text); margin-bottom: 8px;
+  }
+  .na-quality .process-step p { font-size: .78rem; color: var(--text); line-height: 1.5; } /* darkened from --text-muted */
+
+  /* ===== TESTING + TRANSPARENCY ===== */
+  .na-quality .testing-section { padding: 80px 0; background: var(--bg-light); }
+  .na-quality .testing-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 32px; align-items: start;
+  }
+  .na-quality .testing-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 40px 36px;
+  }
+  .na-quality .testing-card h3 {
+    font-size: 1.5rem; font-weight: 800;
+    color: var(--navy); margin-bottom: 16px; line-height: 1.25;
+  }
+  .na-quality .testing-card > p {
+    font-size: .95rem; color: var(--text); margin-bottom: 28px; /* darkened from --text-muted */
+  }
+  .na-quality .testing-card strong { color: var(--text); }
+  .na-quality .test-items { display: flex; flex-direction: column; gap: 14px; }
+  .na-quality .test-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 18px;
+    background: var(--bg-light);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .na-quality .test-item-icon {
+    width: 46px; height: 46px; flex-shrink: 0;
+    background: var(--teal-pale); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--teal);
+  }
+  .na-quality .test-item-text strong {
+    display: block; font-size: .9rem; font-weight: 700; color: var(--text);
+  }
+  .na-quality .test-item-text span { font-size: .8rem; color: var(--text-muted); }
+
+  /* COA Panel */
+  .na-quality .coa-panel {
+    background: var(--bg-light); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 28px 24px;
+    text-align: center; margin-top: 24px;
+  }
+  .na-quality .coa-panel h4 {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--navy); margin-bottom: 8px;
+  }
+  .na-quality .coa-panel p { font-size: .85rem; color: var(--text); margin-bottom: 20px; } /* darkened from --text-muted */
+  .na-quality .coa-icon {
+    width: 56px; height: 56px;
+    background: var(--teal-pale); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--teal); margin: 0 auto 16px;
+  }
+  .na-quality .transparency-pill {
+    display: inline-block; background: var(--teal-pale);
+    color: var(--teal-dark); font-size: .8rem; font-weight: 600; /* a11y: 5.48:1 */
+    padding: 4px 12px; border-radius: 50px; margin-bottom: 16px;
+  }
+
+  /* ===== QUALITY GUARANTEE ===== */
+  .na-quality .guarantee { padding: 80px 0; background: var(--white); }
+  .na-quality .guarantee-inner {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 48px; align-items: center;
+    background: var(--bg-light); border: 1px solid var(--border);
+    border-radius: 20px; padding: 48px;
+    position: relative; overflow: hidden;
+  }
+  .na-quality .guarantee-inner::before {
+    content: ''; position: absolute; right: -60px; top: -60px;
+    width: 240px; height: 240px;
+    background: var(--teal-pale); border-radius: 50%; opacity: .5;
+  }
+  .na-quality .guarantee-icon-wrap {
+    width: 80px; height: 80px; background: var(--teal);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white); flex-shrink: 0;
+  }
+  .na-quality .guarantee-text h3 {
+    font-size: 1.5rem; font-weight: 800;
+    color: var(--navy); margin-bottom: 10px;
+  }
+  .na-quality .guarantee-text p { color: var(--text); max-width: 480px; } /* darkened from --text-muted */
+  .na-quality .guarantee-list { display: flex; flex-direction: column; gap: 10px; }
+  .na-quality .g-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: .9rem; font-weight: 600; color: var(--text);
+  }
+  .na-quality .g-dot {
+    width: 22px; height: 22px; flex-shrink: 0;
+    background: var(--teal); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .na-quality .g-dot svg { color: var(--white); }
+
+  /* ===== CTA BANNER ===== */
+  .na-quality .cta-banner {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--teal-dark) 60%, var(--teal) 100%);
+    padding: 72px 24px;
+  }
+  .na-quality .cta-inner {
+    display: flex; align-items: center;
+    justify-content: space-between; gap: 32px; flex-wrap: wrap;
+  }
+  .na-quality .cta-left { display: flex; align-items: center; gap: 24px; }
+  .na-quality .cta-doc-icon {
+    width: 64px; height: 64px; flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,.3); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.8);
+  }
+  .na-quality .cta-copy h2 {
+    font-size: clamp(1.4rem, 2.5vw, 2rem);
+    font-weight: 800; color: var(--white); margin-bottom: 6px;
+  }
+  .na-quality .cta-copy p { color: #ffffff; font-size: .95rem; } /* pulled from rgba(.75) → full white for AA on teal banner */
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1024px) {
+    .na-quality .process-track { grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    .na-quality .process-track::before { display: none; }
+    .na-quality .guarantee-inner { grid-template-columns: 1fr; gap: 28px; }
+    .na-quality .guarantee-icon-wrap { display: none; }
+  }
+  @media (max-width: 768px) {
+    .na-quality .hero-inner { grid-template-columns: 1fr; gap: 36px; }
+    .na-quality .hero-visual { display: none; }
+    .na-quality .hero-text p { max-width: 100%; }
+    .na-quality .process-track { grid-template-columns: 1fr 1fr; }
+    .na-quality .testing-grid { grid-template-columns: 1fr; }
+    .na-quality .cta-inner { flex-direction: column; text-align: center; }
+    .na-quality .cta-left { flex-direction: column; text-align: center; }
+    .na-quality .guarantee-inner { padding: 28px 24px; }
+    .na-quality .guarantee-list { flex-direction: column; }
+  }
+  @media (max-width: 480px) {
+    .na-quality .process-track { grid-template-columns: 1fr; }
+    .na-quality .hero-text h1 { font-size: 1.9rem; }
+    .na-quality .testing-card { padding: 28px 20px; }
+  }
+  /* ───── Text contrast utilities (scoped to .na-quality) ─────
+     .text-on-light → for light backgrounds (white, bg-light, teal-pale). 14:1 on white (AA ✓).
+     .text-on-dark  → for dark backgrounds (navy/teal-dark gradients, CTA banner). 6.1:1 on teal-dark (AA ✓).
+     !important wins over per-component rules like `.hero-text p { color: var(--text-muted); }`. */
+  .na-quality .text-on-light { color: #1a2e2d !important; }
+  .na-quality .text-on-dark  { color: #ffffff !important; }
+  /* a11y: honor reduced-motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .na-quality .qc-row,
+    .na-quality .btn-cta, .na-quality .btn-white {
+      transition: none;
+    }
+    .na-quality .qc-row:hover { background: transparent; }
+  }
+</style>
+<!-- ═══ /STYLES ═══════════════════════════════════════════════ -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONTENT START — inject this block into the host page body
+     ═══════════════════════════════════════════════════════════ -->
+<div class="na-quality">
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <h1>Quality You Can See.<br/><span>Science You Can Trust.</span></h1>
+          <p>At NutraAxis, quality isn&rsquo;t a step &mdash; it&rsquo;s a standard. Every batch we produce is tested for purity, potency, and safety so you can feel confident in every capsule.</p>
+          <a class="btn-cta" href="#coa" style="font-size:1rem;padding:13px 32px;">Access Our COAs</a>
+        </div>
+
+        <!-- ── QUALITY CREDENTIAL CARD ── -->
+        <div class="hero-visual">
+          <div class="quality-card">
+
+            <!-- Card header -->
+            <div class="qc-header">
+              <div class="qc-header-icon">
+                <svg aria-hidden="true" focusable="false" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+              </div>
+              <div class="qc-header-text">
+                <strong>Quality Verified</strong>
+                <span>NutraAxis Standard</span>
+              </div>
+              <div class="qc-verified-pill">Verified &#10003;</div>
+            </div>
+
+            <!-- Credential rows -->
+            <div class="qc-body">
+              <div class="qc-row">
+                <div class="qc-dot">
+                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="qc-row-text">
+                  <strong>3rd-Party Tested</strong>
+                  <span>Every production batch, independently verified</span>
+                </div>
+                <span class="qc-pass">Passed</span>
+              </div>
+              <div class="qc-row">
+                <div class="qc-dot">
+                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="qc-row-text">
+                  <strong>COA Issued</strong>
+                  <span>Certificate of Analysis per batch &mdash; publicly accessible</span>
+                </div>
+                <span class="qc-pass">Issued</span>
+              </div>
+              <div class="qc-row">
+                <div class="qc-dot">
+                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="qc-row-text">
+                  <strong>cGMP Certified</strong>
+                  <span>Manufactured in a certified, FDA-registered facility</span>
+                </div>
+                <span class="qc-pass">Certified</span>
+              </div>
+              <div class="qc-row">
+                <div class="qc-dot">
+                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div class="qc-row-text">
+                  <strong>ISO-Accredited Labs</strong>
+                  <span>Independent laboratory verification for every test</span>
+                </div>
+                <span class="qc-pass">Verified</span>
+              </div>
+            </div>
+
+            <!-- Test categories -->
+            <div class="qc-footer">
+              <span class="qc-footer-label">Tests:</span>
+              <span class="qc-tag">Heavy Metals</span>
+              <span class="qc-tag">Microbials</span>
+              <span class="qc-tag">Potency</span>
+              <span class="qc-tag">Purity</span>
+            </div>
+
+          </div>
+        </div>
+        <!-- ── /QUALITY CREDENTIAL CARD ── -->
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== QUALITY PROCESS ===== -->
+  <section class="quality-process">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-label">Our Process</div>
+        <h2 class="section-heading">Our Quality Process</h2>
+        <p class="section-sub">From ingredient to finished product, quality is built into every step.</p>
+      </div>
+      <div class="process-track">
+        <div class="process-step">
+          <div class="process-num">
+            <svg aria-hidden="true" focusable="false" fill="none" height="26" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="26">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <h3>1. Sourced with Care</h3>
+          <p>We partner with trusted suppliers who share our commitment to quality, purity, and transparency.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num">
+            <svg aria-hidden="true" focusable="false" fill="none" height="26" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="26">
+              <path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            </svg>
+          </div>
+          <h3>2. Tested by Our CMO</h3>
+          <p>Our manufacturing partners test every raw ingredient and finished product to ensure identity, potency, and purity.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num filled">
+            <svg aria-hidden="true" focusable="false" fill="none" height="26" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="26">
+              <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <h3>3. Certificates of Analysis</h3>
+          <p>Our CMO provides a COA for every batch — verifying that it meets our exacting specifications.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num">
+            <svg aria-hidden="true" focusable="false" fill="none" height="26" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="26">
+              <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <h3>4. Third-Party Testing</h3>
+          <p>We independently test every batch through accredited third-party laboratories for an extra layer of assurance.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num filled">
+            <svg aria-hidden="true" focusable="false" fill="none" height="26" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="26">
+              <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+            </svg>
+          </div>
+          <h3>5. Quality You Can Trust</h3>
+          <p>Only batches that pass every test earn our seal and make it to you.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TESTING + TRANSPARENCY ===== -->
+  <section class="testing-section" id="coa">
+    <div class="container">
+      <div class="testing-grid">
+
+        <!-- Left: Third-Party Testing -->
+        <div class="testing-card">
+          <h3>Third-Party Testing You Can Count On</h3>
+          <p>We go beyond industry standards by <strong>partnering with ISO-accredited, independent laboratories</strong> to test for:</p>
+          <div class="test-items">
+            <div class="test-item">
+              <div class="test-item-icon">
+                <svg aria-hidden="true" focusable="false" fill="none" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22">
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+              </div>
+              <div class="test-item-text">
+                <strong>Heavy Metals</strong>
+                <span>Lead, arsenic, cadmium, mercury screening</span>
+              </div>
+            </div>
+            <div class="test-item">
+              <div class="test-item-icon">
+                <svg aria-hidden="true" focusable="false" fill="none" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22">
+                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+              </div>
+              <div class="test-item-text">
+                <strong>Microbial Contaminants</strong>
+                <span>Pathogens, yeast, mold, and bacteria counts</span>
+              </div>
+            </div>
+            <div class="test-item">
+              <div class="test-item-icon">
+                <svg aria-hidden="true" focusable="false" fill="none" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="22">
+                  <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                </svg>
+              </div>
+              <div class="test-item-text">
+                <strong>Potency &amp; Active Ingredient Verification</strong>
+                <span>Label-claim compliance for every active compound</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Transparency + COA -->
+        <div class="testing-card">
+          <div class="transparency-pill">Full Transparency</div>
+          <h3>Transparency in Every Batch</h3>
+          <p>We believe informed choices lead to better outcomes. That's why every <strong>Certificate of Analysis (COA)</strong> is just a click away.</p>
+          <div class="coa-panel">
+            <div class="coa-icon">
+              <svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="28">
+                <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <h4>Access COAs Anytime</h4>
+            <p>Search by product or batch number to view third-party lab results.</p>
+            <a class="btn-cta" href="#coa" style="font-size:.9rem;padding:11px 26px;">
+              <svg aria-hidden="true" focusable="false" fill="none" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="15">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              Access Our COAs
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== QUALITY GUARANTEE ===== -->
+  <section class="guarantee">
+    <div class="container">
+      <div class="guarantee-inner">
+        <div class="guarantee-icon-wrap">
+          <svg aria-hidden="true" focusable="false" fill="none" height="36" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="36">
+            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div class="guarantee-text">
+          <h3>Our Quality Guarantee</h3>
+          <p>We are committed to delivering the highest quality supplements — backed by science, verified by data, and trusted by you.</p>
+        </div>
+        <div class="guarantee-list">
+          <div class="g-item">
+            <div class="g-dot">
+              <svg aria-hidden="true" focusable="false" fill="none" height="12" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" width="12"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Science-Backed Formulas
+          </div>
+          <div class="g-item">
+            <div class="g-dot">
+              <svg aria-hidden="true" focusable="false" fill="none" height="12" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" width="12"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Rigorous Testing Standards
+          </div>
+          <div class="g-item">
+            <div class="g-dot">
+              <svg aria-hidden="true" focusable="false" fill="none" height="12" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" width="12"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Full Transparency
+          </div>
+          <div class="g-item">
+            <div class="g-dot">
+              <svg aria-hidden="true" focusable="false" fill="none" height="12" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" width="12"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Uncompromising Quality
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA BANNER ===== -->
+  <section class="cta-banner">
+    <div class="container">
+      <div class="cta-inner">
+        <div class="cta-left">
+          <div class="cta-doc-icon">
+            <svg aria-hidden="true" focusable="false" fill="none" height="32" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" width="32">
+              <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div class="cta-copy">
+            <h2>Explore Our Commitment to Quality</h2>
+            <p>Because you deserve more than promises. You deserve proof.</p>
+          </div>
+        </div>
+        <a class="btn-white" href="#coa">
+          Access Our COAs
+          <svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /.na-quality -->
+<!-- ═══════════════════════════════════════════════════════════
+     CONTENT END
+     ═══════════════════════════════════════════════════════════ -->

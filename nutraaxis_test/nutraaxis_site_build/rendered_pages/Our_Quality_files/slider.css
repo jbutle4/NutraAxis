@@ -1,0 +1,163 @@
+/* -----------------------------------------------------------------------------
+ * 1. Base Slider Structure
+ * -------------------------------------------------------------------------- */
+.slider-wrapper {
+    position: relative;
+}
+
+.slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    height: 100%;
+    transition-timing-function: var(--transition-timing-function-ease-out-cubic);
+    gap: var(--spacing-medium);
+}
+
+
+.slider-smooth-scroll {
+    scroll-behavior: smooth;
+    transition-property: scroll-left;
+    transition-duration: var(--transition-duration-scroll);
+    transition-timing-function: var(--transition-timing-function-ease-out-cubic);
+    gap: 0;
+}
+
+/* Hide scrollbar */
+.slider::-webkit-scrollbar {
+    display: none;
+}
+
+/* -----------------------------------------------------------------------------
+   * 2. Navigation Controls
+   * -------------------------------------------------------------------------- */
+.nav {
+    position: absolute;
+    top: 31%;
+    transform: translateY(-31%);
+    z-index: 1;
+    border: 0;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    border-radius: 50%;
+    padding: 0;
+    cursor: pointer;
+    background-color: var(--color-warm-gray-25);
+    transition: background-color var(--transition-duration-hover) var(--transition-timing-function-hover);
+}
+
+.product-video-slider .nav {
+    top: 42.7%;
+    transform: translateY(-42.7%);
+}
+
+/* Navigation Button States */
+.slider-wrapper>button:hover {
+    background-color: var(--color-warm-gray-50);
+}
+
+.slider-wrapper>button:focus-visible {
+    background-color: var(--color-warm-gray-50);
+    outline: 2px solid var(--color-primitive-300);
+}
+
+.nav.disabled {
+    opacity: 0.5;
+}
+
+/* Navigation Button Icon */
+.nav::after {
+    display: block;
+    content: '';
+    height: 16px;
+    width: 16px;
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 0.125rem);
+    transform: translate(-50%, -50%);
+    background: url('../../icons/chevron.svg') center no-repeat;
+}
+
+.nav.prev::after {
+    background: url('../../icons/chevron-s-left.svg') center no-repeat;
+    left: calc(50%);
+}
+
+/* Previous/Next Button Positioning */
+.slider-wrapper .prev {
+    display: none;
+    left: var(--spacing-medium);
+}
+
+.slider-wrapper .next {
+    display: none;
+    right: var(--spacing-medium);
+}
+
+/* -----------------------------------------------------------------------------
+   * 3. Progress Indicator
+   * -------------------------------------------------------------------------- */
+.progress-bar {
+    position: relative;
+    height: 0.1875rem;
+    background: var(--color-neutral-300);
+    margin: auto;
+    margin-top: 2rem;
+    cursor: pointer;
+    border-radius: 0.1875rem;
+    max-width: 31.25rem;
+}
+
+.progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 0.1875rem;
+    background: var(--color-neutral-800);
+    border-radius: 0.1875rem;
+}
+
+/* -----------------------------------------------------------------------------
+   * 4. Responsive Styles
+   * -------------------------------------------------------------------------- */
+
+/* Desktop (1024px and above) */
+
+@media (width >=745px) {
+    .slider-wrapper .prev {
+        left: 0.9375rem;
+        display: block;
+    }
+
+    .slider-wrapper .next {
+        right: 0.9375rem;
+        display: block;
+    }
+}
+
+@media (width >=1025px) {
+
+    .slider-wrapper .prev,
+    .slider-wrapper .next {
+        display: block;
+    }
+
+    .slider-wrapper .prev {
+        left: calc(-1.75rem - 2vw);
+    }
+
+    .slider-wrapper .next {
+        right: calc(-1.75rem - 2vw);
+    }
+}
+
+.slider .product-card-image {
+    height: 288px;
+}
+
+.slider .product-card img {
+    object-fit: contain;
+}

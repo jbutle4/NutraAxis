@@ -1,0 +1,432 @@
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Welcome to NutraAxis</title>
+<meta content="NutraSync is now NutraAxis. The same science-first commitment to your health — with a refreshed brand and new formulations. Welcome." name="description"/>
+<style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal:        #3d8b85;
+      --teal-dark:   #2a6b65;
+      --teal-light:  #5aaca7;
+      --teal-pale:   #e8f5f4;
+      --salmon:      #b35632;
+      --salmon-dark: #8f4225;
+      --text:        #1a2e2d;
+      --text-muted:  #5a7170;
+      --border:      #d6ecea;
+      --white:       #ffffff;
+      --bg-light:    #f5fafa;
+      --radius:      12px;
+      --shadow:      0 4px 24px rgba(42,107,101,.10);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    ul { list-style: none; }
+    .container {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    /* ===== BUTTONS ===== */
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--salmon); color: var(--white);
+      font-size: .95rem; font-weight: 600;
+      padding: 13px 30px; border-radius: 50px;
+      border: none; cursor: pointer;
+      transition: background .2s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-cta:hover { background: var(--salmon-dark); transform: translateY(-1px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; color: var(--teal-dark); /* a11y: 6.12:1 on white */
+      font-size: .95rem; font-weight: 600;
+      padding: 12px 28px; border-radius: 50px;
+      border: 2px solid var(--teal-dark);
+      cursor: pointer; transition: background .2s, color .2s;
+    }
+    .btn-outline:hover { background: var(--teal-dark); color: var(--white); }
+    .btn-white {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--white); color: var(--teal-dark);
+      font-size: .95rem; font-weight: 700;
+      padding: 14px 32px; border-radius: 50px;
+      border: none; cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    /* ===== SECTION UTILITIES ===== */
+    .section-label {
+      display: inline-block;
+      background: var(--teal-pale);
+      color: var(--teal-dark); /* a11y: 5.48:1 on teal-pale */
+      font-size: .78rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 50px;
+      margin-bottom: 12px;
+    }
+    .section-heading {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800; line-height: 1.2;
+      color: var(--text); margin-bottom: 14px;
+    }
+    .section-sub {
+      font-size: 1rem; color: var(--text); /* darker than --text-muted for readability on pale teal */
+      max-width: 580px; margin: 0 auto 56px;
+    }
+    .section-header { text-align: center; }
+    /* ===== HERO ===== */
+    .hero {
+      /* Soft brand gradient layered above the teal molecule pattern (matches our-science / quality / about-us).
+         Semi-transparent stops let the hexagons show through subtly while keeping AA text contrast. */
+      background:
+        linear-gradient(135deg, rgba(234,247,246,.62) 0%, rgba(240,251,249,.45) 50%, rgba(254,246,241,.62) 100%),
+        url('images/molecule-bg-teal.jpg') center/cover no-repeat;
+      padding: 80px 0 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+      padding-bottom: 60px;
+    }
+    .hero-text h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      line-height: 1.15;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .hero-text h1 span { color: var(--teal); }
+    .hero-text p {
+      font-size: 1.05rem;
+      color: var(--text); /* darker than --text-muted for readability on pale teal hero */
+      margin-bottom: 32px;
+      max-width: 480px;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+    .hero-image {
+      position: relative;
+      display: flex; justify-content: center; align-items: flex-end;
+    }
+    .hero-image video {
+      width: 100%; max-width: 520px;
+      border-radius: 16px 16px 0 0;
+      object-fit: cover;
+      display: block;
+      box-shadow: 0 -2px 40px rgba(42,107,101,.16);
+    }
+    /* a11y: pause control for autoplaying video (WCAG 2.2.2 Pause, Stop, Hide) */
+    .hero-video-toggle {
+      position: absolute; bottom: 12px; right: 12px; z-index: 2;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(26,46,45,.75); color: var(--white);
+      border: 0; padding: 0; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background .2s;
+    }
+    .hero-video-toggle:hover { background: rgba(26,46,45,.95); }
+    .hero-video-toggle:focus-visible {
+      outline: 3px solid var(--teal-light); outline-offset: 2px;
+    }
+    .hero-video-toggle svg { display: block; pointer-events: none; }
+    /* a11y: honor reduced-motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      a.explore-card, .btn-cta, .btn-white, .btn-outline,
+      .hero-video-toggle {
+        transition: none;
+      }
+      a.explore-card:hover { transform: none; }
+      a.explore-card:hover .explore-link svg { transform: none; }
+    }
+    .hero-badges {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      margin-top: 24px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 50px; padding: 6px 14px;
+      font-size: .8rem; font-weight: 600;
+      color: var(--teal-dark); /* a11y: 6.12:1 on white */
+      box-shadow: var(--shadow);
+    }
+    .badge svg { flex-shrink: 0; }
+    /* ===== ABOUT ===== */
+    .about { padding: 80px 0; background: var(--white); }
+    .about-inner { text-align: center; max-width: 760px; margin: 0 auto; }
+    .about-inner p { color: var(--text); font-size: 1.05rem; margin-bottom: 16px; } /* darkened from --text-muted */
+    .about-inner p:last-child { margin-bottom: 0; }
+    /* ===== EXPLORE CARDS ===== */
+    .explore { padding: 72px 0; background: var(--bg-light); }
+    .explore-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    a.explore-card {
+      display: flex; flex-direction: column;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 28px;
+      text-align: center;
+      transition: box-shadow .2s, transform .2s;
+    }
+    a.explore-card:hover { box-shadow: var(--shadow); transform: translateY(-3px); }
+    .explore-icon {
+      width: 64px; height: 64px;
+      background: var(--teal-pale);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      color: var(--teal);
+    }
+    .explore-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+    .explore-card p { font-size: .9rem; color: var(--text); line-height: 1.6; margin-bottom: 18px; } /* darkened from --text-muted */
+    .explore-link {
+      margin-top: auto;
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--teal-dark); font-weight: 700; font-size: .85rem; /* a11y: 6.12:1 on white */
+    }
+    .explore-link svg { transition: transform .2s; }
+    a.explore-card:hover .explore-link svg { transform: translateX(4px); }
+    /* ===== TRANSITION / NOTICE ===== */
+    .transition { padding: 80px 0; background: var(--white); }
+    .notice-card {
+      display: flex; gap: 18px; align-items: flex-start;
+      background: var(--teal-pale);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--teal);
+      border-radius: 12px;
+      padding: 24px 28px;
+      max-width: 760px;
+      margin: 32px auto 0;
+      text-align: left;
+    }
+    .notice-icon {
+      width: 44px; height: 44px; flex-shrink: 0;
+      background: var(--white); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--teal);
+    }
+    .notice-card h3 { font-size: 1rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .notice-card p { font-size: .92rem; color: var(--text); margin: 0; } /* darkened from --text-muted */
+    .notice-card p strong { color: var(--teal-dark); }
+    /* ===== CTA BANNER ===== */
+    .cta-banner {
+      background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal) 100%);
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .cta-banner h2 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 800; color: var(--white);
+      margin-bottom: 12px;
+    }
+    .cta-banner p {
+      color: #ffffff; /* pulled from rgba(.85) → full white for AA-strict readability on teal banner */
+      margin-bottom: 32px; font-size: 1rem;
+      max-width: 560px; margin-left: auto; margin-right: auto;
+    }
+    /* ===== CONTACT CTA ===== */
+    .contact-cta { padding: 72px 0; background: var(--bg-light); }
+    .contact-inner { text-align: center; max-width: 640px; margin: 0 auto; }
+    .contact-inner p { color: var(--text); font-size: 1.05rem; margin-bottom: 28px; } /* darkened from --text-muted */
+    /* ───── Text contrast utilities ─────
+       .text-on-light → for light backgrounds (white, cream, pale teal). 14:1 on white (AA ✓).
+       .text-on-dark  → for dark backgrounds (teal-dark, gradient banners). 6.1:1 on teal-dark (AA ✓).
+       !important ensures these override per-component rules like .hero-text p { color: var(--text-muted); }. */
+    .text-on-light { color: #1a2e2d !important; }
+    .text-on-dark  { color: #ffffff !important; }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 36px; }
+      .hero { padding: 48px 0 0; }
+      .hero-image { order: -1; }
+      .hero-text p { max-width: 100%; }
+      .hero-actions { justify-content: center; }
+      .hero-badges { justify-content: center; }
+      .hero-text { text-align: center; }
+      .explore-grid { grid-template-columns: 1fr; }
+      .notice-card { flex-direction: column; align-items: center; text-align: center; }
+    }
+    @media (max-width: 480px) {
+      .hero-text h1 { font-size: 1.75rem; }
+      .btn-cta, .btn-outline, .btn-white { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<!-- ===== HERO ===== -->
+<section class="hero">
+<div class="container">
+<div class="hero-inner">
+<div class="hero-text">
+<div class="section-label">NutraSync is now NutraAxis</div>
+<h1>Welcome to <span>NutraAxis</span></h1>
+<p>If you arrived from NutraSync.com, you're in the right place. NutraSync is now NutraAxis — the same science-first commitment to your health, with a refreshed brand, new formulations, and a smarter shopping experience.</p>
+<div class="hero-actions">
+<a class="btn-cta" href="/customer/create">Create Your Account</a>
+<a class="btn-outline" href="/our-science">Explore Our Science</a>
+</div>
+<div class="hero-badges">
+<span class="badge">
+<svg aria-hidden="true" focusable="false" fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="14"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+            Evidence-Led
+          </span>
+<span class="badge">
+<svg aria-hidden="true" focusable="false" fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="14"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4l3 3"></path></svg>
+            Mechanism-Driven
+          </span>
+<span class="badge">
+<svg aria-hidden="true" focusable="false" fill="none" height="14" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="14"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Clinically Relevant
+          </span>
+</div>
+</div>
+<div class="hero-image">
+<video autoplay muted loop playsinline preload="auto" poster="images/our-science-hero-poster.jpg" aria-label="NutraAxis product formulations in motion">
+<source src="images/our-science-hero.mp4" type="video/mp4"/>
+</video>
+<button type="button" class="hero-video-toggle" aria-label="Pause hero video">
+<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+</button>
+</div>
+<script>
+(function () {
+  var video = document.querySelector('.hero-image video');
+  var toggle = document.querySelector('.hero-video-toggle');
+  if (!video || !toggle) return;
+  var pauseSvg = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+  var playSvg  = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  function sync() {
+    var playing = !video.paused && !video.ended;
+    toggle.setAttribute('aria-label', playing ? 'Pause hero video' : 'Play hero video');
+    toggle.innerHTML = playing ? pauseSvg : playSvg;
+  }
+  toggle.addEventListener('click', function () {
+    if (video.paused) { video.play(); } else { video.pause(); }
+  });
+  video.addEventListener('play', sync);
+  video.addEventListener('pause', sync);
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      video.pause();
+    }
+  } catch (e) {}
+  sync();
+})();
+</script>
+</div>
+</div>
+</section>
+<!-- ===== ABOUT NUTRAAXIS ===== -->
+<section class="about">
+<div class="container">
+<div class="about-inner">
+<div class="section-label">About NutraAxis</div>
+<h2 class="section-heading">A New Name, the Same Science-First Promise</h2>
+<p>NutraAxis develops nutritional supplements grounded in clinical research and human physiology. Every formula is held to three core principles — evidence-led, mechanism-driven, and clinically relevant — so you can trust exactly what's inside every bottle.</p>
+<p>This isn't just a new logo. It's a renewed commitment to transparency, bioavailable ingredients, and clinically meaningful doses — backed by the same team you already know.</p>
+</div>
+</div>
+</section>
+<!-- ===== EXPLORE ===== -->
+<section class="explore">
+<div class="container">
+<div class="section-header">
+<div class="section-label">Get to Know Us</div>
+<h2 class="section-heading">Explore What Sets Us Apart</h2>
+<p class="section-sub">Take a closer look at how we research, formulate, and stand behind every product.</p>
+</div>
+<div class="explore-grid">
+<a class="explore-card" href="/our-science">
+<div class="explore-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28"><circle cx="12" cy="12" r="3"></circle><path d="M20.188 8C21.698 10.613 22 13.106 21 15c-1.054 2-3.168 2.953-5.547 3M3.813 16C2.302 13.387 2 10.893 3 9c1.054-2 3.168-2.953 5.547-3M12 5V3m0 18v-2m6.928-13.5l-1.5 1.3M6.572 17.2l-1.5 1.3M17.928 17.5l-1.5-1.3M6.572 6.8l-1.5-1.3"></path></svg>
+</div>
+<h3>Our Science</h3>
+<p>How rigorous, evidence-based research drives every formula we make.</p>
+<span class="explore-link">Discover the science
+<svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+</span>
+</a>
+<a class="explore-card" href="/our-quality">
+<div class="explore-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg>
+</div>
+<h3>Our Quality</h3>
+<p>The testing, purity, and transparency standards behind every batch.</p>
+<span class="explore-link">See our standards
+<svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+</span>
+</a>
+<a class="explore-card" href="/about-us">
+<div class="explore-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"></path></svg>
+</div>
+<h3>About Us</h3>
+<p>Who we are, what we believe, and the mission moving us forward.</p>
+<span class="explore-link">Meet NutraAxis
+<svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+</span>
+</a>
+</div>
+</div>
+</section>
+<!-- ===== TRANSITION / NUTRASYNC ===== -->
+<section class="transition">
+<div class="container">
+<div class="section-header" style="margin-bottom:0;">
+<div class="section-label">What's Changing</div>
+<h2 class="section-heading">NutraSync Is Transforming, Too</h2>
+<p class="section-sub" style="margin-bottom:0;">As part of this transition, NutraSync is going through a transformation of its own. Some older formulas have been discontinued as we focus on the products that deliver the most clinical value.</p>
+</div>
+<div class="notice-card">
+<div class="notice-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="22" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="22"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+</div>
+<div>
+<h3>BPC-157 is still available</h3>
+<p><strong>BPC-157 remains in the lineup</strong> — and a revised, better formulation is coming soon. Create an account to be the first to know when it launches.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- ===== CTA BANNER — CHECK US OUT ===== -->
+<section class="cta-banner">
+<div class="container">
+<h2>Check Us Out</h2>
+<p>Create your account to explore the full NutraAxis catalog and stay first in line for new and revised formulations.</p>
+<a class="btn-white" href="/customer/create">
+      Create Your Account
+      <svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+</a>
+</div>
+</section>
+<!-- ===== CONTACT CTA ===== -->
+<section class="contact-cta">
+<div class="container">
+<div class="contact-inner">
+<div class="section-label">We're Listening</div>
+<h2 class="section-heading">Questions or Comments?</h2>
+<p>We'd love to hear from you. Reach out to our team and we'll get back to you as soon as we can.</p>
+<a class="btn-cta" href="/contact">Contact Us</a>
+</div>
+</div>
+</section>
