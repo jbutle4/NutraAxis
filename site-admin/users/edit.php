@@ -25,6 +25,7 @@ $form = [
     'user_login'         => $user['UserLogin'],
     'user_password'      => '',
     'user_assigned_role' => (string) $user['UserAssignedRole'],
+    'is_po_approver'     => !empty($user['IsPOApprover']) ? '1' : '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'user_login'         => $_POST['user_login'] ?? '',
         'user_password'      => $_POST['user_password'] ?? '',
         'user_assigned_role' => $_POST['user_assigned_role'] ?? '',
+        'is_po_approver'     => $_POST['is_po_approver'] ?? '',
     ];
 
     $result = admin_save_user($form, $userId);
@@ -112,6 +114,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <option value="<?= $role['id'] ?>" <?= $role['selected'] ? 'selected' : '' ?>><?= htmlspecialchars($role['name']) ?></option>
             <?php endforeach; ?>
           </select>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_po_approver" value="1" <?= !empty($form['is_po_approver']) ? 'checked' : '' ?> />
+            PO approver (can approve via email links)
+          </label>
+          <p class="form-hint">Designated approvers receive action links when a PO is submitted. CC subscribers receive notification only.</p>
         </div>
 
         <dl class="account-details admin-meta">
