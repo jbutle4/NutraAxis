@@ -84,9 +84,14 @@ async function connectPool(database) {
   return new sql.ConnectionPool(getSqlConfig(database)).connect();
 }
 
+function getProductionDatabase() {
+  return envValue('DB_NAME_PRODUCTION', 'DB_NAME_PROD') || 'nutraaxis';
+}
+
 module.exports = {
   sql,
   getSyncSettings,
   connectPool,
+  getProductionDatabase,
   WATERMARK_CANDIDATES,
 };
