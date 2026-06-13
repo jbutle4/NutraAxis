@@ -1,8 +1,9 @@
 const { app } = require('@azure/functions');
+const { timerSchedule } = require('../lib/timer-schedule');
 
 app.timer('forecast-plan', {
-    // Sunday 1:30 AM — same as App Service WebJob (uses WEBSITE_TIME_ZONE).
-    schedule: '0 30 1 * * 0',
+    // Sunday 1:30 AM Central by default (WEBSITE_TIME_ZONE). Override with FORECAST_PLAN_SCHEDULE.
+    schedule: timerSchedule('FORECAST_PLAN_SCHEDULE', '0 30 1 * * 0'),
     handler: async (myTimer, context) => {
         const url = process.env.NUTRAAXIS_CRON_URL;
         const secret = process.env.CRON_SECRET;
