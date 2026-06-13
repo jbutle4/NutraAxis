@@ -7,7 +7,8 @@ po_require_approval_read();
 
 $activeSlug = 'po-management';
 $activePoSection = 'approvals';
-$orders = po_list_pending_approvals();
+$listFilters = table_sort_state(PO_APPROVAL_LIST_SORT_COLUMNS, 'order_date', 'asc', $_GET);
+$orders = po_list_pending_approvals($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'PO Approvals | PO Management';
@@ -46,14 +47,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>PO Number</th>
-              <th>Supplier</th>
-              <th>Order Date</th>
-              <th>Total</th>
-              <th>Submitted By</th>
-              <th>View | Review</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                PO_APPROVAL_LIST_SORT_COLUMNS,
+                '/po-management/approvals.php',
+                $listFilters,
+                [],
+                PO_APPROVAL_LIST_SORT_NUMERIC,
+                'order_date',
+                'asc',
+                '',
+                'View | Review'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($orders === []): ?>

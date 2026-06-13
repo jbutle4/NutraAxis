@@ -6,10 +6,10 @@ inventory_forecasting_require_read();
 
 $skuFilter = trim($_GET['sku'] ?? '');
 $shortageFilter = trim($_GET['shortage'] ?? '');
-$rows = inventory_forecasting_list_plan_rows(
-    $skuFilter !== '' ? $skuFilter : null,
-    $shortageFilter !== '' ? $shortageFilter : null
-);
+$rows = inventory_forecasting_list_plan_rows([
+    'sku'      => $skuFilter !== '' ? $skuFilter : null,
+    'shortage' => $shortageFilter !== '' ? $shortageFilter : null,
+]);
 
 $filename = inventory_forecasting_export_filename();
 $csv = inventory_forecasting_export_csv($rows);

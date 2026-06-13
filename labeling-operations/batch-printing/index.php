@@ -6,8 +6,12 @@ label_require_read();
 
 $activeSlug = 'labeling-operations';
 $activeLabelSection = 'batch-printing';
-$runs = label_list_order_runs();
-$printOrders = label_list_print_orders();
+$listFilters = $_GET;
+$runs = label_list_order_runs($listFilters);
+$printOrders = label_list_print_orders($listFilters);
+$runsSortFilters = $listFilters;
+$printsSortFilters = $listFilters;
+$batchQueryKeys = ['sort_runs', 'dir_runs', 'sort_prints', 'dir_prints'];
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('Label Batch Printing');
@@ -48,13 +52,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
-              <tr>
-                <th>Run Number</th>
-                <th>Run Date</th>
-                <th>Status</th>
-                <th>Print Orders</th>
-                <th>Created By</th>
-              </tr>
+              <?php table_sort_render_head_row(
+                  LABEL_RUN_LIST_SORT_COLUMNS,
+                  '/labeling-operations/batch-printing',
+                  $runsSortFilters,
+                  $batchQueryKeys,
+                  LABEL_RUN_LIST_SORT_NUMERIC,
+                  'run_date',
+                  'desc',
+                  'run_date',
+                  null,
+                  'sort_runs',
+                  'dir_runs'
+              ); ?>
             </thead>
             <tbody>
               <?php if ($runs === []): ?>
@@ -80,14 +90,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Vendor Order #</th>
-                <th>Label Order Run</th>
-                <th>Order Date</th>
-                <th>Status</th>
-                <th>Expected Delivery</th>
-              </tr>
+              <?php table_sort_render_head_row(
+                  LABEL_PRINT_LIST_SORT_COLUMNS,
+                  '/labeling-operations/batch-printing',
+                  $printsSortFilters,
+                  $batchQueryKeys,
+                  [],
+                  'order_date',
+                  'desc',
+                  'order_date',
+                  null,
+                  'sort_prints',
+                  'dir_prints'
+              ); ?>
             </thead>
             <tbody>
               <?php if ($printOrders === []): ?>

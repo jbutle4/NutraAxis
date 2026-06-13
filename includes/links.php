@@ -25,6 +25,22 @@ const LINK_STATUSES = [
     'not active',
 ];
 
+const LINKS_LIST_SORT_COLUMNS = [
+    'name'         => 'Name (click to open link)',
+    'category'     => 'Category',
+    'status'       => 'Status',
+    'registration' => 'Registration',
+    'description'  => 'Description',
+];
+
+const LINKS_LIST_SORT_SQL = [
+    'name'         => 'LinkName',
+    'category'     => 'LinkCategory',
+    'status'       => 'LinkStatus',
+    'registration' => 'UserRegistrationRequired',
+    'description'  => 'LinkDescription',
+];
+
 function links_permission_value(): ?string
 {
     return auth_permission_value(LINKS_PERMISSION_COLUMN);
@@ -170,7 +186,8 @@ function links_list(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY LinkCategory, LinkName';
+    $sortState = table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(LINKS_LIST_SORT_SQL, $sortState, 'category', 'name');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

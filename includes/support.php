@@ -145,21 +145,7 @@ const SUPPORT_LIST_SORT_COLUMNS = [
     'updated'   => 'Updated',
 ];
 
-function support_list_sort_state(array $input = []): array
-{
-    $sort = strtolower(trim((string) ($input['sort'] ?? $_GET['sort'] ?? 'updated')));
-    $dir = strtolower(trim((string) ($input['dir'] ?? $_GET['dir'] ?? 'desc')));
-
-    if (!array_key_exists($sort, SUPPORT_LIST_SORT_COLUMNS)) {
-        $sort = 'updated';
-    }
-
-    if ($dir !== 'asc') {
-        $dir = 'desc';
-    }
-
-    return ['sort' => $sort, 'dir' => $dir];
-}
+const SUPPORT_LIST_SORT_NUMERIC = ['id'];
 
 function support_list_filters(): array
 {
@@ -167,30 +153,7 @@ function support_list_filters(): array
         'status' => strtolower(trim($_GET['status'] ?? '')),
         'q'      => trim($_GET['q'] ?? ''),
         'page'   => max(1, (int) ($_GET['page'] ?? 1)),
-    ] + support_list_sort_state();
-}
-
-function support_list_sort_href(string $column, array $filters): string
-{
-    $sortState = support_list_sort_state($filters);
-    $currentSort = $sortState['sort'];
-    $currentDir = $sortState['dir'];
-
-    if ($currentSort === $column) {
-        $nextDir = $currentDir === 'asc' ? 'desc' : 'asc';
-    } else {
-        $nextDir = in_array($column, ['updated', 'id'], true) ? 'desc' : 'asc';
-    }
-
-    $query = array_filter([
-        'status' => ($filters['status'] ?? '') !== '' ? $filters['status'] : null,
-        'q'      => ($filters['q'] ?? '') !== '' ? $filters['q'] : null,
-        'sort'   => $column,
-        'dir'    => $nextDir,
-        'page'   => 1,
-    ], fn($value) => $value !== null && $value !== '');
-
-    return '/support/?' . http_build_query($query);
+    ] + table_sort_state(SUPPORT_LIST_SORT_COLUMNS, 'updated', 'desc', $_GET);
 }
 
 function support_list_page_href(array $filters, int $page): string
@@ -204,20 +167,6 @@ function support_list_page_href(array $filters, int $page): string
     ], fn($value) => $value !== null && $value !== '');
 
     return '/support/?' . http_build_query($query);
-}
-
-function support_sort_is_active(string $column, array $filters): bool
-{
-    return ($filters['sort'] ?? 'updated') === $column;
-}
-
-function support_sort_direction(string $column, array $filters): string
-{
-    if (!support_sort_is_active($column, $filters)) {
-        return '';
-    }
-
-    return ($filters['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 }
 
 function support_plain_text_to_html_paragraphs(string $text): string

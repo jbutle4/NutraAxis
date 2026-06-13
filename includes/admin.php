@@ -20,6 +20,30 @@ const ROLE_PERMISSION_FIELDS = [
     'RoleAdmin'            => 'Role Administration',
 ];
 
+const ADMIN_USERS_LIST_SORT_COLUMNS = [
+    'name'       => 'Name',
+    'email'      => 'Email',
+    'role'       => 'Role',
+    'last_login' => 'Last Login',
+];
+
+const ADMIN_USERS_LIST_SORT_SQL = [
+    'name'       => 'u.UserName',
+    'email'      => 'u.UserLogin',
+    'role'       => 'r.RoleName',
+    'last_login' => 'u.LastLoginDate',
+];
+
+const ADMIN_ROLES_LIST_SORT_COLUMNS = [
+    'role'        => 'Role',
+    'description' => 'Description',
+];
+
+const ADMIN_ROLES_LIST_SORT_SQL = [
+    'role'        => 'RoleName',
+    'description' => 'RoleDesc',
+];
+
 function admin_format_datetime(?string $value): string
 {
     if ($value === null || $value === '') {
@@ -35,7 +59,7 @@ function admin_format_datetime(?string $value): string
     }
 }
 
-function admin_list_users(): array
+function admin_list_users(array $filters = []): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -50,8 +74,10 @@ function admin_list_users(): array
             u.LastLoginDate
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
-        ORDER BY u.UserName
     SQL;
+
+    $sortState = table_sort_state(ADMIN_USERS_LIST_SORT_COLUMNS, 'name', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(ADMIN_USERS_LIST_SORT_SQL, $sortState, 'name', 'name');
 
     return $pdo->query($sql)->fetchAll();
 }
@@ -82,11 +108,14 @@ function admin_get_user(int $userId): ?array
     return $row === false ? null : $row;
 }
 
-function admin_list_roles(): array
+function admin_list_roles(array $filters = []): array
 {
     $pdo = db();
+    $sortState = table_sort_state(ADMIN_ROLES_LIST_SORT_COLUMNS, 'role', 'asc', $filters);
 
-    return $pdo->query('SELECT * FROM dbo.Role ORDER BY RoleName')->fetchAll();
+    return $pdo->query(
+        'SELECT * FROM dbo.Role ORDER BY ' . table_sort_sql_clause(ADMIN_ROLES_LIST_SORT_SQL, $sortState, 'role', 'role')
+    )->fetchAll();
 }
 
 function admin_get_role(int $roleId): ?array

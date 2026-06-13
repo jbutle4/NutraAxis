@@ -12,7 +12,7 @@ $filters = [
     'process_code' => trim($_GET['process_code'] ?? ''),
     'status'       => trim($_GET['status'] ?? ''),
     'limit'        => 100,
-];
+] + table_sort_state(PROCESS_LOG_LIST_SORT_COLUMNS, 'started', 'desc', $_GET);
 
 $logs = process_log_list($filters);
 $registry = process_registry();
@@ -53,6 +53,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/process-log/">
+        <?php table_sort_hidden_inputs($filters, 'started', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="process_code">Process</label>
@@ -86,17 +87,22 @@ require dirname(__DIR__) . '/includes/header.php';
         <table class="admin-table admin-table--process-log">
           <thead>
             <tr>
-              <th>Log ID</th>
-              <th>Process</th>
-              <th>Started</th>
-              <th>Finished</th>
-              <th>Duration</th>
-              <th>Attempts</th>
-              <th>Next Retry</th>
-              <th>Trigger</th>
-              <th>Status</th>
-              <th>Result</th>
-              <?php if ($canRerun): ?>
+              <?php
+              foreach (PROCESS_LOG_LIST_SORT_COLUMNS as $column => $label) {
+                  table_sort_render_th(
+                      $column,
+                      $label,
+                      '/process-log',
+                      PROCESS_LOG_LIST_SORT_COLUMNS,
+                      $filters,
+                      ['process_code', 'status'],
+                      PROCESS_LOG_LIST_SORT_NUMERIC,
+                      'started',
+                      'desc',
+                      'started'
+                  );
+              }
+              if ($canRerun): ?>
               <th>Action</th>
               <?php endif; ?>
             </tr>

@@ -19,7 +19,9 @@ $filters = [
     'period' => $period,
     'sku'    => trim($_GET['sku'] ?? ''),
     'limit'  => 500,
-];
+    'sale_year'  => $saleYear,
+    'sale_month' => $saleMonth,
+] + table_sort_state(MONTHLY_SALES_SUMMARY_LIST_SORT_COLUMNS, 'month', 'desc', $_GET);
 
 $rows = [];
 $dbError = null;
@@ -30,6 +32,8 @@ try {
         'sale_month' => $saleMonth,
         'sku'        => $filters['sku'],
         'limit'      => $filters['limit'],
+        'sort'       => $filters['sort'],
+        'dir'        => $filters['dir'],
     ]);
     $availableMonths = monthly_sales_summary_distinct_months();
 } catch (Throwable $e) {
@@ -66,6 +70,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php else: ?>
 
       <form class="po-filter audit-filter" method="get" action="/sales-reporting/monthly-sales-summary/">
+        <?php table_sort_hidden_inputs($filters, 'month', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="period">Month</label>
@@ -105,12 +110,16 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Month</th>
-              <th>SKU</th>
-              <th>Total Qty</th>
-              <th>Last Updated (UTC)</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                MONTHLY_SALES_SUMMARY_LIST_SORT_COLUMNS,
+                '/sales-reporting/monthly-sales-summary',
+                $filters,
+                ['period', 'sku'],
+                MONTHLY_SALES_SUMMARY_LIST_SORT_NUMERIC,
+                'month',
+                'desc',
+                'month'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($rows === []): ?>

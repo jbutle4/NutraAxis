@@ -7,7 +7,10 @@ label_require_read();
 $activeSlug = 'labeling-operations';
 $activeLabelSection = 'white-label';
 $statusFilter = $_GET['status'] ?? '';
-$orders = wl_list_orders($statusFilter !== '' ? $statusFilter : null);
+$listFilters = [
+    'status' => $statusFilter !== '' ? $statusFilter : null,
+] + table_sort_state(WL_LIST_SORT_COLUMNS, 'order_date', 'desc', $_GET);
+$orders = wl_list_orders($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('White Label Production Orders');
@@ -43,6 +46,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter" method="get" action="/labeling-operations/white-label-orders/">
+        <?php table_sort_hidden_inputs($listFilters, 'order_date', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
           <option value="">All statuses</option>
@@ -55,16 +59,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Adobe Order ID</th>
-              <th>Order Number</th>
-              <th>Customer</th>
-              <th>Order Date</th>
-              <th>Status</th>
-              <th>Lines</th>
-              <th>Imported</th>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                WL_LIST_SORT_COLUMNS,
+                '/labeling-operations/white-label-orders',
+                $listFilters,
+                ['status'],
+                WL_LIST_SORT_NUMERIC,
+                'order_date',
+                'desc',
+                'order_date',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($orders === []): ?>

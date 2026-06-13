@@ -4,6 +4,26 @@ require_once __DIR__ . '/adobe-commerce.php';
 
 const DAILY_SALES_SUMMARY_TIMEZONE = 'America/Chicago';
 
+const DAILY_SALES_SUMMARY_LIST_SORT_COLUMNS = [
+    'summary_date' => 'Summary Date',
+    'sku'          => 'SKU',
+    'sku_name'     => 'SKU Name',
+    'description'  => 'Description',
+    'qty_sold'     => 'Qty Sold',
+    'captured_at'  => 'Captured At (UTC)',
+];
+
+const DAILY_SALES_SUMMARY_LIST_SORT_SQL = [
+    'summary_date' => 'SummaryDate',
+    'sku'          => 'SKU',
+    'sku_name'     => 'SKUName',
+    'description'  => 'SKUDescription',
+    'qty_sold'     => 'QtySold',
+    'captured_at'  => 'SummaryCaptureDate',
+];
+
+const DAILY_SALES_SUMMARY_LIST_SORT_NUMERIC = ['qty_sold'];
+
 function daily_sales_summary_timezone(): DateTimeZone
 {
     return new DateTimeZone(DAILY_SALES_SUMMARY_TIMEZONE);
@@ -293,7 +313,8 @@ function daily_sales_summary_list(array $filters = []): array
         $params['sku'] = '%' . $sku . '%';
     }
 
-    $sql .= ' ORDER BY SummaryDate DESC, SKU ASC';
+    $sortState = table_sort_state(DAILY_SALES_SUMMARY_LIST_SORT_COLUMNS, 'summary_date', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(DAILY_SALES_SUMMARY_LIST_SORT_SQL, $sortState, 'summary_date', 'sku');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

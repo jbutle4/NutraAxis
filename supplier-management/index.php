@@ -7,10 +7,11 @@ supplier_require_read();
 $activeSlug = 'supplier-management';
 $statusFilter = $_GET['status'] ?? 'active';
 $search = trim($_GET['q'] ?? '');
-$suppliers = supplier_list([
+$listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : 'active',
     'q'      => $search !== '' ? $search : null,
-]);
+] + table_sort_state(SUPPLIER_LIST_SORT_COLUMNS, 'name', 'asc', $_GET);
+$suppliers = supplier_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Supplier Management | NutraAxis Operations';
@@ -51,6 +52,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/supplier-management/">
+        <?php table_sort_hidden_inputs($listFilters, 'name', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -74,15 +76,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Code</th>
-              <th>Supplier name</th>
-              <th>Type</th>
-              <th>Contact</th>
-              <th>Status</th>
-              <th>POs</th>
-              <th><?= htmlspecialchars(table_actions_header(supplier_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                SUPPLIER_LIST_SORT_COLUMNS,
+                '/supplier-management',
+                $listFilters,
+                ['status', 'q'],
+                SUPPLIER_LIST_SORT_NUMERIC,
+                'name',
+                'asc',
+                '',
+                table_actions_header(supplier_can_update() ? ['View', 'Edit'] : ['View'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($suppliers === []): ?>

@@ -8,6 +8,26 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'accounts';
 $listResult = qbo_is_connected() ? qbo_list_accounts() : ['ok' => true, 'rows' => [], 'error' => null];
+$qboSortColumns = [
+    'number'  => 'Number',
+    'name'    => 'Name',
+    'type'    => 'Type',
+    'subtype' => 'Subtype',
+    'balance' => 'Balance',
+    'active'  => 'Active',
+];
+$listFilters = table_sort_state($qboSortColumns, 'number', 'asc', $_GET);
+$qboSortAccessors = [
+    'number'  => fn(array $row): string => (string) ($row['AcctNum'] ?? ''),
+    'name'    => fn(array $row): string => (string) ($row['Name'] ?? ''),
+    'type'    => fn(array $row): string => (string) ($row['AccountType'] ?? ''),
+    'subtype' => fn(array $row): string => (string) ($row['AccountSubType'] ?? ''),
+    'balance' => fn(array $row) => $row['CurrentBalance'] ?? 0,
+    'active'  => fn(array $row): string => !empty($row['Active']) ? 'Yes' : 'No',
+];
+if ($listResult['ok'] && qbo_is_connected()) {
+    $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['balance'], 'number', 'asc');
+}
 
 $pageTitle = 'Chart of Accounts | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -30,7 +50,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Number</th><th>Name</th><th>Type</th><th>Subtype</th><th>Balance</th><th>Active</th></tr></thead>
+          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/chart-of-accounts.php', $listFilters, [], ['balance'], 'number', 'asc'); ?></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="6">No accounts found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

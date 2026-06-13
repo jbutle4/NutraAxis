@@ -18,7 +18,10 @@ $canDelete = po_can_delete();
 $canApprove = po_can_read_approval_queue();
 $pendingApprovalCount = $canApprove ? po_count_pending_approvals() : 0;
 $statusFilter = $_GET['status'] ?? '';
-$orders = po_list_orders($statusFilter !== '' ? $statusFilter : null);
+$listFilters = [
+    'status' => $statusFilter !== '' ? $statusFilter : null,
+] + table_sort_state(PO_LIST_SORT_COLUMNS, 'order_date', 'desc', $_GET);
+$orders = po_list_orders($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'PO Management | NutraAxis Operations';
@@ -72,6 +75,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter" method="get" action="/po-management/">
+        <?php table_sort_hidden_inputs($listFilters, 'order_date', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
           <option value="">All statuses</option>
@@ -84,16 +88,26 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>PO Number</th>
-              <th>Supplier</th>
-              <th>Status</th>
-              <th>Order Date</th>
-              <th>Expected Delivery</th>
-              <th>Total</th>
-              <th>Created By</th>
-              <th>View | Edit</th>
-            </tr>
+            <?php
+            $poActionHeader = 'View | Edit';
+            if ($canApprove) {
+                $poActionHeader = 'View | Review | Edit';
+            }
+            if ($canDelete) {
+                $poActionHeader .= ' | Delete';
+            }
+            table_sort_render_head_row(
+                PO_LIST_SORT_COLUMNS,
+                '/po-management',
+                $listFilters,
+                ['status'],
+                PO_LIST_SORT_NUMERIC,
+                'order_date',
+                'desc',
+                'order_date',
+                $poActionHeader
+            );
+            ?>
           </thead>
           <tbody>
             <?php if ($orders === []): ?>

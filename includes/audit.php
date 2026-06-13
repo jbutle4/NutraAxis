@@ -14,6 +14,22 @@ const AUDIT_ALLOWED_TABLES = [
     'Role',
 ];
 
+const AUDIT_LIST_SORT_COLUMNS = [
+    'log_id'       => 'Log ID',
+    'change_date'  => 'Change Date',
+    'user'         => 'User',
+    'change_sql'   => 'Change SQL',
+    'status'       => 'Status',
+];
+
+const AUDIT_LIST_SORT_SQL = [
+    'log_id'      => 'l.LogID',
+    'change_date' => 'l.ChangeDate',
+    'user'        => 'u.UserName',
+    'change_sql'  => 'l.ChangeSQL',
+    'status'      => 'l.RolledBackDate',
+];
+
 function audit_require_read(): void
 {
     auth_require_admin_read('users');
@@ -157,7 +173,8 @@ function audit_list_logs(array $filters = []): array
         $sql .= ' AND l.RolledBackDate IS NULL';
     }
 
-    $sql .= ' ORDER BY l.ChangeDate DESC, l.LogID DESC';
+    $sortState = table_sort_state(AUDIT_LIST_SORT_COLUMNS, 'change_date', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(AUDIT_LIST_SORT_SQL, $sortState, 'change_date', 'log_id');
 
     $limit = (int) ($filters['limit'] ?? 200);
     if ($limit > 0) {

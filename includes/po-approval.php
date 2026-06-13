@@ -45,6 +45,24 @@ const PO_APPROVAL_ACTIONS = [
     ],
 ];
 
+const PO_APPROVAL_LIST_SORT_COLUMNS = [
+    'po_number'   => 'PO Number',
+    'supplier'    => 'Supplier',
+    'order_date'  => 'Order Date',
+    'total'       => 'Total',
+    'submitted_by'=> 'Submitted By',
+];
+
+const PO_APPROVAL_LIST_SORT_SQL = [
+    'po_number'    => 'po.PONumber',
+    'supplier'     => 's.SupplierName',
+    'order_date'   => 'po.OrderDate',
+    'total'        => 'ISNULL(po.TotalDue, po.Subtotal)',
+    'submitted_by' => 'cu.UserName',
+];
+
+const PO_APPROVAL_LIST_SORT_NUMERIC = ['total'];
+
 function po_require_approval_read(): void
 {
     auth_require_login();
@@ -72,10 +90,10 @@ function po_count_pending_approvals(): int
     return (int) $stmt->fetchColumn();
 }
 
-function po_list_pending_approvals(): array
+function po_list_pending_approvals(array $filters = []): array
 {
     $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
+    $sql = <<<SQL
         SELECT
             po.POID,
             po.PONumber,
@@ -90,8 +108,12 @@ function po_list_pending_approvals(): array
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
         INNER JOIN dbo.[User] cu ON cu.UserID = po.CreatedByUser
         WHERE po.POStatus = :status
-        ORDER BY po.CreateDate ASC
-    SQL);
+    SQL;
+
+    $sortState = table_sort_state(PO_APPROVAL_LIST_SORT_COLUMNS, 'order_date', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(PO_APPROVAL_LIST_SORT_SQL, $sortState, 'order_date', 'po_number');
+
+    $stmt = $pdo->prepare($sql);
     $stmt->execute(['status' => PO_STATUS_SUBMITTED]);
 
     return $stmt->fetchAll();

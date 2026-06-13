@@ -8,6 +8,33 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'ar';
 $listResult = qbo_is_connected() ? qbo_list_invoices() : ['ok' => true, 'rows' => [], 'error' => null];
+$qboSortColumns = [
+    'invoice_number' => 'Invoice #',
+    'customer'       => 'Customer',
+    'date'           => 'Date',
+    'due'            => 'Due',
+    'total'          => 'Total',
+    'balance'        => 'Balance',
+];
+$listFilters = table_sort_state($qboSortColumns, 'date', 'desc', $_GET);
+$qboSortAccessors = [
+    'invoice_number' => fn(array $row): string => (string) ($row['DocNumber'] ?? $row['Id'] ?? ''),
+    'customer'       => fn(array $row): string => accounting_ref_name($row['CustomerRef'] ?? null),
+    'date'           => fn(array $row): string => (string) ($row['TxnDate'] ?? ''),
+    'due'            => fn(array $row): string => (string) ($row['DueDate'] ?? ''),
+    'total'          => fn(array $row) => $row['TotalAmt'] ?? 0,
+    'balance'        => fn(array $row) => $row['Balance'] ?? 0,
+];
+if ($listResult['ok'] && qbo_is_connected()) {
+    $listResult['rows'] = table_sort_rows(
+        $listResult['rows'] ?? [],
+        $listFilters,
+        $qboSortAccessors,
+        ['total', 'balance'],
+        'date',
+        'desc'
+    );
+}
 
 $pageTitle = 'Accounts Receivable | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -30,7 +57,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Due</th><th>Total</th><th>Balance</th></tr></thead>
+          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/ar.php', $listFilters, [], ['total', 'balance'], 'date', 'desc', 'date'); ?></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="6">No invoices found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

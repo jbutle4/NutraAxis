@@ -8,7 +8,8 @@ $activeAdminSection = 'roles';
 $canCreate = auth_can_create(ADMIN_PERMISSION_COLUMNS['roles']);
 $canUpdate = auth_can_update(ADMIN_PERMISSION_COLUMNS['roles']);
 $canDelete = auth_can_delete(ADMIN_PERMISSION_COLUMNS['roles']);
-$roles = admin_list_roles();
+$listFilters = table_sort_state(ADMIN_ROLES_LIST_SORT_COLUMNS, 'role', 'asc', $_GET);
+$roles = admin_list_roles($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Roles | Site Admin | NutraAxis Operations';
@@ -52,8 +53,21 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Role</th>
-              <th>Description</th>
+              <?php
+              foreach (ADMIN_ROLES_LIST_SORT_COLUMNS as $column => $label) {
+                  table_sort_render_th(
+                      $column,
+                      $label,
+                      '/site-admin/roles',
+                      ADMIN_ROLES_LIST_SORT_COLUMNS,
+                      $listFilters,
+                      [],
+                      [],
+                      'role',
+                      'asc'
+                  );
+              }
+              ?>
               <th>Permissions</th>
               <th><?= htmlspecialchars(table_actions_header($canUpdate ? ['View', 'Edit'] : ['View'])) ?></th>
             </tr>

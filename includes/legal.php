@@ -32,6 +32,28 @@ const LEGAL_CONTRACT_STATUSES = [
 
 const LEGAL_GOVERNING_LAWS = ['Colorado', 'California', 'Delaware', 'Other'];
 
+const LEGAL_LIST_SORT_COLUMNS = [
+    'contract_id'   => 'Contract ID',
+    'contract_name' => 'Contract name',
+    'type'          => 'Type',
+    'counterparty'  => 'Counterparty',
+    'status'        => 'Status',
+    'expiry'        => 'Est. expiry',
+    'annual_value'  => 'Annual value',
+];
+
+const LEGAL_LIST_SORT_SQL = [
+    'contract_id'   => 'c.ContractNumber',
+    'contract_name' => 'c.ContractName',
+    'type'          => 'c.ContractType',
+    'counterparty'  => 'c.Counterparty',
+    'status'        => 'c.ContractStatus',
+    'expiry'        => 'c.ExpirationDate',
+    'annual_value'  => 'c.AnnualValue',
+];
+
+const LEGAL_LIST_SORT_NUMERIC = ['annual_value'];
+
 function legal_permission_value(): ?string
 {
     return auth_permission_value(LEGAL_PERMISSION_COLUMN);
@@ -241,7 +263,8 @@ function legal_list_contracts(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY c.ContractNumber';
+    $sortState = table_sort_state(LEGAL_LIST_SORT_COLUMNS, 'contract_id', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(LEGAL_LIST_SORT_SQL, $sortState, 'contract_id', 'contract_id');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

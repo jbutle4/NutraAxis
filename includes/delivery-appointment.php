@@ -6,6 +6,24 @@ require_once __DIR__ . '/mail.php';
 
 const DAS_STATUSES = ['Not Scheduled', 'Scheduled', 'Canceled'];
 
+const DAS_LIST_SORT_COLUMNS = [
+    'appointment' => 'Appointment',
+    'po_number'   => 'PO number',
+    'supplier'    => 'Supplier',
+    'contact'     => 'Contact',
+    'status'      => 'Status',
+    'asn'         => 'ASN #',
+];
+
+const DAS_LIST_SORT_SQL = [
+    'appointment' => 'a.AppointmentDateTime',
+    'po_number'   => 'po.PONumber',
+    'supplier'    => 'a.CompanyName',
+    'contact'     => 'a.ContactName',
+    'status'      => 'a.AppointmentStatus',
+    'asn'         => 'a.AppointmentASNNumber',
+];
+
 function das_can_read(): bool
 {
     return po_can_access_po_pages();
@@ -305,7 +323,8 @@ function das_list(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY a.AppointmentDateTime DESC, a.ApptID DESC';
+    $sortState = table_sort_state(DAS_LIST_SORT_COLUMNS, 'appointment', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(DAS_LIST_SORT_SQL, $sortState, 'appointment', 'po_number');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
