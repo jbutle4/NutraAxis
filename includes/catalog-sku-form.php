@@ -120,6 +120,14 @@ $supplierOptions = $supplierOptions ?? catalog_supplier_options(
             <input class="form-input" type="text" id="sku_case_barcode" name="sku_case_barcode" maxlength="100" value="<?= htmlspecialchars($form['sku_case_barcode'] ?? '') ?>" />
           </div>
           <div class="form-group">
+            <label for="product_each_weight_lbs">Product each weight (lbs)</label>
+            <input class="form-input" type="number" min="0" step="0.0001" id="product_each_weight_lbs" name="product_each_weight_lbs" value="<?= htmlspecialchars($form['product_each_weight_lbs'] ?? '') ?>" />
+          </div>
+          <div class="form-group">
+            <label for="product_case_weight_lbs">Product case weight (lbs)</label>
+            <input class="form-input" type="number" min="0" step="0.0001" id="product_case_weight_lbs" name="product_case_weight_lbs" value="<?= htmlspecialchars($form['product_case_weight_lbs'] ?? '') ?>" />
+          </div>
+          <div class="form-group">
             <label for="launch_date">Launch date</label>
             <input class="form-input" type="date" id="launch_date" name="launch_date" value="<?= htmlspecialchars($form['launch_date'] ?? '') ?>" />
           </div>

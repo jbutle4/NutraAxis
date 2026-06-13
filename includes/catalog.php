@@ -139,6 +139,17 @@ function catalog_format_money($value): string
     return '$' . number_format((float) $value, 2);
 }
 
+function catalog_format_weight($value): string
+{
+    if ($value === null || $value === '') {
+        return '—';
+    }
+
+    $formatted = rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
+
+    return $formatted . ' lbs';
+}
+
 function catalog_date_input(?string $value): string
 {
     if ($value === null || $value === '') {
@@ -226,6 +237,8 @@ function catalog_sku_to_form(array $sku): array
         'gtin14'                      => (string) ($sku['GTIN14'] ?? ''),
         'upc'                         => (string) ($sku['UPC'] ?? ''),
         'sku_case_barcode'            => (string) ($sku['SKUCaseBarcode'] ?? ''),
+        'product_each_weight_lbs'     => $sku['ProductEachWeightLbs'] !== null ? (string) $sku['ProductEachWeightLbs'] : '',
+        'product_case_weight_lbs'     => $sku['ProductCaseWeightLbs'] !== null ? (string) $sku['ProductCaseWeightLbs'] : '',
         'supplement_facts_panel'      => (string) ($sku['SupplementFactsPanel'] ?? ''),
         'claims'                      => (string) ($sku['Claims'] ?? ''),
         'allergens'                   => catalog_allergens_from_storage($sku['AllergenStatement'] ?? null),
@@ -347,6 +360,8 @@ function catalog_sku_from_input(array $input): array
         'gtin14'                       => trim($input['gtin14'] ?? ''),
         'upc'                          => trim($input['upc'] ?? ''),
         'sku_case_barcode'             => trim($input['sku_case_barcode'] ?? ''),
+        'product_each_weight_lbs'      => trim($input['product_each_weight_lbs'] ?? ''),
+        'product_case_weight_lbs'      => trim($input['product_case_weight_lbs'] ?? ''),
         'supplement_facts_panel'       => trim($input['supplement_facts_panel'] ?? ''),
         'claims'                       => trim($input['claims'] ?? ''),
         'allergens'                    => $allergens,
@@ -427,6 +442,16 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
     $wholesale = $data['wholesale_price'] !== '' ? (float) $data['wholesale_price'] : null;
     $msrp = $data['msrp'] !== '' ? (float) $data['msrp'] : null;
 
+    $eachWeight = $data['product_each_weight_lbs'] !== '' ? (float) $data['product_each_weight_lbs'] : null;
+    if ($eachWeight !== null && $eachWeight < 0) {
+        return ['ok' => false, 'error' => 'Product each weight must be zero or greater.'];
+    }
+
+    $caseWeight = $data['product_case_weight_lbs'] !== '' ? (float) $data['product_case_weight_lbs'] : null;
+    if ($caseWeight !== null && $caseWeight < 0) {
+        return ['ok' => false, 'error' => 'Product case weight must be zero or greater.'];
+    }
+
     $supplierId = $data['supplier_id'] !== '' ? (int) $data['supplier_id'] : null;
     if ($supplierId !== null) {
         $supplierCheck = $pdo->prepare('SELECT SupplierID FROM dbo.Supplier WHERE SupplierID = :id');
@@ -450,6 +475,8 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
         'gtin14'           => $data['gtin14'] !== '' ? $data['gtin14'] : null,
         'upc'              => $data['upc'] !== '' ? $data['upc'] : null,
         'sku_case_barcode' => $data['sku_case_barcode'] !== '' ? $data['sku_case_barcode'] : null,
+        'each_weight'      => $eachWeight,
+        'case_weight'      => $caseWeight,
         'sfp_panel'        => $data['supplement_facts_panel'] !== '' ? $data['supplement_facts_panel'] : null,
         'claims'           => $data['claims'] !== '' ? $data['claims'] : null,
         'allergens'        => catalog_allergens_to_storage($data['allergens']) ?: null,
@@ -477,6 +504,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     SKUCode, ProductName, SupplierID, Brand, Manufacturer,
                     PrimaryTherapeuticCategory, SecondaryCategory, SKUStatus,
                     ServingCount, BottleSize, GTIN14, UPC, SKUCaseBarcode,
+                    ProductEachWeightLbs, ProductCaseWeightLbs,
                     SupplementFactsPanel, Claims, AllergenStatement, NonGMOCertified,
                     COGS, WholesalePrice, MSRP, SFPLink, LabelPrintReadyLink,
                     LaunchDate, Notes, Formulation, Product, LabelSelection,
@@ -488,6 +516,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     :code, :name, :supplier, :brand, :manufacturer,
                     :primary_category, :secondary, :status,
                     :serving, :bottle, :gtin14, :upc, :sku_case_barcode,
+                    :each_weight, :case_weight,
                     :sfp_panel, :claims, :allergens, :non_gmo,
                     :cogs, :wholesale, :msrp, :sfp_link, :label_link,
                     :launch, :notes, :formulation, :product, :label_selection,
@@ -518,6 +547,8 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     GTIN14 = :gtin14,
                     UPC = :upc,
                     SKUCaseBarcode = :sku_case_barcode,
+                    ProductEachWeightLbs = :each_weight,
+                    ProductCaseWeightLbs = :case_weight,
                     SupplementFactsPanel = :sfp_panel,
                     Claims = :claims,
                     AllergenStatement = :allergens,
