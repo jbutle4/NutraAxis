@@ -13,6 +13,24 @@ const ENHANCEMENT_LOG_STATUSES = [
     'Canceled',
 ];
 
+const ENHANCEMENT_LOG_LIST_SORT_COLUMNS = [
+    'id'           => 'ID',
+    'title'        => 'Title',
+    'requested_by' => 'Requested By',
+    'request_date' => 'Request Date',
+    'status'       => 'Status',
+    'due_date'     => 'Due Date',
+];
+
+const ENHANCEMENT_LOG_LIST_SORT_SQL = [
+    'id'           => 'EnhancementLogID',
+    'title'        => 'EnhancementTitle',
+    'requested_by' => 'RequestedBy',
+    'request_date' => 'RequestDate',
+    'status'       => 'RequestStatus',
+    'due_date'     => 'ReqDueDate',
+];
+
 function enhancement_log_permission_value(): ?string
 {
     return auth_permission_value(ENHANCEMENT_LOG_PERMISSION_COLUMN);
@@ -252,7 +270,8 @@ function enhancement_log_list(array $filters = []): array
         $params['q'] = '%' . $search . '%';
     }
 
-    $sql .= ' ORDER BY RequestDate DESC, EnhancementLogID DESC';
+    $sortState = table_sort_state(ENHANCEMENT_LOG_LIST_SORT_COLUMNS, 'request_date', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(ENHANCEMENT_LOG_LIST_SORT_SQL, $sortState, 'request_date', 'id');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

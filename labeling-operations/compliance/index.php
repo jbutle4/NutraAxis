@@ -7,7 +7,10 @@ label_require_read();
 $activeSlug = 'labeling-operations';
 $activeLabelSection = 'compliance';
 $subjectFilter = $_GET['subject'] ?? '';
-$reviews = label_list_compliance_reviews($subjectFilter !== '' ? $subjectFilter : null);
+$listFilters = [
+    'subject' => $subjectFilter !== '' ? $subjectFilter : null,
+] + table_sort_state(LABEL_COMPLIANCE_LIST_SORT_COLUMNS, 'date', 'desc', $_GET);
+$reviews = label_list_compliance_reviews($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('Label Compliance Review');
@@ -43,6 +46,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter" method="get" action="/labeling-operations/compliance/">
+        <?php table_sort_hidden_inputs($listFilters, 'date', 'desc'); ?>
         <label for="subject">Review subject</label>
         <select class="form-input" id="subject" name="subject" onchange="this.form.submit()">
           <option value="">All subjects</option>
@@ -55,14 +59,16 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Date</th>
-              <th>Subject</th>
-              <th>Record ID</th>
-              <th>Status</th>
-              <th>Reviewer</th>
-              <th>Comments</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                LABEL_COMPLIANCE_LIST_SORT_COLUMNS,
+                '/labeling-operations/compliance',
+                $listFilters,
+                ['subject'],
+                LABEL_COMPLIANCE_LIST_SORT_NUMERIC,
+                'date',
+                'desc',
+                'date'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($reviews === []): ?>

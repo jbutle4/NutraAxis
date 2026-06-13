@@ -8,7 +8,11 @@ $activeSlug = 'labeling-operations';
 $activeLabelSection = 'templates';
 $scopeFilter = $_GET['scope'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$templates = label_list_templates($scopeFilter !== '' ? $scopeFilter : null, $search !== '' ? $search : null);
+$listFilters = [
+    'scope' => $scopeFilter !== '' ? $scopeFilter : null,
+    'q'     => $search !== '' ? $search : null,
+] + table_sort_state(LABEL_TEMPLATE_LIST_SORT_COLUMNS, 'scope', 'asc', $_GET);
+$templates = label_list_templates($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('Label Templates');
@@ -44,6 +48,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/labeling-operations/templates/">
+        <?php table_sort_hidden_inputs($listFilters, 'scope', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="scope">Scope</label>
@@ -68,15 +73,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Scope</th>
-              <th>Customer</th>
-              <th>SKU</th>
-              <th>Label Name</th>
-              <th>Version</th>
-              <th>Status</th>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                LABEL_TEMPLATE_LIST_SORT_COLUMNS,
+                '/labeling-operations/templates',
+                $listFilters,
+                ['scope', 'q'],
+                [],
+                'scope',
+                'asc',
+                '',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($templates === []): ?>

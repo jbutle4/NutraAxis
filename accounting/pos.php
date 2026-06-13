@@ -8,6 +8,24 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'pos';
 $listResult = qbo_is_connected() ? qbo_list_purchase_orders() : ['ok' => true, 'rows' => [], 'error' => null];
+$qboSortColumns = [
+    'po_number' => 'PO #',
+    'vendor'    => 'Vendor',
+    'date'      => 'Date',
+    'status'    => 'Status',
+    'total'     => 'Total',
+];
+$listFilters = table_sort_state($qboSortColumns, 'date', 'desc', $_GET);
+$qboSortAccessors = [
+    'po_number' => fn(array $row): string => (string) ($row['DocNumber'] ?? $row['Id'] ?? ''),
+    'vendor'    => fn(array $row): string => accounting_ref_name($row['VendorRef'] ?? null),
+    'date'      => fn(array $row): string => (string) ($row['TxnDate'] ?? ''),
+    'status'    => fn(array $row): string => (string) ($row['POStatus'] ?? ''),
+    'total'     => fn(array $row) => $row['TotalAmt'] ?? 0,
+];
+if ($listResult['ok'] && qbo_is_connected()) {
+    $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['total'], 'date', 'desc');
+}
 
 $pageTitle = 'Purchase Orders | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -30,7 +48,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>PO #</th><th>Vendor</th><th>Date</th><th>Status</th><th>Total</th></tr></thead>
+          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/pos.php', $listFilters, [], ['total'], 'date', 'desc', 'date'); ?></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="5">No purchase orders found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

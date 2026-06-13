@@ -8,11 +8,12 @@ $activeSlug = 'links-index';
 $statusFilter = $_GET['status'] ?? 'active';
 $categoryFilter = $_GET['category'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$links = links_list([
+$listFilters = [
     'status'   => $statusFilter !== '' ? $statusFilter : null,
     'category' => $categoryFilter !== '' ? $categoryFilter : null,
     'q'        => $search !== '' ? $search : null,
-]);
+] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
+$links = links_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Links Index | NutraAxis Operations';
@@ -51,6 +52,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/links-index/">
+        <?php table_sort_hidden_inputs($listFilters, 'category', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -96,14 +98,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Name (click to open link)</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Registration</th>
-              <th>Description</th>
-              <th>View | Edit</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                LINKS_LIST_SORT_COLUMNS,
+                '/links-index',
+                $listFilters,
+                ['status', 'category', 'q'],
+                [],
+                'category',
+                'asc',
+                '',
+                'View | Edit'
+            ); ?>
           </thead>
           <tbody>
             <?php foreach ($links as $link):

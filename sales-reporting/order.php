@@ -9,6 +9,16 @@ $orderNumber = trim($_GET['order'] ?? '');
 $configError = adobe_commerce_config_error();
 $order = null;
 $error = $configError;
+$itemSortColumns = [
+    'sku'         => 'SKU',
+    'product'     => 'Product',
+    'type'        => 'Type',
+    'qty_ordered' => 'Qty ordered',
+    'qty_shipped' => 'Qty shipped',
+    'unit_price'  => 'Unit price',
+    'row_total'   => 'Row total',
+];
+$itemSortFilters = table_sort_state($itemSortColumns, 'sku', 'asc', $_GET);
 
 if ($error === null) {
     if ($orderNumber === '') {
@@ -19,6 +29,23 @@ if ($error === null) {
     $result = adobe_commerce_fetch_order_by_number($orderNumber);
     if ($result['ok']) {
         $order = $result['order'];
+        $itemSortAccessors = [
+            'sku'         => fn(array $item): string => (string) ($item['sku'] ?? ''),
+            'product'     => fn(array $item): string => (string) ($item['name'] ?? ''),
+            'type'        => fn(array $item): string => (string) ($item['product_type'] ?? ''),
+            'qty_ordered' => fn(array $item) => $item['qty_ordered'] ?? 0,
+            'qty_shipped' => fn(array $item) => $item['qty_shipped'] ?? 0,
+            'unit_price'  => fn(array $item) => $item['price'] ?? 0,
+            'row_total'   => fn(array $item) => $item['row_total'] ?? 0,
+        ];
+        $order['items'] = table_sort_rows(
+            $order['items'] ?? [],
+            $itemSortFilters,
+            $itemSortAccessors,
+            ['qty_ordered', 'qty_shipped', 'unit_price', 'row_total'],
+            'sku',
+            'asc'
+        );
     } else {
         $error = $result['error'];
     }
@@ -91,15 +118,15 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Product</th>
-              <th>Type</th>
-              <th>Qty ordered</th>
-              <th>Qty shipped</th>
-              <th>Unit price</th>
-              <th>Row total</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                $itemSortColumns,
+                '/sales-reporting/order.php',
+                ['order' => $orderNumber] + $itemSortFilters,
+                ['order'],
+                ['qty_ordered', 'qty_shipped', 'unit_price', 'row_total'],
+                'sku',
+                'asc'
+            ); ?>
           </thead>
           <tbody>
             <?php foreach (($order['items'] ?? []) as $item): ?>

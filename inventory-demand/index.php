@@ -9,12 +9,13 @@ $activeSlug = 'inventory-forecasting';
 
 $skuFilter = trim($_GET['sku'] ?? '');
 $shortageFilter = trim($_GET['shortage'] ?? '');
+$listFilters = [
+    'sku'      => $skuFilter !== '' ? $skuFilter : null,
+    'shortage' => $shortageFilter !== '' ? $shortageFilter : null,
+] + table_sort_state(INVENTORY_FORECASTING_LIST_SORT_COLUMNS, 'sku', 'asc', $_GET);
 $skus = inventory_forecasting_list_skus();
 $meta = inventory_forecasting_meta();
-$planRows = inventory_forecasting_list_plan_rows(
-    $skuFilter !== '' ? $skuFilter : null,
-    $shortageFilter !== '' ? $shortageFilter : null
-);
+$planRows = inventory_forecasting_list_plan_rows($listFilters);
 
 $pageTitle = 'Inventory Forecasting | NutraAxis Operations';
 $pageDescription = $module['lead'] ?? 'Project demand and plan replenishment with confidence.';
@@ -71,6 +72,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <?php else: ?>
         <form class="po-filter demand-summary-filter" method="get" action="/inventory-demand/">
+          <?php table_sort_hidden_inputs($listFilters, 'sku', 'asc'); ?>
           <div class="audit-filter-grid">
             <div>
               <label for="sku">SKU</label>
@@ -103,18 +105,16 @@ require dirname(__DIR__) . '/includes/header.php';
         <div class="admin-table-wrap">
           <table class="admin-table demand-summary-table">
             <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Month</th>
-                <th>Begin OH</th>
-                <th>Receipts</th>
-                <th>Sales</th>
-                <th>End OH</th>
-                <th>Shortage</th>
-                <th>Baseline</th>
-                <th>Trend</th>
-                <th>Status</th>
-              </tr>
+              <?php table_sort_render_head_row(
+                  INVENTORY_FORECASTING_LIST_SORT_COLUMNS,
+                  '/inventory-demand',
+                  $listFilters,
+                  ['sku', 'shortage'],
+                  INVENTORY_FORECASTING_LIST_SORT_NUMERIC,
+                  'sku',
+                  'asc',
+                  ''
+              ); ?>
             </thead>
             <tbody>
               <?php if ($planRows === []): ?>

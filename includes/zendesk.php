@@ -118,16 +118,9 @@ function zendesk_build_search_query(array $filters): string
 
 function zendesk_list_sort_meta(array $filters): array
 {
-    $sort = strtolower(trim((string) ($filters['sort'] ?? 'updated')));
-    $dir = strtolower(trim((string) ($filters['dir'] ?? 'desc')));
-
-    if (!array_key_exists($sort, SUPPORT_LIST_SORT_COLUMNS)) {
-        $sort = 'updated';
-    }
-
-    if ($dir !== 'asc') {
-        $dir = 'desc';
-    }
+    $sortState = table_sort_state(SUPPORT_LIST_SORT_COLUMNS, 'updated', 'desc', $filters);
+    $sort = $sortState['sort'];
+    $dir = $sortState['dir'];
 
     $apiSortMap = [
         'updated'  => 'updated_at',

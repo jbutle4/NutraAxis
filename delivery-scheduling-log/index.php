@@ -8,10 +8,11 @@ $activeSlug = 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$appointments = das_list([
+$listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
     'q'      => $search !== '' ? $search : null,
-]);
+] + table_sort_state(DAS_LIST_SORT_COLUMNS, 'appointment', 'desc', $_GET);
+$appointments = das_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 $emailNotice = $_GET['email_notice'] ?? null;
 $emailError = isset($_GET['email_error']) ? (string) $_GET['email_error'] : null;
@@ -56,6 +57,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/delivery-scheduling-log/">
+        <?php table_sort_hidden_inputs($listFilters, 'appointment', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -80,15 +82,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Appointment</th>
-              <th>PO number</th>
-              <th>Supplier</th>
-              <th>Contact</th>
-              <th>Status</th>
-              <th>ASN #</th>
-              <th><?= htmlspecialchars(table_actions_header(das_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                DAS_LIST_SORT_COLUMNS,
+                '/delivery-scheduling-log',
+                $listFilters,
+                ['status', 'q'],
+                [],
+                'appointment',
+                'desc',
+                'appointment',
+                table_actions_header(das_can_update() ? ['View', 'Edit'] : ['View'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($appointments === []): ?>

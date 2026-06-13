@@ -12,6 +12,33 @@ $listResult = ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
 if ($configError === null) {
     $listResult = adobe_commerce_list_orders();
 }
+$orderSortColumns = [
+    'order_number' => 'Order #',
+    'date'         => 'Date',
+    'status'       => 'Status',
+    'customer'     => 'Customer',
+    'total'        => 'Total',
+    'items'        => 'Items',
+];
+$listFilters = table_sort_state($orderSortColumns, 'date', 'desc', $_GET);
+$orderSortAccessors = [
+    'order_number' => fn(array $row): string => (string) ($row['increment_id'] ?? ''),
+    'date'         => fn(array $row): string => (string) ($row['created_at'] ?? ''),
+    'status'       => fn(array $row): string => (string) ($row['status'] ?? ''),
+    'customer'     => fn(array $row): string => trim((string) ($row['customer_firstname'] ?? '') . ' ' . (string) ($row['customer_lastname'] ?? '')),
+    'total'        => fn(array $row) => $row['grand_total'] ?? 0,
+    'items'        => fn(array $row) => adobe_commerce_order_item_qty($row),
+];
+if ($configError === null && ($listResult['rows'] ?? []) !== []) {
+    $listResult['rows'] = table_sort_rows(
+        $listResult['rows'],
+        $listFilters,
+        $orderSortAccessors,
+        ['total', 'items'],
+        'date',
+        'desc'
+    );
+}
 
 $pageTitle = 'ACCS Order Report | Sales Reporting Summaries';
 $pageDescription = 'View Adobe Commerce orders and order detail from ACCS.';
@@ -66,15 +93,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Order #</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Customer</th>
-              <th>Total</th>
-              <th>Items</th>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                $orderSortColumns,
+                '/sales-reporting/accs-order-report',
+                $listFilters,
+                [],
+                ['total', 'items'],
+                'date',
+                'desc',
+                'date',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?>

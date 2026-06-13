@@ -5,6 +5,28 @@ require_once __DIR__ . '/po.php';
 
 const PO_PAYMENT_TYPES = ['Check', 'ACH', 'CC'];
 
+const PO_PAYMENT_LIST_SORT_COLUMNS = [
+    'payment_date'   => 'Payment date',
+    'po_number'      => 'PO number',
+    'supplier'       => 'Supplier',
+    'amount'         => 'Amount',
+    'type'           => 'Type',
+    'confirmation'   => 'Confirmation #',
+    'made_by'        => 'Made by',
+];
+
+const PO_PAYMENT_LIST_SORT_SQL = [
+    'payment_date' => 'p.PaymentDate',
+    'po_number'    => 'po.PONumber',
+    'supplier'     => 's.SupplierName',
+    'amount'       => 'p.PaymentAmount',
+    'type'         => 'p.PaymentType',
+    'confirmation' => 'p.PaymentConfNumber',
+    'made_by'      => 'p.PaymentMadeBy',
+];
+
+const PO_PAYMENT_LIST_SORT_NUMERIC = ['amount'];
+
 function po_payment_can_read(): bool
 {
     return po_can_access_po_pages();
@@ -154,7 +176,8 @@ function po_payment_list(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY p.PaymentDate DESC, p.PaymentID DESC';
+    $sortState = table_sort_state(PO_PAYMENT_LIST_SORT_COLUMNS, 'payment_date', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(PO_PAYMENT_LIST_SORT_SQL, $sortState, 'payment_date', 'po_number');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

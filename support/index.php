@@ -75,6 +75,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if ($configError === null): ?>
       <form class="po-filter audit-filter" method="get" action="/support/">
+        <?php table_sort_hidden_inputs($listFilters, 'updated', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -100,20 +101,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <?php foreach (SUPPORT_LIST_SORT_COLUMNS as $column => $label): ?>
-              <th class="admin-table-sort">
-                <a
-                  class="admin-table-sort-link<?= support_sort_is_active($column, $listFilters) ? ' is-active' : '' ?>"
-                  href="<?= htmlspecialchars(support_list_sort_href($column, $listFilters)) ?>"
-                >
-                  <span><?= htmlspecialchars($label) ?></span>
-                  <span class="admin-table-sort-indicator" aria-hidden="true"><?php if (support_sort_is_active($column, $listFilters)): ?><?= support_sort_direction($column, $listFilters) === 'asc' ? '▲' : '▼' ?><?php else: ?>↕<?php endif; ?></span>
-                </a>
-              </th>
-              <?php endforeach; ?>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                SUPPORT_LIST_SORT_COLUMNS,
+                '/support',
+                $listFilters,
+                ['status', 'q'],
+                SUPPORT_LIST_SORT_NUMERIC,
+                'updated',
+                'desc',
+                'updated',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if (($listResult['tickets'] ?? []) === []): ?>
