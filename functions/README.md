@@ -34,7 +34,7 @@ Manual rerun (Process Log UI)
   → POST /api/process-execute on this Function App
 ```
 
-No HTTP calls to PHP cron endpoints. Legacy `/cron/*.php` endpoints return HTTP 410 Gone.
+No HTTP calls to PHP cron endpoints. Scheduled job cron scripts have been removed from the PHP app; WebJobs live under `App_Data/Disabled_jobs/`.
 
 Shared messaging lives in `src/lib/service-bus.js`. Add new queues and triggers as other async workflows are introduced.
 
