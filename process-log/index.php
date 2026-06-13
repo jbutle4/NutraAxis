@@ -40,7 +40,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="section-label">Operations</div>
         <h1>Process Log</h1>
-        <p class="page-lead">Execution history for scheduled jobs. Failed runs retry automatically (2, 4, 8 minutes) before being marked abandoned.</p>
+        <p class="page-lead">Execution history for background jobs on Azure Function App Nutra-forecast-tool. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.</p>
         <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('process-log')) ?></p>
       </div>
 
@@ -168,7 +168,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <tr>
                 <th>Process</th>
                 <th>Description</th>
-                <th>Endpoint</th>
+                <th>Azure Function</th>
+                <th>Schedule</th>
               </tr>
             </thead>
             <tbody>
@@ -176,7 +177,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <tr>
                 <td><?= htmlspecialchars($entry['name']) ?></td>
                 <td><?= htmlspecialchars($entry['description']) ?></td>
-                <td><code><?= htmlspecialchars($entry['cron_path']) ?></code></td>
+                <td><code><?= htmlspecialchars($entry['function_name']) ?></code></td>
+                <td><?= htmlspecialchars($entry['schedule']) ?></td>
               </tr>
               <?php endforeach; ?>
             </tbody>
