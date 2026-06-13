@@ -32,10 +32,10 @@ function db(): PDO
         return $pdo;
     }
 
-    $host = env('DB_HOST', '');
+    $host = env_first(['DB_HOST', 'DB_SERVER'], '');
     $name = env('DB_NAME', '');
     $user = env('DB_USER', '');
-    $pass = env('DB_PASS', '');
+    $pass = env_first(['DB_PASS', 'DB_PASSWORD'], '');
     $port = env('DB_PORT', '1433');
 
     if ($host === '' || $name === '' || $user === '' || $pass === '') {
