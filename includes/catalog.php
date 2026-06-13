@@ -45,6 +45,96 @@ const CATALOG_ALLERGENS = [
     'Contains Peanuts',
 ];
 
+const CATALOG_LIST_SORT_COLUMNS = [
+    'sku_code'       => 'SKU code',
+    'product_name'   => 'Product name',
+    'upc'            => 'UPC',
+    'brand'          => 'Brand',
+    'category'       => 'Category',
+    'status'         => 'Status',
+    'serving_count'  => 'Serving count',
+    'cogs'           => 'COGS',
+    'wholesale_price'=> 'Wholesale',
+    'msrp'           => 'MSRP',
+];
+
+const CATALOG_LIST_SORT_SQL = [
+    'sku_code'        => 's.SKUCode',
+    'product_name'    => 's.ProductName',
+    'upc'             => 's.UPC',
+    'brand'           => 's.Brand',
+    'category'        => 's.PrimaryTherapeuticCategory',
+    'status'          => 's.SKUStatus',
+    'serving_count'   => 's.ServingCount',
+    'cogs'            => 's.COGS',
+    'wholesale_price' => 's.WholesalePrice',
+    'msrp'            => 's.MSRP',
+];
+
+function catalog_list_sort_state(array $input = []): array
+{
+    $sort = strtolower(trim((string) ($input['sort'] ?? $_GET['sort'] ?? 'sku_code')));
+    $dir = strtolower(trim((string) ($input['dir'] ?? $_GET['dir'] ?? 'asc')));
+
+    if (!array_key_exists($sort, CATALOG_LIST_SORT_COLUMNS)) {
+        $sort = 'sku_code';
+    }
+
+    if ($dir !== 'desc') {
+        $dir = 'asc';
+    }
+
+    return ['sort' => $sort, 'dir' => $dir];
+}
+
+function catalog_list_filters(): array
+{
+    return [
+        'status'   => trim($_GET['status'] ?? ''),
+        'brand'    => trim($_GET['brand'] ?? ''),
+        'category' => trim($_GET['category'] ?? ''),
+        'q'        => trim($_GET['q'] ?? ''),
+    ] + catalog_list_sort_state();
+}
+
+function catalog_list_sort_href(string $column, array $filters): string
+{
+    $sortState = catalog_list_sort_state($filters);
+    $currentSort = $sortState['sort'];
+    $currentDir = $sortState['dir'];
+
+    if ($currentSort === $column) {
+        $nextDir = $currentDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        $nextDir = in_array($column, ['cogs', 'wholesale_price', 'msrp', 'serving_count'], true) ? 'desc' : 'asc';
+    }
+
+    $query = array_filter([
+        'status'   => ($filters['status'] ?? '') !== '' ? $filters['status'] : null,
+        'brand'    => ($filters['brand'] ?? '') !== '' ? $filters['brand'] : null,
+        'category' => ($filters['category'] ?? '') !== '' ? $filters['category'] : null,
+        'q'        => ($filters['q'] ?? '') !== '' ? $filters['q'] : null,
+        'sort'     => $column,
+        'dir'      => $nextDir,
+    ], fn($value) => $value !== null && $value !== '');
+
+    return '/product-catalog/?' . http_build_query($query);
+}
+
+function catalog_sort_is_active(string $column, array $filters): bool
+{
+    return ($filters['sort'] ?? 'sku_code') === $column;
+}
+
+function catalog_sort_direction(string $column, array $filters): string
+{
+    if (!catalog_sort_is_active($column, $filters)) {
+        return '';
+    }
+
+    return ($filters['dir'] ?? 'asc') === 'asc' ? 'asc' : 'desc';
+}
+
 function catalog_permission_value(): ?string
 {
     return auth_permission_value(CATALOG_PERMISSION_COLUMN);
@@ -276,6 +366,8 @@ function catalog_list_skus(array $filters = []): array
             s.BottleSize,
             s.GTIN14,
             s.UPC,
+            s.COGS,
+            s.WholesalePrice,
             s.MSRP,
             s.LaunchDate
         FROM dbo.SKUMaster s
@@ -311,7 +403,10 @@ function catalog_list_skus(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY s.SKUCode';
+    $sortState = catalog_list_sort_state($filters);
+    $sortColumn = CATALOG_LIST_SORT_SQL[$sortState['sort']] ?? CATALOG_LIST_SORT_SQL['sku_code'];
+    $sortDir = $sortState['dir'] === 'desc' ? 'DESC' : 'ASC';
+    $sql .= " ORDER BY {$sortColumn} {$sortDir}, s.SKUCode ASC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

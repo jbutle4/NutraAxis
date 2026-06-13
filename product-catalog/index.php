@@ -5,17 +5,21 @@ require dirname(__DIR__) . '/includes/catalog.php';
 catalog_require_read();
 
 $activeSlug = 'product-catalog';
-$statusFilter = $_GET['status'] ?? '';
-$brandFilter = $_GET['brand'] ?? '';
-$categoryFilter = $_GET['category'] ?? '';
-$search = trim($_GET['q'] ?? '');
+$listFilters = catalog_list_filters();
+$statusFilter = $listFilters['status'];
+$brandFilter = $listFilters['brand'];
+$categoryFilter = $listFilters['category'];
+$search = $listFilters['q'];
 $skus = catalog_list_skus([
     'status'   => $statusFilter !== '' ? $statusFilter : null,
     'brand'    => $brandFilter !== '' ? $brandFilter : null,
     'category' => $categoryFilter !== '' ? $categoryFilter : null,
     'q'        => $search !== '' ? $search : null,
+    'sort'     => $listFilters['sort'],
+    'dir'      => $listFilters['dir'],
 ]);
 $notice = $_GET['notice'] ?? null;
+$actionHeader = table_actions_header(catalog_can_update() ? ['View', 'Edit'] : ['View']);
 
 $pageTitle = 'Product SKU Master | Inventory Management';
 $pageDescription = 'View and manage the master product catalog and SKU reference data.';
@@ -53,6 +57,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/product-catalog/">
+        <input type="hidden" name="sort" value="<?= htmlspecialchars($listFilters['sort']) ?>" />
+        <input type="hidden" name="dir" value="<?= htmlspecialchars($listFilters['dir']) ?>" />
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -96,20 +102,23 @@ require dirname(__DIR__) . '/includes/header.php';
         <table class="admin-table">
           <thead>
             <tr>
-              <th>SKU code</th>
-              <th>Product name</th>
-              <th>UPC</th>
-              <th>Brand</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Serving count</th>
-              <th>MSRP</th>
-              <th><?= htmlspecialchars(table_actions_header(catalog_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
+              <?php foreach (CATALOG_LIST_SORT_COLUMNS as $column => $label): ?>
+              <th class="admin-table-sort">
+                <a
+                  class="admin-table-sort-link<?= catalog_sort_is_active($column, $listFilters) ? ' is-active' : '' ?>"
+                  href="<?= htmlspecialchars(catalog_list_sort_href($column, $listFilters)) ?>"
+                >
+                  <span><?= htmlspecialchars($label) ?></span>
+                  <span class="admin-table-sort-indicator" aria-hidden="true"><?php if (catalog_sort_is_active($column, $listFilters)): ?><?= catalog_sort_direction($column, $listFilters) === 'asc' ? '▲' : '▼' ?><?php else: ?>↕<?php endif; ?></span>
+                </a>
+              </th>
+              <?php endforeach; ?>
+              <th><?= htmlspecialchars($actionHeader) ?></th>
             </tr>
           </thead>
           <tbody>
             <?php if ($skus === []): ?>
-            <tr><td colspan="9">No SKUs match your filters.</td></tr>
+            <tr><td colspan="11">No SKUs match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($skus as $sku): ?>
             <tr>
@@ -120,6 +129,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars($sku['PrimaryTherapeuticCategory']) ?></td>
               <td><span class="status-badge <?= catalog_status_class($sku['SKUStatus']) ?>"><?= htmlspecialchars($sku['SKUStatus']) ?></span></td>
               <td><?= $sku['ServingCount'] !== null ? (int) $sku['ServingCount'] : '—' ?></td>
+              <td><?= htmlspecialchars(catalog_format_money($sku['COGS'])) ?></td>
+              <td><?= htmlspecialchars(catalog_format_money($sku['WholesalePrice'])) ?></td>
               <td><?= htmlspecialchars(catalog_format_money($sku['MSRP'])) ?></td>
               <?php table_view_edit_cell(
                   '/product-catalog/view.php?id=' . (int) $sku['SKUID'],
