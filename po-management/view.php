@@ -39,6 +39,8 @@ $approverEmails = $order['POStatus'] === PO_STATUS_SUBMITTED
     : [];
 $canUpdate = po_can_update();
 $canApprove = po_can_read_approval_queue();
+$canSubmitForApproval = po_can_submit_for_approval($order);
+$needsReapproval = po_requires_reapproval($order);
 $poPayments = po_payment_list_for_po($poId);
 $poReceipts = por_list(['po_id' => $poId]);
 $poPaymentTotal = po_payment_total_for_po($poId);
@@ -80,11 +82,11 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php endif; ?>
           <?php if (po_can_edit_order($order)): ?>
           <a class="btn-secondary" href="/po-management/edit.php?id=<?= $poId ?>">Edit</a>
-          <?php if (in_array($order['POStatus'], PO_EDITABLE_STATUSES, true)): ?>
+          <?php if ($canSubmitForApproval): ?>
           <form method="post" action="/po-management/status.php" class="inline-form">
             <input type="hidden" name="po_id" value="<?= $poId ?>" />
             <input type="hidden" name="action" value="submit" />
-            <button type="submit" class="btn-primary">Submit for Approval</button>
+            <button type="submit" class="btn-primary"><?= $needsReapproval ? 'Resubmit for Approval' : 'Submit for Approval' ?></button>
           </form>
           <?php endif; ?>
           <?php endif; ?>
@@ -95,7 +97,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-secondary">Resend Approval Notification</button>
           </form>
           <?php endif; ?>
-          <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_APPROVED): ?>
+          <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_APPROVED && !$needsReapproval): ?>
           <form method="post" action="/po-management/status.php" class="inline-form">
             <input type="hidden" name="po_id" value="<?= $poId ?>" />
             <input type="hidden" name="action" value="accounting" />
@@ -139,13 +141,29 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Production status updated successfully.</div>
       <?php endif; ?>
 
+      <?php if (isset($_GET['reapproval']) && $_GET['reapproval'] === '1'): ?>
+      <div class="admin-notice is-error is-detail" role="alert">
+        Total due changed after approval. This purchase order must be resubmitted for approval before it can be sent to accounting.
+      </div>
+      <?php endif; ?>
+
+      <?php if ($needsReapproval && $order['POStatus'] === PO_STATUS_APPROVED): ?>
+      <div class="admin-notice is-error is-detail" role="alert">
+        Total due changed after approval. Use <strong>Resubmit for Approval</strong> before sending this PO to accounting.
+        <?php if (!empty($order['ApprovedTotalDue'])): ?>
+        Approved total: <strong><?= htmlspecialchars(po_format_money((float) $order['ApprovedTotalDue'])) ?></strong>
+        · Current total: <strong><?= htmlspecialchars(po_format_money((float) $order['TotalDue'])) ?></strong>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+
       <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_SUBMITTED): ?>
       <div class="admin-notice" role="status">
         This purchase order is in the approval queue. Approvers can review it under <a href="/po-management/approvals.php">Approvals</a>.
         <?php if ($approverEmails !== []): ?>
-        Approval emails are sent to: <strong><?= htmlspecialchars(implode(', ', $approverEmails)) ?></strong> (subscribed to PO Approval Request alerts).
+        Approval emails are sent to designated PO approvers: <strong><?= htmlspecialchars(implode(', ', $approverEmails)) ?></strong>.
         <?php else: ?>
-        <strong>No approver email addresses are configured.</strong> Subscribe users to PO Approval Request alerts in Site Admin → Users.
+        <strong>No PO approvers are configured.</strong> Mark users as PO approvers in Site Admin → Users.
         <?php endif; ?>
         Use <strong>Resend Approval Notification</strong> if approvers did not receive the email.
       </div>

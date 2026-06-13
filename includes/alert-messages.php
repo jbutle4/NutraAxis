@@ -5,6 +5,7 @@ require_once __DIR__ . '/mail.php';
 
 const ALERT_NAME_PROCESS_ABANDONED = 'process-abandoned';
 const ALERT_NAME_PO_APPROVAL_REQUEST = 'po-approval-request';
+const ALERT_NAME_PO_APPROVAL_NOTICE = 'po-approval-notice';
 const ALERT_NAME_PO_STATUS_UPDATE = 'po-status-update';
 const ALERT_NAME_PO_VIEWED_BY_APPROVER = 'po-viewed-by-approver';
 

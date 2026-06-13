@@ -66,7 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = po_save_order($_POST, $poId);
 
     if ($result['ok']) {
-        header('Location: /po-management/view.php?id=' . $poId . '&notice=updated', true, 302);
+        $params = ['id' => $poId, 'notice' => 'updated'];
+        if (!empty($result['requires_reapproval'])) {
+            $params['reapproval'] = '1';
+        }
+        header('Location: /po-management/view.php?' . http_build_query($params), true, 302);
         exit;
     }
 
