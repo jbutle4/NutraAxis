@@ -7,8 +7,37 @@ Timer and HTTP functions for NutraAxis scheduled jobs.
 | Function | Type | Purpose |
 |----------|------|---------|
 | `ping` | HTTP | Health check; used by PHP `/function-test/` |
+| `daily-sales-summary` | Timer | Daily 2:00 AM Central — calls PHP `/cron/daily-sales-summary.php` |
 | `forecast-plan` | Timer | Sunday 1:30 AM Central — calls PHP `/cron/weekly-demand.php` |
 | `staging-db-sync` | Timer | Daily 2:30 AM Central — incremental prod → staging SQL sync |
+
+## PHP cron migration (Function App triggers)
+
+Timer functions call secured PHP endpoints on the App Service. The forecast math, sales rollup, and SQL work still run in PHP until those processes are ported to Node.
+
+| Function | PHP endpoint | Production URL setting | Staging URL setting |
+|----------|--------------|------------------------|---------------------|
+| `daily-sales-summary` | `/cron/daily-sales-summary.php` | `DAILY_SALES_CRON_URL_PRODUCTION` | `DAILY_SALES_CRON_URL_STAGING` |
+| `forecast-plan` | `/cron/weekly-demand.php` | `FORECAST_PLAN_CRON_URL_PRODUCTION` | `FORECAST_PLAN_CRON_URL_STAGING` |
+
+Set **both** URLs once, then choose the active site with one switch:
+
+| Setting | Values |
+|---------|--------|
+| `NUTRAAXIS_CRON_TARGET` | `production` (default) or `staging` |
+
+**Do not deploy the `functions/` folder to the PHP web server.** Publish only to the Function App with `func azure functionapp publish`. The web server keeps the `/cron/*.php` endpoints; the Function App keeps the schedulers.
+
+### Staging → production rollout (single Function App)
+
+1. Set both prod and staging cron URLs in Function App Configuration.
+2. Set `NUTRAAXIS_CRON_TARGET=staging` while testing.
+3. Publish function code (`func publish`) — no URL changes needed between deploys.
+4. Verify staging `ProcessExecutionLog` and target tables.
+5. Set `NUTRAAXIS_CRON_TARGET=production` and restart the Function App.
+6. Disable the matching WebJob on production after the Function timer is confirmed.
+
+Keep staging App Service WebJobs disabled so production crons are not triggered twice.
 
 ## Staging database sync
 
@@ -41,6 +70,7 @@ Each scheduled function reads its cron expression from an app setting. Defaults 
 
 | Function | App setting | Default | Meaning |
 |----------|-------------|---------|---------|
+| `daily-sales-summary` | `DAILY_SALES_SCHEDULE` | `0 0 2 * * *` | Daily 2:00 AM Central |
 | `forecast-plan` | `FORECAST_PLAN_SCHEDULE` | `0 30 1 * * 0` | Sunday 1:30 AM Central |
 | `staging-db-sync` | `STAGING_SYNC_SCHEDULE` | `0 30 2 * * *` | Daily 2:30 AM Central |
 
@@ -93,10 +123,15 @@ func azure functionapp publish nutra-forecast-tool
 | Name | Value |
 |------|--------|
 | `WEBSITE_TIME_ZONE` | `America/Chicago` |
-| `NUTRAAXIS_CRON_URL` | `https://nutraaxisweb.azurewebsites.net/cron/weekly-demand.php` |
+| `NUTRAAXIS_CRON_TARGET` | `production` or `staging` |
 | `CRON_SECRET` | Same as PHP App Service |
-| `FORECAST_PLAN_SCHEDULE` | `0 30 1 * * 0` (optional — Sunday 1:30 AM) |
-| `STAGING_SYNC_SCHEDULE` | `0 30 2 * * *` (optional — daily 2:30 AM) |
+| `DAILY_SALES_CRON_URL_PRODUCTION` | `https://nutraaxisweb.azurewebsites.net/cron/daily-sales-summary.php` |
+| `DAILY_SALES_CRON_URL_STAGING` | `https://nutraaxisweb-staging.azurewebsites.net/cron/daily-sales-summary.php` |
+| `DAILY_SALES_SCHEDULE` | `0 0 2 * * *` |
+| `FORECAST_PLAN_CRON_URL_PRODUCTION` | `https://nutraaxisweb.azurewebsites.net/cron/weekly-demand.php` |
+| `FORECAST_PLAN_CRON_URL_STAGING` | `https://nutraaxisweb-staging.azurewebsites.net/cron/weekly-demand.php` |
+| `FORECAST_PLAN_SCHEDULE` | `0 30 1 * * 0` |
+| `STAGING_SYNC_SCHEDULE` | `0 30 2 * * *` |
 | `DB_SERVER` | `nutraaxisdb01.database.windows.net` |
 | `DB_PORT` | `1433` |
 | `DB_USER` | SQL login |
@@ -106,6 +141,8 @@ func azure functionapp publish nutra-forecast-tool
 | `STAGING_SYNC_OVERLAP_MINUTES` | `5` (optional) |
 | `STAGING_SYNC_BATCH_SIZE` | `100` (optional) |
 | `AzureWebJobsStorage` | (set at provision time) |
+
+**Remove legacy settings** after adding the new ones: `NUTRAAXIS_CRON_URL`, `DAILY_SALES_CRON_URL`, `FORECAST_PLAN_CRON_URL`.
 
 ## PHP App Service settings (for `/function-test/`)
 
