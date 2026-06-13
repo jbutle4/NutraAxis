@@ -135,7 +135,7 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Background job platform',
-            'body'  => 'Scheduled jobs run on Azure Function App Nutra-forecast-tool (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Legacy /cron/*.php endpoints return HTTP 410 Gone.',
+            'body'  => 'Scheduled jobs run on Azure Function App Nutra-forecast-tool (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
         ],
         [
             'title' => 'Manual execution',

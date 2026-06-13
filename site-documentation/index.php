@@ -89,7 +89,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Scheduled background processes</h2>
-        <p>Scheduled jobs run on Azure Function App <strong>Nutra-forecast-tool</strong> (timer triggers and Service Bus). All runs are logged to <code>ProcessExecutionLog</code>. Legacy <code>/cron/*.php</code> endpoints are retired.</p>
+        <p>Scheduled jobs run on Azure Function App <strong>Nutra-forecast-tool</strong> (timer triggers and Service Bus). All runs are logged to <code>ProcessExecutionLog</code>. WebJobs are retired under <code>App_Data/Disabled_jobs/</code>.</p>
 
         <div class="admin-table-wrap">
           <table class="admin-table site-doc-table">
