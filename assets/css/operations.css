@@ -1121,17 +1121,20 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   gap: 6px;
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .admin-table-sort-link:hover,
 .admin-table-sort-link.is-active {
   color: var(--teal-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .admin-table-sort-indicator {
   font-size: 0.68rem;
   line-height: 1;
-  opacity: 0.55;
+  opacity: 0.75;
 }
 
 .admin-table-sort-link.is-active .admin-table-sort-indicator {
