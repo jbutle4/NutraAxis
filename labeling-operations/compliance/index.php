@@ -1,0 +1,88 @@
+<?php
+require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/labeling.php';
+
+label_require_read();
+
+$activeSlug = 'labeling-operations';
+$activeLabelSection = 'compliance';
+$subjectFilter = $_GET['subject'] ?? '';
+$reviews = label_list_compliance_reviews($subjectFilter !== '' ? $subjectFilter : null);
+$notice = $_GET['notice'] ?? null;
+
+$pageTitle = label_page_title('Label Compliance Review');
+$pageDescription = 'Log approvals and review activity for batch printing and label order production.';
+
+require dirname(__DIR__, 2) . '/includes/head.php';
+require dirname(__DIR__, 2) . '/includes/header.php';
+?>
+  <main class="page-main">
+    <div class="container page-inner">
+      <a class="breadcrumb" href="/labeling-operations/">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        Back to <?= htmlspecialchars(label_module_title()) ?>
+      </a>
+
+      <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
+
+      <div class="admin-header">
+        <div>
+          <div class="section-label">Label Compliance Review</div>
+          <h1>Approvals &amp; Review Log</h1>
+          <p class="page-lead">Track compliance review outcomes for batch print orders, label order runs, white label production orders, and label templates.</p>
+        </div>
+        <?php if (label_can_create()): ?>
+        <a class="btn-primary" href="/labeling-operations/compliance/new.php">Log Review</a>
+        <?php endif; ?>
+      </div>
+
+      <?php if ($notice === 'created'): ?>
+      <div class="admin-notice is-success" role="status">Compliance review logged successfully.</div>
+      <?php endif; ?>
+
+      <form class="po-filter" method="get" action="/labeling-operations/compliance/">
+        <label for="subject">Review subject</label>
+        <select class="form-input" id="subject" name="subject" onchange="this.form.submit()">
+          <option value="">All subjects</option>
+          <?php foreach (LABEL_REVIEW_SUBJECTS as $key => $label): ?>
+          <option value="<?= htmlspecialchars($key) ?>" <?= $subjectFilter === $key ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </form>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Subject</th>
+              <th>Record ID</th>
+              <th>Status</th>
+              <th>Reviewer</th>
+              <th>Comments</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if ($reviews === []): ?>
+            <tr><td colspan="6">No compliance reviews logged yet.</td></tr>
+            <?php else: ?>
+            <?php foreach ($reviews as $review): ?>
+            <tr>
+              <td><?= htmlspecialchars(label_format_datetime($review['ReviewDate'])) ?></td>
+              <td><?= htmlspecialchars(label_review_subject_label($review['ReviewSubject'])) ?></td>
+              <td><?= (int) $review['SubjectID'] ?></td>
+              <td><?= htmlspecialchars($review['ReviewStatus']) ?></td>
+              <td><?= htmlspecialchars($review['ReviewerName']) ?></td>
+              <td><?= htmlspecialchars($review['Comments'] ?? '—') ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+<?php
+require dirname(__DIR__, 2) . '/includes/footer.php';

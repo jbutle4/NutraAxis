@@ -1,0 +1,25 @@
+{
+  "name": "nutraaxis-operations",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NutraAxis Operations site",
+  "scripts": {
+    "upload": "node scripts/ftp-upload.js",
+    "jazz-snapshot": "php scripts/jazz-inventory-snapshot.php",
+    "daily-sales-summary": "php scripts/daily-sales-summary.php",
+    "monthly-sales-summary": "php scripts/monthly-sales-summary.php",
+    "forecast-plan": "php scripts/inventory-plan.php",
+    "inventory-plan": "php scripts/inventory-plan.php",
+    "test-ftp": "node scripts/test-extension-connect.js",
+    "po-template": "node scripts/generate-po-template.js",
+    "test-smtp": "php scripts/test-smtp.php",
+    "item-master-comparison": "php scripts/item-master-comparison.php && node scripts/item-master-comparison-xlsx.js",
+    "import-po-production-status": "php scripts/import-po-production-status.php",
+    "export-sku-master": "node scripts/export-sku-master-xlsx.js"
+  },
+  "devDependencies": {
+    "ftp": "^0.3.10",
+    "mssql": "^11.0.1",
+    "xlsx": "^0.18.5"
+  }
+}
