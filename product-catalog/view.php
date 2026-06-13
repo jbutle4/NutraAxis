@@ -101,6 +101,8 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>GTIN-14</dt><dd><?= htmlspecialchars($sku['GTIN14'] ?? '—') ?></dd></div>
             <div><dt>UPC (GTIN-12)</dt><dd><?= htmlspecialchars($sku['UPC'] ?? '—') ?></dd></div>
             <div><dt>SKU case barcode</dt><dd><?= htmlspecialchars($sku['SKUCaseBarcode'] ?? '—') ?></dd></div>
+            <div><dt>Product each weight</dt><dd><?= htmlspecialchars(catalog_format_weight($sku['ProductEachWeightLbs'] ?? null)) ?></dd></div>
+            <div><dt>Product case weight</dt><dd><?= htmlspecialchars(catalog_format_weight($sku['ProductCaseWeightLbs'] ?? null)) ?></dd></div>
             <div><dt>Supplement facts panel</dt><dd><?= htmlspecialchars($sku['SupplementFactsPanel'] ?? '—') ?></dd></div>
             <div><dt>Non-GMO certified</dt><dd><?= !empty($sku['NonGMOCertified']) ? 'Yes' : 'No' ?></dd></div>
             <div><dt>Allergen statement</dt><dd><?= htmlspecialchars(catalog_format_allergens($sku['AllergenStatement'] ?? null)) ?></dd></div>
