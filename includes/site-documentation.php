@@ -139,7 +139,7 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Manual execution',
-            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Reruns call Azure Function App process-execute (requires NUTRA_FUNCTIONS_BASE_URL and NUTRA_FUNCTIONS_KEY on this App Service). Developers can also use npm scripts under functions/ or POST to /api/process-execute on the Function App.',
+            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Reruns call Azure Function App process-execute (requires NUTRA_FUNCTIONS_BASE_URL and NUTRA_FUNCTIONS_KEY on this App Service). Function App source and scheduled job logic live in the separate nutraaxis-azure repository; developers can POST to /api/process-execute on the Function App or run jobs from that repo locally.',
         ],
     ];
 }
