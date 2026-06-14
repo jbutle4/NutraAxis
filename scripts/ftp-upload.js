@@ -17,6 +17,7 @@ const IGNORE_DIRS = new Set([
   'scripts',
   'sql',
   'docs',
+  'functions', // Azure Function App — deployed separately, not to PHP wwwroot
   'Archive Sites',
   'nutraaxis_test',
 ]);
