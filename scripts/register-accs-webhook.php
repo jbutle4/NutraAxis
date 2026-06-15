@@ -9,7 +9,7 @@
  * This script:
  *   1. Prints the exact endpoint URL and settings to use in the Console
  *   2. Verifies the Function App endpoint is reachable (GET challenge test)
- *   3. Confirms the ACCS_WEBHOOK_SECRET env var is set in the Function App
+ *   3. Confirms the ADOBE_COMMERCE_WEBHOOK_SECRET env var is set in the Function App
  *
  * ── MANUAL REGISTRATION STEPS ──────────────────────────────────────────────
  *
@@ -22,7 +22,7 @@
  *   6. Choose "Webhook" as the delivery method
  *   7. Enter the webhook URL (printed below)
  *   8. Adobe will do a GET challenge — the Function App handles it automatically
- *   9. Copy the "Webhook secret" Adobe generates → set ACCS_WEBHOOK_SECRET in
+ *   9. Copy the "Webhook secret" Adobe generates → set ADOBE_COMMERCE_WEBHOOK_SECRET in
  *      Azure App Settings (same key must be set in Function App)
  *
  * Run this script after completing the above to verify connectivity.
@@ -34,7 +34,7 @@
 require_once __DIR__ . '/../includes/env.php';
 
 $functionAppUrl  = rtrim((string) env('AZURE_FUNCTION_APP_URL', 'https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net'), '/');
-$webhookSecret   = (string) env('ACCS_WEBHOOK_SECRET', '');
+$webhookSecret   = (string) env('ADOBE_COMMERCE_WEBHOOK_SECRET', '');
 $endpointUrl     = $functionAppUrl . '/api/accs-order-webhook';
 
 echo "\n";
@@ -87,14 +87,14 @@ echo "\n";
 echo str_repeat('-', 70) . "\n";
 echo "Azure Function App settings check...\n\n";
 
-// Check ACCS_WEBHOOK_SECRET in local .env (a proxy for whether it's configured)
+// Check ADOBE_COMMERCE_WEBHOOK_SECRET in local .env (a proxy for whether it's configured)
 if ($webhookSecret !== '') {
-    echo "  [OK]  ACCS_WEBHOOK_SECRET is set in your local .env.\n";
+    echo "  [OK]  ADOBE_COMMERCE_WEBHOOK_SECRET is set in your local .env.\n";
     echo "        Make sure the same value is set in Azure App Settings.\n";
 } else {
-    echo "  [WARN] ACCS_WEBHOOK_SECRET is not set in your local .env.\n";
+    echo "  [WARN] ADOBE_COMMERCE_WEBHOOK_SECRET is not set in your local .env.\n";
     echo "         Add it after getting the secret from Adobe Developer Console:\n";
-    echo "         ACCS_WEBHOOK_SECRET=your-secret-here\n";
+    echo "         ADOBE_COMMERCE_WEBHOOK_SECRET=your-secret-here\n";
     echo "         Also set it in Azure App Settings for the Function App.\n";
 }
 
