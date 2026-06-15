@@ -6,6 +6,8 @@ require_once __DIR__ . '/permissions.php';
 const ROLE_PERMISSION_FIELDS = [
     'POManagement'         => 'PO Management',
     'POApproval'           => 'PO Approval',
+    'TEManagement'         => 'Travel & Expense',
+    'TEApproval'           => 'T&E Approval',
     'InventoryReporting'   => 'Jazz Current Inventory',
     'SalesReporting'       => 'Sales Reporting',
     'InventoryForecasting' => 'Inventory Forecasting',
@@ -97,7 +99,9 @@ function admin_get_user(int $userId): ?array
             u.ModifiedDate,
             u.LastLoginDate,
             u.LastPasswordReset,
-            u.IsPOApprover
+            u.IsPOApprover,
+            u.IsTEApprover,
+            u.IsPOProcessor
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserID = :id
@@ -151,6 +155,8 @@ function admin_save_user(array $input, ?int $userId = null): array
     $password = (string) ($input['user_password'] ?? '');
     $roleId = (int) ($input['user_assigned_role'] ?? 0);
     $isPoApprover = !empty($input['is_po_approver']);
+    $isTeApprover = !empty($input['is_te_approver']);
+    $isPoProcessor = !empty($input['is_po_processor']);
     $actorId = auth_user()['UserID'] ?? null;
 
     if ($userName === '' || $userLogin === '' || $roleId <= 0) {
@@ -176,12 +182,14 @@ function admin_save_user(array $input, ?int $userId = null): array
     if ($userId === null) {
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.[User] (
-                UserName, UserLogin, UserPassword, UserAssignedRole, IsPOApprover,
+                UserName, UserLogin, UserPassword, UserAssignedRole,
+                IsPOApprover, IsTEApprover, IsPOProcessor,
                 CreateDate, ModifiedDate, LastPasswordReset, Modifiedbyuser
             )
             OUTPUT INSERTED.UserID AS inserted_id
             VALUES (
-                :name, :login, :password, :role, :is_po_approver,
+                :name, :login, :password, :role,
+                :is_po_approver, :is_te_approver, :is_po_processor,
                 SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), :modified_by
             )
         SQL);
@@ -191,6 +199,8 @@ function admin_save_user(array $input, ?int $userId = null): array
             'password'        => $password,
             'role'            => $roleId,
             'is_po_approver'  => $isPoApprover ? 1 : 0,
+            'is_te_approver'  => $isTeApprover ? 1 : 0,
+            'is_po_processor' => $isPoProcessor ? 1 : 0,
             'modified_by'     => $actorId,
         ]);
 
@@ -215,6 +225,8 @@ function admin_save_user(array $input, ?int $userId = null): array
         'login'           => $userLogin,
         'role'            => $roleId,
         'is_po_approver'  => $isPoApprover ? 1 : 0,
+        'is_te_approver'  => $isTeApprover ? 1 : 0,
+        'is_po_processor' => $isPoProcessor ? 1 : 0,
         'actor'           => $actorId,
         'id'              => $userId,
     ];
@@ -227,6 +239,8 @@ function admin_save_user(array $input, ?int $userId = null): array
                 UserPassword = :password,
                 UserAssignedRole = :role,
                 IsPOApprover = :is_po_approver,
+                IsTEApprover = :is_te_approver,
+                IsPOProcessor = :is_po_processor,
                 ModifiedDate = SYSUTCDATETIME(),
                 LastPasswordReset = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
@@ -240,6 +254,8 @@ function admin_save_user(array $input, ?int $userId = null): array
                 UserLogin = :login,
                 UserAssignedRole = :role,
                 IsPOApprover = :is_po_approver,
+                IsTEApprover = :is_te_approver,
+                IsPOProcessor = :is_po_processor,
                 ModifiedDate = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
             WHERE UserID = :id
@@ -330,14 +346,16 @@ function admin_save_role(array $input, ?int $roleId = null): array
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.Role (
                 RoleName, RoleDesc, RoleCreateDate, ModifiedbyUser,
-                POManagement, POApproval, InventoryReporting, SalesReporting, InventoryForecasting,
+                POManagement, POApproval, TEManagement, TEApproval,
+                InventoryReporting, SalesReporting, InventoryForecasting,
                 LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, Support, Accounting,
                 UserAdmin, RoleAdmin
             )
             OUTPUT INSERTED.RoleID AS inserted_id
             VALUES (
                 :name, :desc, SYSUTCDATETIME(), :modified_by,
-                :po, :po_approval, :inv_rep, :sales_rep, :inv_forecast,
+                :po, :po_approval, :te_mgmt, :te_approval,
+                :inv_rep, :sales_rep, :inv_forecast,
                 :labeling, :dashboard, :legal, :catalog, :links, :support, :accounting,
                 :user_admin, :role_admin
             )
@@ -348,6 +366,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'modified_by'   => $actorId,
             'po'            => $permissions['POManagement'],
             'po_approval'   => $permissions['POApproval'],
+            'te_mgmt'       => $permissions['TEManagement'],
+            'te_approval'   => $permissions['TEApproval'],
             'inv_rep'       => $permissions['InventoryReporting'],
             'sales_rep'     => $permissions['SalesReporting'],
             'inv_forecast'  => $permissions['InventoryForecasting'],
@@ -385,6 +405,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
             ModifiedbyUser = :actor,
             POManagement = :po,
             POApproval = :po_approval,
+            TEManagement = :te_mgmt,
+            TEApproval = :te_approval,
             InventoryReporting = :inv_rep,
             SalesReporting = :sales_rep,
             InventoryForecasting = :inv_forecast,

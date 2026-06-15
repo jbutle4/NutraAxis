@@ -10,6 +10,8 @@ $pageDescription = 'View your NutraAxis Operations account and role permissions.
 $permissionRows = [
     ['PO Management', auth_permission_value('POManagement')],
     ['PO Approval', auth_permission_value('POApproval')],
+    ['Travel & Expense', auth_permission_value('TEManagement')],
+    ['T&E Approval', auth_permission_value('TEApproval')],
     ['Jazz Current Inventory', auth_permission_value('InventoryReporting')],
     ['Sales Reporting', auth_permission_value('SalesReporting')],
     ['Inventory Forecasting', auth_permission_value('InventoryForecasting')],

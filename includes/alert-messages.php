@@ -8,6 +8,9 @@ const ALERT_NAME_PO_APPROVAL_REQUEST = 'po-approval-request';
 const ALERT_NAME_PO_APPROVAL_NOTICE = 'po-approval-notice';
 const ALERT_NAME_PO_STATUS_UPDATE = 'po-status-update';
 const ALERT_NAME_PO_VIEWED_BY_APPROVER = 'po-viewed-by-approver';
+const ALERT_NAME_TE_APPROVAL_REQUEST = 'te-approval-request';
+const ALERT_NAME_TE_STATUS_UPDATE = 'te-status-update';
+const ALERT_NAME_TE_VIEWED_BY_APPROVER = 'te-viewed-by-approver';
 
 const ALERT_ADDRESS_TYPES = ['TO', 'CC'];
 

@@ -32,6 +32,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'po-receiving'           => 'POManagement',
     'jazz-asns'              => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
+    'travel-expense'         => 'TEManagement',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -70,6 +71,8 @@ function auth_permissions_from_role_row(array $row): array
         'UserAdmin'            => $row['UserAdmin'],
         'RoleAdmin'            => $row['RoleAdmin'],
         'POApproval'           => $row['POApproval'],
+        'TEManagement'         => $row['TEManagement'] ?? null,
+        'TEApproval'           => $row['TEApproval'] ?? null,
     ];
 }
 
@@ -99,7 +102,9 @@ function auth_refresh_permissions(): void
                 Accounting,
                 UserAdmin,
                 RoleAdmin,
-                POApproval
+                POApproval,
+                TEManagement,
+                TEApproval
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -222,6 +227,12 @@ function auth_can_read_leaf_module(string $slug): bool
         require_once __DIR__ . '/po.php';
 
         return po_can_access_po_pages();
+    }
+
+    if ($slug === 'travel-expense') {
+        require_once __DIR__ . '/te.php';
+
+        return te_can_access_pages();
     }
 
     $column = MODULE_PERMISSION_COLUMNS[$slug] ?? null;
@@ -476,7 +487,9 @@ function auth_attempt_login(string $login, string $password): array
             r.Accounting,
             r.UserAdmin,
             r.RoleAdmin,
-            r.POApproval
+            r.POApproval,
+            r.TEManagement,
+            r.TEApproval
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

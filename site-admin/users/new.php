@@ -12,6 +12,8 @@ $form = [
     'user_password'      => '',
     'user_assigned_role' => '',
     'is_po_approver'     => '',
+    'is_te_approver'     => '',
+    'is_po_processor'    => '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -21,6 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'user_password'      => $_POST['user_password'] ?? '',
         'user_assigned_role' => $_POST['user_assigned_role'] ?? '',
         'is_po_approver'     => $_POST['is_po_approver'] ?? '',
+        'is_te_approver'     => $_POST['is_te_approver'] ?? '',
+        'is_po_processor'    => $_POST['is_po_processor'] ?? '',
     ];
 
     $result = admin_save_user($form);
@@ -91,6 +95,22 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             PO approver (can approve via email links)
           </label>
           <p class="form-hint">Designated approvers receive action links when a PO is submitted. CC subscribers receive notification only.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_te_approver" value="1" <?= !empty($form['is_te_approver']) ? 'checked' : '' ?> />
+            T&amp;E approver (can approve expense reports via email links)
+          </label>
+          <p class="form-hint">Designated T&amp;E approvers receive action links when an expense report is submitted.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="is_po_processor" value="1" <?= !empty($form['is_po_processor']) ? 'checked' : '' ?> />
+            PO processor (receives approved T&amp;E reports for payroll processing)
+          </label>
+          <p class="form-hint">Processors receive approved expense reports with receipt PDFs and a summary attachment.</p>
         </div>
 
         <div class="module-actions">

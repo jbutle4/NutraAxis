@@ -549,3 +549,200 @@ function mail_encode_subject(string $subject): string
 {
     return '=?UTF-8?B?' . base64_encode($subject) . '?=';
 }
+
+function mail_send_multi_attachments_result(
+    array $toRecipients,
+    array $ccRecipients,
+    string $subject,
+    string $body,
+    ?string $htmlBody = null,
+    array $attachments = []
+): array {
+    $toRecipients = mail_normalize_recipient_map($toRecipients);
+    $ccRecipients = mail_normalize_recipient_map($ccRecipients);
+
+    if ($toRecipients === [] && $ccRecipients === []) {
+        return ['ok' => false, 'error' => 'No recipients specified.'];
+    }
+
+    $from = trim((string) env('SMTP_FROM', env('SMTP_USER', 'noreply@nutraaxis.com')));
+    $fromName = trim((string) env('SMTP_FROM_NAME', 'NutraAxis Operations'));
+
+    if (!mail_smtp_is_configured()) {
+        return ['ok' => false, 'error' => 'SMTP is not configured.'];
+    }
+
+    return mail_send_smtp_multi_attachments($toRecipients, $ccRecipients, $subject, $body, $from, $fromName, $htmlBody, $attachments);
+}
+
+function mail_send_smtp_multi_attachments(
+    array $toRecipients,
+    array $ccRecipients,
+    string $subject,
+    string $body,
+    string $from,
+    string $fromName,
+    ?string $htmlBody,
+    array $attachments
+): array {
+    $allRecipients = array_keys($toRecipients + $ccRecipients);
+    if ($allRecipients === []) {
+        return ['ok' => false, 'error' => 'No recipients specified.'];
+    }
+
+    $host = trim((string) env('SMTP_HOST', ''));
+    $port = (int) env('SMTP_PORT', '587');
+    $user = trim((string) env('SMTP_USER', ''));
+    $pass = (string) env('SMTP_PASS', '');
+    $encryption = strtolower(trim((string) env('SMTP_ENCRYPTION', 'tls')));
+
+    if ($host === '' || $user === '' || $pass === '') {
+        return ['ok' => false, 'error' => 'SMTP credentials are incomplete.'];
+    }
+
+    if (strcasecmp($from, $user) !== 0) {
+        $from = $user;
+    }
+
+    $remote = $encryption === 'ssl' ? "ssl://{$host}:{$port}" : "tcp://{$host}:{$port}";
+    $socket = @stream_socket_client(
+        $remote,
+        $errno,
+        $errstr,
+        20,
+        STREAM_CLIENT_CONNECT,
+        stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]])
+    );
+
+    if ($socket === false) {
+        return ['ok' => false, 'error' => "SMTP connect failed to {$remote}: {$errstr} ({$errno})"];
+    }
+
+    stream_set_timeout($socket, 20);
+
+    try {
+        mail_smtp_expect($socket, [220]);
+        $clientHost = mail_smtp_client_host();
+        mail_smtp_command($socket, "EHLO {$clientHost}");
+        mail_smtp_expect($socket, [250]);
+
+        if ($encryption === 'tls') {
+            mail_smtp_command($socket, 'STARTTLS');
+            mail_smtp_expect($socket, [220]);
+            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                throw new RuntimeException('SMTP STARTTLS negotiation failed.');
+            }
+            mail_smtp_command($socket, "EHLO {$clientHost}");
+            mail_smtp_expect($socket, [250]);
+        }
+
+        mail_smtp_command($socket, 'AUTH LOGIN');
+        mail_smtp_expect($socket, [334]);
+        mail_smtp_command($socket, base64_encode($user));
+        mail_smtp_expect($socket, [334]);
+        mail_smtp_command($socket, base64_encode($pass));
+        mail_smtp_expect($socket, [235]);
+
+        mail_smtp_command($socket, 'MAIL FROM:<' . mail_smtp_envelope_address($from) . '>');
+        mail_smtp_expect($socket, [250]);
+
+        foreach ($allRecipients as $recipient) {
+            mail_smtp_command($socket, 'RCPT TO:<' . mail_smtp_envelope_address($recipient) . '>');
+            mail_smtp_expect($socket, [250, 251]);
+        }
+
+        mail_smtp_command($socket, 'DATA');
+        mail_smtp_expect($socket, [354]);
+
+        $message = mail_build_message_multi_with_attachments(
+            $toRecipients,
+            $ccRecipients,
+            $subject,
+            $body,
+            $from,
+            $fromName,
+            $htmlBody,
+            $attachments
+        );
+        fwrite($socket, $message);
+        mail_smtp_command($socket, '.');
+        $dataResponse = mail_smtp_read($socket);
+        $dataCode = (int) substr(trim($dataResponse), 0, 3);
+        if ($dataCode !== 250) {
+            throw new RuntimeException(trim($dataResponse));
+        }
+
+        mail_smtp_command($socket, 'QUIT');
+        mail_smtp_read($socket);
+
+        return ['ok' => true, 'error' => null, 'smtp_response' => trim($dataResponse)];
+    } catch (Throwable $e) {
+        return ['ok' => false, 'error' => trim($e->getMessage()) !== '' ? trim($e->getMessage()) : 'SMTP send failed.'];
+    } finally {
+        fclose($socket);
+    }
+}
+
+function mail_build_message_multi_with_attachments(
+    array $toRecipients,
+    array $ccRecipients,
+    string $subject,
+    string $body,
+    string $from,
+    string $fromName,
+    ?string $htmlBody,
+    array $attachments
+): string {
+    $mixedBoundary = mail_mime_boundary();
+    $headers = [
+        'Date: ' . gmdate('D, d M Y H:i:s') . ' +0000',
+        'To: ' . mail_format_recipient_list($toRecipients),
+        'From: ' . mail_format_address($from, $fromName),
+        'Reply-To: ' . mail_reply_to_address(),
+        'Subject: ' . mail_encode_subject($subject),
+        'MIME-Version: 1.0',
+        'X-Mailer: NutraAxis-Operations',
+        'Content-Type: multipart/mixed; boundary="' . $mixedBoundary . '"',
+    ];
+
+    if ($ccRecipients !== []) {
+        $headers[] = 'Cc: ' . mail_format_recipient_list($ccRecipients);
+    }
+
+    $parts = ['--' . $mixedBoundary];
+
+    if ($htmlBody !== null && trim($htmlBody) !== '') {
+        $altBoundary = mail_mime_boundary();
+        $parts[] = 'Content-Type: multipart/alternative; boundary="' . $altBoundary . '"';
+        $parts[] = '';
+        $parts[] = mail_build_multipart_alternative($body, $htmlBody, $altBoundary);
+    } else {
+        $parts[] = 'Content-Type: text/plain; charset=UTF-8';
+        $parts[] = 'Content-Transfer-Encoding: 8bit';
+        $parts[] = '';
+        $parts[] = mail_normalize_message_body($body);
+    }
+
+    foreach ($attachments as $attachment) {
+        if (!is_array($attachment)) {
+            continue;
+        }
+        $filename = (string) ($attachment['filename'] ?? 'attachment.bin');
+        $content = (string) ($attachment['content'] ?? '');
+        if ($content === '') {
+            continue;
+        }
+        $contentType = (string) ($attachment['content_type'] ?? 'application/octet-stream');
+        $parts[] = '--' . $mixedBoundary;
+        $parts[] = 'Content-Type: ' . $contentType . '; name="' . str_replace('"', '', $filename) . '"';
+        $parts[] = 'Content-Transfer-Encoding: base64';
+        $parts[] = 'Content-Disposition: attachment; filename="' . str_replace('"', '', $filename) . '"';
+        $parts[] = '';
+        $parts[] = chunk_split(base64_encode($content));
+    }
+
+    $parts[] = '--' . $mixedBoundary . '--';
+    $parts[] = '';
+
+    return implode("\r\n", $headers) . "\r\n\r\n" . str_replace("\n", "\r\n", implode("\n", $parts)) . "\r\n";
+}
