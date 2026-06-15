@@ -2051,3 +2051,79 @@ body.po-print-page {
     margin-top: 16px;
   }
 }
+
+/* Travel & Expense print (mirrors PO print layout) */
+body.te-print-page {
+  display: block;
+  background: #fff;
+}
+
+.te-print-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-light);
+}
+
+.te-print-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+.te-print-company {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin: 0 0 4px;
+}
+
+.te-expense-table-wrap {
+  overflow-x: auto;
+}
+
+.te-expense-table .te-line-input {
+  min-width: 72px;
+  font-size: 0.82rem;
+  padding: 6px 8px;
+}
+
+.te-report-form .form-static {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media print {
+  .te-print-toolbar {
+    display: none !important;
+  }
+
+  body.te-print-page {
+    background: #fff;
+  }
+
+  .te-print-shell {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .te-print-header,
+  .te-print-parties {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .te-print-header {
+    display: block;
+  }
+
+  .te-print-meta {
+    margin-top: 16px;
+  }
+}

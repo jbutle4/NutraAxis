@@ -172,6 +172,13 @@ $appFunctions = [
         'icon'  => 'dashboard',
     ],
     [
+        'slug'  => 'travel-expense',
+        'title' => 'Travel & Expense',
+        'desc'  => 'Submit expense reports, attach receipt PDFs, and route reimbursements through approval.',
+        'href'  => '/travel-expense/',
+        'icon'  => 'document',
+    ],
+    [
         'slug'  => 'system-performance-dashboard',
         'title' => 'System Performance Dashboard',
         'desc'  => 'IT system monitoring, Geckoboard dashboards, and Zendesk totals — coming soon.',
@@ -250,6 +257,17 @@ $modulePages = [
             ['title' => 'Approval Workflow', 'desc' => 'Route orders through review and sign-off before they are sent to vendors.'],
             ['title' => 'Receipt Tracking', 'desc' => 'Match incoming shipments to open PO lines and flag partial or overdue deliveries.'],
             ['title' => 'Supplier History', 'desc' => 'Review past orders, lead times, and fulfillment performance by supplier.'],
+        ],
+    ],
+    'travel-expense' => [
+        'label'       => 'Finance',
+        'headline'    => 'Travel & Expense',
+        'lead'        => 'Employees submit NFC-style expense reports with line items, mileage, entertainment, and miscellaneous reimbursements.',
+        'capabilities' => [
+            ['title' => 'Expense Reports', 'desc' => 'Create and edit draft reports with category expense lines and itemized mileage.'],
+            ['title' => 'Receipt PDFs', 'desc' => 'Attach receipt PDFs before submitting for manager approval.'],
+            ['title' => 'Approval Workflow', 'desc' => 'Designated T&E approvers review, approve, reject, or return reports for comment.'],
+            ['title' => 'Printable Summary', 'desc' => 'Generate a printable report for records and payroll processing.'],
         ],
     ],
     'accs-inventory-reporting' => [
