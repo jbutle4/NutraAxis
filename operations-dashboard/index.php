@@ -145,6 +145,12 @@ $dashboardSections = [
                 'icon'  => 'chart',
             ],
             [
+                'title' => 'ACCS Admin Prod',
+                'desc'  => 'Adobe Commerce as a Cloud Service admin for the production tenant.',
+                'href'  => 'https://na1.admin.commerce.adobe.com/VLuKe3eeTwf1D5oxmLBfcr',
+                'icon'  => 'dashboard',
+            ],
+            [
                 'title' => 'NA Test Site',
                 'desc'  => 'NutraAxis site index — HTML previews, concept pages, and test renders.',
                 'href'  => 'https://nutraaxisweb.azurewebsites.net/nutraaxis_test/',
