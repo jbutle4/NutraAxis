@@ -71,17 +71,13 @@ function env(string $key, ?string $default = null): ?string
             'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_ENCRYPTION',
             'ZENDESK_SUBDOMAIN', 'ZENDESK_EMAIL', 'ZENDESK_API_TOKEN',
             'QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_REDIRECT_URI', 'QBO_ENVIRONMENT',
-            'ADOBE_COMMERCE_CLIENT_ID', 'ADOBE_COMMERCE_CLIENT_SECRET', 'ADOBE_COMMERCE_ENVIRONMENT',
-            'ADOBE_COMMERCE_TENANT_ID', 'ADOBE_COMMERCE_STAGE', 'ADOBE_COMMERCE_DEV',
-            'ADOBE_COMMERCE_PRODUCTION', 'ADOBE_COMMERCE_ORG_ID',
-            'ADOBE_COMMERCE_API_HOST', 'ADOBE_COMMERCE_IMS_TOKEN_URL', 'ADOBE_COMMERCE_PAGE_SIZE',
-            'ADOBE_ACCS_CLIENT_ID', 'ADOBE_ACCS_CLIENT_SECRET', 'ADOBE_ACCS_ENVIRONMENT',
-            'ADOBE_ACCS_STAGE', 'ADOBE_ACCS_DEV', 'ADOBE_ACCS_PRODUCTION', 'ADOBE_ACCS_ORG_ID',
-            'ACCS_CLIENT_ID', 'ACCS_CLIENT_SECRET', 'ACCS_ENVIRONMENT', 'ACCS_TENANT_ID',
             'JAZZ_DOMAIN', 'JAZZ_USERNAME', 'JAZZ_PASSWORD', 'JAZZ_TENANT_CODE', 'JAZZ_BASE_URL', 'JAZZ_PAGE_SIZE',
             'CRON_SECRET',
             'PROCESS_ALERT_EMAIL',
         ];
+
+        require_once __DIR__ . '/adobe-commerce-settings.php';
+        $runtimeKeys = array_merge($runtimeKeys, ADOBE_COMMERCE_RUNTIME_ENV_KEYS);
 
         $runtimeVars = [];
         foreach ($runtimeKeys as $runtimeKey) {
