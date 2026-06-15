@@ -172,13 +172,6 @@ $appFunctions = [
         'icon'  => 'dashboard',
     ],
     [
-        'slug'  => 'travel-expense',
-        'title' => 'Travel & Expense',
-        'desc'  => 'Submit expense reports, attach receipt PDFs, and route reimbursements through approval.',
-        'href'  => '/travel-expense/',
-        'icon'  => 'document',
-    ],
-    [
         'slug'  => 'system-performance-dashboard',
         'title' => 'System Performance Dashboard',
         'desc'  => 'IT system monitoring, Geckoboard dashboards, and Zendesk totals — coming soon.',
