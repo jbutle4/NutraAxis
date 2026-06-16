@@ -31,6 +31,14 @@ function splitBatches(content) {
     .filter((batch) => batch.length > 0);
 }
 
+function envFirst(env, keys) {
+  for (const key of keys) {
+    const value = env[key];
+    if (value !== undefined && value !== '') return value;
+  }
+  return undefined;
+}
+
 async function main() {
   const file = process.argv[2];
   if (!file) {
@@ -38,12 +46,19 @@ async function main() {
     process.exit(1);
   }
 
-  const env = loadEnv(path.join(__dirname, '..', '.env'));
+  const env = {
+    ...loadEnv(path.join(__dirname, '..', '.env')),
+    ...Object.fromEntries(
+      ['DB_HOST', 'DB_SERVER', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD', 'DB_PORT']
+        .filter((key) => process.env[key])
+        .map((key) => [key, process.env[key]])
+    ),
+  };
   const config = {
-    server: env.DB_HOST,
+    server: envFirst(env, ['DB_HOST', 'DB_SERVER']),
     database: env.DB_NAME,
     user: env.DB_USER,
-    password: env.DB_PASS,
+    password: envFirst(env, ['DB_PASS', 'DB_PASSWORD']),
     port: Number(env.DB_PORT || 1433),
     options: {
       encrypt: true,
@@ -52,6 +67,11 @@ async function main() {
       requestTimeout: 60000,
     },
   };
+
+  if (!config.server || !config.database || !config.user || !config.password) {
+    console.error('Missing required DB credentials in .env');
+    process.exit(1);
+  }
 
   const sqlPath = path.resolve(file);
   const batches = splitBatches(fs.readFileSync(sqlPath, 'utf8'));

@@ -5,9 +5,26 @@ require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-attachments.php';
 require dirname(__DIR__) . '/includes/po-approval.php';
 
-po_require_approval_read();
-
 $poId = (int) ($_GET['id'] ?? 0);
+$rawToken = trim($_GET['token'] ?? '');
+$tokenContext = $rawToken !== '' ? po_approval_token_resolve($rawToken, $poId) : null;
+$prefillAction = trim($_GET['action'] ?? '');
+$isTokenAccess = $tokenContext !== null;
+
+if ($rawToken !== '' && $tokenContext === null) {
+    http_response_code(403);
+    $pageTitle = 'Invalid Approval Link';
+    require dirname(__DIR__) . '/includes/head.php';
+    require dirname(__DIR__) . '/includes/header.php';
+    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Approval link invalid or expired</h1><p class="page-lead">This link may have already been used or has expired. Sign in to review the purchase order from the approval queue.</p><div class="module-actions"><a class="btn-secondary" href="/login/">Sign in</a></div></div></div></main>';
+    require dirname(__DIR__) . '/includes/footer.php';
+    exit;
+}
+
+if (!$isTokenAccess) {
+    po_require_approval_read();
+}
+
 $order = po_get_order($poId);
 
 if ($order === null) {
@@ -25,8 +42,15 @@ $activePoSection = 'approvals';
 $lines = po_get_lines($poId);
 $attachments = po_list_attachments($poId);
 $approvalLog = po_list_approval_log($poId);
-$canAct = po_can_take_approval_action() && $order['POStatus'] === PO_STATUS_SUBMITTED;
 $error = $_GET['error'] ?? null;
+$notice = $_GET['notice'] ?? null;
+$canAct = $order['POStatus'] === PO_STATUS_SUBMITTED && (
+    ($isTokenAccess && $tokenContext['can_act'])
+    || (!$isTokenAccess && po_can_take_approval_action())
+);
+$approverLabel = $isTokenAccess
+    ? (string) ($tokenContext['user']['UserName'] ?? 'Approver')
+    : (string) (auth_user()['UserName'] ?? 'Approver');
 
 $pageTitle = 'Review ' . $order['PONumber'] . ' | PO Approval';
 $pageDescription = 'Review purchase order details and take approval action.';
@@ -36,12 +60,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
+      <?php if (!$isTokenAccess): ?>
       <a class="breadcrumb" href="/po-management/approvals.php">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
         Back to Approval Queue
       </a>
+      <?php endif; ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
 
@@ -52,20 +78,36 @@ require dirname(__DIR__) . '/includes/header.php';
           <p class="page-lead">
             <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
             · <?= htmlspecialchars($order['SupplierName']) ?>
+            <?php if ($isTokenAccess): ?>
+            · Acting as <?= htmlspecialchars($approverLabel) ?>
+            <?php endif; ?>
           </p>
         </div>
       </div>
+
+      <?php if ($notice === 'actioned'): ?>
+      <div class="admin-notice is-success" role="status">Your approval action was recorded successfully.</div>
+      <?php endif; ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
       <?php if ($canAct): ?>
+      <?php if ($prefillAction !== '' && isset(PO_APPROVAL_ACTIONS[$prefillAction])): ?>
+      <div class="admin-notice" role="status">
+        You opened the <strong><?= htmlspecialchars(PO_APPROVAL_ACTIONS[$prefillAction]['label']) ?></strong> link from email.
+        Confirm your choice below or choose a different action.
+      </div>
+      <?php endif; ?>
       <div class="account-card approval-actions-card">
         <h2>Approver actions</h2>
         <p class="account-card-lead">Choose an action for this purchase order. PO users will be notified by email.</p>
         <form class="admin-form" method="post" action="/po-management/approval-action.php">
           <input type="hidden" name="po_id" value="<?= $poId ?>" />
+          <?php if ($isTokenAccess): ?>
+          <input type="hidden" name="approval_token" value="<?= htmlspecialchars($rawToken) ?>" />
+          <?php endif; ?>
           <div class="form-group">
             <label for="comments">Comments</label>
             <textarea class="form-input" id="comments" name="comments" rows="4" placeholder="Required when sending back with comments."></textarea>
@@ -73,7 +115,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <div class="module-actions approval-action-buttons">
             <?php foreach (PO_APPROVAL_ACTIONS as $key => $action): ?>
             <button
-              class="<?= $key === 'approve' ? 'btn-primary' : ($key === 'cancel' ? 'btn-text btn-text-danger' : 'btn-secondary') ?>"
+              class="<?= $key === 'approve' ? 'btn-primary' : ($key === 'cancel' ? 'btn-text btn-text-danger' : 'btn-secondary') ?><?= $prefillAction === $key ? ' is-highlighted' : '' ?>"
               type="submit"
               name="action"
               value="<?= htmlspecialchars($key) ?>"

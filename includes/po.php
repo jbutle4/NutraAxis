@@ -16,7 +16,7 @@ const PO_STATUSES = [
     'Paid',
 ];
 
-const PO_EDITABLE_STATUSES = ['Created', 'Sent Back for Comment'];
+const PO_EDITABLE_STATUSES = ['Created', 'Sent Back for Comment', 'Rejected'];
 
 const PO_POST_APPROVAL_STATUSES = [
     'Approved',
@@ -61,6 +61,16 @@ function po_can_edit_order(array $order): bool
 function po_is_post_approval_edit(array $order): bool
 {
     return in_array($order['POStatus'] ?? '', PO_POST_APPROVAL_STATUSES, true);
+}
+
+function po_amounts_differ(float $a, float $b): bool
+{
+    return abs(round($a, 2) - round($b, 2)) > 0.001;
+}
+
+function po_requires_reapproval(array $order): bool
+{
+    return !empty($order['RequiresReapproval']);
 }
 
 const PO_MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
@@ -608,6 +618,7 @@ function po_save_order(array $input, ?int $poId = null): array
     $isInsert = $poId === null;
     $beforeOrder = null;
     $beforeLines = null;
+    $requiresReapproval = false;
 
     try {
         db_apply_sql_server_options($pdo);
@@ -669,6 +680,16 @@ function po_save_order(array $input, ?int $poId = null): array
             if (po_is_post_approval_edit($existing)) {
                 $status = $existing['POStatus'];
             }
+
+            $requiresReapproval = 0;
+            if (po_is_post_approval_edit($existing)) {
+                $approvedBaseline = isset($existing['ApprovedTotalDue'])
+                    ? (float) $existing['ApprovedTotalDue']
+                    : (float) $existing['TotalDue'];
+                $requiresReapproval = po_amounts_differ($totalDue, $approvedBaseline);
+            $requiresReapprovalFlag = $requiresReapproval ? 1 : 0;
+            }
+
             $stmt = $pdo->prepare(<<<SQL
                 UPDATE dbo.PurchaseOrder
                 SET PONumber = :number,
@@ -680,6 +701,7 @@ function po_save_order(array $input, ?int $poId = null): array
                     Subtotal = :subtotal,
                     ShippingHandling = :shipping,
                     TotalDue = :total_due,
+                    RequiresReapproval = :requires_reapproval,
                     BuyerName = :buyer_name,
                     BuyerAddress = :buyer_address,
                     BuyerContactName = :buyer_contact_name,
@@ -698,6 +720,7 @@ function po_save_order(array $input, ?int $poId = null): array
             $bind = po_save_bind_header($poNumber, $supplierId, $status, $orderDate, $expectedDate, $notes, $subtotal, $shipping, $totalDue, $header, $supplierAddress, $actorId);
             unset($bind['created_by']);
             $bind['id'] = $poId;
+            $bind['requires_reapproval'] = $requiresReapprovalFlag;
             $stmt->execute($bind);
 
             $pdo->prepare('DELETE FROM dbo.POLineItem WHERE POID = :id')->execute(['id' => $poId]);
@@ -717,7 +740,12 @@ function po_save_order(array $input, ?int $poId = null): array
         require_once __DIR__ . '/audit.php';
         audit_log_po_save($poId, $isInsert, $beforeOrder, $beforeLines);
 
-        return ['ok' => true, 'error' => null, 'id' => $poId];
+        return [
+            'ok'                   => true,
+            'error'                => null,
+            'id'                   => $poId,
+            'requires_reapproval'  => $requiresReapproval,
+        ];
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

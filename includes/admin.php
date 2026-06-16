@@ -96,7 +96,8 @@ function admin_get_user(int $userId): ?array
             u.CreateDate,
             u.ModifiedDate,
             u.LastLoginDate,
-            u.LastPasswordReset
+            u.LastPasswordReset,
+            u.IsPOApprover
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserID = :id
@@ -149,6 +150,7 @@ function admin_save_user(array $input, ?int $userId = null): array
     $userLogin = trim($input['user_login'] ?? '');
     $password = (string) ($input['user_password'] ?? '');
     $roleId = (int) ($input['user_assigned_role'] ?? 0);
+    $isPoApprover = !empty($input['is_po_approver']);
     $actorId = auth_user()['UserID'] ?? null;
 
     if ($userName === '' || $userLogin === '' || $roleId <= 0) {
@@ -174,21 +176,22 @@ function admin_save_user(array $input, ?int $userId = null): array
     if ($userId === null) {
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.[User] (
-                UserName, UserLogin, UserPassword, UserAssignedRole,
+                UserName, UserLogin, UserPassword, UserAssignedRole, IsPOApprover,
                 CreateDate, ModifiedDate, LastPasswordReset, Modifiedbyuser
             )
             OUTPUT INSERTED.UserID AS inserted_id
             VALUES (
-                :name, :login, :password, :role,
+                :name, :login, :password, :role, :is_po_approver,
                 SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), :modified_by
             )
         SQL);
         $stmt->execute([
-            'name'        => $userName,
-            'login'       => $userLogin,
-            'password'    => $password,
-            'role'        => $roleId,
-            'modified_by' => $actorId,
+            'name'            => $userName,
+            'login'           => $userLogin,
+            'password'        => $password,
+            'role'            => $roleId,
+            'is_po_approver'  => $isPoApprover ? 1 : 0,
+            'modified_by'     => $actorId,
         ]);
 
         $newId = db_fetch_inserted_int($stmt, 'inserted_id');
@@ -208,11 +211,12 @@ function admin_save_user(array $input, ?int $userId = null): array
     }
 
     $fields = [
-        'name'  => $userName,
-        'login' => $userLogin,
-        'role'  => $roleId,
-        'actor' => $actorId,
-        'id'    => $userId,
+        'name'            => $userName,
+        'login'           => $userLogin,
+        'role'            => $roleId,
+        'is_po_approver'  => $isPoApprover ? 1 : 0,
+        'actor'           => $actorId,
+        'id'              => $userId,
     ];
 
     if ($password !== '') {
@@ -222,6 +226,7 @@ function admin_save_user(array $input, ?int $userId = null): array
                 UserLogin = :login,
                 UserPassword = :password,
                 UserAssignedRole = :role,
+                IsPOApprover = :is_po_approver,
                 ModifiedDate = SYSUTCDATETIME(),
                 LastPasswordReset = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
@@ -234,6 +239,7 @@ function admin_save_user(array $input, ?int $userId = null): array
             SET UserName = :name,
                 UserLogin = :login,
                 UserAssignedRole = :role,
+                IsPOApprover = :is_po_approver,
                 ModifiedDate = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
             WHERE UserID = :id
