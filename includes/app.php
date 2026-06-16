@@ -252,6 +252,17 @@ $modulePages = [
             ['title' => 'Supplier History', 'desc' => 'Review past orders, lead times, and fulfillment performance by supplier.'],
         ],
     ],
+    'travel-expense' => [
+        'label'       => 'Finance',
+        'headline'    => 'Travel & Expense',
+        'lead'        => 'Employees submit NFC-style expense reports with line items, mileage, entertainment, and miscellaneous reimbursements.',
+        'capabilities' => [
+            ['title' => 'Expense Reports', 'desc' => 'Create and edit draft reports with category expense lines and itemized mileage.'],
+            ['title' => 'Receipt PDFs', 'desc' => 'Attach receipt PDFs before submitting for manager approval.'],
+            ['title' => 'Approval Workflow', 'desc' => 'Designated T&E approvers review, approve, reject, or return reports for comment.'],
+            ['title' => 'Printable Summary', 'desc' => 'Generate a printable report for records and payroll processing.'],
+        ],
+    ],
     'accs-inventory-reporting' => [
         'label'       => 'Inventory',
         'headline'    => 'ACCS Inventory Reporting',

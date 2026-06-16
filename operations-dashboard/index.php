@@ -71,6 +71,14 @@ $dashboardSections = [
                 'internal' => true,
             ],
             [
+                'title'    => 'Travel & Expense',
+                'desc'     => 'Submit expense reports with receipt PDFs and route reimbursements through T&E approval.',
+                'href'     => '/travel-expense/',
+                'icon'     => 'payment',
+                'internal' => true,
+                'module'   => 'travel-expense',
+            ],
+            [
                 'title'    => 'Site Documentation',
                 'desc'     => 'Support reference for all portal pages, modules, and scheduled background processes.',
                 'href'     => '/site-documentation/',
@@ -185,6 +193,9 @@ require dirname(__DIR__) . '/includes/header.php';
         <h2 class="operations-dashboard-section-title"><?= htmlspecialchars($section['title']) ?></h2>
         <div class="functions operations-dashboard-links">
           <?php foreach ($section['links'] as $link):
+              if (!empty($link['module']) && !auth_can_read_leaf_module((string) $link['module'])) {
+                  continue;
+              }
               $isInternal = !empty($link['internal']);
           ?>
           <a
