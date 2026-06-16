@@ -1,7 +1,6 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/process-runner.php';
 
 function site_documentation_require_read(): void
 {
@@ -66,44 +65,39 @@ function site_documentation_module_sections(): array
 
 function site_documentation_scheduled_processes(): array
 {
+    require_once __DIR__ . '/process-runner.php';
+
     $registry = process_registry();
 
     return [
         array_merge($registry['daily-sales-summary'], [
-            'schedule'    => 'Daily at 2:00 AM US Central',
-            'webjob'      => 'daily-sales-summary',
-            'writes_to'   => 'DailySalesSummary',
-            'notes'       => 'Summarizes the previous calendar day of ACCS sales by SKU. Optional backfill: ?date=YYYY-MM-DD',
-        ]),
-        array_merge($registry['jazz-inventory-snapshot'], [
-            'schedule'    => 'Every Sunday at 12:00 PM US Central',
-            'webjob'      => 'jazz-inventory-snapshot',
-            'writes_to'   => 'JazzInventorySnapshot',
-            'notes'       => 'Pulls live Jazz OMS inventory by SKU and facility.',
+            'writes_to' => 'DailySalesSummary',
+            'notes'     => 'Summarizes the previous calendar day of ACCS sales by SKU.',
         ]),
         array_merge($registry['monthly-sales-summary'], [
-            'schedule'    => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
-            'webjob'      => 'monthly-sales-summary',
-            'cron_path'   => '/cron/weekly-chain.php',
-            'writes_to'   => 'MonthlySalesSummary',
-            'notes'       => 'Rolls up DailySalesSummary into monthly SKU totals. weekly-chain also runs the demand projection step.',
+            'writes_to' => 'MonthlySalesSummary',
+            'notes'     => 'First step of weekly-chain: rolls up DailySalesSummary into monthly SKU totals.',
         ]),
         array_merge($registry['forecast-plan'], [
-            'schedule'    => 'Every Sunday at 1:30 AM US Central',
-            'webjob'      => 'forecast-plan',
-            'cron_path'   => '/cron/weekly-demand.php',
-            'writes_to'   => 'ForecastPlan',
-            'notes'       => 'Weighted moving average demand projection by SKU. View results on Inventory Forecasting (/inventory-demand/).',
+            'writes_to' => 'ForecastPlan',
+            'notes'     => 'Second step of weekly-chain: weighted moving average demand projection. View on Inventory Forecasting (/inventory-demand/).',
+        ]),
+        array_merge($registry['jazz-inventory-snapshot'], [
+            'writes_to' => 'JazzInventorySnapshot',
+            'notes'     => 'Pulls live Jazz OMS inventory by SKU and facility.',
+        ]),
+        array_merge($registry['staging-db-sync'], [
+            'writes_to' => 'Staging database tables',
+            'notes'     => 'Incremental sync from production SQL to staging SQL.',
         ]),
         [
-            'code'        => 'process-watcher',
-            'name'        => 'Process Retry Watcher',
-            'description' => 'Retries failed background jobs when NextRetryAt is due.',
-            'cron_path'   => '/cron/process-watcher.php',
-            'schedule'    => 'Every 5 minutes',
-            'webjob'      => 'process-watcher',
-            'writes_to'   => 'ProcessExecutionLog',
-            'notes'       => 'Finds Failed rows with NextRetryAt <= now, reruns the process, and marks Success, Failed, or Abandoned.',
+            'code'          => 'process-retry',
+            'name'          => 'Process Retry Worker',
+            'description'   => 'Event-driven retries for failed background jobs.',
+            'function_name' => 'process-retry',
+            'schedule'      => 'On demand (Azure Service Bus)',
+            'writes_to'     => 'ProcessExecutionLog',
+            'notes'         => 'Scheduled when a job fails; runs at NextRetryAt with 2, 4, and 8 minute backoff.',
         ],
     ];
 }
@@ -117,15 +111,15 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Automatic retries',
-            'body'  => 'Failed jobs are retried automatically by the process watcher (every 5 minutes) with exponential backoff: 2, 4, and 8 minutes after attempts 1, 2, and 3. After max attempts (default 3), the job is marked Abandoned.',
+            'body'  => 'Failed jobs schedule a Service Bus retry message with exponential backoff: 2, 4, and 8 minutes after attempts 1, 2, and 3. The process-retry function runs the job when the message is due. After max attempts (default 3), the job is marked Abandoned.',
         ],
         [
             'title' => 'Abandoned job alerts',
-            'body'  => 'When SMTP relay is configured (SMTP_HOST, SMTP_USER, SMTP_PASS), abandoned jobs send an email to alerts@nutraaxislabs.zendesk.com so support can open a Zendesk ticket. Failed jobs awaiting retry do not alert.',
+            'body'  => 'When SMTP relay is configured on the Function App (SMTP_HOST, SMTP_USER, SMTP_PASS), abandoned jobs send an email to alerts@nutraaxislabs.zendesk.com so support can open a Zendesk ticket. Failed jobs awaiting retry do not alert.',
         ],
         [
             'title' => 'SMTP email',
-            'body'  => 'Office 365 SMTP uses notifications@nutraaxislabs.com on smtp.office365.com:587 with TLS. Set MAIL_FROM to the same mailbox if needed. Test with /cron/test-mail.php or php scripts/test-smtp.php. Use ?diagnose=1&to=external@example.com&internal=jbutler@nfcllc.com to compare tenant-internal vs external RCPT responses.',
+            'body'  => 'Office 365 SMTP uses notifications@nutraaxislabs.com on smtp.office365.com:587 with TLS. Background job alerts are sent from the Azure Function App. The PHP portal still sends PO and scheduling mail. Test with /cron/test-mail.php or php scripts/test-smtp.php.',
         ],
         [
             'title' => 'External email delivery',
@@ -140,12 +134,12 @@ function site_documentation_process_monitoring(): array
             'body'  => 'All app mail uses MAIL_REPLY_TO (default nutrateam@nfcllc.com) for the Reply-To header.',
         ],
         [
-            'title' => 'Authentication',
-            'body'  => 'Cron endpoints require the X-Cron-Secret header (or ?key=) matching the CRON_SECRET App Setting. WebJobs pass the header automatically.',
+            'title' => 'Background job platform',
+            'body'  => 'Scheduled jobs run on Azure Function App Nutra-forecast-tool (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
         ],
         [
             'title' => 'Manual execution',
-            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Developers can also trigger jobs with curl or npm scripts (daily-sales-summary, monthly-sales-summary, inventory-plan, jazz-snapshot).',
+            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Reruns call Azure Function App process-execute (requires NUTRA_FUNCTIONS_BASE_URL and NUTRA_FUNCTIONS_KEY on this App Service). Function App source and scheduled job logic live in the separate nutraaxis-azure repository; developers can POST to /api/process-execute on the Function App or run jobs from that repo locally.',
         ],
     ];
 }

@@ -36,7 +36,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Getting started</h2>
-        <p>NutraAxis Operations is the internal PHP portal hosted on Azure App Service. Sign in with your NutraAxis email to access modules assigned to your role. Permissions are managed under Site Admin → Roles.</p>
+        <p>NutraAxis Operations is the internal PHP portal hosted on Azure App Service. Background jobs run on Azure Function App <strong>Nutra-forecast-tool</strong>; this site provides the UI, Process Log, and manual reruns. Sign in with your NutraAxis email to access modules assigned to your role. Permissions are managed under Site Admin → Roles.</p>
         <ul class="site-doc-list">
           <li><strong>Home:</strong> <a href="/">/</a> — application launcher filtered by your role</li>
           <li><strong>Operations Dashboard:</strong> <a href="/operations-dashboard/">/operations-dashboard/</a> — shortcuts to Microsoft 365, commerce tools, and internal utilities</li>
@@ -89,7 +89,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Scheduled background processes</h2>
-        <p>Azure WebJobs call secured cron endpoints using the <code>CRON_SECRET</code> App Setting. All runs are logged to <code>ProcessExecutionLog</code>.</p>
+        <p>Scheduled jobs run on Azure Function App <strong>Nutra-forecast-tool</strong> (timer triggers and Service Bus). All runs are logged to <code>ProcessExecutionLog</code>. WebJobs are retired under <code>App_Data/Disabled_jobs/</code>.</p>
 
         <div class="admin-table-wrap">
           <table class="admin-table site-doc-table">
@@ -97,7 +97,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <tr>
                 <th>Process</th>
                 <th>Schedule (Central)</th>
-                <th>Endpoint</th>
+                <th>Azure Function</th>
                 <th>Output table</th>
                 <th>Notes</th>
               </tr>
@@ -110,7 +110,7 @@ require dirname(__DIR__) . '/includes/header.php';
                   <div class="permission-note"><?= htmlspecialchars($process['code']) ?></div>
                 </td>
                 <td><?= htmlspecialchars($process['schedule']) ?></td>
-                <td><code><?= htmlspecialchars($process['cron_path']) ?></code></td>
+                <td><code><?= htmlspecialchars($process['function_name']) ?></code></td>
                 <td><code><?= htmlspecialchars($process['writes_to']) ?></code></td>
                 <td><?= htmlspecialchars($process['notes']) ?></td>
               </tr>
@@ -122,9 +122,9 @@ require dirname(__DIR__) . '/includes/header.php';
         <h3 class="site-doc-subheading">Process flow</h3>
         <ol class="site-doc-list">
           <li><strong>Daily Sales Summary</strong> loads ACCS orders and writes daily SKU totals to <code>DailySalesSummary</code>.</li>
-          <li><strong>Monthly Sales Summary</strong> (Sunday 1:00 AM via <code>weekly-chain</code>) rolls daily rows into <code>MonthlySalesSummary</code>, then runs the demand projection.</li>
-          <li><strong>Inventory Demand Plan</strong> (Sunday 1:30 AM) refreshes SKU projections in <code>ForecastPlan</code> using weighted sales history, open PO receipts, and Jazz inventory.</li>
+          <li><strong>Weekly chain</strong> (Sunday 1:00 AM) runs monthly rollup into <code>MonthlySalesSummary</code>, then refreshes SKU projections in <code>ForecastPlan</code>.</li>
           <li><strong>Jazz Inventory Snapshot</strong> (Sunday noon) captures facility-level on-hand quantities in <code>JazzInventorySnapshot</code>.</li>
+          <li><strong>Staging DB Sync</strong> (daily 2:30 AM) incrementally copies production SQL changes into the staging database.</li>
         </ol>
       </section>
 
