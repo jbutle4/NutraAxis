@@ -1148,6 +1148,17 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   overflow-x: visible;
 }
 
+.admin-table--catalog th,
+.admin-table--catalog td {
+  padding: 12px 12px;
+  white-space: nowrap;
+}
+
+.admin-table--catalog td:nth-child(2) {
+  white-space: normal;
+  min-width: 130px;
+}
+
 .admin-table--process-log {
   table-layout: fixed;
   font-size: 0.78rem;
