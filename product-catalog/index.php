@@ -57,7 +57,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/product-catalog/">
-        <?php table_sort_hidden_inputs($listFilters, 'sku_code', 'asc'); ?>
+        <input type="hidden" name="sort" value="<?= htmlspecialchars($listFilters['sort']) ?>" />
+        <input type="hidden" name="dir" value="<?= htmlspecialchars($listFilters['dir']) ?>" />
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -100,17 +101,20 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <?php table_sort_render_head_row(
-                CATALOG_LIST_SORT_COLUMNS,
-                '/product-catalog',
-                $listFilters,
-                ['status', 'brand', 'category', 'q'],
-                CATALOG_LIST_SORT_NUMERIC,
-                'sku_code',
-                'asc',
-                '',
-                $actionHeader
-            ); ?>
+            <tr>
+              <?php foreach (CATALOG_LIST_SORT_COLUMNS as $column => $label): ?>
+              <th class="admin-table-sort">
+                <a
+                  class="admin-table-sort-link<?= catalog_sort_is_active($column, $listFilters) ? ' is-active' : '' ?>"
+                  href="<?= htmlspecialchars(catalog_list_sort_href($column, $listFilters)) ?>"
+                >
+                  <span><?= htmlspecialchars($label) ?></span>
+                  <span class="admin-table-sort-indicator" aria-hidden="true"><?php if (catalog_sort_is_active($column, $listFilters)): ?><?= catalog_sort_direction($column, $listFilters) === 'asc' ? '▲' : '▼' ?><?php else: ?>↕<?php endif; ?></span>
+                </a>
+              </th>
+              <?php endforeach; ?>
+              <th><?= htmlspecialchars($actionHeader) ?></th>
+            </tr>
           </thead>
           <tbody>
             <?php if ($skus === []): ?>
