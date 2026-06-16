@@ -29,18 +29,34 @@
  *
  * Usage:
  *   php scripts/register-accs-webhook.php
+ *   php scripts/register-accs-webhook.php --production
  */
 
 require_once __DIR__ . '/../includes/env.php';
 
-$functionAppUrl  = rtrim((string) env('AZURE_FUNCTION_APP_URL', 'https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net'), '/');
-$webhookSecret   = (string) env('ADOBE_COMMERCE_WEBHOOK_SECRET', '');
-$endpointUrl     = $functionAppUrl . '/api/accs-order-webhook';
+$isProduction = in_array('--production', $argv ?? [], true);
+$defaultUrl = $isProduction
+    ? 'https://nutra-forecast-tool-prod.azurewebsites.net'
+    : 'https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net';
+$functionAppUrl = rtrim((string) env_first([
+    $isProduction ? 'AZURE_FUNCTION_APP_URL_PRODUCTION' : 'AZURE_FUNCTION_APP_URL',
+    'AZURE_FUNCTION_APP_URL',
+], $defaultUrl), '/');
+$webhookSecretKey = 'ACCS_WEBHOOK_SECRET';
+$webhookSecret    = (string) env($webhookSecretKey, '');
+$endpointUrl      = $functionAppUrl . '/api/accs-order-webhook';
+$accsEnvironment  = $isProduction ? 'production' : 'stage';
+$testStorefront   = $isProduction
+    ? 'https://www.nutraaxis.com/'
+    : 'https://main--nutrasync-eds-staging--capocommerce.aem.live/';
 
 echo "\n";
 echo "╔══════════════════════════════════════════════════════════════════╗\n";
 echo "║        ACCS Order Webhook — Registration Info                    ║\n";
 echo "╚══════════════════════════════════════════════════════════════════╝\n\n";
+
+echo "Target ACCS environment : $accsEnvironment\n";
+echo "Function App            : $functionAppUrl\n\n";
 
 echo "Webhook endpoint URL (use this in Adobe Developer Console):\n";
 echo "  $endpointUrl\n\n";
@@ -87,23 +103,23 @@ echo "\n";
 echo str_repeat('-', 70) . "\n";
 echo "Azure Function App settings check...\n\n";
 
-// Check ADOBE_COMMERCE_WEBHOOK_SECRET in local .env (a proxy for whether it's configured)
+// Check ACCS_WEBHOOK_SECRET in local env (Function App uses this key today)
 if ($webhookSecret !== '') {
-    echo "  [OK]  ADOBE_COMMERCE_WEBHOOK_SECRET is set in your local .env.\n";
+    echo "  [OK]  $webhookSecretKey is set in your local .env.\n";
     echo "        Make sure the same value is set in Azure App Settings.\n";
 } else {
-    echo "  [WARN] ADOBE_COMMERCE_WEBHOOK_SECRET is not set in your local .env.\n";
-    echo "         Add it after getting the secret from Adobe Developer Console:\n";
-    echo "         ADOBE_COMMERCE_WEBHOOK_SECRET=your-secret-here\n";
-    echo "         Also set it in Azure App Settings for the Function App.\n";
+    echo "  [WARN] $webhookSecretKey is not set in your local .env.\n";
+    echo "         Copy the value from Azure App Settings for Nutra-forecast-tool";
+    echo $isProduction ? '-prod' : '';
+    echo " and use it as the webhook secret in Adobe Developer Console.\n";
 }
 
 echo "\n";
 echo str_repeat('-', 70) . "\n";
 echo "Email alert destination:\n";
 echo "  jbutler@nfcllc.com\n\n";
-echo "After registration, place a test order in the ACCS stage storefront:\n";
-echo "  https://main--nutrasync-eds-staging--capocommerce.aem.live/\n\n";
+echo "After registration, place a test order in the ACCS $accsEnvironment storefront:\n";
+echo "  $testStorefront\n\n";
 echo "Or test the function directly:\n";
 echo "  curl -X POST $endpointUrl \\\n";
 echo "    -H 'Content-Type: application/json' \\\n";
