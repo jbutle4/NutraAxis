@@ -40,10 +40,10 @@ async function main() {
 
   const env = loadEnv(path.join(__dirname, '..', '.env'));
   const config = {
-    server: env.DB_HOST,
+    server: env.DB_SERVER || env.DB_HOST,
     database: env.DB_NAME,
     user: env.DB_USER,
-    password: env.DB_PASS,
+    password: env.DB_PASSWORD || env.DB_PASS,
     port: Number(env.DB_PORT || 1433),
     options: {
       encrypt: true,
