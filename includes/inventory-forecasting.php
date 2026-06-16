@@ -3,6 +3,34 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/forecast-plan.php';
 
+const INVENTORY_FORECASTING_LIST_SORT_COLUMNS = [
+    'sku'       => 'SKU',
+    'month'     => 'Month',
+    'begin_oh'  => 'Begin OH',
+    'receipts'  => 'Receipts',
+    'sales'     => 'Sales',
+    'end_oh'    => 'End OH',
+    'shortage'  => 'Shortage',
+    'baseline'  => 'Baseline',
+    'trend'     => 'Trend',
+    'status'    => 'Status',
+];
+
+const INVENTORY_FORECASTING_LIST_SORT_SQL = [
+    'sku'      => 'SKU',
+    'month'    => 'PlanYear',
+    'begin_oh' => 'ForecastBeginOH',
+    'receipts' => 'ForecastReceipts',
+    'sales'    => 'ForecastSales',
+    'end_oh'   => 'ForecastEndOH',
+    'shortage' => 'ShortageFlag',
+    'baseline' => 'BaselineAvg',
+    'trend'    => 'TrendFactor',
+    'status'   => 'IsLocked',
+];
+
+const INVENTORY_FORECASTING_LIST_SORT_NUMERIC = ['begin_oh', 'receipts', 'sales', 'end_oh', 'baseline', 'trend'];
+
 function inventory_forecasting_require_read(): void
 {
     auth_require_module_read('inventory-forecasting');
@@ -96,7 +124,7 @@ function inventory_forecasting_normalize_shortage_filter(?string $value): ?int
     return $value === '1' ? 1 : 0;
 }
 
-function inventory_forecasting_list_plan_rows(?string $sku = null, ?string $shortageFilter = null): array
+function inventory_forecasting_list_plan_rows(array $filters = []): array
 {
     $pdo = db();
     db_apply_sql_server_options($pdo);
@@ -124,19 +152,23 @@ function inventory_forecasting_list_plan_rows(?string $sku = null, ?string $shor
     SQL;
 
     $params = [];
-    $sku = trim((string) $sku);
+    $sku = trim((string) ($filters['sku'] ?? ''));
     if ($sku !== '') {
         $sql .= ' AND SKU = :sku';
         $params['sku'] = $sku;
     }
 
-    $shortage = inventory_forecasting_normalize_shortage_filter($shortageFilter);
+    $shortage = inventory_forecasting_normalize_shortage_filter($filters['shortage'] ?? null);
     if ($shortage !== null) {
         $sql .= ' AND ShortageFlag = :shortage_flag';
         $params['shortage_flag'] = $shortage;
     }
 
-    $sql .= ' ORDER BY SKU, PlanYear, PlanMonth';
+    $sortState = table_sort_state(INVENTORY_FORECASTING_LIST_SORT_COLUMNS, 'sku', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(INVENTORY_FORECASTING_LIST_SORT_SQL, $sortState, 'sku', 'sku');
+    if (($sortState['sort'] ?? 'sku') !== 'month') {
+        $sql .= ', PlanYear ASC, PlanMonth ASC';
+    }
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

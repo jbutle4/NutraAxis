@@ -7,7 +7,10 @@ label_require_read();
 $activeSlug = 'labeling-operations';
 $activeLabelSection = 'versions';
 $search = trim($_GET['q'] ?? '');
-$versions = label_list_versions($search !== '' ? $search : null);
+$listFilters = [
+    'q' => $search !== '' ? $search : null,
+] + table_sort_state(LABEL_VERSION_LIST_SORT_COLUMNS, 'created', 'desc', $_GET);
+$versions = label_list_versions($listFilters);
 
 $pageTitle = label_page_title('Label Version Control');
 $pageDescription = 'Track label revisions for customer and internal labels.';
@@ -35,6 +38,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </div>
 
       <form class="po-filter audit-filter" method="get" action="/labeling-operations/versions/">
+        <?php table_sort_hidden_inputs($listFilters, 'created', 'desc'); ?>
         <div class="audit-filter-grid">
           <div class="audit-filter-wide">
             <label for="q">Search</label>
@@ -50,17 +54,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Version</th>
-              <th>Scope</th>
-              <th>Customer</th>
-              <th>SKU</th>
-              <th>Label</th>
-              <th>Status</th>
-              <th>Revision Notes</th>
-              <th>Created</th>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                LABEL_VERSION_LIST_SORT_COLUMNS,
+                '/labeling-operations/versions',
+                $listFilters,
+                ['q'],
+                [],
+                'created',
+                'desc',
+                'created',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($versions === []): ?>

@@ -15,7 +15,7 @@ $filters = [
     'q'            => trim($_GET['q'] ?? ''),
     'rolled_back'  => trim($_GET['rolled_back'] ?? ''),
     'limit'        => 200,
-];
+] + table_sort_state(AUDIT_LIST_SORT_COLUMNS, 'change_date', 'desc', $_GET);
 
 $logs = audit_list_logs($filters);
 $users = audit_list_users_for_filter();
@@ -54,6 +54,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/site-admin/audit-log/">
+        <?php table_sort_hidden_inputs($filters, 'change_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="log_id">Log ID</label>
@@ -100,14 +101,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Log ID</th>
-              <th>Change Date</th>
-              <th>User</th>
-              <th>Change SQL</th>
-              <th>Status</th>
-              <th>View</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                AUDIT_LIST_SORT_COLUMNS,
+                '/site-admin/audit-log',
+                $filters,
+                ['log_id', 'user_id', 'date_from', 'date_to', 'q', 'rolled_back'],
+                ['log_id'],
+                'change_date',
+                'desc',
+                'change_date',
+                'View'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($logs === []): ?>

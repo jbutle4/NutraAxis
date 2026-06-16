@@ -6,7 +6,8 @@ auth_require_module_read('operations-dashboard');
 
 $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
-$indexLinks = $canManageLinks ? links_list(['status' => 'active']) : [];
+$linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
+$indexLinks = $canManageLinks ? links_list($linkListFilters) : [];
 
 $dashboardSections = [
     [
@@ -233,13 +234,15 @@ require dirname(__DIR__) . '/includes/header.php';
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
-              <tr>
-                <th>Name (click to open link)</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Registration</th>
-                <th>Description</th>
-              </tr>
+              <?php table_sort_render_head_row(
+                  LINKS_LIST_SORT_COLUMNS,
+                  '/operations-dashboard',
+                  $linkListFilters,
+                  [],
+                  [],
+                  'category',
+                  'asc'
+              ); ?>
             </thead>
             <tbody>
               <?php foreach ($indexLinks as $indexLink):

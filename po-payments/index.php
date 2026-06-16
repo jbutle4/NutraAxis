@@ -7,10 +7,11 @@ po_payment_require_read();
 $activeSlug = 'po-payments';
 $typeFilter = $_GET['type'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$payments = po_payment_list([
+$listFilters = [
     'type' => $typeFilter !== '' ? $typeFilter : null,
     'q'    => $search !== '' ? $search : null,
-]);
+] + table_sort_state(PO_PAYMENT_LIST_SORT_COLUMNS, 'payment_date', 'desc', $_GET);
+$payments = po_payment_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'PO Payments | Inventory Management';
@@ -49,6 +50,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/po-payments/">
+        <?php table_sort_hidden_inputs($listFilters, 'payment_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="type">Payment type</label>
@@ -73,16 +75,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Payment date</th>
-              <th>PO number</th>
-              <th>Supplier</th>
-              <th>Amount</th>
-              <th>Type</th>
-              <th>Confirmation #</th>
-              <th>Made by</th>
-              <th><?= htmlspecialchars(table_actions_header(po_payment_can_update() ? ['View PO', 'Edit'] : ['View PO'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                PO_PAYMENT_LIST_SORT_COLUMNS,
+                '/po-payments',
+                $listFilters,
+                ['type', 'q'],
+                PO_PAYMENT_LIST_SORT_NUMERIC,
+                'payment_date',
+                'desc',
+                'payment_date',
+                table_actions_header(po_payment_can_update() ? ['View PO', 'Edit'] : ['View PO'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($payments === []): ?>

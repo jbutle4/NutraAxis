@@ -11,6 +11,34 @@ const PROCESS_LOG_TRIGGER_RETRY = 'Retry';
 
 const PROCESS_LOG_DEFAULT_MAX_ATTEMPTS = 3;
 
+const PROCESS_LOG_LIST_SORT_COLUMNS = [
+    'log_id'      => 'Log ID',
+    'process'     => 'Process',
+    'started'     => 'Started',
+    'finished'    => 'Finished',
+    'duration'    => 'Duration',
+    'attempts'    => 'Attempts',
+    'next_retry'  => 'Next Retry',
+    'trigger'     => 'Trigger',
+    'status'      => 'Status',
+    'result'      => 'Result',
+];
+
+const PROCESS_LOG_LIST_SORT_SQL = [
+    'log_id'     => 'pel.ProcessExecutionLogID',
+    'process'    => 'pel.ProcessName',
+    'started'    => 'pel.StartedAt',
+    'finished'   => 'pel.FinishedAt',
+    'duration'   => 'pel.StartedAt',
+    'attempts'   => 'pel.AttemptCount',
+    'next_retry' => 'pel.NextRetryAt',
+    'trigger'    => 'pel.TriggerType',
+    'status'     => 'pel.Status',
+    'result'     => 'pel.ResultMessage',
+];
+
+const PROCESS_LOG_LIST_SORT_NUMERIC = ['log_id', 'attempts'];
+
 function process_log_now_sql(): string
 {
     return (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
@@ -383,7 +411,8 @@ function process_log_list(array $filters = []): array
         $params['status'] = $status;
     }
 
-    $sql .= ' ORDER BY pel.StartedAt DESC, pel.ProcessExecutionLogID DESC';
+    $sortState = table_sort_state(PROCESS_LOG_LIST_SORT_COLUMNS, 'started', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(PROCESS_LOG_LIST_SORT_SQL, $sortState, 'started', 'log_id');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

@@ -2,6 +2,22 @@
 
 const MONTHLY_SALES_SUMMARY_TIMEZONE = 'America/Chicago';
 
+const MONTHLY_SALES_SUMMARY_LIST_SORT_COLUMNS = [
+    'month'       => 'Month',
+    'sku'         => 'SKU',
+    'total_qty'   => 'Total Qty',
+    'updated_at'  => 'Last Updated (UTC)',
+];
+
+const MONTHLY_SALES_SUMMARY_LIST_SORT_SQL = [
+    'month'      => 'MonthStart',
+    'sku'        => 'SKU',
+    'total_qty'  => 'TotalQty',
+    'updated_at' => 'LastUpdatedAt',
+];
+
+const MONTHLY_SALES_SUMMARY_LIST_SORT_NUMERIC = ['total_qty'];
+
 function monthly_sales_summary_timezone(): DateTimeZone
 {
     return new DateTimeZone(MONTHLY_SALES_SUMMARY_TIMEZONE);
@@ -115,7 +131,8 @@ function monthly_sales_summary_list(array $filters = []): array
         $params['sku'] = '%' . $sku . '%';
     }
 
-    $sql .= ' ORDER BY MonthStart DESC, SKU ASC';
+    $sortState = table_sort_state(MONTHLY_SALES_SUMMARY_LIST_SORT_COLUMNS, 'month', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(MONTHLY_SALES_SUMMARY_LIST_SORT_SQL, $sortState, 'month', 'sku');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

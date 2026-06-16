@@ -7,10 +7,11 @@ enhancement_log_require_read();
 $activeSlug = 'enhancement-log';
 $statusFilter = trim($_GET['status'] ?? '');
 $search = trim($_GET['q'] ?? '');
-$entries = enhancement_log_list([
+$listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
     'q'      => $search !== '' ? $search : null,
-]);
+] + table_sort_state(ENHANCEMENT_LOG_LIST_SORT_COLUMNS, 'request_date', 'desc', $_GET);
+$entries = enhancement_log_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Enhancement Log | NutraAxis Operations';
@@ -47,6 +48,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/enhancement-log/">
+        <?php table_sort_hidden_inputs($listFilters, 'request_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -73,15 +75,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>ID</th>
-              <th>Title</th>
-              <th>Requested By</th>
-              <th>Request Date</th>
-              <th>Status</th>
-              <th>Due Date</th>
-              <th><?= htmlspecialchars(table_actions_header(enhancement_log_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                ENHANCEMENT_LOG_LIST_SORT_COLUMNS,
+                '/enhancement-log',
+                $listFilters,
+                ['status', 'q'],
+                ['id'],
+                'request_date',
+                'desc',
+                'request_date',
+                table_actions_header(enhancement_log_can_update() ? ['View', 'Edit'] : ['View'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($entries === []): ?>

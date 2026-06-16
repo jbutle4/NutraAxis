@@ -7,10 +7,11 @@ por_require_read();
 $activeSlug = 'po-receiving';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$receipts = por_list([
+$listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
     'q'      => $search !== '' ? $search : null,
-]);
+] + table_sort_state(POR_LIST_SORT_COLUMNS, 'scheduled', 'desc', $_GET);
+$receipts = por_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'PO Receiving | Supply Chain Management';
@@ -54,6 +55,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/po-receiving/">
+        <?php table_sort_hidden_inputs($listFilters, 'scheduled', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -78,16 +80,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>PO number</th>
-              <th>Jazz ASN</th>
-              <th>Supplier</th>
-              <th>Status</th>
-              <th>Scheduled</th>
-              <th>Actual receipt</th>
-              <th>Appointment</th>
-              <th><?= htmlspecialchars(table_actions_header(por_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                POR_LIST_SORT_COLUMNS,
+                '/po-receiving',
+                $listFilters,
+                ['status', 'q'],
+                [],
+                'scheduled',
+                'desc',
+                'scheduled',
+                table_actions_header(por_can_update() ? ['View', 'Edit'] : ['View'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($receipts === []): ?>

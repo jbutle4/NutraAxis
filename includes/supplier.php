@@ -19,6 +19,26 @@ const SUPPLIER_TYPES = [
     'Transportation',
 ];
 
+const SUPPLIER_LIST_SORT_COLUMNS = [
+    'code'     => 'Code',
+    'name'     => 'Supplier name',
+    'type'     => 'Type',
+    'contact'  => 'Contact',
+    'status'   => 'Status',
+    'pos'      => 'POs',
+];
+
+const SUPPLIER_LIST_SORT_SQL = [
+    'code'    => 's.SupplierCode',
+    'name'    => 's.SupplierName',
+    'type'    => 's.SupplierType',
+    'contact' => 's.ContactName',
+    'status'  => 's.IsActive',
+    'pos'     => 'POCount',
+];
+
+const SUPPLIER_LIST_SORT_NUMERIC = ['pos'];
+
 function supplier_permission_value(): ?string
 {
     return auth_permission_value(SUPPLIER_PERMISSION_COLUMN);
@@ -171,7 +191,8 @@ function supplier_list(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY s.SupplierName';
+    $sortState = table_sort_state(SUPPLIER_LIST_SORT_COLUMNS, 'name', 'asc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(SUPPLIER_LIST_SORT_SQL, $sortState, 'name', 'code');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

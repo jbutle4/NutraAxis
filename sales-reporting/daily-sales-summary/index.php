@@ -11,7 +11,7 @@ $filters = [
     'summary_date' => trim($_GET['summary_date'] ?? ''),
     'sku'          => trim($_GET['sku'] ?? ''),
     'limit'        => 500,
-];
+] + table_sort_state(DAILY_SALES_SUMMARY_LIST_SORT_COLUMNS, 'summary_date', 'desc', $_GET);
 
 $rows = [];
 $dbError = null;
@@ -53,6 +53,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php else: ?>
 
       <form class="po-filter audit-filter" method="get" action="/sales-reporting/daily-sales-summary/">
+        <?php table_sort_hidden_inputs($filters, 'summary_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="summary_date">Summary date</label>
@@ -86,14 +87,16 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Summary Date</th>
-              <th>SKU</th>
-              <th>SKU Name</th>
-              <th>Description</th>
-              <th>Qty Sold</th>
-              <th>Captured At (UTC)</th>
-            </tr>
+            <?php table_sort_render_head_row(
+                DAILY_SALES_SUMMARY_LIST_SORT_COLUMNS,
+                '/sales-reporting/daily-sales-summary',
+                $filters,
+                ['summary_date', 'sku'],
+                DAILY_SALES_SUMMARY_LIST_SORT_NUMERIC,
+                'summary_date',
+                'desc',
+                'summary_date'
+            ); ?>
           </thead>
           <tbody>
             <?php if ($rows === []): ?>

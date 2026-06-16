@@ -24,6 +24,28 @@ const PO_POST_APPROVAL_STATUSES = [
     'Paid',
 ];
 
+const PO_LIST_SORT_COLUMNS = [
+    'po_number'          => 'PO Number',
+    'supplier'           => 'Supplier',
+    'status'             => 'Status',
+    'order_date'         => 'Order Date',
+    'expected_delivery'  => 'Expected Delivery',
+    'total'              => 'Total',
+    'created_by'         => 'Created By',
+];
+
+const PO_LIST_SORT_SQL = [
+    'po_number'         => 'po.PONumber',
+    'supplier'          => 's.SupplierName',
+    'status'            => 'po.POStatus',
+    'order_date'        => 'po.OrderDate',
+    'expected_delivery' => 'po.ExpectedDeliveryDate',
+    'total'             => 'po.Subtotal',
+    'created_by'        => 'u.UserName',
+];
+
+const PO_LIST_SORT_NUMERIC = ['total'];
+
 function po_can_edit_order(array $order): bool
 {
     if (!po_can_update()) {
@@ -326,7 +348,7 @@ function po_list_suppliers(): array
     SQL)->fetchAll();
 }
 
-function po_list_orders(?string $statusFilter = null): array
+function po_list_orders(array $filters = []): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -345,12 +367,14 @@ function po_list_orders(?string $statusFilter = null): array
     SQL;
 
     $params = [];
+    $statusFilter = $filters['status'] ?? null;
     if ($statusFilter !== null && $statusFilter !== '' && in_array($statusFilter, PO_STATUSES, true)) {
         $sql .= ' WHERE po.POStatus = :status';
         $params['status'] = $statusFilter;
     }
 
-    $sql .= ' ORDER BY po.OrderDate DESC, po.POID DESC';
+    $sortState = table_sort_state(PO_LIST_SORT_COLUMNS, 'order_date', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(PO_LIST_SORT_SQL, $sortState, 'order_date', 'po_number');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

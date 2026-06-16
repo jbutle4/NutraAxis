@@ -8,7 +8,8 @@ $activeAdminSection = 'users';
 $canCreate = auth_can_create(ADMIN_PERMISSION_COLUMNS['users']);
 $canUpdate = auth_can_update(ADMIN_PERMISSION_COLUMNS['users']);
 $canDelete = auth_can_delete(ADMIN_PERMISSION_COLUMNS['users']);
-$users = admin_list_users();
+$listFilters = table_sort_state(ADMIN_USERS_LIST_SORT_COLUMNS, 'name', 'asc', $_GET);
+$users = admin_list_users($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Users | Site Admin | NutraAxis Operations';
@@ -51,18 +52,26 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Last Login</th>
-              <?php if ($canUpdate || $canDelete): ?>
-              <th><?= htmlspecialchars(table_actions_header(array_filter([
-                  $canUpdate ? 'Edit' : null,
-                  $canDelete ? 'Delete' : null,
-              ]))) ?></th>
-              <?php endif; ?>
-            </tr>
+            <?php
+            $userActionHeader = null;
+            if ($canUpdate || $canDelete) {
+                $userActionHeader = table_actions_header(array_filter([
+                    $canUpdate ? 'Edit' : null,
+                    $canDelete ? 'Delete' : null,
+                ]));
+            }
+            table_sort_render_head_row(
+                ADMIN_USERS_LIST_SORT_COLUMNS,
+                '/site-admin/users',
+                $listFilters,
+                [],
+                [],
+                'name',
+                'asc',
+                'last_login',
+                $userActionHeader
+            );
+            ?>
           </thead>
           <tbody>
             <?php foreach ($users as $user): ?>

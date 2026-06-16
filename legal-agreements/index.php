@@ -8,11 +8,12 @@ $activeSlug = 'legal-agreements';
 $statusFilter = $_GET['status'] ?? '';
 $typeFilter = $_GET['type'] ?? '';
 $search = trim($_GET['q'] ?? '');
-$contracts = legal_list_contracts([
+$listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
     'type'   => $typeFilter !== '' ? $typeFilter : null,
     'q'      => $search !== '' ? $search : null,
-]);
+] + table_sort_state(LEGAL_LIST_SORT_COLUMNS, 'contract_id', 'asc', $_GET);
+$contracts = legal_list_contracts($listFilters);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Contract Register | Legal Agreements';
@@ -51,6 +52,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/legal-agreements/">
+        <?php table_sort_hidden_inputs($listFilters, 'contract_id', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
             <label for="status">Status</label>
@@ -84,16 +86,17 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr>
-              <th>Contract ID</th>
-              <th>Contract name</th>
-              <th>Type</th>
-              <th>Counterparty</th>
-              <th>Status</th>
-              <th>Est. expiry</th>
-              <th>Annual value</th>
-              <th><?= htmlspecialchars(table_actions_header(legal_can_update() ? ['View', 'Edit'] : ['View'])) ?></th>
-            </tr>
+            <?php table_sort_render_head_row(
+                LEGAL_LIST_SORT_COLUMNS,
+                '/legal-agreements',
+                $listFilters,
+                ['status', 'type', 'q'],
+                LEGAL_LIST_SORT_NUMERIC,
+                'contract_id',
+                'asc',
+                '',
+                table_actions_header(legal_can_update() ? ['View', 'Edit'] : ['View'])
+            ); ?>
           </thead>
           <tbody>
             <?php if ($contracts === []): ?>

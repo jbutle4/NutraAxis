@@ -6,6 +6,26 @@ const POR_STATUSES = ['Draft', 'Scheduled', 'Transmitted', 'Complete', 'Cancelle
 
 const POR_MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
+const POR_LIST_SORT_COLUMNS = [
+    'po_number'      => 'PO number',
+    'jazz_asn'       => 'Jazz ASN',
+    'supplier'       => 'Supplier',
+    'status'         => 'Status',
+    'scheduled'      => 'Scheduled',
+    'actual_receipt' => 'Actual receipt',
+    'appointment'    => 'Appointment',
+];
+
+const POR_LIST_SORT_SQL = [
+    'po_number'      => 'r.PONumber',
+    'jazz_asn'       => 'r.JazzASN',
+    'supplier'       => 's.SupplierName',
+    'status'         => 'r.PORStatus',
+    'scheduled'      => 'r.ScheduledReceiptDate',
+    'actual_receipt' => 'r.ActualReceiptDate',
+    'appointment'    => 'r.AppointmentMade',
+];
+
 function por_can_read(): bool
 {
     return po_can_access_po_pages();
@@ -197,7 +217,8 @@ function por_list(array $filters = []): array
         $params['q'] = '%' . $filters['q'] . '%';
     }
 
-    $sql .= ' ORDER BY r.CreateDate DESC, r.PORID DESC';
+    $sortState = table_sort_state(POR_LIST_SORT_COLUMNS, 'scheduled', 'desc', $filters);
+    $sql .= ' ORDER BY ' . table_sort_sql_clause(POR_LIST_SORT_SQL, $sortState, 'scheduled', 'po_number');
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
