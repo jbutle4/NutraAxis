@@ -90,7 +90,7 @@ function jazz_oms_config_error(): ?string
         return null;
     }
 
-    return 'Jazz OMS is not configured. Set JAZZ_DOMAIN, JAZZ_USERNAME, JAZZ_PASSWORD, and JAZZ_TENANT_CODE in application settings.';
+    return 'Jazz OMS is not configured. Set JAZZ_DOMAIN_PROD, JAZZ_USERNAME_PROD, JAZZ_PASSWORD_PROD, and JAZZ_TENANT_CODE in Azure application settings.';
 }
 
 function jazz_oms_is_cloudflare_block(?string $responseBody): bool

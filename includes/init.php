@@ -1,5 +1,10 @@
 <?php
 
+if (!headers_sent()) {
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+}
+
 require_once __DIR__ . '/data-profile.php';
 require_once __DIR__ . '/function-apps.php';
 require_once __DIR__ . '/auth.php';

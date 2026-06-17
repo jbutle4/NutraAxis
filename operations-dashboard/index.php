@@ -7,7 +7,14 @@ auth_require_module_read('operations-dashboard');
 $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
 $linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
-$indexLinks = $canManageLinks ? links_list($linkListFilters) : [];
+$indexLinks = [];
+if ($canManageLinks) {
+    try {
+        $indexLinks = links_list($linkListFilters);
+    } catch (Throwable $e) {
+        error_log('operations-dashboard links_list: ' . $e->getMessage());
+    }
+}
 
 $dashboardSections = [
     [
