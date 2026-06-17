@@ -166,9 +166,17 @@ $dashboardSections = [
             ],
             [
                 'title' => 'ACCS Asset Management',
-                'desc'  => 'Adobe Experience Manager DAM for NutraSync digital assets.',
+                'desc'  => 'Adobe Experience Manager DAM for NutraSync production digital assets.',
+                'href'  => 'https://author-p180942-e1905687.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
+                'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'ACCS Asset Management',
+                'desc'  => 'UAT System — Adobe Experience Manager DAM for NutraSync staging digital assets.',
                 'href'  => 'https://author-p180942-e1905796.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
                 'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'ACCS Staging',
