@@ -58,6 +58,14 @@ $inventorySubModules = [
         'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
+        'slug'  => 'jazz-orders',
+        'title' => 'Jazz Orders',
+        'desc'  => 'Browse the Jazz OMS order queue and fulfillment status report.',
+        'href'  => '/jazz-orders/',
+        'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+    ],
+    [
         'slug'  => 'inventory-forecasting',
         'title' => 'Inventory Forecasting',
         'desc'  => 'Project demand and plan replenishment with confidence.',
@@ -279,6 +287,7 @@ $modulePages = [
         'capabilities' => [
             ['title' => 'Jazz Current Inventory', 'desc' => 'Jazz OMS stock on hand by SKU and facility.'],
             ['title' => 'Jazz Item Master', 'desc' => 'SKU and item reference data synced from Jazz OMS.'],
+            ['title' => 'Jazz Orders', 'desc' => 'Order queue and fulfillment status from Jazz OMS.'],
             ['title' => 'ACCS Inventory Reporting', 'desc' => 'Adobe Commerce inventory by SKU and source.'],
             ['title' => 'Inventory Forecasting', 'desc' => 'Project demand and plan replenishment with confidence.'],
             ['title' => 'Supplier Management', 'desc' => 'Maintain supplier profiles and procurement relationships.'],
@@ -354,6 +363,17 @@ $modulePages = [
             ['title' => 'Movement History', 'desc' => 'Trace receipts, transfers, adjustments, and shipments over any date range.'],
             ['title' => 'Aging & Expiry', 'desc' => 'Identify slow-moving inventory and lots approaching expiration.'],
             ['title' => 'Export & Share', 'desc' => 'Download reports for finance, operations, and compliance reviews.'],
+        ],
+    ],
+    'jazz-orders' => [
+        'label'       => 'Supply Chain',
+        'headline'    => 'Jazz Orders',
+        'lead'        => 'Order queue and fulfillment status from Jazz OMS production APIs.',
+        'capabilities' => [
+            ['title' => 'Order Queue', 'desc' => 'Filter by NEW, ALLOCATED, PRINTED, and other Jazz order statuses.'],
+            ['title' => 'Order Search', 'desc' => 'Look up orders by order number, PO number, or date range.'],
+            ['title' => 'Line Detail', 'desc' => 'View SKU-level quantities ordered, allocated, and shipped.'],
+            ['title' => 'Production Jazz', 'desc' => 'Reads from the configured production Jazz OMS tenant.'],
         ],
     ],
     'sales-reporting' => [

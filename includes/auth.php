@@ -9,6 +9,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'po-management'          => 'POManagement',
     'inventory-reporting'        => 'InventoryReporting',
     'jazz-item-master'           => 'InventoryReporting',
+    'jazz-orders'                => 'InventoryReporting',
     'accs-inventory-reporting'   => 'InventoryReporting',
     'inventory-reconciliation'   => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
