@@ -206,6 +206,14 @@ $dashboardSections = [
                 'icon'  => 'links',
             ],
             [
+                'title'    => 'Function App ping test',
+                'desc'     => 'Diagnostic tool to call the Azure Function App ping endpoint from the portal and verify connectivity.',
+                'href'     => '/function-test/',
+                'icon'     => 'dashboard',
+                'internal' => true,
+                'tier'     => ENVIRONMENT_TIER_UAT,
+            ],
+            [
                 'title' => 'NutraSync Wordpress',
                 'desc'  => 'NutraSync WordPress admin login for content and site management.',
                 'href'  => 'https://nutrasync.com/wp-login.php',
