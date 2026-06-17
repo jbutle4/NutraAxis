@@ -20,8 +20,8 @@ $pageDescription = 'View and manage supplier profiles used across purchase order
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
-  <main class="page-main">
-    <div class="container page-inner">
+  <main class="page-main page-main--fluid">
+    <div class="container page-inner page-inner--full">
       <a class="breadcrumb" href="/inventory-management/">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
@@ -64,7 +64,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </div>
           <div class="audit-filter-wide">
             <label for="q">Search</label>
-            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Name, code, contact, or email" />
+            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Name, code, contact, email, or phone" />
           </div>
         </div>
         <div class="audit-filter-actions">
@@ -73,8 +73,8 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </form>
 
-      <div class="admin-table-wrap">
-        <table class="admin-table">
+      <div class="admin-table-wrap admin-table-wrap--supplier">
+        <table class="admin-table admin-table--supplier">
           <thead>
             <?php table_sort_render_head_row(
                 SUPPLIER_LIST_SORT_COLUMNS,
@@ -90,19 +90,16 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($suppliers === []): ?>
-            <tr><td colspan="7">No suppliers match your filters.</td></tr>
+            <tr><td colspan="9">No suppliers match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($suppliers as $supplier): ?>
             <tr>
               <td><?= htmlspecialchars($supplier['SupplierCode'] ?? '—') ?></td>
               <td><?= htmlspecialchars($supplier['SupplierName']) ?></td>
               <td><?= htmlspecialchars($supplier['SupplierType'] ?? '—') ?></td>
-              <td>
-                <?= htmlspecialchars($supplier['ContactName'] ?? '—') ?>
-                <?php if (!empty($supplier['ContactEmail'])): ?>
-                <br><small><?= htmlspecialchars($supplier['ContactEmail']) ?></small>
-                <?php endif; ?>
-              </td>
+              <td><?= htmlspecialchars($supplier['ContactName'] ?? '—') ?></td>
+              <td><?= !empty($supplier['ContactEmail']) ? htmlspecialchars($supplier['ContactEmail']) : '—' ?></td>
+              <td><?= !empty($supplier['ContactPhone']) ? htmlspecialchars($supplier['ContactPhone']) : '—' ?></td>
               <td><span class="status-badge <?= supplier_status_class(!empty($supplier['IsActive'])) ?>"><?= htmlspecialchars(supplier_status_label(!empty($supplier['IsActive']))) ?></span></td>
               <td><?= (int) $supplier['POCount'] ?></td>
               <?php table_view_edit_cell(

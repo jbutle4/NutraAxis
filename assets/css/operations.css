@@ -52,6 +52,20 @@ button { font: inherit; cursor: pointer; border: none; background: none; }
   max-width: 1600px;
 }
 
+.container.page-inner--full {
+  width: calc(100% - 32px);
+  max-width: none;
+  padding-inline: 16px;
+}
+
+.page-main.page-main--fluid {
+  overflow-x: visible;
+}
+
+.page-inner.page-inner--full {
+  min-width: 0;
+}
+
 /* Header */
 .site-header {
   background: var(--white);
@@ -1207,6 +1221,37 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 
 .admin-table tbody tr.is-inventory-mismatch td {
   background: #fff5f0;
+}
+
+.admin-table-wrap--supplier {
+  overflow-x: visible;
+}
+
+.admin-table--supplier {
+  width: 100%;
+  table-layout: auto;
+}
+
+.admin-table--supplier th,
+.admin-table--supplier td {
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.admin-table--supplier td:nth-child(2),
+.admin-table--supplier th:nth-child(2) {
+  white-space: normal;
+  min-width: 140px;
+  max-width: 240px;
+}
+
+.admin-table--supplier td:nth-child(5),
+.admin-table--supplier th:nth-child(5),
+.admin-table--supplier td:nth-child(6),
+.admin-table--supplier th:nth-child(6) {
+  white-space: normal;
+  min-width: 120px;
+  max-width: 220px;
 }
 
 .admin-table-wrap--process-log {

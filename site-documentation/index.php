@@ -36,7 +36,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Getting started</h2>
-        <p>NutraAxis Operations is the internal PHP portal hosted on Azure App Service. Background jobs run on Azure Function App <strong>Nutra-forecast-tool</strong>; this site provides the UI, Process Log, and manual reruns. Sign in with your NutraAxis email to access modules assigned to your role. Permissions are managed under Site Admin → Roles.</p>
+        <p>NutraAxis Operations is the internal PHP portal hosted on Azure App Service. Background jobs run on Azure Function Apps <strong><?= htmlspecialchars(function_app_uat_display_name()) ?></strong> (UAT/stage timers) and <strong><?= htmlspecialchars(function_app_prod_display_name()) ?></strong> (production webhooks); this site provides the UI, Process Log, and manual reruns. Sign in with your NutraAxis email to access modules assigned to your role. Permissions are managed under Site Admin → Roles.</p>
         <ul class="site-doc-list">
           <li><strong>Home:</strong> <a href="/">/</a> — application launcher filtered by your role</li>
           <li><strong>Operations Dashboard:</strong> <a href="/operations-dashboard/">/operations-dashboard/</a> — shortcuts to Microsoft 365, commerce tools, and internal utilities</li>
@@ -89,7 +89,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Scheduled background processes</h2>
-        <p>Scheduled jobs run on Azure Function App <strong>Nutra-forecast-tool</strong> (timer triggers and Service Bus). All runs are logged to <code>ProcessExecutionLog</code>. WebJobs are retired under <code>App_Data/Disabled_jobs/</code>.</p>
+        <p>Scheduled jobs run on Azure Function Apps <strong><?= htmlspecialchars(function_app_uat_display_name()) ?></strong> and <strong><?= htmlspecialchars(function_app_prod_display_name()) ?></strong> (timer triggers and Service Bus). All runs are logged to <code>ProcessExecutionLog</code>. WebJobs are retired under <code>App_Data/Disabled_jobs/</code>.</p>
 
         <div class="admin-table-wrap">
           <table class="admin-table site-doc-table">

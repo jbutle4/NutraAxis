@@ -33,11 +33,12 @@
  */
 
 require_once __DIR__ . '/../includes/env.php';
+require_once __DIR__ . '/../includes/function-apps.php';
 
 $isProduction = in_array('--production', $argv ?? [], true);
 $defaultUrl = $isProduction
-    ? 'https://nutra-forecast-tool-prod.azurewebsites.net'
-    : 'https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net';
+    ? FUNCTION_APP_PROD_DEFAULT_URL
+    : FUNCTION_APP_UAT_DEFAULT_URL;
 $functionAppUrl = rtrim((string) env_first([
     $isProduction ? 'AZURE_FUNCTION_APP_URL_PRODUCTION' : 'AZURE_FUNCTION_APP_URL',
     'AZURE_FUNCTION_APP_URL',
@@ -56,7 +57,8 @@ echo "║        ACCS Order Webhook — Registration Info                    ║
 echo "╚══════════════════════════════════════════════════════════════════╝\n\n";
 
 echo "Target ACCS environment : $accsEnvironment\n";
-echo "Function App            : $functionAppUrl\n\n";
+echo "Function App            : " . function_app_display_name_for_url($functionAppUrl) . "\n";
+echo "Function App URL        : $functionAppUrl\n\n";
 
 echo "Webhook endpoint URL (use this in Adobe Developer Console):\n";
 echo "  $endpointUrl\n\n";
@@ -109,9 +111,10 @@ if ($webhookSecret !== '') {
     echo "        Make sure the same value is set in Azure App Settings.\n";
 } else {
     echo "  [WARN] $webhookSecretKey is not set in your local .env.\n";
-    echo "         Copy the value from Azure App Settings for Nutra-forecast-tool";
-    echo $isProduction ? '-prod' : '';
-    echo " and use it as the webhook secret in Adobe Developer Console.\n";
+    echo "         Copy the value from Azure App Settings for "
+        . ($isProduction ? FUNCTION_APP_PROD_RESOURCE_NAME : FUNCTION_APP_UAT_RESOURCE_NAME)
+        . ' (' . function_app_display_name_for_url($functionAppUrl) . ")\n";
+    echo "         and use it as the webhook secret in ACCS Admin.\n";
 }
 
 echo "\n";

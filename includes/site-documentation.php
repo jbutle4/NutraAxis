@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/function-apps.php';
 
 function site_documentation_require_read(): void
 {
@@ -135,7 +136,7 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Background job platform',
-            'body'  => 'Scheduled jobs run on Azure Function App Nutra-forecast-tool (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
+            'body'  => 'Scheduled jobs run on Azure Function Apps ' . function_app_display_names_summary() . ' (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
         ],
         [
             'title' => 'Manual execution',

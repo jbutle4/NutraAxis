@@ -24,6 +24,8 @@ const SUPPLIER_LIST_SORT_COLUMNS = [
     'name'     => 'Supplier name',
     'type'     => 'Type',
     'contact'  => 'Contact',
+    'email'    => 'Email',
+    'phone'    => 'Phone',
     'status'   => 'Status',
     'pos'      => 'POs',
 ];
@@ -33,6 +35,8 @@ const SUPPLIER_LIST_SORT_SQL = [
     'name'    => 's.SupplierName',
     'type'    => 's.SupplierType',
     'contact' => 's.ContactName',
+    'email'   => 's.ContactEmail',
+    'phone'   => 's.ContactPhone',
     'status'  => 's.IsActive',
     'pos'     => 'POCount',
 ];
@@ -186,7 +190,8 @@ function supplier_list(array $filters = []): array
             s.SupplierName LIKE :q OR
             s.SupplierCode LIKE :q OR
             s.ContactName LIKE :q OR
-            s.ContactEmail LIKE :q
+            s.ContactEmail LIKE :q OR
+            s.ContactPhone LIKE :q
         )';
         $params['q'] = '%' . $filters['q'] . '%';
     }
