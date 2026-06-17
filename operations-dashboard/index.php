@@ -153,10 +153,25 @@ $dashboardSections = [
                 'icon'  => 'accounting',
             ],
             [
+                'title' => 'Adobe Admin Console',
+                'desc'  => 'Adobe organization admin console for NutraAxis production users, products, and licenses.',
+                'href'  => 'https://adminconsole.adobe.com/E73F22FB6913B1350A495C34@AdobeOrg/overview',
+                'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
                 'title' => 'ACCS Admin',
-                'desc'  => 'Adobe Commerce as a Cloud Service admin for the stage tenant.',
+                'desc'  => 'Adobe Commerce as a Cloud Service admin for the production tenant.',
+                'href'  => 'https://na1.admin.commerce.adobe.com/VLuKe3eeTwf1D5oxmLBfcr',
+                'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'ACCS Admin',
+                'desc'  => 'UAT System — Adobe Commerce as a Cloud Service admin for the stage tenant.',
                 'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
                 'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'ACCS Authoring',
