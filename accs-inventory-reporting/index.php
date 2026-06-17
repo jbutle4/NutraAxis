@@ -1,37 +1,15 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accs-inventory-reporting.php';
 
 accs_inventory_reporting_require_read();
 
-$activeSlug = 'accs-inventory-reporting';
+$activeSlug = $activeSlug ?? 'accs-inventory-reporting';
 $configError = adobe_commerce_config_error();
 $listResult = $configError === null
     ? adobe_commerce_list_inventory()
     : ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
-$accsSortColumns = [
-    'sku'      => 'SKU',
-    'source'   => 'Source',
-    'quantity' => 'Quantity',
-    'status'   => 'Status',
-];
-$listFilters = table_sort_state($accsSortColumns, 'sku', 'asc', $_GET);
-$accsSortAccessors = [
-    'sku'      => fn(array $row): string => (string) ($row['sku'] ?? ''),
-    'source'   => fn(array $row): string => (string) ($row['source_code'] ?? ''),
-    'quantity' => fn(array $row) => $row['quantity'] ?? 0,
-    'status'   => fn(array $row): string => adobe_commerce_source_item_status_label($row['status'] ?? 0),
-];
-if ($configError === null && ($listResult['rows'] ?? []) !== []) {
-    $listResult['rows'] = table_sort_rows(
-        $listResult['rows'],
-        $listFilters,
-        $accsSortAccessors,
-        ['quantity'],
-        'sku',
-        'asc'
-    );
-}
 
 $pageTitle = 'ACCS Inventory Reporting | Inventory Management';
 $pageDescription = 'View stock levels by SKU and source from Adobe Commerce (ACCS).';
@@ -72,15 +50,12 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <?php table_sort_render_head_row(
-                $accsSortColumns,
-                '/accs-inventory-reporting',
-                $listFilters,
-                [],
-                ['quantity'],
-                'sku',
-                'asc'
-            ); ?>
+            <tr>
+              <th>SKU</th>
+              <th>Source</th>
+              <th>Quantity</th>
+              <th>Status</th>
+            </tr>
           </thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?>

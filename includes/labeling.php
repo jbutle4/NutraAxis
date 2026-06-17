@@ -19,124 +19,6 @@ const LABEL_REVIEW_STATUSES = ['Pending', 'In Review', 'Approved', 'Rejected'];
 const WL_ORDER_STATUSES = ['Received', 'In Production', 'Labeling', 'Ready to Ship', 'Shipped', 'Cancelled'];
 const WL_LINE_STATUSES = ['Open', 'In Production', 'Labeling', 'Complete', 'Cancelled'];
 
-const LABEL_TEMPLATE_LIST_SORT_COLUMNS = [
-    'scope'   => 'Scope',
-    'customer'=> 'Customer',
-    'sku'     => 'SKU',
-    'name'    => 'Label Name',
-    'version' => 'Version',
-    'status'  => 'Status',
-];
-
-const LABEL_TEMPLATE_LIST_SORT_SQL = [
-    'scope'    => 't.LabelScope',
-    'customer' => 't.CustomerName',
-    'sku'      => 't.SKU',
-    'name'     => 't.LabelName',
-    'version'  => 't.CurrentVersionNo',
-    'status'   => 't.TemplateStatus',
-];
-
-const LABEL_VERSION_LIST_SORT_COLUMNS = [
-    'version'  => 'Version',
-    'scope'    => 'Scope',
-    'customer' => 'Customer',
-    'sku'      => 'SKU',
-    'label'    => 'Label',
-    'status'   => 'Status',
-    'notes'    => 'Revision Notes',
-    'created'  => 'Created',
-];
-
-const LABEL_VERSION_LIST_SORT_SQL = [
-    'version'  => 'v.VersionNumber',
-    'scope'    => 't.LabelScope',
-    'customer' => 't.CustomerName',
-    'sku'      => 't.SKU',
-    'label'    => 't.LabelName',
-    'status'   => 'v.VersionStatus',
-    'notes'    => 'v.RevisionNotes',
-    'created'  => 'v.CreateDate',
-];
-
-const LABEL_RUN_LIST_SORT_COLUMNS = [
-    'run_number'    => 'Run Number',
-    'run_date'      => 'Run Date',
-    'status'        => 'Status',
-    'print_orders'  => 'Print Orders',
-    'created_by'    => 'Created By',
-];
-
-const LABEL_RUN_LIST_SORT_SQL = [
-    'run_number'   => 'r.RunNumber',
-    'run_date'     => 'r.RunDate',
-    'status'       => 'r.RunStatus',
-    'print_orders' => 'PrintOrderCount',
-    'created_by'   => 'u.UserName',
-];
-
-const LABEL_RUN_LIST_SORT_NUMERIC = ['print_orders'];
-
-const LABEL_PRINT_LIST_SORT_COLUMNS = [
-    'vendor'            => 'Vendor',
-    'vendor_order'      => 'Vendor Order #',
-    'run'               => 'Label Order Run',
-    'order_date'        => 'Order Date',
-    'status'            => 'Status',
-    'expected_delivery' => 'Expected Delivery',
-];
-
-const LABEL_PRINT_LIST_SORT_SQL = [
-    'vendor'            => 'p.VendorName',
-    'vendor_order'      => 'p.VendorOrderNumber',
-    'run'               => 'r.RunNumber',
-    'order_date'        => 'p.OrderDate',
-    'status'            => 'p.OrderStatus',
-    'expected_delivery' => 'p.ExpectedDeliveryDate',
-];
-
-const LABEL_COMPLIANCE_LIST_SORT_COLUMNS = [
-    'date'       => 'Date',
-    'subject'    => 'Subject',
-    'record_id'  => 'Record ID',
-    'status'     => 'Status',
-    'reviewer'   => 'Reviewer',
-    'comments'   => 'Comments',
-];
-
-const LABEL_COMPLIANCE_LIST_SORT_SQL = [
-    'date'      => 'r.ReviewDate',
-    'subject'   => 'r.ReviewSubject',
-    'record_id' => 'r.SubjectID',
-    'status'    => 'r.ReviewStatus',
-    'reviewer'  => 'r.ReviewerName',
-    'comments'  => 'r.Comments',
-];
-
-const LABEL_COMPLIANCE_LIST_SORT_NUMERIC = ['record_id'];
-
-const WL_LIST_SORT_COLUMNS = [
-    'adobe_order_id' => 'Adobe Order ID',
-    'order_number'   => 'Order Number',
-    'customer'       => 'Customer',
-    'order_date'     => 'Order Date',
-    'status'         => 'Status',
-    'lines'          => 'Lines',
-    'imported'       => 'Imported',
-];
-
-const WL_LIST_SORT_SQL = [
-    'adobe_order_id' => 'o.ExternalOrderID',
-    'order_number'   => 'o.ExternalOrderNumber',
-    'customer'       => 'o.CustomerName',
-    'order_date'     => 'o.OrderDate',
-    'status'         => 'o.OrderStatus',
-    'lines'          => 'LineCount',
-    'imported'       => 'o.ImportedDate',
-];
-
-const WL_LIST_SORT_NUMERIC = ['lines'];
-
 function label_module_title(): string
 {
     return 'Custom Order Fulfillment Operations';
@@ -149,7 +31,7 @@ function label_page_title(string $section): string
 
 function label_hub_areas(): array
 {
-    return [
+    $areas = [
         [
             'href'  => '/labeling-operations/templates/',
             'title' => 'Label Templates',
@@ -191,6 +73,12 @@ function label_hub_areas(): array
             'desc'  => 'Review projected and actual demand for One-A-Day pack SKUs.',
         ],
     ];
+
+    return array_map(static function (array $area): array {
+        $area['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+
+        return $area;
+    }, $areas);
 }
 
 function label_permission_value(): ?string
@@ -285,7 +173,7 @@ function label_generate_run_number(PDO $pdo): string
     return sprintf('LOR-%s-%04d', $year, $seq);
 }
 
-function label_list_templates(array $filters = []): array
+function label_list_templates(?string $scope = null, ?string $search = null): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -305,20 +193,17 @@ function label_list_templates(array $filters = []): array
     SQL;
     $params = [];
 
-    $scope = $filters['scope'] ?? null;
     if ($scope !== null && $scope !== '') {
         $sql .= ' AND t.LabelScope = :scope';
         $params['scope'] = $scope;
     }
 
-    $search = $filters['q'] ?? null;
     if ($search !== null && $search !== '') {
         $sql .= ' AND (t.CustomerName LIKE :q OR t.SKU LIKE :q OR t.LabelName LIKE :q)';
         $params['q'] = '%' . $search . '%';
     }
 
-    $sortState = table_sort_state(LABEL_TEMPLATE_LIST_SORT_COLUMNS, 'scope', 'asc', $filters);
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(LABEL_TEMPLATE_LIST_SORT_SQL, $sortState, 'scope', 'sku');
+    $sql .= ' ORDER BY t.LabelScope, t.CustomerName, t.SKU';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -460,7 +345,7 @@ function label_save_template(array $input, ?int $templateId = null): array
     }
 }
 
-function label_list_versions(array $filters = []): array
+function label_list_versions(?string $search = null): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -487,14 +372,12 @@ function label_list_versions(array $filters = []): array
     SQL;
     $params = [];
 
-    $search = $filters['q'] ?? null;
     if ($search !== null && $search !== '') {
         $sql .= ' AND (t.CustomerName LIKE :q OR t.SKU LIKE :q OR t.LabelName LIKE :q OR v.VersionNumber LIKE :q)';
         $params['q'] = '%' . $search . '%';
     }
 
-    $sortState = table_sort_state(LABEL_VERSION_LIST_SORT_COLUMNS, 'created', 'desc', $filters);
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(LABEL_VERSION_LIST_SORT_SQL, $sortState, 'created', 'version');
+    $sql .= ' ORDER BY v.CreateDate DESC, v.VersionID DESC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -518,20 +401,17 @@ function label_list_template_versions(int $templateId): array
     return $stmt->fetchAll();
 }
 
-function label_list_order_runs(array $filters = []): array
+function label_list_order_runs(): array
 {
     $pdo = db();
-    $sql = <<<SQL
+
+    return $pdo->query(<<<SQL
         SELECT r.*, u.UserName AS CreatedByName,
             (SELECT COUNT(*) FROM dbo.BatchPrintOrder p WHERE p.RunID = r.RunID) AS PrintOrderCount
         FROM dbo.LabelOrderRun r
         INNER JOIN dbo.[User] u ON u.UserID = r.CreatedByUser
-    SQL;
-
-    $sortState = table_sort_state(LABEL_RUN_LIST_SORT_COLUMNS, 'run_date', 'desc', $filters, 'sort_runs', 'dir_runs');
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(LABEL_RUN_LIST_SORT_SQL, $sortState, 'run_date', 'run_number');
-
-    return $pdo->query($sql)->fetchAll();
+        ORDER BY r.RunDate DESC, r.RunID DESC
+    SQL)->fetchAll();
 }
 
 function label_get_order_run(int $runId): ?array
@@ -599,7 +479,7 @@ function label_save_order_run(array $input, ?int $runId = null): array
     }
 }
 
-function label_list_print_orders(array $filters = []): array
+function label_list_print_orders(?int $runId = null): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -614,14 +494,12 @@ function label_list_print_orders(array $filters = []): array
     SQL;
     $params = [];
 
-    $runId = $filters['run_id'] ?? null;
-    if ($runId !== null && (int) $runId > 0) {
+    if ($runId !== null && $runId > 0) {
         $sql .= ' AND p.RunID = :run';
-        $params['run'] = (int) $runId;
+        $params['run'] = $runId;
     }
 
-    $sortState = table_sort_state(LABEL_PRINT_LIST_SORT_COLUMNS, 'order_date', 'desc', $filters, 'sort_prints', 'dir_prints');
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(LABEL_PRINT_LIST_SORT_SQL, $sortState, 'order_date', 'vendor');
+    $sql .= ' ORDER BY p.OrderDate DESC, p.PrintOrderID DESC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -705,7 +583,7 @@ function label_save_print_order(array $input, ?int $printOrderId = null): array
     }
 }
 
-function label_list_compliance_reviews(array $filters = []): array
+function label_list_compliance_reviews(?string $subject = null): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -716,14 +594,12 @@ function label_list_compliance_reviews(array $filters = []): array
     SQL;
     $params = [];
 
-    $subject = $filters['subject'] ?? null;
     if ($subject !== null && $subject !== '') {
         $sql .= ' AND r.ReviewSubject = :subject';
         $params['subject'] = $subject;
     }
 
-    $sortState = table_sort_state(LABEL_COMPLIANCE_LIST_SORT_COLUMNS, 'date', 'desc', $filters);
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(LABEL_COMPLIANCE_LIST_SORT_SQL, $sortState, 'date', 'record_id');
+    $sql .= ' ORDER BY r.ReviewDate DESC, r.ReviewID DESC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -777,7 +653,7 @@ function label_review_subject_label(string $subject): string
     return LABEL_REVIEW_SUBJECTS[$subject] ?? $subject;
 }
 
-function wl_list_orders(array $filters = []): array
+function wl_list_orders(?string $status = null): array
 {
     $pdo = db();
     $sql = <<<SQL
@@ -791,14 +667,12 @@ function wl_list_orders(array $filters = []): array
     SQL;
     $params = [];
 
-    $status = $filters['status'] ?? null;
     if ($status !== null && $status !== '') {
         $sql .= ' AND o.OrderStatus = :status';
         $params['status'] = $status;
     }
 
-    $sortState = table_sort_state(WL_LIST_SORT_COLUMNS, 'order_date', 'desc', $filters);
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(WL_LIST_SORT_SQL, $sortState, 'order_date', 'adobe_order_id');
+    $sql .= ' ORDER BY o.OrderDate DESC, o.WLPOID DESC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

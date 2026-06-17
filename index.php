@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/includes/init.php';
+require __DIR__ . '/includes/hub-cards.php';
 
 $pageTitle = 'NutraAxis Operations Dashboard';
 $pageDescription = 'NutraAxis Operations Dashboard — internal tools and resources for the NutraAxis team.';
@@ -53,25 +54,24 @@ require __DIR__ . '/includes/header.php';
         </div>
         <?php endif; ?>
 
+        <?php
+            $homeCards = array_map(static function (array $item): array {
+                $item['href'] = auth_is_logged_in()
+                    ? $item['href']
+                    : auth_login_url($item['href']);
+
+                return $item;
+            }, $visibleFunctions);
+            $homeSections = hub_cards_partition_uat($homeCards);
+        ?>
         <div class="functions">
-          <?php foreach ($visibleFunctions as $item): ?>
           <?php
-            $moduleHref = auth_is_logged_in()
-                ? $item['href']
-                : auth_login_url($item['href']);
+            hub_render_function_card_grid($homeSections['production'], false);
+            if ($homeSections['uat'] !== []) {
+                echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
+                hub_render_function_card_grid($homeSections['uat'], false);
+            }
           ?>
-          <a class="function-card" href="<?= htmlspecialchars($moduleHref) ?>">
-            <div class="function-icon"><?= icon_svg($item['icon']) ?></div>
-            <h3><?= htmlspecialchars($item['title']) ?></h3>
-            <p><?= htmlspecialchars($item['desc']) ?></p>
-            <span class="function-link">
-              Open
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </span>
-          </a>
-          <?php endforeach; ?>
         </div>
       </div>
     </div>

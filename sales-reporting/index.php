@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/hub-cards.php';
 
 auth_require_module_read('sales-reporting');
 
@@ -36,21 +37,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </div>
       <?php else: ?>
-      <div class="capability-grid">
-        <?php foreach ($areas as $area): ?>
-        <a class="capability-card capability-card-link" href="<?= htmlspecialchars($area['href']) ?>">
-          <div class="function-icon"><?= icon_svg($area['icon']) ?></div>
-          <h3><?= htmlspecialchars($area['title']) ?></h3>
-          <p><?= htmlspecialchars($area['desc']) ?></p>
-          <span class="function-link">
-            Open
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </span>
-        </a>
-        <?php endforeach; ?>
-      </div>
+      <?php hub_render_capability_cards($areas); ?>
       <?php endif; ?>
     </div>
   </main>

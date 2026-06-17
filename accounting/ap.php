@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 
@@ -8,33 +9,6 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'ap';
 $listResult = qbo_is_connected() ? qbo_list_bills() : ['ok' => true, 'rows' => [], 'error' => null];
-$qboSortColumns = [
-    'bill_number' => 'Bill #',
-    'vendor'      => 'Vendor',
-    'date'        => 'Date',
-    'due'         => 'Due',
-    'total'       => 'Total',
-    'balance'     => 'Balance',
-];
-$listFilters = table_sort_state($qboSortColumns, 'date', 'desc', $_GET);
-$qboSortAccessors = [
-    'bill_number' => fn(array $row): string => (string) ($row['DocNumber'] ?? $row['Id'] ?? ''),
-    'vendor'      => fn(array $row): string => accounting_ref_name($row['VendorRef'] ?? null),
-    'date'        => fn(array $row): string => (string) ($row['TxnDate'] ?? ''),
-    'due'         => fn(array $row): string => (string) ($row['DueDate'] ?? ''),
-    'total'       => fn(array $row) => $row['TotalAmt'] ?? 0,
-    'balance'     => fn(array $row) => $row['Balance'] ?? 0,
-];
-if ($listResult['ok'] && qbo_is_connected()) {
-    $listResult['rows'] = table_sort_rows(
-        $listResult['rows'] ?? [],
-        $listFilters,
-        $qboSortAccessors,
-        ['total', 'balance'],
-        'date',
-        'desc'
-    );
-}
 
 $pageTitle = 'Accounts Payable | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -57,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/ap.php', $listFilters, [], ['total', 'balance'], 'date', 'desc', 'date'); ?></thead>
+          <thead><tr><th>Bill #</th><th>Vendor</th><th>Date</th><th>Due</th><th>Total</th><th>Balance</th></tr></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="6">No bills found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

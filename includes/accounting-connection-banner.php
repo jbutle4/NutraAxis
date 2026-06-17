@@ -22,6 +22,9 @@ $connection = qbo_get_connection();
         <div>
           <strong>Connected to <?= htmlspecialchars((string) ($connection['CompanyName'] ?? 'QuickBooks company')) ?></strong>
           <p>Realm <?= htmlspecialchars((string) $connection['RealmID']) ?> · <?= htmlspecialchars((string) $connection['Environment']) ?> environment · read-only views from QuickBooks Online</p>
+          <?php if (data_profile_is_production() && qbo_environment() === 'sandbox'): ?>
+          <p class="permission-note">QuickBooks production credentials are not configured yet — this production page is using the sandbox company.</p>
+          <?php endif; ?>
         </div>
         <?php if (accounting_can_update()): ?>
         <form method="post" action="/accounting/disconnect.php" onsubmit="return confirm('Disconnect QuickBooks from Operations?');">

@@ -1,39 +1,13 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reporting.php';
 
 inventory_reporting_require_read();
 
-$activeSlug = 'inventory-reporting';
+$activeSlug = $activeSlug ?? 'inventory-reporting';
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_inventory() : ['ok' => true, 'error' => null, 'rows' => []];
-$inventorySortColumns = [
-    'sku_code'           => 'SKU',
-    'facility_code'      => 'Facility',
-    'available_quantity' => 'Available',
-    'on_hand_quantity'   => 'On hand',
-    'qty_ordered'        => 'Ordered',
-    'total_quantity'     => 'Total',
-];
-$listFilters = table_sort_state($inventorySortColumns, 'sku_code', 'asc', $_GET);
-$inventorySortAccessors = [
-    'sku_code'           => fn(array $row): string => (string) ($row['sku_code'] ?? ''),
-    'facility_code'      => fn(array $row): string => (string) ($row['facility_code'] ?? ''),
-    'available_quantity' => fn(array $row) => $row['available_quantity'] ?? 0,
-    'on_hand_quantity'   => fn(array $row) => $row['on_hand_quantity'] ?? 0,
-    'qty_ordered'        => fn(array $row) => $row['qty_ordered'] ?? 0,
-    'total_quantity'     => fn(array $row) => $row['total_quantity'] ?? 0,
-];
-if ($configError === null && ($listResult['rows'] ?? []) !== []) {
-    $listResult['rows'] = table_sort_rows(
-        $listResult['rows'],
-        $listFilters,
-        $inventorySortAccessors,
-        ['available_quantity', 'on_hand_quantity', 'qty_ordered', 'total_quantity'],
-        'sku_code',
-        'asc'
-    );
-}
 
 $pageTitle = 'Jazz Current Inventory | Supply Chain Management';
 $pageDescription = 'View stock on hand and availability from Jazz OMS.';
@@ -74,15 +48,14 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <?php table_sort_render_head_row(
-                $inventorySortColumns,
-                '/inventory-reporting',
-                $listFilters,
-                [],
-                ['available_quantity', 'on_hand_quantity', 'qty_ordered', 'total_quantity'],
-                'sku_code',
-                'asc'
-            ); ?>
+            <tr>
+              <th>SKU</th>
+              <th>Facility</th>
+              <th>Available</th>
+              <th>On hand</th>
+              <th>Ordered</th>
+              <th>Total</th>
+            </tr>
           </thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?>

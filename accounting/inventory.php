@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 
@@ -8,24 +9,6 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'inventory';
 $listResult = qbo_is_connected() ? qbo_list_inventory_items() : ['ok' => true, 'rows' => [], 'error' => null];
-$qboSortColumns = [
-    'name'        => 'Name',
-    'sku'         => 'SKU',
-    'qty_on_hand' => 'Qty on hand',
-    'unit_price'  => 'Unit price',
-    'active'      => 'Active',
-];
-$listFilters = table_sort_state($qboSortColumns, 'name', 'asc', $_GET);
-$qboSortAccessors = [
-    'name'        => fn(array $row): string => (string) ($row['Name'] ?? ''),
-    'sku'         => fn(array $row): string => (string) ($row['Sku'] ?? ''),
-    'qty_on_hand' => fn(array $row) => $row['QtyOnHand'] ?? 0,
-    'unit_price'  => fn(array $row) => $row['UnitPrice'] ?? 0,
-    'active'      => fn(array $row): string => !empty($row['Active']) ? 'Yes' : 'No',
-];
-if ($listResult['ok'] && qbo_is_connected()) {
-    $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['qty_on_hand', 'unit_price'], 'name', 'asc');
-}
 
 $pageTitle = 'Inventory | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -48,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/inventory.php', $listFilters, [], ['qty_on_hand', 'unit_price'], 'name', 'asc'); ?></thead>
+          <thead><tr><th>Name</th><th>SKU</th><th>Qty on hand</th><th>Unit price</th><th>Active</th></tr></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="5">No inventory items found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>
