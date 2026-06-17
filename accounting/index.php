@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/accounting.php';
+require dirname(__DIR__) . '/includes/accounting-hub-cards.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 
 accounting_require_read();
@@ -43,31 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
 
-      <div class="functions">
-        <?php
-          $cards = [
-              ['ap', 'Accounts Payable', 'Open bills and vendor balances from QuickBooks.', 'View AP'],
-              ['ar', 'Accounts Receivable', 'Customer invoices and outstanding balances.', 'View AR'],
-              ['pos', 'Purchase Orders', 'QuickBooks purchase orders and status.', 'View POs'],
-              ['inventory', 'Inventory', 'Inventory items, SKU, and quantity on hand.', 'View Inventory'],
-              ['suppliers', 'Suppliers', 'QuickBooks vendor directory and balances.', 'View Suppliers'],
-              ['accounts', 'Chart of Accounts', 'General ledger accounts and current balances.', 'View Accounts'],
-          ];
-          foreach ($cards as [$slug, $title, $desc, $cta]):
-              $href = ACCOUNTING_SECTIONS[$slug]['href'];
-        ?>
-        <a class="function-card" href="<?= htmlspecialchars($href) ?>">
-          <h3><?= htmlspecialchars($title) ?></h3>
-          <p><?= htmlspecialchars($desc) ?></p>
-          <span class="function-link">
-            <?= htmlspecialchars($cta) ?>
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </span>
-        </a>
-        <?php endforeach; ?>
-      </div>
+      <?php accounting_render_hub_cards(); ?>
     </div>
   </main>
 <?php

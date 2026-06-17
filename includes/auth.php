@@ -30,7 +30,13 @@ const MODULE_PERMISSION_COLUMNS = [
     'supplier-management'    => 'POManagement',
     'po-payments'            => 'POManagement',
     'po-receiving'           => 'POManagement',
+    'inventory-reporting-uat'      => 'InventoryReporting',
+    'jazz-item-master-uat'         => 'InventoryReporting',
+    'accs-inventory-reporting-uat' => 'InventoryReporting',
+    'inventory-reconciliation-uat' => 'InventoryReporting',
     'jazz-asns'              => 'POManagement',
+    'jazz-asns-uat'                => 'POManagement',
+    'accs-order-report-uat'        => 'SalesReporting',
     'delivery-scheduling-log'=> 'POManagement',
 ];
 

@@ -1,8 +1,49 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/links.php';
+require dirname(__DIR__) . '/includes/hub-cards.php';
 
 auth_require_module_read('operations-dashboard');
+
+function operations_dashboard_normalize_link(array $link): array
+{
+    if (!isset($link['tier'])) {
+        if (!empty($link['internal'])) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#zendesk\.com#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#(admin\.commerce\.adobe\.com/UAEy|nutrasync-eds-staging|nutraaxis_test|/nutraaxis_test/)#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_UAT;
+        } elseif (str_starts_with((string) ($link['href'] ?? ''), 'http')) {
+            $link['tier'] = ENVIRONMENT_TIER_EXTERNAL;
+        } else {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        }
+    }
+
+    $link['external'] = empty($link['internal']) && str_starts_with((string) ($link['href'] ?? ''), 'http');
+
+    return $link;
+}
+
+function operations_dashboard_render_section_links(array $links): void
+{
+    $links = array_map('operations_dashboard_normalize_link', $links);
+    $sections = hub_cards_partition_uat($links);
+
+    if ($sections['production'] !== []) {
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['production'], false);
+        echo '</div>';
+    }
+
+    if ($sections['uat'] !== []) {
+        echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['uat'], false);
+        echo '</div>';
+    }
+}
 
 $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
@@ -182,35 +223,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php foreach ($dashboardSections as $section): ?>
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title"><?= htmlspecialchars($section['title']) ?></h2>
-        <div class="functions operations-dashboard-links">
-          <?php foreach ($section['links'] as $link):
-              $isInternal = !empty($link['internal']);
-          ?>
-          <a
-            class="function-card"
-            href="<?= htmlspecialchars($link['href']) ?>"
-            <?= $isInternal ? '' : 'target="_blank" rel="noopener noreferrer"' ?>
-          >
-            <div class="function-icon"><?= icon_svg($link['icon']) ?></div>
-            <h3><?= htmlspecialchars($link['title']) ?></h3>
-            <p><?= htmlspecialchars($link['desc']) ?></p>
-            <span class="function-link">
-              <?= $isInternal ? 'Open' : 'Open in new tab' ?>
-              <?php if ($isInternal): ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-              <?php else: ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <path d="M15 3h6v6"/>
-                <path d="M10 14L21 3"/>
-              </svg>
-              <?php endif; ?>
-            </span>
-          </a>
-          <?php endforeach; ?>
-        </div>
+        <?php operations_dashboard_render_section_links($section['links']); ?>
       </section>
       <?php endforeach; ?>
 

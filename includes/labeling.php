@@ -31,7 +31,7 @@ function label_page_title(string $section): string
 
 function label_hub_areas(): array
 {
-    return [
+    $areas = [
         [
             'href'  => '/labeling-operations/templates/',
             'title' => 'Label Templates',
@@ -73,6 +73,12 @@ function label_hub_areas(): array
             'desc'  => 'Review projected and actual demand for One-A-Day pack SKUs.',
         ],
     ];
+
+    return array_map(static function (array $area): array {
+        $area['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+
+        return $area;
+    }, $areas);
 }
 
 function label_permission_value(): ?string

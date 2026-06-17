@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reporting.php';
 
 inventory_reporting_require_read();
 
-$activeSlug = 'inventory-reporting';
+$activeSlug = $activeSlug ?? 'inventory-reporting';
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_inventory() : ['ok' => true, 'error' => null, 'rows' => []];
 

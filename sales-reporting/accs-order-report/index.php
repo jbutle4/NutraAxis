@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/sales-reporting.php';
 
 sales_reporting_require_read();
 
-$activeSlug = 'accs-order-report';
+$activeSlug = $activeSlug ?? 'accs-order-report';
 $configError = adobe_commerce_config_error();
 $search = trim($_GET['order'] ?? '');
 $listResult = ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];

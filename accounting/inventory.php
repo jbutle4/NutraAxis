@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 

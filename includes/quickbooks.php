@@ -1,15 +1,23 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/data-profile.php';
 require_once __DIR__ . '/accounting.php';
 
 const QBO_OAUTH_STATE_KEY = 'qbo_oauth_state';
 
 function qbo_environment(): string
 {
-    $env = strtolower(trim((string) env('QBO_ENVIRONMENT', 'sandbox')));
+    if (data_profile_is_uat()) {
+        return 'sandbox';
+    }
 
-    return $env === 'production' ? 'production' : 'sandbox';
+    $prodEnv = strtolower(trim((string) env('QBO_PRODUCTION_ENVIRONMENT', '')));
+    if ($prodEnv === 'production' && trim((string) env('QBO_PRODUCTION_CLIENT_ID', '')) !== '') {
+        return 'production';
+    }
+
+    return 'sandbox';
 }
 
 function qbo_redirect_uri(): string

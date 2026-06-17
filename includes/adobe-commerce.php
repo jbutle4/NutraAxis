@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/data-profile.php';
 
 const ADOBE_COMMERCE_IMS_SCOPE = 'openid,AdobeID,commerce.accs,additional_info.roles,org.read,additional_info.projectedProductContext,profile,email';
 
@@ -21,13 +22,24 @@ const ADOBE_COMMERCE_ENVIRONMENTS = [
 
 function adobe_commerce_environment(): string
 {
+    if (data_profile_is_uat()) {
+        $uat = strtolower(trim((string) env_first([
+            'ADOBE_COMMERCE_UAT_ENVIRONMENT',
+            'ACCS_UAT_ENVIRONMENT',
+        ], 'stage')));
+
+        return array_key_exists($uat, ADOBE_COMMERCE_ENVIRONMENTS) ? $uat : 'stage';
+    }
+
     $env = strtolower(trim((string) env_first([
+        'ADOBE_COMMERCE_PRODUCTION_ENVIRONMENT',
+        'ACCS_PRODUCTION_ENVIRONMENT',
         'ADOBE_COMMERCE_ENVIRONMENT',
         'ADOBE_ACCS_ENVIRONMENT',
         'ACCS_ENVIRONMENT',
-    ], 'stage')));
+    ], 'production')));
 
-    return array_key_exists($env, ADOBE_COMMERCE_ENVIRONMENTS) ? $env : 'stage';
+    return array_key_exists($env, ADOBE_COMMERCE_ENVIRONMENTS) ? $env : 'production';
 }
 
 function adobe_commerce_tenant_for_environment(string $env): string
