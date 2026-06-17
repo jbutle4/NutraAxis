@@ -1,0 +1,59 @@
+Page Name,Card Title,Description,Link,Data Source,Environment
+Operations Home,Supply Chain Management,"Inventory reporting, forecasting, suppliers, SKU master, and purchase orders.",/inventory-management/index.php,Hub page,Hub
+Operations Home,Legal Agreements & Contracts,"Store and track legal agreements, contracts, and renewal dates.",/legal-agreements/index.php,SQL (dbo.nutraaxis),Production
+Operations Home,Sales Reporting Summaries,"ACCS order lookup, daily sales, and monthly sales summary tables.",/sales-reporting/index.php,Hub page,Hub
+Operations Home,Custom Order Fulfillment Operations,"Manage label templates, batches, and compliance workflows.",/labeling-operations/index.php,Hub page,Hub
+Operations Home,Operations Dashboard,"Shortcuts to Microsoft 365, QuickBooks, Adobe Commerce, and support tools.",/operations-dashboard/index.php,Hub page,Hub
+Operations Home,System Performance Dashboard,"IT system monitoring, Geckoboard dashboards, and Zendesk totals — coming soon.",/system-performance-dashboard/index.php,Placeholder,Hub
+Operations Home,Support,"View Zendesk tickets, create requests, and manage support conversations.",/support/index.php,Zendesk API (production),Production
+Operations Home,Accounting,"Read-only QuickBooks Online views for AP, AR, POs, inventory, suppliers, and chart of accounts.",/accounting/index.php,Hub page,Hub
+Supply Chain Management,Jazz Current Inventory,Jazz OMS stock levels by SKU and facility.,/inventory-reporting/index.php,Jazz (UAT / test),Test
+Supply Chain Management,Jazz Item Master,SKU and item reference data synced from Jazz OMS.,/jazz-item-master/index.php,Jazz (UAT / test),Test
+Supply Chain Management,ACCS Inventory Reporting,Adobe Commerce (ACCS) inventory by SKU and source.,/accs-inventory-reporting/index.php,ACCS (stage / test),Test
+Supply Chain Management,Inventory Reconciliation (Jazz-ACCS),Compare Jazz OMS and ACCS inventory levels for the same SKU.,/inventory-reconciliation/index.php,Jazz (UAT) + ACCS (stage),Test
+Supply Chain Management,Inventory Forecasting,Project demand and plan replenishment with confidence.,/inventory-demand/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,PO Management,"Create, track, and manage purchase orders across suppliers.",/po-management/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,PO Receiving,"Advanced shipping notices for inbound shipments, expected receipts, and PO receiving.",/po-receiving/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,PO Payments,Record and track payments made against purchase orders.,/po-payments/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,Product SKU Master,Maintain the master product catalog and SKU reference data.,/product-catalog/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,Supplier Management,"Maintain supplier profiles, contacts, and procurement relationships.",/supplier-management/index.php,SQL (dbo.nutraaxis),Production
+Supply Chain Management,Jazz ASNs,Browse advanced shipping notices synced from Jazz OMS.,/po-receiving/jazz-asns.php,Jazz (UAT / test),Test
+Supply Chain Management,Delivery Scheduling Log,Track inbound delivery appointments and scheduling updates.,/delivery-scheduling-log/index.php,SQL (dbo.nutraaxis),Production
+Sales Reporting Summaries,ACCS Order Report,Browse and search Adobe Commerce (ACCS) orders and order detail.,/sales-reporting/accs-order-report/index.php,ACCS (stage / test),Test
+Sales Reporting Summaries,Daily Sales Summary,Daily SKU quantity totals rolled up from ACCS orders.,/sales-reporting/daily-sales-summary/index.php,"SQL (dbo.nutraaxis); populated from ACCS (stage)",Production
+Sales Reporting Summaries,Monthly Sales Summary,Monthly SKU quantity totals materialized from daily sales.,/sales-reporting/monthly-sales-summary/index.php,"SQL (dbo.nutraaxis); populated from ACCS (stage)",Production
+Custom Order Fulfillment Operations,Label Templates,"Track labels for each customer and SKU, plus internal label definitions.",/labeling-operations/templates/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,Label Batch Printing,Track third-party print orders associated with label order runs.,/labeling-operations/batch-printing/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,Label Compliance Review,Log approvals and review activity for batch printing and label order production.,/labeling-operations/compliance/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,Label Version Control,Track label revisions for customer and internal labels.,/labeling-operations/versions/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,White Label Production Order,Track production orders received from Adobe Commerce with header and line detail.,/labeling-operations/white-label-orders/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,One-A-Day Pack Batch Order PO,Manage purchase orders for One-A-Day pack batch production runs.,/labeling-operations/one-a-day-pack-batch-order-po/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,One-A-Day Pack Inventory,View on-hand and available One-A-Day pack inventory by SKU.,/labeling-operations/one-a-day-pack-inventory/index.php,SQL (dbo.nutraaxis),Production
+Custom Order Fulfillment Operations,One-A-Day Pack Demand,Review projected and actual demand for One-A-Day pack SKUs.,/labeling-operations/one-a-day-pack-demand/index.php,SQL (dbo.nutraaxis),Production
+Operations Dashboard,Issues and Actions,"SharePoint tracker for open issues, action items, and team follow-ups.",External: SharePoint list URL,External (SharePoint),External
+Operations Dashboard,Planner,Microsoft Planner premium plan for NutraAxis operational tasks and schedules.,External: Microsoft Planner URL,External (Microsoft 365),External
+Operations Dashboard,Document Library,SharePoint document library for NutraAxis team files and shared resources.,External: SharePoint library URL,External (SharePoint),External
+Operations Dashboard,Supplier Management,"Maintain supplier profiles, contacts, CMO relationships, and procurement records.",/supplier-management/index.php,SQL (dbo.nutraaxis),Production
+Operations Dashboard,QuickBooks,QuickBooks Online accountant view for NutraAxis financials.,External: https://qbo.intuit.com/app/my-accountant,QBO (external login),External
+Operations Dashboard,Lucid Chart,Lucid visual collaboration — recent diagrams and documents.,External: Lucid URL,External (Lucid),External
+Operations Dashboard,Survey Monkey,"SurveyMonkey home — create surveys, view responses, and manage team feedback.",External: SurveyMonkey URL,External (SurveyMonkey),External
+Operations Dashboard,Process Log,"Scheduled job history for sales summaries, inventory snapshots, and demand runs.",/process-log/index.php,SQL (dbo.nutraaxis),Production
+Operations Dashboard,Enhancement Log,"Track portal enhancement requests, status, due dates, and implementation notes.",/enhancement-log/index.php,SQL (dbo.nutraaxis),Production
+Operations Dashboard,Site Documentation,Support reference for all portal pages modules and scheduled background processes.,/site-documentation/index.php,SQL (dbo.nutraaxis),Production
+Operations Dashboard,ZenDesk,NutraAxis Labs Zendesk agent dashboard for support tickets.,External: Zendesk agent URL,Zendesk (production),Production
+Operations Dashboard,Cart.com Help,Jazz Commerce (Cart.com) Jira Service Management help center.,External: Atlassian JSM URL,External (Jira),External
+Operations Dashboard,Azure Portal,Microsoft Azure portal for NutraAxis cloud resources and app services.,External: https://portal.azure.com/auth/login/,External (Azure),External
+Operations Dashboard,PayPal Fraud,PayPal fraud protection dashboard for monitoring and managing payment risk.,External: PayPal fraud URL,External (PayPal),External
+Operations Dashboard,Intuit Development Registration,Intuit Developer workspaces for QuickBooks API apps keys and OAuth configuration.,External: Intuit Developer URL,External (Intuit),External
+Operations Dashboard,ACCS Admin,Adobe Commerce as a Cloud Service admin for the stage tenant.,External: ACCS stage admin URL,ACCS (stage / test),Test
+Operations Dashboard,ACCS Authoring,Document Authoring for NutraSync EDS staging content.,External: Adobe DA live URL,ACCS (stage / test),Test
+Operations Dashboard,ACCS Asset Management,Adobe Experience Manager DAM for NutraSync digital assets.,External: AEM assets URL,ACCS (stage / test),Test
+Operations Dashboard,ACCS Staging,NutraAxis staging storefront on Adobe Edge Delivery Services.,External: EDS staging storefront URL,ACCS (stage / test),Test
+Operations Dashboard,NA Test Site,"NutraAxis site index — HTML previews, concept pages, and test renders.",/nutraaxis_test/,External / test content,Test
+Operations Dashboard,NutraSync Wordpress,NutraSync WordPress admin login for content and site management.,External: WordPress login URL,External (WordPress),External
+Accounting,Accounts Payable,Open bills and vendor balances from QuickBooks.,/accounting/ap.php,QBO (sandbox / test),Test
+Accounting,Accounts Receivable,Customer invoices and outstanding balances.,/accounting/ar.php,QBO (sandbox / test),Test
+Accounting,Purchase Orders,QuickBooks purchase orders and status.,/accounting/pos.php,QBO (sandbox / test),Test
+Accounting,Inventory,"Inventory items, SKU, and quantity on hand.",/accounting/inventory.php,QBO (sandbox / test),Test
+Accounting,Suppliers,QuickBooks vendor directory and balances.,/accounting/suppliers.php,QBO (sandbox / test),Test
+Accounting,Chart of Accounts,General ledger accounts and current balances.,/accounting/chart-of-accounts.php,QBO (sandbox / test),Test
