@@ -20,6 +20,7 @@ const IGNORE_DIRS = new Set([
   'functions', // Azure Function App — deployed separately, not to PHP wwwroot
   'Archive Sites',
   'nutraaxis_test',
+  '.tmp',
 ]);
 
 const IGNORE_FILES = new Set([
