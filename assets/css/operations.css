@@ -2128,6 +2128,18 @@ body.te-print-page {
   }
 }
 
+.operations-dashboard-section .hub-uat-section-title {
+  margin: 28px 0 12px;
+}
+
+.function-card.card-tier-production,
+.function-card.card-tier-uat,
+.function-card.card-tier-external,
+.function-card.card-tier-hub {
+  border-width: 1px;
+  border-style: solid;
+}
+
 .card-tier-hub,
 .capability-card.card-tier-hub {
   background: #e8ede6;

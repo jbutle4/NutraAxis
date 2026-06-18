@@ -1,8 +1,56 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/links.php';
+require dirname(__DIR__) . '/includes/hub-cards.php';
 
 auth_require_module_read('operations-dashboard');
+
+function operations_dashboard_normalize_link(array $link): array
+{
+    if (!isset($link['tier'])) {
+        if (!empty($link['internal'])) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#zendesk\.com#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_UAT;
+        } elseif (str_starts_with((string) ($link['href'] ?? ''), 'http')) {
+            $link['tier'] = ENVIRONMENT_TIER_EXTERNAL;
+        } else {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        }
+    }
+
+    $link['external'] = empty($link['internal']) && str_starts_with((string) ($link['href'] ?? ''), 'http');
+
+    return $link;
+}
+
+function operations_dashboard_render_section_links(array $links): void
+{
+    $filtered = [];
+    foreach ($links as $link) {
+        if (!empty($link['module']) && !auth_can_read_leaf_module((string) $link['module'])) {
+            continue;
+        }
+        $filtered[] = operations_dashboard_normalize_link($link);
+    }
+
+    $sections = hub_cards_partition_uat($filtered);
+
+    if ($sections['production'] !== []) {
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['production'], false);
+        echo '</div>';
+    }
+
+    if ($sections['uat'] !== []) {
+        echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['uat'], false);
+        echo '</div>';
+    }
+}
 
 $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
@@ -121,40 +169,75 @@ $dashboardSections = [
                 'icon'  => 'accounting',
             ],
             [
-                'title' => 'ACCS Admin',
-                'desc'  => 'Adobe Commerce as a Cloud Service admin for the stage tenant.',
-                'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
+                'title' => 'Adobe Admin Console',
+                'desc'  => 'Adobe organization admin console for NutraAxis production users, products, and licenses.',
+                'href'  => 'https://adminconsole.adobe.com/E73F22FB6913B1350A495C34@AdobeOrg/overview',
                 'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
             ],
             [
-                'title' => 'ACCS Authoring',
-                'desc'  => 'Document Authoring for NutraSync EDS staging content.',
-                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds-staging',
-                'icon'  => 'document',
-            ],
-            [
-                'title' => 'ACCS Asset Management',
-                'desc'  => 'Adobe Experience Manager DAM for NutraSync digital assets.',
-                'href'  => 'https://author-p180942-e1905796.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
-                'icon'  => 'catalog',
-            ],
-            [
-                'title' => 'ACCS Staging',
-                'desc'  => 'NutraAxis staging storefront on Adobe Edge Delivery Services.',
-                'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
-                'icon'  => 'chart',
-            ],
-            [
-                'title' => 'ACCS Admin Prod',
+                'title' => 'ACCS Admin',
                 'desc'  => 'Adobe Commerce as a Cloud Service admin for the production tenant.',
                 'href'  => 'https://na1.admin.commerce.adobe.com/VLuKe3eeTwf1D5oxmLBfcr',
                 'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'Prod DA',
+                'desc'  => 'Document Authoring for NutraSync EDS production content.',
+                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds',
+                'icon'  => 'document',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'Prod DAM',
+                'desc'  => 'Adobe Experience Manager DAM for NutraSync production digital assets.',
+                'href'  => 'https://author-p180942-e1905687.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
+                'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'ACCS Admin',
+                'desc'  => 'UAT System — Adobe Commerce as a Cloud Service admin for the stage tenant.',
+                'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
+                'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Authoring',
+                'desc'  => 'UAT System — Document Authoring for NutraSync EDS staging content.',
+                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds-staging',
+                'icon'  => 'document',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Asset Management',
+                'desc'  => 'UAT System — Adobe Experience Manager DAM for NutraSync staging digital assets.',
+                'href'  => 'https://author-p180942-e1905796.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
+                'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Staging',
+                'desc'  => 'UAT System — NutraAxis staging storefront on Adobe Edge Delivery Services.',
+                'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
+                'icon'  => 'chart',
+                'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'NA Test Site',
-                'desc'  => 'NutraAxis site index — HTML previews, concept pages, and test renders.',
+                'desc'  => 'UAT System — NutraAxis site index, HTML previews, concept pages, and test renders.',
                 'href'  => 'https://nutraaxisweb.azurewebsites.net/nutraaxis_test/',
                 'icon'  => 'links',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title'    => 'Function App ping test',
+                'desc'     => 'Diagnostic tool to call the Azure Function App ping endpoint from the portal and verify connectivity.',
+                'href'     => '/function-test/',
+                'icon'     => 'dashboard',
+                'internal' => true,
+                'tier'     => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'NutraSync Wordpress',
@@ -197,38 +280,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php foreach ($dashboardSections as $section): ?>
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title"><?= htmlspecialchars($section['title']) ?></h2>
-        <div class="functions operations-dashboard-links">
-          <?php foreach ($section['links'] as $link):
-              if (!empty($link['module']) && !auth_can_read_leaf_module((string) $link['module'])) {
-                  continue;
-              }
-              $isInternal = !empty($link['internal']);
-          ?>
-          <a
-            class="function-card"
-            href="<?= htmlspecialchars($link['href']) ?>"
-            <?= $isInternal ? '' : 'target="_blank" rel="noopener noreferrer"' ?>
-          >
-            <div class="function-icon"><?= icon_svg($link['icon']) ?></div>
-            <h3><?= htmlspecialchars($link['title']) ?></h3>
-            <p><?= htmlspecialchars($link['desc']) ?></p>
-            <span class="function-link">
-              <?= $isInternal ? 'Open' : 'Open in new tab' ?>
-              <?php if ($isInternal): ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-              <?php else: ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <path d="M15 3h6v6"/>
-                <path d="M10 14L21 3"/>
-              </svg>
-              <?php endif; ?>
-            </span>
-          </a>
-          <?php endforeach; ?>
-        </div>
+        <?php operations_dashboard_render_section_links($section['links']); ?>
       </section>
       <?php endforeach; ?>
 
