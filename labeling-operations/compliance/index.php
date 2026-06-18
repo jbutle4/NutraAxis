@@ -10,7 +10,7 @@ $subjectFilter = $_GET['subject'] ?? '';
 $listFilters = [
     'subject' => $subjectFilter !== '' ? $subjectFilter : null,
 ] + table_sort_state(LABEL_COMPLIANCE_LIST_SORT_COLUMNS, 'date', 'desc', $_GET);
-$reviews = label_list_compliance_reviews($listFilters);
+$reviews = label_list_compliance_reviews($subjectFilter !== '' ? $subjectFilter : null);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('Label Compliance Review');

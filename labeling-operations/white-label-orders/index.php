@@ -10,7 +10,7 @@ $statusFilter = $_GET['status'] ?? '';
 $listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
 ] + table_sort_state(WL_LIST_SORT_COLUMNS, 'order_date', 'desc', $_GET);
-$orders = wl_list_orders($listFilters);
+$orders = wl_list_orders($statusFilter !== '' ? $statusFilter : null);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('White Label Production Orders');

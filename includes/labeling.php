@@ -16,6 +16,59 @@ const LABEL_REVIEW_SUBJECTS = [
     'LabelTemplate'   => 'Label Template',
 ];
 const LABEL_REVIEW_STATUSES = ['Pending', 'In Review', 'Approved', 'Rejected'];
+const LABEL_TEMPLATE_LIST_SORT_COLUMNS = [
+    'scope'    => 'Scope',
+    'customer' => 'Customer',
+    'sku'      => 'SKU',
+    'name'     => 'Label Name',
+    'version'  => 'Current Version',
+    'status'   => 'Status',
+];
+const LABEL_VERSION_LIST_SORT_COLUMNS = [
+    'version'  => 'Version',
+    'scope'    => 'Scope',
+    'customer' => 'Customer',
+    'sku'      => 'SKU',
+    'name'     => 'Label Name',
+    'status'   => 'Version Status',
+    'notes'    => 'Revision Notes',
+    'created'  => 'Created',
+];
+const LABEL_RUN_LIST_SORT_COLUMNS = [
+    'run_number'  => 'Run #',
+    'run_date'    => 'Run Date',
+    'status'      => 'Status',
+    'print_count' => 'Print Orders',
+    'created_by'  => 'Created By',
+];
+const LABEL_RUN_LIST_SORT_NUMERIC = ['print_count'];
+const LABEL_PRINT_LIST_SORT_COLUMNS = [
+    'vendor'       => 'Vendor',
+    'vendor_order' => 'Vendor Order #',
+    'run'          => 'Run #',
+    'order_date'   => 'Order Date',
+    'status'       => 'Status',
+    'expected'     => 'Expected Delivery',
+];
+const LABEL_COMPLIANCE_LIST_SORT_COLUMNS = [
+    'date'      => 'Review Date',
+    'subject'   => 'Subject',
+    'reference' => 'Subject ID',
+    'outcome'   => 'Status',
+    'reviewer'  => 'Reviewer',
+    'comments'  => 'Comments',
+];
+const LABEL_COMPLIANCE_LIST_SORT_NUMERIC = ['reference'];
+const WL_LIST_SORT_COLUMNS = [
+    'external_id' => 'External Order ID',
+    'order_no'    => 'Order Number',
+    'customer'    => 'Customer',
+    'order_date'  => 'Order Date',
+    'status'      => 'Status',
+    'lines'       => 'Lines',
+    'imported'    => 'Imported',
+];
+const WL_LIST_SORT_NUMERIC = ['lines'];
 const WL_ORDER_STATUSES = ['Received', 'In Production', 'Labeling', 'Ready to Ship', 'Shipped', 'Cancelled'];
 const WL_LINE_STATUSES = ['Open', 'In Production', 'Labeling', 'Complete', 'Cancelled'];
 

@@ -406,7 +406,14 @@ function catalog_list_skus(array $filters = []): array
     $sortState = catalog_list_sort_state($filters);
     $sortColumn = CATALOG_LIST_SORT_SQL[$sortState['sort']] ?? CATALOG_LIST_SORT_SQL['sku_code'];
     $sortDir = $sortState['dir'] === 'desc' ? 'DESC' : 'ASC';
-    $sql .= " ORDER BY {$sortColumn} {$sortDir}, s.SKUCode ASC";
+    $sql .= " ORDER BY {$sortColumn} {$sortDir}";
+    if ($sortColumn !== 's.SKUCode') {
+        $sql .= ', s.SKUCode ASC';
+    }
+
+    if ($params === []) {
+        return $pdo->query($sql)->fetchAll();
+    }
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);

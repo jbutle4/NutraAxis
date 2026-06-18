@@ -21,8 +21,23 @@ const FILES = [
   { local: 'ops-dashboard.php', remote: '/site/wwwroot/ops-dashboard.php' },
   { local: 'dash.php', remote: '/site/wwwroot/dash.php' },
   { local: 'test-dash.php', remote: '/site/wwwroot/test-dash.php' },
+  { local: 'legal-agreements.php', remote: '/site/wwwroot/legal-agreements.php' },
+  { local: 'product-catalog.php', remote: '/site/wwwroot/product-catalog.php' },
+  { local: 'operations-dashboard.php', remote: '/site/wwwroot/operations-dashboard.php' },
   { local: 'operations-dashboard/index.php', remote: '/site/wwwroot/operations-dashboard/index.php' },
+  { local: 'product-catalog/index.php', remote: '/site/wwwroot/product-catalog/index.php' },
+  { local: 'legal-agreements/index.php', remote: '/site/wwwroot/legal-agreements/index.php' },
+  { local: 'includes/init.php', remote: '/site/wwwroot/includes/init.php' },
+  { local: 'includes/catalog.php', remote: '/site/wwwroot/includes/catalog.php' },
+  { local: 'includes/legal.php', remote: '/site/wwwroot/includes/legal.php' },
+  { local: 'includes/labeling.php', remote: '/site/wwwroot/includes/labeling.php' },
   { local: 'includes/app.php', remote: '/site/wwwroot/includes/app.php' },
+  { local: 'labeling-operations/batch-printing/index.php', remote: '/site/wwwroot/labeling-operations/batch-printing/index.php' },
+  { local: 'labeling-operations/templates/index.php', remote: '/site/wwwroot/labeling-operations/templates/index.php' },
+  { local: 'labeling-operations/versions/index.php', remote: '/site/wwwroot/labeling-operations/versions/index.php' },
+  { local: 'labeling-operations/compliance/index.php', remote: '/site/wwwroot/labeling-operations/compliance/index.php' },
+  { local: 'labeling-operations/white-label-orders/index.php', remote: '/site/wwwroot/labeling-operations/white-label-orders/index.php' },
+  { local: 'includes/table-sort.php', remote: '/site/wwwroot/includes/table-sort.php' },
 ];
 
 function loadConfig() {

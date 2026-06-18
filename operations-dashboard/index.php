@@ -1,18 +1,25 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/links.php';
 
 auth_require_module_read('operations-dashboard');
 
 $activeSlug = 'operations-dashboard';
-$canManageLinks = links_can_read();
-$linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
+// Links Index (dbo.LinksIndex) is optional — load only when the table exists.
+$canManageLinks = false;
 $indexLinks = [];
-if ($canManageLinks) {
+$linkListFilters = ['status' => 'active'];
+if (is_readable(dirname(__DIR__) . '/includes/links.php')) {
+    require_once dirname(__DIR__) . '/includes/links.php';
     try {
-        $indexLinks = links_list($linkListFilters);
+        $canManageLinks = links_can_read();
+        $linkListFilters += table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
+        if ($canManageLinks) {
+            $indexLinks = links_list($linkListFilters);
+        }
     } catch (Throwable $e) {
-        error_log('operations-dashboard links_list: ' . $e->getMessage());
+        error_log('operations-dashboard links: ' . $e->getMessage());
+        $canManageLinks = false;
+        $indexLinks = [];
     }
 }
 

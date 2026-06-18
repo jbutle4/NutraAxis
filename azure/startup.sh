@@ -49,12 +49,15 @@ if "absolute_redirect off" not in text:
             1,
         )
 
-if "error_page 404 /index.php" not in text:
+if "fastcgi_intercept_errors on" in text:
     text = text.replace(
-        "error_page   500 502 503 504  /50x.html;",
-        "error_page 404 /index.php?$args;\n    error_page   500 502 503 504  /50x.html;",
+        "fastcgi_intercept_errors on;",
+        "fastcgi_intercept_errors off; # nutraaxis_show_php_errors",
         1,
     )
+
+if "error_page 404 /index.php" in text:
+    text = text.replace("error_page 404 /index.php?$args;\n    ", "", 1)
 
 if "nutraaxis_directory_index" not in text:
     directory_rewrite = (

@@ -10,15 +10,25 @@ $statusFilter = $listFilters['status'];
 $brandFilter = $listFilters['brand'];
 $categoryFilter = $listFilters['category'];
 $search = $listFilters['q'];
-$skus = catalog_list_skus([
-    'status'   => $statusFilter !== '' ? $statusFilter : null,
-    'brand'    => $brandFilter !== '' ? $brandFilter : null,
-    'category' => $categoryFilter !== '' ? $categoryFilter : null,
-    'q'        => $search !== '' ? $search : null,
-    'sort'     => $listFilters['sort'],
-    'dir'      => $listFilters['dir'],
-]);
 $notice = $_GET['notice'] ?? null;
+$pageError = null;
+try {
+    $skus = catalog_list_skus([
+        'status'   => $statusFilter !== '' ? $statusFilter : null,
+        'brand'    => $brandFilter !== '' ? $brandFilter : null,
+        'category' => $categoryFilter !== '' ? $categoryFilter : null,
+        'q'        => $search !== '' ? $search : null,
+        'sort'     => $listFilters['sort'],
+        'dir'      => $listFilters['dir'],
+    ]);
+} catch (Throwable $e) {
+    error_log('product-catalog list: ' . $e->getMessage());
+    $skus = [];
+    $pageError = 'Unable to load product catalog data from SQL Server.';
+    if (auth_can_access_site_admin()) {
+        $pageError .= ' ' . $e->getMessage();
+    }
+}
 $actionHeader = table_actions_header(catalog_can_update() ? ['View', 'Edit'] : ['View']);
 
 $pageTitle = 'Product SKU Master | Inventory Management';
@@ -56,7 +66,11 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">SKU deleted successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/product-catalog/">
+      <?php if ($pageError !== null): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($pageError) ?></div>
+      <?php endif; ?>
+
+      <form class="po-filter audit-filter" method="get" action="/product-catalog.php">
         <input type="hidden" name="sort" value="<?= htmlspecialchars($listFilters['sort']) ?>" />
         <input type="hidden" name="dir" value="<?= htmlspecialchars($listFilters['dir']) ?>" />
         <div class="audit-filter-grid">
