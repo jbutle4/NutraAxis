@@ -510,6 +510,17 @@ $modulePages = [
             ['title' => 'Category Filters', 'desc' => 'Filter by category, status, and search across the full index.'],
         ],
     ],
+    'contacts-list' => [
+        'label'       => 'Operations',
+        'headline'    => 'Contacts List',
+        'lead'        => 'Maintain suppliers, contractors, education, marketing, and other business contacts used across NutraAxis operations.',
+        'capabilities' => [
+            ['title' => 'Contact Directory', 'desc' => 'Search and filter contacts by type, company, email, phone, or related supplier.'],
+            ['title' => 'Supplier Linkage', 'desc' => 'Associate contacts with active supplier records when applicable.'],
+            ['title' => 'Supplier Contacts', 'desc' => 'Review primary contact details stored on active supplier records.'],
+            ['title' => 'Role-Based Access', 'desc' => 'Contacts List permissions control create, read, update, and delete access.'],
+        ],
+    ],
     'support' => [
         'label'       => 'Help',
         'headline'    => 'Support',
