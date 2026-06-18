@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reconciliation.php';
 
 inventory_reconciliation_require_read();
 
-$activeSlug = 'inventory-reconciliation';
+$activeSlug = $activeSlug ?? 'inventory-reconciliation';
 
 $jazzConfigError = jazz_oms_config_error();
 $accsConfigError = adobe_commerce_config_error();

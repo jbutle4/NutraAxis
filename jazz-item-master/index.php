@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/jazz-item-master.php';
 
 jazz_item_master_require_read();
 
-$activeSlug = 'jazz-item-master';
+$activeSlug = $activeSlug ?? 'jazz-item-master';
 $pageContainerClass = 'page-inner--wide';
 $view = jazz_item_master_view_from_query();
 $search = trim($_GET['q'] ?? '');

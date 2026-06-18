@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/data-profile.php';
 
 function jazz_oms_normalize_domain(string $domain): string
 {
@@ -19,17 +20,31 @@ function jazz_oms_normalize_domain(string $domain): string
 
 function jazz_oms_domain(): string
 {
-    return jazz_oms_normalize_domain((string) env('JAZZ_DOMAIN', ''));
+    if (data_profile_is_uat()) {
+        $domain = trim((string) env_first(['JAZZ_UAT_DOMAIN', 'JAZZ_DOMAIN'], ''));
+    } else {
+        $domain = trim((string) env_first(['JAZZ_DOMAIN_PROD', 'JAZZ_PRODUCTION_DOMAIN'], ''));
+    }
+
+    return jazz_oms_normalize_domain($domain);
 }
 
 function jazz_oms_username(): string
 {
-    return trim((string) env('JAZZ_USERNAME', ''));
+    if (data_profile_is_uat()) {
+        return trim((string) env_first(['JAZZ_UAT_USERNAME', 'JAZZ_USERNAME'], ''));
+    }
+
+    return trim((string) env_first(['JAZZ_USERNAME_PROD', 'JAZZ_PRODUCTION_USERNAME'], ''));
 }
 
 function jazz_oms_password(): string
 {
-    return (string) env('JAZZ_PASSWORD', '');
+    if (data_profile_is_uat()) {
+        return (string) env_first(['JAZZ_UAT_PASSWORD', 'JAZZ_PASSWORD'], '');
+    }
+
+    return (string) env_first(['JAZZ_PASSWORD_PROD', 'JAZZ_PRODUCTION_PASSWORD'], '');
 }
 
 function jazz_oms_tenant_code(): string
@@ -46,7 +61,12 @@ function jazz_oms_page_size(): int
 
 function jazz_oms_base_url(): string
 {
-    $override = rtrim(trim((string) env('JAZZ_BASE_URL', '')), '/');
+    if (data_profile_is_uat()) {
+        $override = rtrim(trim((string) env_first(['JAZZ_UAT_BASE_URL', 'JAZZ_BASE_URL'], '')), '/');
+    } else {
+        $override = rtrim(trim((string) env_first(['JAZZ_BASE_URL_PROD', 'JAZZ_PRODUCTION_BASE_URL'], '')), '/');
+    }
+
     if ($override !== '') {
         return $override;
     }
@@ -70,7 +90,7 @@ function jazz_oms_config_error(): ?string
         return null;
     }
 
-    return 'Jazz OMS is not configured. Set JAZZ_DOMAIN, JAZZ_USERNAME, JAZZ_PASSWORD, and JAZZ_TENANT_CODE in application settings.';
+    return 'Jazz OMS is not configured. Set JAZZ_DOMAIN_PROD, JAZZ_USERNAME_PROD, JAZZ_PASSWORD_PROD, and JAZZ_TENANT_CODE in Azure application settings.';
 }
 
 function jazz_oms_is_cloudflare_block(?string $responseBody): bool
@@ -301,10 +321,63 @@ function jazz_oms_list_items(): array
     return jazz_oms_fetch_paginated('/api/v1/product/item');
 }
 
+function jazz_oms_order_endpoint(): string
+{
+    return '/' . ltrim(trim((string) env('JAZZ_ORDER_ENDPOINT', '/api/v1/order/status')), '/');
+}
+
+function jazz_oms_list_orders(array $filters = []): array
+{
+    $query = [];
+    foreach (['status', 'order_number', 'order_date', 'po_number', 'start_date', 'end_date', 'customer_number'] as $key) {
+        $value = trim((string) ($filters[$key] ?? ''));
+        if ($value !== '') {
+            $query[$key] = $value;
+        }
+    }
+
+    return jazz_oms_fetch_paginated(jazz_oms_order_endpoint(), $query);
+}
+
+/**
+ * @return array{ok: bool, error: ?string, row: ?array<string, mixed>}
+ */
+function jazz_oms_get_order(string $orderNumber): array
+{
+    $orderNumber = trim($orderNumber);
+    if ($orderNumber === '') {
+        return ['ok' => false, 'error' => 'Order number is required.', 'row' => null];
+    }
+
+    $result = jazz_oms_list_orders(['order_number' => $orderNumber]);
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => $result['error'], 'row' => null];
+    }
+
+    foreach ($result['rows'] as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $candidate = trim((string) ($row['order_number'] ?? ''));
+        if ($candidate !== '' && strcasecmp($candidate, $orderNumber) === 0) {
+            return ['ok' => true, 'error' => null, 'row' => $row];
+        }
+    }
+
+    $first = $result['rows'][0] ?? null;
+
+    return [
+        'ok'    => is_array($first),
+        'error' => is_array($first) ? null : 'Order not found in Jazz OMS.',
+        'row'   => is_array($first) ? $first : null,
+    ];
+}
+
 /**
  * @return array{ok: bool, error: ?string, rows: list<array<string, mixed>>}
  */
-function jazz_oms_fetch_paginated(string $path): array
+function jazz_oms_fetch_paginated(string $path, array $query = []): array
 {
     $configError = jazz_oms_config_error();
     if ($configError !== null) {
@@ -313,7 +386,7 @@ function jazz_oms_fetch_paginated(string $path): array
 
     $path = '/' . ltrim($path, '/');
     $url = jazz_oms_base_url() . $path;
-    $params = ['limit' => jazz_oms_page_size(), 'offset' => 0];
+    $params = array_merge(['limit' => jazz_oms_page_size(), 'offset' => 0], $query);
     $rows = [];
     $pageGuard = 0;
 

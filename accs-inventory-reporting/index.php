@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accs-inventory-reporting.php';
 
 accs_inventory_reporting_require_read();
 
-$activeSlug = 'accs-inventory-reporting';
+$activeSlug = $activeSlug ?? 'accs-inventory-reporting';
 $configError = adobe_commerce_config_error();
 $listResult = $configError === null
     ? adobe_commerce_list_inventory()
