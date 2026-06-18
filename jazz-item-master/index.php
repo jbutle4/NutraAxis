@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/jazz-item-master.php';
 
 jazz_item_master_require_read();
 
-$activeSlug = 'jazz-item-master';
+$activeSlug = $activeSlug ?? 'jazz-item-master';
 $pageContainerClass = 'page-inner--wide';
 $view = jazz_item_master_view_from_query();
 $search = trim($_GET['q'] ?? '');
@@ -14,20 +15,6 @@ $listResult = $configError === null
     : ['ok' => true, 'error' => null, 'rows' => [], 'endpoint' => ''];
 $rows = jazz_item_master_filter_rows($listResult['rows'] ?? [], $search);
 $columns = jazz_item_master_columns($view, $listResult['rows'] ?? []);
-$sortColumnDefs = [];
-$sortAccessors = [];
-foreach ($columns as $column) {
-    $sortColumnDefs[$column] = jazz_oms_field_label($column);
-    $sortAccessors[$column] = fn(array $row) => $row[$column] ?? '';
-}
-$defaultSortColumn = $columns[0] ?? 'record';
-$listFilters = [
-    'view' => $view,
-    'q'    => $search,
-] + table_sort_state($sortColumnDefs !== [] ? $sortColumnDefs : ['record' => 'Record'], $defaultSortColumn, 'asc', $_GET);
-if ($rows !== [] && $sortAccessors !== []) {
-    $rows = table_sort_rows($rows, $listFilters, $sortAccessors, [], $defaultSortColumn, 'asc');
-}
 
 $pageTitle = 'Jazz Item Master | Supply Chain Management';
 $pageDescription = 'SKU and item reference data from Jazz OMS.';
@@ -60,7 +47,6 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <form class="po-filter audit-filter" method="get" action="/jazz-item-master/">
         <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>" />
-        <?php table_sort_hidden_inputs($listFilters, $defaultSortColumn, 'asc'); ?>
         <div class="audit-filter-grid">
           <div class="audit-filter-wide">
             <label for="q">Search</label>
@@ -102,17 +88,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <th>Record</th>
               <?php else: ?>
               <?php foreach ($columns as $column): ?>
-              <?php table_sort_render_th(
-                  $column,
-                  jazz_oms_field_label($column),
-                  '/jazz-item-master',
-                  $sortColumnDefs,
-                  $listFilters,
-                  ['view', 'q'],
-                  [],
-                  $defaultSortColumn,
-                  'asc'
-              ); ?>
+              <th><?= htmlspecialchars(jazz_oms_field_label($column)) ?></th>
               <?php endforeach; ?>
               <?php endif; ?>
             </tr>

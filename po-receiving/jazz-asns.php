@@ -1,37 +1,17 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 
 por_require_read();
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'jazz-asns';
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_asns() : ['ok' => true, 'error' => null, 'rows' => []];
 $rows = $listResult['rows'] ?? [];
 $columns = jazz_oms_asn_columns($rows);
-$asnPreferredOrder = ['id', 'asn_number', 'po_number', 'supplier', 'status', 'expected_date', 'created_at'];
-$asnSortColumns = [];
-foreach ($asnPreferredOrder as $preferred) {
-    if (in_array($preferred, $columns, true)) {
-        $asnSortColumns[$preferred] = jazz_oms_asn_column_label($preferred);
-    }
-}
-foreach ($columns as $column) {
-    if (!isset($asnSortColumns[$column])) {
-        $asnSortColumns[$column] = jazz_oms_asn_column_label($column);
-    }
-}
-$asnDefaultSort = array_key_first($asnSortColumns) ?: 'id';
-$listFilters = table_sort_state($asnSortColumns, $asnDefaultSort, 'desc', $_GET);
-$asnSortAccessors = [];
-foreach (array_keys($asnSortColumns) as $column) {
-    $asnSortAccessors[$column] = fn(array $row) => jazz_oms_asn_cell_value($row[$column] ?? null);
-}
-if ($rows !== [] && $asnSortAccessors !== []) {
-    $rows = table_sort_rows($rows, $listFilters, $asnSortAccessors, [], $asnDefaultSort, 'desc');
-}
 $notice = $_GET['notice'] ?? null;
 $transmittedPorId = (int) ($_GET['por_id'] ?? 0);
 $transmittedReceipt = $transmittedPorId > 0 ? por_get($transmittedPorId) : null;
@@ -96,21 +76,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <th>Appointment</th>
               <?php else: ?>
               <?php foreach ($columns as $column): ?>
-              <?php if (isset($asnSortColumns[$column])): ?>
-              <?php table_sort_render_th(
-                  $column,
-                  jazz_oms_asn_column_label($column),
-                  '/po-receiving/jazz-asns.php',
-                  $asnSortColumns,
-                  $listFilters,
-                  [],
-                  [],
-                  $asnDefaultSort,
-                  'desc'
-              ); ?>
-              <?php else: ?>
               <th><?= htmlspecialchars(jazz_oms_asn_column_label($column)) ?></th>
-              <?php endif; ?>
               <?php endforeach; ?>
               <th>Appointment</th>
               <?php endif; ?>

@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 
@@ -8,24 +9,6 @@ accounting_require_read();
 $activeSlug = 'accounting';
 $accountingSection = 'suppliers';
 $listResult = qbo_is_connected() ? qbo_list_vendors() : ['ok' => true, 'rows' => [], 'error' => null];
-$qboSortColumns = [
-    'display_name' => 'Display name',
-    'company'      => 'Company',
-    'email'        => 'Email',
-    'balance'      => 'Balance',
-    'active'       => 'Active',
-];
-$listFilters = table_sort_state($qboSortColumns, 'display_name', 'asc', $_GET);
-$qboSortAccessors = [
-    'display_name' => fn(array $row): string => (string) ($row['DisplayName'] ?? ''),
-    'company'      => fn(array $row): string => (string) ($row['CompanyName'] ?? ''),
-    'email'        => fn(array $row): string => (string) ($row['PrimaryEmailAddr']['Address'] ?? ''),
-    'balance'      => fn(array $row) => $row['Balance'] ?? 0,
-    'active'       => fn(array $row): string => !empty($row['Active']) ? 'Yes' : 'No',
-];
-if ($listResult['ok'] && qbo_is_connected()) {
-    $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['balance'], 'display_name', 'asc');
-}
 
 $pageTitle = 'Suppliers | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
@@ -48,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/suppliers.php', $listFilters, [], ['balance'], 'display_name', 'asc'); ?></thead>
+          <thead><tr><th>Display name</th><th>Company</th><th>Email</th><th>Balance</th><th>Active</th></tr></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="5">No suppliers found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

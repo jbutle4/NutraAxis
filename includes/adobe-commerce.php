@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/adobe-commerce-settings.php';
+require_once __DIR__ . '/data-profile.php';
 
 const ADOBE_COMMERCE_IMS_SCOPE = 'openid,AdobeID,commerce.accs,additional_info.roles,org.read,additional_info.projectedProductContext,profile,email';
 
@@ -22,19 +23,41 @@ const ADOBE_COMMERCE_ENVIRONMENTS = [
 
 function adobe_commerce_environment(): string
 {
-    $env = strtolower(trim((string) env('ADOBE_COMMERCE_ENVIRONMENT', 'stage')));
+    if (data_profile_is_uat()) {
+        $uat = strtolower(trim((string) env_first([
+            'ADOBE_COMMERCE_UAT_ENVIRONMENT',
+            'ACCS_UAT_ENVIRONMENT',
+            'ADOBE_COMMERCE_ENVIRONMENT',
+            'ADOBE_ACCS_ENVIRONMENT',
+            'ACCS_ENVIRONMENT',
+        ], 'stage')));
 
-    return array_key_exists($env, ADOBE_COMMERCE_ENVIRONMENTS) ? $env : 'stage';
+        return array_key_exists($uat, ADOBE_COMMERCE_ENVIRONMENTS) ? $uat : 'stage';
+    }
+
+    $env = strtolower(trim((string) env_first([
+        'ADOBE_COMMERCE_PRODUCTION_ENVIRONMENT',
+        'ACCS_PRODUCTION_ENVIRONMENT',
+    ], 'production')));
+
+    return array_key_exists($env, ADOBE_COMMERCE_ENVIRONMENTS) ? $env : 'production';
 }
 
 function adobe_commerce_tenant_for_environment(string $env): string
 {
-    return trim((string) env('ADOBE_COMMERCE_' . strtoupper($env), ''));
+    return trim((string) env_first([
+        'ADOBE_COMMERCE_' . strtoupper($env),
+        'ADOBE_ACCS_' . strtoupper($env),
+    ], ''));
 }
 
 function adobe_commerce_tenant_id(): string
 {
-    $override = trim((string) env('ADOBE_COMMERCE_TENANT_ID', ''));
+    $override = trim((string) env_first([
+        'ADOBE_COMMERCE_TENANT_ID',
+        'ADOBE_ACCS_TENANT_ID',
+        'ACCS_TENANT_ID',
+    ], ''));
     if ($override !== '') {
         return $override;
     }
@@ -76,12 +99,20 @@ function adobe_commerce_base_url(): string
 
 function adobe_commerce_client_id(): string
 {
-    return trim((string) env('ADOBE_COMMERCE_CLIENT_ID', ''));
+    return trim((string) env_first([
+        'ADOBE_COMMERCE_CLIENT_ID',
+        'ADOBE_ACCS_CLIENT_ID',
+        'ACCS_CLIENT_ID',
+    ], ''));
 }
 
 function adobe_commerce_client_secret(): string
 {
-    return (string) env('ADOBE_COMMERCE_CLIENT_SECRET', '');
+    return (string) env_first([
+        'ADOBE_COMMERCE_CLIENT_SECRET',
+        'ADOBE_ACCS_CLIENT_SECRET',
+        'ACCS_CLIENT_SECRET',
+    ], '');
 }
 
 function adobe_commerce_is_configured(): bool

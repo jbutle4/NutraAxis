@@ -1,13 +1,27 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/links.php';
 
 auth_require_module_read('operations-dashboard');
 
 $activeSlug = 'operations-dashboard';
-$canManageLinks = links_can_read();
-$linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
-$indexLinks = $canManageLinks ? links_list($linkListFilters) : [];
+// Links Index (dbo.LinksIndex) is optional — load only when the table exists.
+$canManageLinks = false;
+$indexLinks = [];
+$linkListFilters = ['status' => 'active'];
+if (is_readable(dirname(__DIR__) . '/includes/links.php')) {
+    require_once dirname(__DIR__) . '/includes/links.php';
+    try {
+        $canManageLinks = links_can_read();
+        $linkListFilters += table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
+        if ($canManageLinks) {
+            $indexLinks = links_list($linkListFilters);
+        }
+    } catch (Throwable $e) {
+        error_log('operations-dashboard links: ' . $e->getMessage());
+        $canManageLinks = false;
+        $indexLinks = [];
+    }
+}
 
 $dashboardSections = [
     [
@@ -37,6 +51,14 @@ $dashboardSections = [
                 'href'     => '/supplier-management/',
                 'icon'     => 'supplier',
                 'internal' => true,
+            ],
+            [
+                'title'    => 'Contacts List',
+                'desc'     => 'Maintain business contacts and review supplier directory contact details.',
+                'href'     => '/contacts-list/',
+                'icon'     => 'supplier',
+                'internal' => true,
+                'module'   => 'contacts-list',
             ],
             [
                 'title' => 'QuickBooks',

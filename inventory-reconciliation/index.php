@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reconciliation.php';
 
 inventory_reconciliation_require_read();
 
-$activeSlug = 'inventory-reconciliation';
+$activeSlug = $activeSlug ?? 'inventory-reconciliation';
 
 $jazzConfigError = jazz_oms_config_error();
 $accsConfigError = adobe_commerce_config_error();
@@ -34,37 +35,6 @@ $canRenderTable = $apiErrors === [];
 $rows = $canRenderTable
     ? inventory_reconciliation_build_rows($jazzResult['rows'] ?? [], $accsResult['rows'] ?? [])
     : [];
-$reconSortColumns = [
-    'sku'         => 'SKU',
-    'facility'    => 'Facility',
-    'available'   => 'Available',
-    'on_hand'     => 'On Hand',
-    'ordered'     => 'Ordered',
-    'total'       => 'Total',
-    'accs_qty'    => 'ACCS Qty',
-    'accs_status' => 'ACCS Status',
-];
-$listFilters = table_sort_state($reconSortColumns, 'sku', 'asc', $_GET);
-$reconSortAccessors = [
-    'sku'         => fn(array $row): string => (string) $row['sku'],
-    'facility'    => fn(array $row): string => (string) $row['facility'],
-    'available'   => fn(array $row) => $row['available'] ?? 0,
-    'on_hand'     => fn(array $row) => $row['on_hand'] ?? 0,
-    'ordered'     => fn(array $row) => $row['ordered'] ?? 0,
-    'total'       => fn(array $row) => $row['total'] ?? 0,
-    'accs_qty'    => fn(array $row) => $row['has_accs'] ? ($row['accs_qty'] ?? 0) : 0,
-    'accs_status' => fn(array $row): string => $row['has_accs'] ? adobe_commerce_source_item_status_label($row['accs_status'] ?? 0) : '',
-];
-if ($canRenderTable && $rows !== []) {
-    $rows = table_sort_rows(
-        $rows,
-        $listFilters,
-        $reconSortAccessors,
-        ['available', 'on_hand', 'ordered', 'total', 'accs_qty'],
-        'sku',
-        'asc'
-    );
-}
 $mismatchCount = $canRenderTable ? inventory_reconciliation_count_mismatches($rows) : 0;
 
 $pageTitle = 'Inventory Reconciliation (Jazz-ACCS) | Inventory Management';
@@ -111,15 +81,16 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table inventory-reconciliation-table">
           <thead>
-            <?php table_sort_render_head_row(
-                $reconSortColumns,
-                '/inventory-reconciliation',
-                $listFilters,
-                [],
-                ['available', 'on_hand', 'ordered', 'total', 'accs_qty'],
-                'sku',
-                'asc'
-            ); ?>
+            <tr>
+              <th>SKU</th>
+              <th>Facility</th>
+              <th>Available</th>
+              <th>On Hand</th>
+              <th>Ordered</th>
+              <th>Total</th>
+              <th>ACCS Qty</th>
+              <th>ACCS Status</th>
+            </tr>
           </thead>
           <tbody>
             <?php if ($rows === []): ?>

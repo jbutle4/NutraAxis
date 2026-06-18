@@ -40,7 +40,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="section-label">Operations</div>
         <h1>Process Log</h1>
-        <p class="page-lead">Execution history for background jobs on Azure Function App Nutra-forecast-tool. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.</p>
+        <p class="page-lead">Execution history for background jobs on Azure Function Apps <strong><?= htmlspecialchars(function_app_uat_display_name()) ?></strong> and <strong><?= htmlspecialchars(function_app_prod_display_name()) ?></strong>. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.</p>
         <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('process-log')) ?></p>
       </div>
 

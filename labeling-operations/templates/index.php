@@ -12,7 +12,10 @@ $listFilters = [
     'scope' => $scopeFilter !== '' ? $scopeFilter : null,
     'q'     => $search !== '' ? $search : null,
 ] + table_sort_state(LABEL_TEMPLATE_LIST_SORT_COLUMNS, 'scope', 'asc', $_GET);
-$templates = label_list_templates($listFilters);
+$templates = label_list_templates(
+    $scopeFilter !== '' ? $scopeFilter : null,
+    $search !== '' ? $search : null
+);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = label_page_title('Label Templates');

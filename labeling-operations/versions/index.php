@@ -10,7 +10,7 @@ $search = trim($_GET['q'] ?? '');
 $listFilters = [
     'q' => $search !== '' ? $search : null,
 ] + table_sort_state(LABEL_VERSION_LIST_SORT_COLUMNS, 'created', 'desc', $_GET);
-$versions = label_list_versions($listFilters);
+$versions = label_list_versions($search !== '' ? $search : null);
 
 $pageTitle = label_page_title('Label Version Control');
 $pageDescription = 'Track label revisions for customer and internal labels.';

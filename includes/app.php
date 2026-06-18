@@ -31,6 +31,7 @@ $inventorySubModules = [
         'desc'  => 'Jazz OMS stock levels by SKU and facility.',
         'href'  => '/inventory-reporting/',
         'icon'  => 'boxes',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'jazz-item-master',
@@ -38,6 +39,7 @@ $inventorySubModules = [
         'desc'  => 'SKU and item reference data synced from Jazz OMS.',
         'href'  => '/jazz-item-master/',
         'icon'  => 'catalog',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'accs-inventory-reporting',
@@ -45,6 +47,7 @@ $inventorySubModules = [
         'desc'  => 'Adobe Commerce (ACCS) inventory by SKU and source.',
         'href'  => '/accs-inventory-reporting/',
         'icon'  => 'chart',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'inventory-reconciliation',
@@ -52,6 +55,15 @@ $inventorySubModules = [
         'desc'  => 'Compare Jazz OMS and ACCS inventory levels for the same SKU.',
         'href'  => '/inventory-reconciliation/',
         'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+    ],
+    [
+        'slug'  => 'jazz-orders',
+        'title' => 'Jazz Orders',
+        'desc'  => 'Browse the Jazz OMS order queue and fulfillment status report.',
+        'href'  => '/jazz-orders/',
+        'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'inventory-forecasting',
@@ -59,6 +71,7 @@ $inventorySubModules = [
         'desc'  => 'Project demand and plan replenishment with confidence.',
         'href'  => '/inventory-demand/',
         'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'po-management',
@@ -66,6 +79,7 @@ $inventorySubModules = [
         'desc'  => 'Create, track, and manage purchase orders across suppliers.',
         'href'  => '/po-management/',
         'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'po-receiving',
@@ -73,6 +87,7 @@ $inventorySubModules = [
         'desc'  => 'Advanced shipping notices for inbound shipments, expected receipts, and PO receiving.',
         'href'  => '/po-receiving/',
         'icon'  => 'boxes',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'po-payments',
@@ -80,13 +95,15 @@ $inventorySubModules = [
         'desc'  => 'Record and track payments made against purchase orders.',
         'href'  => '/po-payments/',
         'icon'  => 'payment',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'product-catalog',
         'title' => 'Product SKU Master',
         'desc'  => 'Maintain the master product catalog and SKU reference data.',
-        'href'  => '/product-catalog/',
+        'href'  => '/product-catalog.php',
         'icon'  => 'catalog',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'supplier-management',
@@ -94,6 +111,7 @@ $inventorySubModules = [
         'desc'  => 'Maintain supplier profiles, contacts, and procurement relationships.',
         'href'  => '/supplier-management/',
         'icon'  => 'supplier',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'jazz-asns',
@@ -101,6 +119,7 @@ $inventorySubModules = [
         'desc'  => 'Browse advanced shipping notices synced from Jazz OMS.',
         'href'  => '/po-receiving/jazz-asns.php',
         'icon'  => 'document',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'delivery-scheduling-log',
@@ -108,6 +127,47 @@ $inventorySubModules = [
         'desc'  => 'Track inbound delivery appointments and scheduling updates.',
         'href'  => '/delivery-scheduling-log/',
         'icon'  => 'calendar',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+    ],
+    [
+        'slug'  => 'inventory-reporting-uat',
+        'title' => 'Jazz Current Inventory',
+        'desc'  => 'UAT System Jazz OMS stock levels by SKU and facility.',
+        'href'  => '/inventory-reporting-uat/',
+        'icon'  => 'boxes',
+        'tier'  => ENVIRONMENT_TIER_UAT,
+    ],
+    [
+        'slug'  => 'jazz-item-master-uat',
+        'title' => 'Jazz Item Master',
+        'desc'  => 'UAT System SKU and item reference data synced from Jazz OMS.',
+        'href'  => '/jazz-item-master-uat/',
+        'icon'  => 'catalog',
+        'tier'  => ENVIRONMENT_TIER_UAT,
+    ],
+    [
+        'slug'  => 'accs-inventory-reporting-uat',
+        'title' => 'ACCS Inventory Reporting',
+        'desc'  => 'UAT System Adobe Commerce (ACCS) inventory by SKU and source.',
+        'href'  => '/accs-inventory-reporting-uat/',
+        'icon'  => 'chart',
+        'tier'  => ENVIRONMENT_TIER_UAT,
+    ],
+    [
+        'slug'  => 'inventory-reconciliation-uat',
+        'title' => 'Inventory Reconciliation (Jazz-ACCS)',
+        'desc'  => 'UAT System Compare Jazz OMS and ACCS inventory levels for the same SKU.',
+        'href'  => '/inventory-reconciliation-uat/',
+        'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_UAT,
+    ],
+    [
+        'slug'  => 'jazz-asns-uat',
+        'title' => 'Jazz ASNs — UAT',
+        'desc'  => 'UAT System Browse advanced shipping notices synced from Jazz OMS.',
+        'href'  => '/po-receiving/jazz-asns-uat.php',
+        'icon'  => 'document',
+        'tier'  => ENVIRONMENT_TIER_UAT,
     ],
 ];
 
@@ -118,6 +178,7 @@ $salesReportingSubModules = [
         'desc'  => 'Browse and search Adobe Commerce (ACCS) orders and order detail.',
         'href'  => '/sales-reporting/accs-order-report/',
         'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'sales-daily-summary',
@@ -125,6 +186,7 @@ $salesReportingSubModules = [
         'desc'  => 'Daily SKU quantity totals rolled up from ACCS orders.',
         'href'  => '/sales-reporting/daily-sales-summary/',
         'icon'  => 'chart',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'sales-monthly-summary',
@@ -132,6 +194,15 @@ $salesReportingSubModules = [
         'desc'  => 'Monthly SKU quantity totals materialized from daily sales.',
         'href'  => '/sales-reporting/monthly-sales-summary/',
         'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+    ],
+    [
+        'slug'  => 'accs-order-report-uat',
+        'title' => 'ACCS Order Report',
+        'desc'  => 'UAT System Browse and search Adobe Commerce (ACCS) orders and order detail.',
+        'href'  => '/sales-reporting/accs-order-report-uat/',
+        'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_UAT,
     ],
 ];
 
@@ -142,13 +213,15 @@ $appFunctions = [
         'desc'  => 'Inventory reporting, forecasting, suppliers, SKU master, and purchase orders.',
         'href'  => '/inventory-management/',
         'icon'  => 'inventory',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
     [
         'slug'  => 'legal-agreements',
         'title' => 'Legal Agreements & Contracts',
         'desc'  => 'Store and track legal agreements, contracts, and renewal dates.',
-        'href'  => '/legal-agreements/',
+        'href'  => '/legal-agreements.php',
         'icon'  => 'document',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'sales-reporting',
@@ -156,6 +229,7 @@ $appFunctions = [
         'desc'  => 'ACCS order lookup, daily sales, and monthly sales summary tables.',
         'href'  => '/sales-reporting/',
         'icon'  => 'chart',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
     [
         'slug'  => 'labeling-operations',
@@ -163,13 +237,15 @@ $appFunctions = [
         'desc'  => 'Manage label templates, batches, and compliance workflows.',
         'href'  => '/labeling-operations/',
         'icon'  => 'tag',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
     [
         'slug'  => 'operations-dashboard',
         'title' => 'Operations Dashboard',
         'desc'  => 'Shortcuts to Microsoft 365, QuickBooks, Adobe Commerce, and support tools.',
-        'href'  => '/operations-dashboard/',
+        'href'  => '/operations-dashboard.php',
         'icon'  => 'dashboard',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
     [
         'slug'  => 'system-performance-dashboard',
@@ -177,6 +253,7 @@ $appFunctions = [
         'desc'  => 'IT system monitoring, Geckoboard dashboards, and Zendesk totals — coming soon.',
         'href'  => '/system-performance-dashboard/',
         'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
     [
         'slug'  => 'support',
@@ -184,6 +261,7 @@ $appFunctions = [
         'desc'  => 'View Zendesk tickets, create requests, and manage support conversations.',
         'href'  => '/support/',
         'icon'  => 'support',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'accounting',
@@ -191,6 +269,7 @@ $appFunctions = [
         'desc'  => 'Read-only QuickBooks Online views for AP, AR, POs, inventory, suppliers, and chart of accounts.',
         'href'  => '/accounting/',
         'icon'  => 'accounting',
+        'tier'  => ENVIRONMENT_TIER_HUB,
     ],
 ];
 
@@ -208,6 +287,7 @@ $modulePages = [
         'capabilities' => [
             ['title' => 'Jazz Current Inventory', 'desc' => 'Jazz OMS stock on hand by SKU and facility.'],
             ['title' => 'Jazz Item Master', 'desc' => 'SKU and item reference data synced from Jazz OMS.'],
+            ['title' => 'Jazz Orders', 'desc' => 'Order queue and fulfillment status from Jazz OMS.'],
             ['title' => 'ACCS Inventory Reporting', 'desc' => 'Adobe Commerce inventory by SKU and source.'],
             ['title' => 'Inventory Forecasting', 'desc' => 'Project demand and plan replenishment with confidence.'],
             ['title' => 'Supplier Management', 'desc' => 'Maintain supplier profiles and procurement relationships.'],
@@ -252,17 +332,6 @@ $modulePages = [
             ['title' => 'Supplier History', 'desc' => 'Review past orders, lead times, and fulfillment performance by supplier.'],
         ],
     ],
-    'travel-expense' => [
-        'label'       => 'Finance',
-        'headline'    => 'Travel & Expense',
-        'lead'        => 'Employees submit NFC-style expense reports with line items, mileage, entertainment, and miscellaneous reimbursements.',
-        'capabilities' => [
-            ['title' => 'Expense Reports', 'desc' => 'Create and edit draft reports with category expense lines and itemized mileage.'],
-            ['title' => 'Receipt PDFs', 'desc' => 'Attach receipt PDFs before submitting for manager approval.'],
-            ['title' => 'Approval Workflow', 'desc' => 'Designated T&E approvers review, approve, reject, or return reports for comment.'],
-            ['title' => 'Printable Summary', 'desc' => 'Generate a printable report for records and payroll processing.'],
-        ],
-    ],
     'accs-inventory-reporting' => [
         'label'       => 'Inventory',
         'headline'    => 'ACCS Inventory Reporting',
@@ -294,6 +363,17 @@ $modulePages = [
             ['title' => 'Movement History', 'desc' => 'Trace receipts, transfers, adjustments, and shipments over any date range.'],
             ['title' => 'Aging & Expiry', 'desc' => 'Identify slow-moving inventory and lots approaching expiration.'],
             ['title' => 'Export & Share', 'desc' => 'Download reports for finance, operations, and compliance reviews.'],
+        ],
+    ],
+    'jazz-orders' => [
+        'label'       => 'Supply Chain',
+        'headline'    => 'Jazz Orders',
+        'lead'        => 'Order queue and fulfillment status from Jazz OMS production APIs.',
+        'capabilities' => [
+            ['title' => 'Order Queue', 'desc' => 'Filter by NEW, ALLOCATED, PRINTED, and other Jazz order statuses.'],
+            ['title' => 'Order Search', 'desc' => 'Look up orders by order number, PO number, or date range.'],
+            ['title' => 'Line Detail', 'desc' => 'View SKU-level quantities ordered, allocated, and shipped.'],
+            ['title' => 'Production Jazz', 'desc' => 'Reads from the configured production Jazz OMS tenant.'],
         ],
     ],
     'sales-reporting' => [
@@ -428,6 +508,17 @@ $modulePages = [
             ['title' => 'Microsoft 365', 'desc' => 'SharePoint, Teams, and other MS365 application shortcuts.'],
             ['title' => 'Documents & References', 'desc' => 'Shared documents, SOPs, and external reference websites.'],
             ['title' => 'Category Filters', 'desc' => 'Filter by category, status, and search across the full index.'],
+        ],
+    ],
+    'contacts-list' => [
+        'label'       => 'Operations',
+        'headline'    => 'Contacts List',
+        'lead'        => 'Maintain suppliers, contractors, education, marketing, and other business contacts used across NutraAxis operations.',
+        'capabilities' => [
+            ['title' => 'Contact Directory', 'desc' => 'Search and filter contacts by type, company, email, phone, or related supplier.'],
+            ['title' => 'Supplier Linkage', 'desc' => 'Associate contacts with active supplier records when applicable.'],
+            ['title' => 'Supplier Contacts', 'desc' => 'Review primary contact details stored on active supplier records.'],
+            ['title' => 'Role-Based Access', 'desc' => 'Contacts List permissions control create, read, update, and delete access.'],
         ],
     ],
     'support' => [

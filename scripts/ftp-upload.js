@@ -13,6 +13,7 @@ const CONFIG_PATH = path.join(ROOT, '.vscode', 'sftp.json');
 const IGNORE_DIRS = new Set([
   '.git',
   '.vscode',
+  '.tmp',
   'node_modules',
   'scripts',
   'sql',

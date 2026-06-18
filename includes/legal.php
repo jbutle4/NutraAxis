@@ -266,6 +266,10 @@ function legal_list_contracts(array $filters = []): array
     $sortState = table_sort_state(LEGAL_LIST_SORT_COLUMNS, 'contract_id', 'asc', $filters);
     $sql .= ' ORDER BY ' . table_sort_sql_clause(LEGAL_LIST_SORT_SQL, $sortState, 'contract_id', 'contract_id');
 
+    if ($params === []) {
+        return $pdo->query($sql)->fetchAll();
+    }
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
 

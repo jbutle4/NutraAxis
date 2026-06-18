@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/function-apps.php';
 
 function site_documentation_require_read(): void
 {
@@ -55,6 +56,7 @@ function site_documentation_module_sections(): array
             ['title' => 'Process Log', 'description' => 'Execution history for scheduled background jobs, with manual rerun for failed runs.', 'href' => '/process-log/'],
             ['title' => 'Enhancement Log', 'description' => 'Portal enhancement requests with status, due dates, and notes.', 'href' => '/enhancement-log/'],
             ['title' => 'Links Index', 'description' => 'Curated shortcuts surfaced on the Operations Dashboard.', 'href' => '/links-index/'],
+            ['title' => 'Contacts List', 'description' => 'Business contacts directory with supplier linkage and supplier contact reference.', 'href' => '/contacts-list/'],
             ['title' => 'My Account', 'description' => 'View your profile and change your password.', 'href' => '/my-account/'],
             ['title' => 'Site Documentation', 'description' => 'This page — module reference and scheduled process guide.', 'href' => '/site-documentation/'],
         ],
@@ -135,7 +137,7 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Background job platform',
-            'body'  => 'Scheduled jobs run on Azure Function App Nutra-forecast-tool (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
+            'body'  => 'Scheduled jobs run on Azure Function Apps ' . function_app_display_names_summary() . ' (timer triggers and Service Bus). The PHP App Service hosts the web UI only. Scheduled job cron endpoints have been removed; WebJobs are retired under App_Data/Disabled_jobs/.',
         ],
         [
             'title' => 'Manual execution',

@@ -1,12 +1,13 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/function-apps.php';
 
 function process_functions_base_url(): string
 {
     $configured = trim((string) env(
         'NUTRA_FUNCTIONS_BASE_URL',
-        'https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net'
+        FUNCTION_APP_UAT_DEFAULT_URL
     ));
 
     return rtrim($configured, '/');

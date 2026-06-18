@@ -13,7 +13,17 @@ $listFilters = [
     'type'   => $typeFilter !== '' ? $typeFilter : null,
     'q'      => $search !== '' ? $search : null,
 ] + table_sort_state(LEGAL_LIST_SORT_COLUMNS, 'contract_id', 'asc', $_GET);
-$contracts = legal_list_contracts($listFilters);
+$pageError = null;
+try {
+    $contracts = legal_list_contracts($listFilters);
+} catch (Throwable $e) {
+    error_log('legal-agreements list: ' . $e->getMessage());
+    $contracts = [];
+    $pageError = 'Unable to load contract data from SQL Server.';
+    if (auth_can_access_site_admin()) {
+        $pageError .= ' ' . $e->getMessage();
+    }
+}
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Contract Register | Legal Agreements';
@@ -51,7 +61,11 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Contract deleted successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/legal-agreements/">
+      <?php if ($pageError !== null): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($pageError) ?></div>
+      <?php endif; ?>
+
+      <form class="po-filter audit-filter" method="get" action="/legal-agreements.php">
         <?php table_sort_hidden_inputs($listFilters, 'contract_id', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>

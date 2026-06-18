@@ -63,7 +63,7 @@ require_once __DIR__ . '/../includes/header.php';
 <main class="module-page">
   <div class="module-page-header">
     <h1>Function App — ping test</h1>
-    <p class="module-page-description">Calls the <code>ping</code> HttpTrigger on your Azure Function App and shows the response.</p>
+    <p class="module-page-description">Calls the <code>ping</code> HttpTrigger on <?= htmlspecialchars(function_app_display_name_for_url($functionBaseUrl)) ?> and shows the response.</p>
   </div>
 
   <div class="card" style="max-width:560px;">

@@ -16,6 +16,7 @@ const ROLE_PERMISSION_FIELDS = [
     'LegalAgreements'      => 'Legal Agreements & Contracts',
     'ProductCatalog'       => 'Product Catalog / SKU Master',
     'LinksIndex'           => 'Links Index',
+    'ContactsList'         => 'Contacts List',
     'Support'              => 'Support',
     'Accounting'           => 'Accounting',
     'UserAdmin'            => 'User Administration',
@@ -348,7 +349,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 RoleName, RoleDesc, RoleCreateDate, ModifiedbyUser,
                 POManagement, POApproval, TEManagement, TEApproval,
                 InventoryReporting, SalesReporting, InventoryForecasting,
-                LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, Support, Accounting,
+                LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, ContactsList, Support, Accounting,
                 UserAdmin, RoleAdmin
             )
             OUTPUT INSERTED.RoleID AS inserted_id
@@ -356,7 +357,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 :name, :desc, SYSUTCDATETIME(), :modified_by,
                 :po, :po_approval, :te_mgmt, :te_approval,
                 :inv_rep, :sales_rep, :inv_forecast,
-                :labeling, :dashboard, :legal, :catalog, :links, :support, :accounting,
+                :labeling, :dashboard, :legal, :catalog, :links, :contacts, :support, :accounting,
                 :user_admin, :role_admin
             )
         SQL);
@@ -376,6 +377,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'legal'         => $permissions['LegalAgreements'],
             'catalog'       => $permissions['ProductCatalog'],
             'links'         => $permissions['LinksIndex'],
+            'contacts'      => $permissions['ContactsList'],
             'support'       => $permissions['Support'],
             'accounting'    => $permissions['Accounting'],
             'user_admin'    => $permissions['UserAdmin'],
@@ -415,6 +417,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             LegalAgreements = :legal,
             ProductCatalog = :catalog,
             LinksIndex = :links,
+            ContactsList = :contacts,
             Support = :support,
             Accounting = :accounting,
             UserAdmin = :user_admin,
@@ -435,6 +438,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'legal'         => $permissions['LegalAgreements'],
         'catalog'       => $permissions['ProductCatalog'],
         'links'         => $permissions['LinksIndex'],
+        'contacts'      => $permissions['ContactsList'],
         'support'       => $permissions['Support'],
         'accounting'    => $permissions['Accounting'],
         'user_admin'    => $permissions['UserAdmin'],

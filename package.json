@@ -5,6 +5,7 @@
   "description": "NutraAxis Operations site",
   "scripts": {
     "upload": "node scripts/ftp-upload.js",
+    "deploy-nginx": "node scripts/deploy-azure-nginx.js --apply-startup",
     "jazz-snapshot": "php scripts/jazz-inventory-snapshot.php",
     "daily-sales-summary": "php scripts/daily-sales-summary.php",
     "monthly-sales-summary": "php scripts/monthly-sales-summary.php",

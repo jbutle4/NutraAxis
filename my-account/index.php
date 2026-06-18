@@ -20,6 +20,7 @@ $permissionRows = [
     ['Legal Agreements & Contracts', auth_permission_value('LegalAgreements')],
     ['Product Catalog / SKU Master', auth_permission_value('ProductCatalog')],
     ['Links Index', auth_permission_value('LinksIndex')],
+    ['Contacts List', auth_permission_value('ContactsList')],
     ['Support', auth_permission_value('Support')],
     ['Accounting', auth_permission_value('Accounting')],
     ['User Administration', auth_permission_value('UserAdmin')],
