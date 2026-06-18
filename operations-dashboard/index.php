@@ -134,6 +134,14 @@ $dashboardSections = [
                 'internal' => true,
             ],
             [
+                'title'    => 'Contacts List',
+                'desc'     => 'Maintain business contacts and review supplier directory contact details.',
+                'href'     => '/contacts-list/',
+                'icon'     => 'supplier',
+                'internal' => true,
+                'module'   => 'contacts-list',
+            ],
+            [
                 'title' => 'QuickBooks',
                 'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                 'href'  => 'https://qbo.intuit.com/app/my-accountant',

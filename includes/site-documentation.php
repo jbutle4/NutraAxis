@@ -55,6 +55,7 @@ function site_documentation_module_sections(): array
             ['title' => 'Process Log', 'description' => 'Execution history for scheduled background jobs, with manual rerun for failed runs.', 'href' => '/process-log/'],
             ['title' => 'Enhancement Log', 'description' => 'Portal enhancement requests with status, due dates, and notes.', 'href' => '/enhancement-log/'],
             ['title' => 'Links Index', 'description' => 'Curated shortcuts surfaced on the Operations Dashboard.', 'href' => '/links-index/'],
+            ['title' => 'Contacts List', 'description' => 'Business contacts directory with supplier linkage and supplier contact reference.', 'href' => '/contacts-list/'],
             ['title' => 'My Account', 'description' => 'View your profile and change your password.', 'href' => '/my-account/'],
             ['title' => 'Site Documentation', 'description' => 'This page — module reference and scheduled process guide.', 'href' => '/site-documentation/'],
         ],
