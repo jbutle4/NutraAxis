@@ -124,3 +124,10 @@
       <?php endforeach; ?>
     </ul>
   </nav>
+<?php if (function_exists('data_profile_is_uat') && data_profile_is_uat()): ?>
+  <div class="uat-environment-banner-wrap">
+    <div class="container">
+      <?php require __DIR__ . '/uat-banner.php'; ?>
+    </div>
+  </div>
+<?php endif; ?>

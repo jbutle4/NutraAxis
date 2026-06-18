@@ -115,9 +115,10 @@ $salesReportingSubModules = [
     [
         'slug'  => 'accs-order-report',
         'title' => 'ACCS Order Report',
-        'desc'  => 'Browse and search Adobe Commerce (ACCS) orders and order detail.',
+        'desc'  => 'Browse and search Adobe Commerce (ACCS) production orders and order detail.',
         'href'  => '/sales-reporting/accs-order-report/',
         'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'sales-daily-summary',
@@ -125,6 +126,7 @@ $salesReportingSubModules = [
         'desc'  => 'Daily SKU quantity totals rolled up from ACCS orders.',
         'href'  => '/sales-reporting/daily-sales-summary/',
         'icon'  => 'chart',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
     ],
     [
         'slug'  => 'sales-monthly-summary',
@@ -132,6 +134,15 @@ $salesReportingSubModules = [
         'desc'  => 'Monthly SKU quantity totals materialized from daily sales.',
         'href'  => '/sales-reporting/monthly-sales-summary/',
         'icon'  => 'trend',
+        'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+    ],
+    [
+        'slug'  => 'accs-order-report-uat',
+        'title' => 'ACCS Order Report',
+        'desc'  => 'UAT System Browse and search Adobe Commerce (ACCS) stage orders and order detail.',
+        'href'  => '/sales-reporting/accs-order-report-uat/',
+        'icon'  => 'clipboard',
+        'tier'  => ENVIRONMENT_TIER_UAT,
     ],
 ];
 

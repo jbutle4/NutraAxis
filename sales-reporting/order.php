@@ -1,10 +1,17 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/sales-reporting.php';
 
 sales_reporting_require_read();
 
-$activeSlug = 'accs-order-report';
+$activeSlug = $activeSlug ?? 'accs-order-report';
+$reportListPath = data_profile_is_uat()
+    ? '/sales-reporting/accs-order-report-uat/'
+    : '/sales-reporting/accs-order-report/';
+$orderDetailPath = data_profile_is_uat()
+    ? '/sales-reporting/order-uat.php'
+    : '/sales-reporting/order.php';
 $orderNumber = trim($_GET['order'] ?? '');
 $configError = adobe_commerce_config_error();
 $order = null;
@@ -22,7 +29,7 @@ $itemSortFilters = table_sort_state($itemSortColumns, 'sku', 'asc', $_GET);
 
 if ($error === null) {
     if ($orderNumber === '') {
-        header('Location: /sales-reporting/accs-order-report/', true, 302);
+        header('Location: ' . $reportListPath, true, 302);
         exit;
     }
 
@@ -58,7 +65,7 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/sales-reporting/accs-order-report/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($reportListPath) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
@@ -68,7 +75,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <div class="module-actions">
-        <a class="btn-secondary" href="/sales-reporting/accs-order-report/">Back to Orders</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($reportListPath) ?>">Back to Orders</a>
       </div>
       <?php elseif ($order !== null): ?>
       <div class="admin-header">
@@ -120,7 +127,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $itemSortColumns,
-                '/sales-reporting/order.php',
+                $orderDetailPath,
                 ['order' => $orderNumber] + $itemSortFilters,
                 ['order'],
                 ['qty_ordered', 'qty_shipped', 'unit_price', 'row_total'],

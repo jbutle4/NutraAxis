@@ -13,6 +13,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'inventory-reconciliation'   => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
+    'accs-order-report-uat'  => 'SalesReporting',
     'sales-daily-summary'    => 'SalesReporting',
     'sales-monthly-summary'  => 'SalesReporting',
     'inventory-forecasting'  => 'InventoryForecasting',
