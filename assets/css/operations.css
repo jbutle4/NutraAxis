@@ -51,6 +51,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; }
   width: min(1600px, calc(100% - 48px));
   max-width: 1600px;
 }
+
 .container.page-inner--full {
   width: calc(100% - 32px);
   max-width: none;
@@ -64,7 +65,6 @@ button { font: inherit; cursor: pointer; border: none; background: none; }
 .page-inner.page-inner--full {
   min-width: 0;
 }
-
 
 /* Header */
 .site-header {
@@ -1160,7 +1160,6 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 .admin-table tbody tr.is-inventory-mismatch td {
   background: #fff5f0;
 }
-
 
 .admin-table-wrap--catalog {
   overflow-x: visible;
