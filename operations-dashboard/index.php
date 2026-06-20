@@ -197,6 +197,13 @@ $dashboardSections = [
                 'tier'  => ENVIRONMENT_TIER_PRODUCTION,
             ],
             [
+                'title' => 'Jazz OMS',
+                'desc'  => 'Cart.com Jazz Commerce order management — login as NutraSync_API_PROD.',
+                'href'  => 'https://fbflurry.jazz-oms.com/account/login?next=/',
+                'icon'  => 'inventory',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
                 'title' => 'ACCS Admin',
                 'desc'  => 'UAT System — Adobe Commerce as a Cloud Service admin for the stage tenant.',
                 'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
@@ -222,6 +229,13 @@ $dashboardSections = [
                 'desc'  => 'UAT System — NutraAxis staging storefront on Adobe Edge Delivery Services.',
                 'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
                 'icon'  => 'chart',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'Jazz OMS',
+                'desc'  => 'UAT System — Cart.com Jazz Commerce order management — login as NutraSync_API_UAT.',
+                'href'  => 'https://fbflurry-uat01.jazz-oms.com/account/login?next=/',
+                'icon'  => 'inventory',
                 'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [

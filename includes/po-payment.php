@@ -5,12 +5,15 @@ require_once __DIR__ . '/po.php';
 
 const PO_PAYMENT_TYPES = ['Check', 'ACH', 'CC'];
 
+const PO_PAYMENT_STATUSES = ['Pending', 'Transmitted to QBO', 'Paid', 'Failed', 'Cancelled'];
+
 const PO_PAYMENT_LIST_SORT_COLUMNS = [
     'payment_date'   => 'Payment date',
     'po_number'      => 'PO number',
     'supplier'       => 'Supplier',
     'amount'         => 'Amount',
     'type'           => 'Type',
+    'status'         => 'Status',
     'confirmation'   => 'Confirmation #',
     'made_by'        => 'Made by',
 ];
@@ -21,11 +24,31 @@ const PO_PAYMENT_LIST_SORT_SQL = [
     'supplier'     => 's.SupplierName',
     'amount'       => 'p.PaymentAmount',
     'type'         => 'p.PaymentType',
+    'status'       => 'p.PaymentStatus',
     'confirmation' => 'p.PaymentConfNumber',
     'made_by'      => 'p.PaymentMadeBy',
 ];
 
 const PO_PAYMENT_LIST_SORT_NUMERIC = ['amount'];
+
+function po_payment_status_class(string $status): string
+{
+    return match ($status) {
+        'Pending'            => 'status-submitted',
+        'Transmitted to QBO' => 'status-received',
+        'Paid'               => 'status-approved',
+        'Failed'             => 'status-cancelled',
+        'Cancelled'          => 'status-cancelled',
+        default              => 'status-draft',
+    };
+}
+
+function po_payment_format_status(?string $status): string
+{
+    $status = trim((string) $status);
+
+    return $status !== '' ? $status : '—';
+}
 
 function po_payment_can_read(): bool
 {
@@ -101,6 +124,7 @@ function po_payment_to_form(array $payment): array
         'payment_date'        => po_payment_datetime_input($payment['PaymentDate'] ?? null),
         'payment_amount'      => (string) $payment['PaymentAmount'],
         'payment_type'        => (string) $payment['PaymentType'],
+        'payment_status'      => (string) ($payment['PaymentStatus'] ?? 'Paid'),
         'payment_conf_number' => (string) ($payment['PaymentConfNumber'] ?? ''),
         'payment_made_by'     => (string) ($payment['PaymentMadeBy'] ?? ''),
         'payment_comments'    => (string) ($payment['PaymentComments'] ?? ''),
@@ -114,6 +138,7 @@ function po_payment_from_input(array $input): array
         'payment_date'        => trim($input['payment_date'] ?? ''),
         'payment_amount'      => trim($input['payment_amount'] ?? ''),
         'payment_type'        => trim($input['payment_type'] ?? ''),
+        'payment_status'      => trim($input['payment_status'] ?? ''),
         'payment_conf_number' => trim($input['payment_conf_number'] ?? ''),
         'payment_made_by'     => trim($input['payment_made_by'] ?? ''),
         'payment_comments'    => trim($input['payment_comments'] ?? ''),
@@ -145,6 +170,7 @@ function po_payment_list(array $filters = []): array
             p.PaymentDate,
             p.PaymentAmount,
             p.PaymentType,
+            p.PaymentStatus,
             p.PaymentConfNumber,
             p.PaymentMadeBy,
             po.PONumber,
@@ -164,6 +190,11 @@ function po_payment_list(array $filters = []): array
     if (!empty($filters['type'])) {
         $sql .= ' AND p.PaymentType = :type';
         $params['type'] = $filters['type'];
+    }
+
+    if (!empty($filters['status'])) {
+        $sql .= ' AND p.PaymentStatus = :status';
+        $params['status'] = $filters['status'];
     }
 
     if (!empty($filters['q'])) {
@@ -266,11 +297,17 @@ function po_payment_save(array $input, ?int $paymentId = null): array
         return ['ok' => false, 'error' => 'Select a valid payment type.'];
     }
 
+    $paymentStatus = $data['payment_status'] !== '' ? $data['payment_status'] : 'Paid';
+    if (!in_array($paymentStatus, PO_PAYMENT_STATUSES, true)) {
+        return ['ok' => false, 'error' => 'Select a valid payment status.'];
+    }
+
     $params = [
         'po_id'        => $poId,
         'payment_date' => $paymentDate,
         'amount'       => (float) $data['payment_amount'],
         'type'         => $data['payment_type'],
+        'status'       => $paymentStatus,
         'conf_number'  => $data['payment_conf_number'] !== '' ? $data['payment_conf_number'] : null,
         'made_by'      => $data['payment_made_by'] !== '' ? $data['payment_made_by'] : null,
         'comments'     => $data['payment_comments'] !== '' ? $data['payment_comments'] : null,
@@ -283,13 +320,13 @@ function po_payment_save(array $input, ?int $paymentId = null): array
         if ($paymentId === null) {
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO dbo.POPayment (
-                    POID, PaymentDate, PaymentAmount, PaymentType,
+                    POID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
                     PaymentConfNumber, PaymentMadeBy, PaymentComments,
                     CreatedByUser, ModifiedbyUser
                 )
                 OUTPUT INSERTED.PaymentID AS inserted_id
                 VALUES (
-                    :po_id, :payment_date, :amount, :type,
+                    :po_id, :payment_date, :amount, :type, :status,
                     :conf_number, :made_by, :comments,
                     :actor, :actor
                 )
@@ -308,6 +345,7 @@ function po_payment_save(array $input, ?int $paymentId = null): array
                     PaymentDate = :payment_date,
                     PaymentAmount = :amount,
                     PaymentType = :type,
+                    PaymentStatus = :status,
                     PaymentConfNumber = :conf_number,
                     PaymentMadeBy = :made_by,
                     PaymentComments = :comments,

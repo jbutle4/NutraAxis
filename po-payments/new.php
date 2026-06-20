@@ -11,6 +11,7 @@ $form = po_payment_from_input([
     'po_id'          => $preselectedPo > 0 ? (string) $preselectedPo : '',
     'payment_date'   => date('Y-m-d\TH:i'),
     'payment_type'   => 'ACH',
+    'payment_status' => 'Paid',
     'payment_made_by'=> auth_user()['UserName'] ?? '',
 ]);
 $poOptions = po_payment_po_options();

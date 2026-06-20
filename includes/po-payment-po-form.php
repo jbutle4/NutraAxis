@@ -34,6 +34,7 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
                 <th>Date</th>
                 <th>Amount</th>
                 <th>Type</th>
+                <th>Status</th>
                 <th>Confirmation #</th>
                 <th>Made by</th>
                 <th>Comments</th>
@@ -44,13 +45,14 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
             </thead>
             <tbody>
               <?php if ($poPayments === []): ?>
-              <tr><td colspan="<?= po_payment_can_delete() ? 7 : 6 ?>">No payments recorded for this purchase order.</td></tr>
+              <tr><td colspan="<?= po_payment_can_delete() ? 8 : 7 ?>">No payments recorded for this purchase order.</td></tr>
               <?php else: ?>
               <?php foreach ($poPayments as $payment): ?>
               <tr>
                 <td><?= htmlspecialchars(po_payment_format_datetime($payment['PaymentDate'])) ?></td>
                 <td><?= htmlspecialchars(po_format_money($payment['PaymentAmount'])) ?></td>
                 <td><?= htmlspecialchars($payment['PaymentType']) ?></td>
+                <td><span class="status-badge <?= po_payment_status_class((string) ($payment['PaymentStatus'] ?? '')) ?>"><?= htmlspecialchars(po_payment_format_status($payment['PaymentStatus'] ?? null)) ?></span></td>
                 <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
                 <td><?= htmlspecialchars($payment['PaymentMadeBy'] ?? '—') ?></td>
                 <td><?= htmlspecialchars($payment['PaymentComments'] ?? '—') ?></td>
@@ -95,6 +97,14 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
               <select class="form-input" id="payment_type" name="payment_type" required>
                 <?php foreach (PO_PAYMENT_TYPES as $type): ?>
                 <option value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="payment_status">Payment status</label>
+              <select class="form-input" id="payment_status" name="payment_status" required>
+                <?php foreach (PO_PAYMENT_STATUSES as $status): ?>
+                <option value="<?= htmlspecialchars($status) ?>" <?= $status === 'Paid' ? 'selected' : '' ?>><?= htmlspecialchars($status) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>

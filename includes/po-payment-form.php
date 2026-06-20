@@ -38,6 +38,14 @@ $isEdit = $isEdit ?? false;
             </select>
           </div>
           <div class="form-group">
+            <label for="payment_status">Payment status</label>
+            <select class="form-input" id="payment_status" name="payment_status" required>
+              <?php foreach (PO_PAYMENT_STATUSES as $status): ?>
+              <option value="<?= htmlspecialchars($status) ?>" <?= ($form['payment_status'] ?? 'Paid') === $status ? 'selected' : '' ?>><?= htmlspecialchars($status) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="payment_conf_number">Confirmation number</label>
             <input class="form-input" type="text" id="payment_conf_number" name="payment_conf_number" value="<?= htmlspecialchars($form['payment_conf_number'] ?? '') ?>" />
           </div>

@@ -12,6 +12,24 @@ function qbo_environment(): string
     return $env === 'production' ? 'production' : 'sandbox';
 }
 
+function qbo_client_id(): string
+{
+    if (qbo_environment() === 'production') {
+        return trim((string) env_first(['QBO_CLIENT_ID_PROD', 'QBO_CLIENT_ID'], ''));
+    }
+
+    return trim((string) env('QBO_CLIENT_ID', ''));
+}
+
+function qbo_client_secret(): string
+{
+    if (qbo_environment() === 'production') {
+        return (string) env_first(['QBO_CLIENT_SECRET_PROD', 'QBO_CLIENT_SECRET'], '');
+    }
+
+    return (string) env('QBO_CLIENT_SECRET', '');
+}
+
 function qbo_redirect_uri(): string
 {
     $configured = trim((string) env('QBO_REDIRECT_URI', ''));
@@ -29,8 +47,8 @@ function qbo_redirect_uri(): string
 
 function qbo_is_configured(): bool
 {
-    return trim((string) env('QBO_CLIENT_ID', '')) !== ''
-        && trim((string) env('QBO_CLIENT_SECRET', '')) !== ''
+    return qbo_client_id() !== ''
+        && qbo_client_secret() !== ''
         && qbo_redirect_uri() !== '';
 }
 
@@ -61,7 +79,19 @@ function qbo_get_connection(): ?array
     $stmt = $pdo->query('SELECT TOP 1 * FROM dbo.QBOConnection ORDER BY ConnectionID DESC');
     $row = $stmt->fetch();
 
-    return $row === false ? null : $row;
+    if ($row === false) {
+        return null;
+    }
+
+    $configuredEnv = qbo_environment();
+    $storedEnv = strtolower(trim((string) ($row['Environment'] ?? '')));
+    if ($storedEnv !== '' && $storedEnv !== $configuredEnv) {
+        qbo_disconnect();
+
+        return null;
+    }
+
+    return $row;
 }
 
 function qbo_is_connected(): bool
@@ -124,7 +154,7 @@ function qbo_authorize_url(): string
 {
     $state = qbo_start_oauth_state();
     $params = http_build_query([
-        'client_id'     => env('QBO_CLIENT_ID', ''),
+        'client_id'     => qbo_client_id(),
         'response_type' => 'code',
         'scope'         => 'com.intuit.quickbooks.accounting',
         'redirect_uri'  => qbo_redirect_uri(),
@@ -136,8 +166,8 @@ function qbo_authorize_url(): string
 
 function qbo_token_request(array $fields): array
 {
-    $clientId = trim((string) env('QBO_CLIENT_ID', ''));
-    $clientSecret = (string) env('QBO_CLIENT_SECRET', '');
+    $clientId = qbo_client_id();
+    $clientSecret = qbo_client_secret();
 
     if (!function_exists('curl_init')) {
         return ['ok' => false, 'error' => 'cURL is required for QuickBooks OAuth.', 'data' => null];
