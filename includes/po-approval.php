@@ -102,6 +102,7 @@ function po_list_pending_approvals(array $filters = []): array
             po.Subtotal,
             po.TotalDue,
             po.CreateDate,
+            po.ModifiedDate,
             s.SupplierName,
             cu.UserName AS CreatedByName
         FROM dbo.PurchaseOrder po
@@ -121,16 +122,9 @@ function po_list_pending_approvals(array $filters = []): array
 
 function po_list_approval_log(int $poId): array
 {
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        SELECT ApprovalID, POID, ApproverName, ApproverResult, ApproverComments, LogDate
-        FROM dbo.POApprovalLog
-        WHERE POID = :id
-        ORDER BY LogDate DESC
-    SQL);
-    $stmt->execute(['id' => $poId]);
+    require_once __DIR__ . '/approval.php';
 
-    return $stmt->fetchAll();
+    return approval_list_log('PO', $poId);
 }
 
 function po_can_submit_for_approval(array $order): bool
@@ -277,18 +271,15 @@ function po_process_approval_action(int $poId, string $action, string $comments 
             'id'          => $poId,
         ], $approveParams));
 
-        $log = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.POApprovalLog (POID, ApproverName, ApproverResult, ApproverComments)
-            OUTPUT INSERTED.ApprovalID AS inserted_id
-            VALUES (:po, :name, :result, :comments)
-        SQL);
-        $log->execute([
-            'po'       => $poId,
-            'name'     => $approverName,
-            'result'   => $config['result'],
-            'comments' => $comments !== '' ? $comments : null,
-        ]);
-        $approvalId = db_fetch_inserted_int($log, 'inserted_id');
+        require_once __DIR__ . '/approval.php';
+        $approvalId = approval_append_log(
+            'PO',
+            $poId,
+            $approverName,
+            $config['result'],
+            $comments !== '' ? $comments : null,
+            $approverId
+        );
 
         $pdo->commit();
 
@@ -297,7 +288,7 @@ function po_process_approval_action(int $poId, string $action, string $comments 
         require_once __DIR__ . '/audit.php';
         audit_log_po_approval_action($poId, PO_STATUS_SUBMITTED, $config['status'], [
             'ApprovalID'       => $approvalId,
-            'POID'             => $poId,
+            'EntityID'         => $poId,
             'ApproverName'     => $approverName,
             'ApproverResult'   => $config['result'],
             'ApproverComments' => $comments !== '' ? $comments : null,
@@ -514,7 +505,7 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
         : "PO {$poNumber} submitted for approval";
 
     if ($approvers === []) {
-        error_log('po_notify_approvers_of_submission skipped (no IsPOApprover users) for PO ' . $poNumber);
+        error_log('po_notify_approvers_of_submission skipped (no users with PO Approval Update) for PO ' . $poNumber);
         $result['skipped_reason'] = 'no_subscribers';
     } else {
         foreach ($approvers as $approver) {
@@ -584,7 +575,7 @@ function po_format_approval_notify_message(array $notify): string
 {
     return alert_format_notify_message(
         $notify,
-        'No designated PO approvers are configured. No approval email was sent.'
+        'No users with PO Approval Update access are configured. No approval email was sent.'
     );
 }
 

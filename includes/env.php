@@ -64,8 +64,9 @@ function env(string $key, ?string $default = null): ?string
 
         $runtimeKeys = [
             'DB_HOST', 'DB_SERVER', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD', 'DB_PORT',
-            'NUTRA_FUNCTIONS_BASE_URL', 'NUTRA_FUNCTIONS_KEY',
+            'NUTRA_FUNCTIONS_BASE_URL', 'NUTRA_FUNCTIONS_KEY', 'NUTRA_FUNCTIONS_PROD_KEY',
             'AZURE_FUNCTION_APP_URL', 'AZURE_FUNCTION_APP_URL_PRODUCTION', 'AZURE_FUNCTION_APP_KEY',
+            'ACCS_TEST_ORDER_CREATION_KEY', 'ACCS_TEST_ORDER_CREATION_SECRET',
             'MAIL_FROM', 'MAIL_FROM_NAME', 'MAIL_REPLY_TO', 'SITE_URL',
             'PO_TEAM_EMAIL', 'PO_TEAM_EMAIL_REPLACE',
             'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_ENCRYPTION',
@@ -80,6 +81,11 @@ function env(string $key, ?string $default = null): ?string
             'JAZZ_UAT_DOMAIN', 'JAZZ_UAT_USERNAME', 'JAZZ_UAT_PASSWORD', 'JAZZ_UAT_BASE_URL',
             'CRON_SECRET',
             'PROCESS_ALERT_EMAIL',
+            'ACCS_ALERTS_ZENDESK_EMAIL',
+            'AZURE_STORAGE_ACCOUNT',
+            'AZURE_STORAGE_CONTAINER',
+            'AZURE_STORAGE_CONNECTION_STRING',
+            'FILE_STORAGE_MODE',
         ];
 
         require_once __DIR__ . '/adobe-commerce-settings.php';

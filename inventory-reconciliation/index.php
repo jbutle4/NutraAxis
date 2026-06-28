@@ -76,21 +76,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Inventory Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Inventory</div>
-          <h1>Inventory Reconciliation (Jazz-ACCS)</h1>
-          <p class="page-lead">Side-by-side Jazz OMS and Adobe Commerce quantities for the same SKU to spot reporting differences.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(inventory_reconciliation_permission_value())) ?></p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Inventory Management',
+          'category'   => 'Inventory',
+          'title'      => 'Inventory Reconciliation (Jazz-ACCS)',
+          'lead'       => 'Side-by-side Jazz OMS and Adobe Commerce quantities for the same SKU to spot reporting differences.',
+          'permission' => permission_label(inventory_reconciliation_permission_value()),
+      ]); ?>
 
       <?php foreach ($apiErrors as $apiError): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($apiError) ?></div>
@@ -114,7 +107,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $reconSortColumns,
-                '/inventory-reconciliation',
+                data_profile_page_path('/inventory-reconciliation'),
                 $listFilters,
                 [],
                 ['available', 'on_hand', 'ordered', 'total', 'accs_qty'],

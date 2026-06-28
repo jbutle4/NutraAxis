@@ -39,18 +39,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/product-catalog/view.php?id=<?= $skuId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($sku['SKUCode']) ?>
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Products</div>
-        <h1>Edit <?= htmlspecialchars($sku['SKUCode']) ?></h1>
-        <p class="page-lead">Update catalog details for <?= htmlspecialchars($sku['ProductName']) ?>.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/product-catalog/view.php?id=' . $skuId,
+          'back_label' => 'Back to ' . $sku['SKUCode'],
+          'category'   => 'Products',
+          'title'      => 'Edit ' . $sku['SKUCode'],
+          'lead'       => 'Update catalog details for ' . $sku['ProductName'] . '.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -70,6 +67,8 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php
         $showUploadForm = true;
+        $uploadReturnPath = '/product-catalog/edit.php?id=' . $skuId;
+        $uploadNotice = $notice;
         require dirname(__DIR__) . '/includes/catalog-attachments-section.php';
       ?>
     </div>

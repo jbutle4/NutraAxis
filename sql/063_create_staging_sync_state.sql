@@ -1,5 +1,5 @@
 /*
-  NutraAxis — staging database sync bookkeeping (lives in nutraaxis_staging only)
+  NutraAxis — staging/test database sync bookkeeping (lives in nutraaxis_test only)
 */
 
 IF OBJECT_ID(N'dbo.StagingSyncState', N'U') IS NULL

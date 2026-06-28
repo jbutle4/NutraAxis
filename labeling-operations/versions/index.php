@@ -20,24 +20,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars(label_module_title()) ?>
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/labeling-operations/',
+          'back_label' => 'Back to ' . label_module_title(),
+          'category'   => 'Version Control',
+          'title'      => 'Label Revisions',
+          'lead'       => 'Full revision history across customer and internal label templates.',
+      ]); ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Version Control</div>
-          <h1>Label Revisions</h1>
-          <p class="page-lead">Full revision history across customer and internal label templates.</p>
-        </div>
-      </div>
-
-      <form class="po-filter audit-filter" method="get" action="/labeling-operations/versions/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/labeling-operations/versions/">
         <?php table_sort_hidden_inputs($listFilters, 'created', 'desc'); ?>
         <div class="audit-filter-grid">
           <div class="audit-filter-wide">

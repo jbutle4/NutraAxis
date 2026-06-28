@@ -34,20 +34,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Purchase Orders
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/po-management/',
+          'back_label' => 'Back to Purchase Orders',
+          'category'   => 'Procurement',
+          'title'      => 'New Purchase Order',
+          'lead'       => 'Enter NutraSeal-style header fields, line items, and optionally attach the source PDF.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>New Purchase Order</h1>
-        <p class="page-lead">Enter NutraSeal-style header fields, line items, and optionally attach the source PDF.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

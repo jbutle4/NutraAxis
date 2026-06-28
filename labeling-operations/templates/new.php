@@ -34,20 +34,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/templates/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Label Templates
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/labeling-operations/templates/',
+          'back_label' => 'Back to Label Templates',
+          'category'   => 'Label Templates',
+          'title'      => 'New Label Template',
+          'lead'       => 'Create a customer SKU label or internal label definition.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Label Templates</div>
-        <h1>New Label Template</h1>
-        <p class="page-lead">Create a customer SKU label or internal label definition.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

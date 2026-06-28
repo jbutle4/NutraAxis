@@ -40,20 +40,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/support/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Tickets
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Support</div>
-          <h1>New Zendesk Ticket</h1>
-          <p class="page-lead">Create a support request in Zendesk. It will be submitted under <?= htmlspecialchars(support_user_email()) ?>.</p>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/support/',
+          'back_label' => 'Back to Tickets',
+          'category'   => 'Support',
+          'title'      => 'New Zendesk Ticket',
+          'lead'       => 'Create a support request in Zendesk. It will be submitted under ' . support_user_email() . '.',
+      ]);
+      ?>
 
       <?php if ($configError !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($configError) ?></div>

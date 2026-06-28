@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
@@ -7,12 +8,13 @@ require dirname(__DIR__) . '/includes/delivery-appointment.php';
 por_require_read();
 
 $asnId = trim((string) ($_GET['id'] ?? ''));
+$jazzAsnsPath = data_profile_page_path('/po-receiving/jazz-asns.php');
 if ($asnId === '') {
-    header('Location: /po-receiving/jazz-asns.php', true, 302);
+    header('Location: ' . $jazzAsnsPath, true, 302);
     exit;
 }
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'jazz-asns';
 $configError = jazz_oms_config_error();
 $result = $configError === null ? jazz_oms_get_asn($asnId) : ['ok' => false, 'error' => $configError, 'row' => null];
 $asn = $result['row'] ?? null;
@@ -28,55 +30,51 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/jazz-asns.php">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Jazz ASNs
-      </a>
-
       <?php if ($configError !== null): ?>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>Jazz ASN <?= htmlspecialchars($asnId) ?></h1>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => $jazzAsnsPath,
+          'back_label' => 'Back to Jazz ASNs',
+          'category'   => 'Supply Chain',
+          'title'      => 'Jazz ASN ' . $asnId,
+      ]);
+      ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($configError) ?></div>
 
       <?php elseif (!$result['ok'] || $asn === null): ?>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>Jazz ASN <?= htmlspecialchars($asnId) ?></h1>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => $jazzAsnsPath,
+          'back_label' => 'Back to Jazz ASNs',
+          'category'   => 'Supply Chain',
+          'title'      => 'Jazz ASN ' . $asnId,
+      ]);
+      ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($result['error'] ?? 'ASN not found.') ?></div>
       <div class="module-actions">
-        <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Back to Jazz ASNs</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($jazzAsnsPath) ?>">Back to Jazz ASNs</a>
       </div>
 
       <?php else: ?>
       <?php
       $dasUrl = das_appointment_url_for_jazz_asn($asnId);
+      $listToolbar = '<a class="btn-secondary" href="' . htmlspecialchars($dasUrl) . '">Delivery appointment</a>';
+      $jazzAsnLead = '';
+      if (!empty($asn['status'])) {
+          $jazzAsnLead .= '<span class="status-badge status-received">' . htmlspecialchars((string) $asn['status']) . '</span> · ';
+      }
+      $jazzAsnLead .= 'PO ' . htmlspecialchars((string) ($asn['po_number'] ?? '—')) . ' · Shipment ' . htmlspecialchars((string) ($asn['shipment_number'] ?? '—'));
+      render_list_page_header([
+          'back_href'  => $jazzAsnsPath,
+          'back_label' => 'Back to Jazz ASNs',
+          'category'   => 'Supply Chain',
+          'title'      => 'Jazz ASN ' . ($asn['id'] ?? $asnId),
+          'lead'       => $jazzAsnLead,
+          'lead_html'  => true,
+      ]);
       ?>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>Jazz ASN <?= htmlspecialchars((string) ($asn['id'] ?? $asnId)) ?></h1>
-          <p class="page-lead">
-            <?php if (!empty($asn['status'])): ?>
-            <span class="status-badge status-received"><?= htmlspecialchars((string) $asn['status']) ?></span>
-            ·
-            <?php endif; ?>
-            PO <?= htmlspecialchars((string) ($asn['po_number'] ?? '—')) ?>
-            · Shipment <?= htmlspecialchars((string) ($asn['shipment_number'] ?? '—')) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <a class="btn-secondary" href="<?= htmlspecialchars($dasUrl) ?>">Delivery appointment</a>
-        </div>
-      </div>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="detail-grid detail-grid-stacked">
         <section class="detail-card">
@@ -124,7 +122,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <div class="module-actions">
-        <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Back to Jazz ASNs</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($jazzAsnsPath) ?>">Back to Jazz ASNs</a>
       </div>
       <?php endif; ?>
     </div>

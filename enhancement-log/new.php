@@ -27,25 +27,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error = $result['error'];
 }
 
-$pageTitle = 'New Enhancement | Enhancement Log';
+$pageTitle = 'New Backlog Item | IT Product Backlog';
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/enhancement-log/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Enhancement Log
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Operations</div>
-        <h1>New Enhancement</h1>
-        <p class="page-lead">Log a new portal enhancement request.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/enhancement-log/',
+          'back_label' => 'Back to IT Product Backlog',
+          'category'   => 'Operations',
+          'title'      => 'New Backlog Item',
+          'lead'       => 'Add a new item to the IT product backlog.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

@@ -31,20 +31,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/links-index/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Links Index
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Resources</div>
-          <h1>New Link</h1>
-          <p class="page-lead">Add a shortcut to the Links Index.</p>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/links-index/',
+          'back_label' => 'Back to Links Index',
+          'category'   => 'Resources',
+          'title'      => 'New Link',
+          'lead'       => 'Add a shortcut to the Links Index.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

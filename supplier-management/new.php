@@ -13,7 +13,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = supplier_save($_POST);
 
     if ($result['ok']) {
-        header('Location: /supplier-management/view.php?id=' . $result['id'] . '&notice=created', true, 302);
+        $supplierId = (int) $result['id'];
+        $syncError = supplier_maybe_sync_qbo($supplierId);
+        $query = http_build_query(array_filter([
+            'id'     => $supplierId,
+            'notice' => 'created',
+            'error'  => $syncError,
+        ]));
+        header('Location: /supplier-management/view.php?' . $query, true, 302);
         exit;
     }
 
@@ -27,18 +34,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/supplier-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supplier Management
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Inventory</div>
-        <h1>New Supplier</h1>
-        <p class="page-lead">Add a supplier profile for use in purchase orders.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/supplier-management/',
+          'back_label' => 'Back to Supplier Management',
+          'category'   => 'Inventory',
+          'title'      => 'New Supplier',
+          'lead'       => 'Add a supplier profile for use in purchase orders.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

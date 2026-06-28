@@ -35,20 +35,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/links-index/view.php?id=<?= $linkId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Link Details
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Resources</div>
-          <h1>Edit Link</h1>
-          <p class="page-lead"><?= htmlspecialchars((string) $link['LinkName']) ?></p>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/links-index/view.php?id=' . $linkId,
+          'back_label' => 'Back to Link Details',
+          'category'   => 'Resources',
+          'title'      => 'Edit Link',
+          'lead'       => (string) $link['LinkName'],
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

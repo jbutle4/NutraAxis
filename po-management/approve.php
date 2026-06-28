@@ -32,7 +32,7 @@ if ($order === null) {
     $pageTitle = 'PO Not Found';
     require dirname(__DIR__) . '/includes/head.php';
     require dirname(__DIR__) . '/includes/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Purchase order not found</h1><div class="module-actions"><a class="btn-secondary" href="/po-management/approvals.php">Back to Approvals</a></div></div></div></main>';
+    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Purchase order not found</h1><div class="module-actions"><a class="btn-secondary" href="/approvals/?type=PO&status=pending">Back to Approvals</a></div></div></div></main>';
     require dirname(__DIR__) . '/includes/footer.php';
     exit;
 }
@@ -60,30 +60,22 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <?php if (!$isTokenAccess): ?>
-      <a class="breadcrumb" href="/po-management/approvals.php">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Approval Queue
-      </a>
-      <?php endif; ?>
+      <?php
+      $approveLead = '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['SupplierName']);
+      if ($isTokenAccess) {
+          $approveLead .= ' · Acting as ' . htmlspecialchars($approverLabel);
+      }
+      render_list_page_header([
+          'back_href'  => '/approvals/?type=PO&status=pending',
+          'back_label' => 'Back to Approvals',
+          'category'   => 'PO Approval',
+          'title'      => $order['PONumber'],
+          'lead'       => $approveLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">PO Approval</div>
-          <h1><?= htmlspecialchars($order['PONumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
-            · <?= htmlspecialchars($order['SupplierName']) ?>
-            <?php if ($isTokenAccess): ?>
-            · Acting as <?= htmlspecialchars($approverLabel) ?>
-            <?php endif; ?>
-          </p>
-        </div>
-      </div>
 
       <?php if ($notice === 'actioned'): ?>
       <div class="admin-notice is-success" role="status">Your approval action was recorded successfully.</div>

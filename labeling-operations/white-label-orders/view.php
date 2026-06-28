@@ -24,22 +24,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/white-label-orders/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to White Label Orders
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/labeling-operations/white-label-orders/',
+          'back_label' => 'Back to White Label Orders',
+          'category'   => 'White Label Production',
+          'title'      => 'Order ' . ($order['ExternalOrderNumber'] ?? $order['ExternalOrderID']),
+          'lead'       => 'Adobe Commerce order imported for production tracking.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">White Label Production</div>
-          <h1>Order <?= htmlspecialchars($order['ExternalOrderNumber'] ?? $order['ExternalOrderID']) ?></h1>
-          <p class="page-lead">Adobe Commerce order imported for production tracking.</p>
-        </div>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">White label production order saved successfully.</div>

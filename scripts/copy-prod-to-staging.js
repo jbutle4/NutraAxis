@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copy nutraaxis schema (via sql/*.sql) and data into nutraaxis_staging.
+ * Copy nutraaxis schema (via sql/*.sql) and data into nutraaxis_test.
  * Azure SQL does not support cross-database SELECT, so data is copied table-by-table.
  *
  * Usage: node scripts/copy-prod-to-staging.js
@@ -11,7 +11,7 @@ const path = require('path');
 const sql = require('mssql');
 
 const SOURCE_DB = 'nutraaxis';
-const TARGET_DB = 'nutraaxis_staging';
+const TARGET_DB = 'nutraaxis_test';
 const BATCH_SIZE = 200;
 
 function loadEnv(filePath) {

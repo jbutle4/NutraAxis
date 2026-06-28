@@ -43,35 +43,31 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/support/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Tickets
-      </a>
+      <?php
+      ob_start();
+      if (support_can_update() && trim((string) env('ZENDESK_SUBDOMAIN', '')) !== ''):
+      ?>
+      <a class="btn-secondary" href="https://<?= htmlspecialchars(trim((string) env('ZENDESK_SUBDOMAIN', 'nutraaxislabs'))) ?>.zendesk.com/agent/tickets/<?= $ticketId ?>" target="_blank" rel="noopener noreferrer">Open in Zendesk</a>
+      <?php endif;
+      $pageToolbar = ob_get_clean();
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Zendesk Ticket</div>
-          <h1><?= htmlspecialchars(zendesk_ticket_subject($ticket)) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= support_status_class((string) ($ticket['status'] ?? '')) ?>"><?= htmlspecialchars(support_status_label((string) ($ticket['status'] ?? ''))) ?></span>
-            · <?= htmlspecialchars(support_priority_label((string) ($ticket['priority'] ?? 'normal'))) ?>
-            · #<?= $ticketId ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <?php if (support_can_update() && trim((string) env('ZENDESK_SUBDOMAIN', '')) !== ''): ?>
-          <a class="btn-secondary" href="https://<?= htmlspecialchars(trim((string) env('ZENDESK_SUBDOMAIN', 'nutraaxislabs'))) ?>.zendesk.com/agent/tickets/<?= $ticketId ?>" target="_blank" rel="noopener noreferrer">Open in Zendesk</a>
-          <?php endif; ?>
-        </div>
-      </div>
+      render_list_page_header([
+          'back_href'  => '/support/',
+          'back_label' => 'Back to Tickets',
+          'category'   => 'Zendesk Ticket',
+          'title'      => zendesk_ticket_subject($ticket),
+          'lead'       => '<span class="status-badge ' . support_status_class((string) ($ticket['status'] ?? '')) . '">' . htmlspecialchars(support_status_label((string) ($ticket['status'] ?? ''))) . '</span> · ' . htmlspecialchars(support_priority_label((string) ($ticket['priority'] ?? 'normal'))) . ' · #' . $ticketId,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'comment'): ?>
       <div class="admin-notice is-success" role="status">Reply posted successfully.</div>
       <?php elseif ($notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Ticket updated successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($pageToolbar); ?>
 
       <?php if (!support_is_agent()): ?>
       <div class="status-banner">

@@ -81,23 +81,16 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="<?= htmlspecialchars($breadcrumb['href']) ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        <?= htmlspecialchars($breadcrumb['label']) ?>
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Delivery scheduling</div>
-          <h1>Edit appointment #<?= $apptId ?></h1>
-          <p class="page-lead">PO <?= htmlspecialchars($appointment['PONumber']) ?> · <?= htmlspecialchars($appointment['CompanyName'] ?? '—') ?></p>
-        </div>
-        <div class="admin-actions">
-          <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View</a>
-        </div>
-      </div>
+      <?php
+      $listToolbar = '<a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=' . $apptId . htmlspecialchars(das_return_query($returnContext)) . '">View</a>';
+      render_list_page_header([
+          'back_href'  => $breadcrumb['href'],
+          'back_label' => $breadcrumb['label'],
+          'category'   => 'Delivery scheduling',
+          'title'      => 'Edit appointment #' . $apptId,
+          'lead'       => 'PO ' . $appointment['PONumber'] . ' · ' . ($appointment['CompanyName'] ?? '—'),
+      ]);
+      ?>
 
       <?php if ($notice === 'updated' || $notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Appointment <?= $notice === 'created' ? 'created' : 'updated' ?> successfully.</div>
@@ -110,6 +103,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif ($emailError !== null && $emailError !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($emailError) ?></div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="account-card">
         <h2>Email scheduling request</h2>

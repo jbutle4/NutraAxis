@@ -6,48 +6,45 @@ enhancement_log_require_read();
 
 $activeSlug = 'enhancement-log';
 $statusFilter = trim($_GET['status'] ?? '');
+$typeFilter = trim($_GET['enh_type'] ?? '');
+$productFilter = trim($_GET['it_product'] ?? '');
 $search = trim($_GET['q'] ?? '');
 $listFilters = [
-    'status' => $statusFilter !== '' ? $statusFilter : null,
-    'q'      => $search !== '' ? $search : null,
+    'status'     => $statusFilter !== '' ? $statusFilter : null,
+    'enh_type'   => $typeFilter !== '' ? $typeFilter : null,
+    'it_product' => $productFilter !== '' ? $productFilter : null,
+    'q'          => $search !== '' ? $search : null,
 ] + table_sort_state(ENHANCEMENT_LOG_LIST_SORT_COLUMNS, 'request_date', 'desc', $_GET);
 $entries = enhancement_log_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'Enhancement Log | NutraAxis Operations';
-$pageDescription = 'Track portal enhancement requests, status, and due dates.';
+$pageTitle = 'IT Product Backlog | NutraAxis Operations';
+$pageDescription = 'Track IT product backlog items, status, and due dates.';
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
-      <a class="breadcrumb" href="/operations-dashboard/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Dashboard
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Operations</div>
-          <h1>Enhancement Log</h1>
-          <p class="page-lead">Track enhancement requests for the NutraAxis Operations portal — title, description, status, and due dates.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('enhancement-log')) ?></p>
-        </div>
-        <?php if (enhancement_log_can_create()): ?>
-        <a class="btn-primary" href="/enhancement-log/new.php">New Enhancement</a>
-        <?php endif; ?>
-      </div>
+    <div class="container page-inner page-inner--wide">
+      <?php
+      $listToolbar = enhancement_log_can_create() ? '<a class="btn-primary" href="/enhancement-log/new.php">New Backlog Item</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/operations-dashboard/',
+          'back_label' => 'Back to Operations Dashboard',
+          'category'   => 'Operations',
+          'title'      => 'IT Product Backlog',
+          'lead'       => 'Track backlog items for ACCS, QBO, the Operations Portal, integrations, and other IT products.',
+          'permission' => auth_module_permission_label('enhancement-log'),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
-      <div class="admin-notice is-success" role="status">Enhancement log entry created successfully.</div>
+      <div class="admin-notice is-success" role="status">Backlog item created successfully.</div>
       <?php elseif ($notice === 'updated'): ?>
-      <div class="admin-notice is-success" role="status">Enhancement log entry updated successfully.</div>
+      <div class="admin-notice is-success" role="status">Backlog item updated successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/enhancement-log/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/enhancement-log/">
         <?php table_sort_hidden_inputs($listFilters, 'request_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -61,9 +58,31 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php endforeach; ?>
             </select>
           </div>
+          <div>
+            <label for="enh_type">Type</label>
+            <select class="form-input" id="enh_type" name="enh_type">
+              <option value="">All types</option>
+              <?php foreach (ENHANCEMENT_LOG_TYPES as $type): ?>
+              <option value="<?= htmlspecialchars($type) ?>" <?= $typeFilter === $type ? 'selected' : '' ?>>
+                <?= htmlspecialchars($type) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label for="it_product">IT product</label>
+            <select class="form-input" id="it_product" name="it_product">
+              <option value="">All products</option>
+              <?php foreach (ENHANCEMENT_LOG_IT_PRODUCTS as $product): ?>
+              <option value="<?= htmlspecialchars($product) ?>" <?= $productFilter === $product ? 'selected' : '' ?>>
+                <?= htmlspecialchars($product) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
           <div class="audit-filter-wide">
             <label for="q">Search</label>
-            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Title, description, requester, or notes" />
+            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Title, description, requester, type, product, or notes" />
           </div>
         </div>
         <div class="audit-filter-actions">
@@ -72,6 +91,8 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </form>
 
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
+
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -79,7 +100,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 ENHANCEMENT_LOG_LIST_SORT_COLUMNS,
                 '/enhancement-log',
                 $listFilters,
-                ['status', 'q'],
+                ['status', 'enh_type', 'it_product', 'q'],
                 ['id'],
                 'request_date',
                 'desc',
@@ -89,12 +110,16 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($entries === []): ?>
-            <tr><td colspan="7">No enhancement log entries match your filters.</td></tr>
+            <tr><td colspan="11">No backlog items match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($entries as $entry): ?>
             <tr>
               <td><?= (int) $entry['EnhancementLogID'] ?></td>
               <td><?= htmlspecialchars((string) $entry['EnhancementTitle']) ?></td>
+              <td><?= htmlspecialchars((string) ($entry['EnhType'] ?? '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($entry['ITProduct'] ?? '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($entry['Priority'] ?? '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($entry['Impact'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) ($entry['RequestedBy'] ?? '—')) ?></td>
               <td><?= htmlspecialchars(enhancement_log_format_date((string) ($entry['RequestDate'] ?? ''))) ?></td>
               <td>

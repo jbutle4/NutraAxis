@@ -14,20 +14,13 @@ require __DIR__ . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Operations</div>
-          <h1>MS Planner</h1>
-          <p class="page-lead">NutraAxis premium plan in Microsoft Planner.</p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Operations',
+          'title'      => 'MS Planner',
+          'lead'       => 'NutraAxis premium plan in Microsoft Planner.',
+      ]); ?>
 
       <div class="status-banner planner-launch-banner">
         <div>

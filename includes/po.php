@@ -400,6 +400,7 @@ function po_get_order(int $poId): ?array
             po.*,
             s.SupplierName,
             s.SupplierCode,
+            s.SupplierType,
             s.Address AS SupplierTableAddress,
             s.ContactName,
             s.ContactEmail,
@@ -813,23 +814,103 @@ function po_execute_line_insert(PDOStatement $stmt, int $poId, array $line): voi
     ]);
 }
 
+function po_delete_confirm_message(string $poNumber): string
+{
+    return 'Delete ' . $poNumber . ' and all related line items, attachments, receipts, payments, supplier invoices, delivery appointments, and approval history? This cannot be undone.';
+}
+
+function po_delete_approval_for_entity(PDO $pdo, string $entityType, int $entityId): void
+{
+    $params = ['entity_type' => $entityType, 'entity_id' => $entityId];
+
+    $pdo->prepare('DELETE FROM dbo.ApprovalLog WHERE EntityType = :entity_type AND EntityID = :entity_id')
+        ->execute($params);
+    $pdo->prepare('DELETE FROM dbo.ApprovalToken WHERE EntityType = :entity_type AND EntityID = :entity_id')
+        ->execute($params);
+    $pdo->prepare('DELETE FROM dbo.ApprovalLog WHERE SecondaryEntityType = :entity_type AND SecondaryEntityID = :entity_id')
+        ->execute($params);
+    $pdo->prepare('DELETE FROM dbo.ApprovalToken WHERE SecondaryEntityType = :entity_type AND SecondaryEntityID = :entity_id')
+        ->execute($params);
+}
+
+function po_delete_payments_for_scope(PDO $pdo, string $column, int $id): void
+{
+    $allowedColumns = ['POID', 'SupplierInvoiceID'];
+    if (!in_array($column, $allowedColumns, true)) {
+        throw new InvalidArgumentException('Unsupported payment scope column.');
+    }
+
+    $stmt = $pdo->prepare("SELECT PaymentID FROM dbo.POPayment WHERE {$column} = :id");
+    $stmt->execute(['id' => $id]);
+    $paymentIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    foreach ($paymentIds as $paymentId) {
+        po_delete_approval_for_entity($pdo, 'POPayment', $paymentId);
+    }
+
+    $pdo->prepare("DELETE FROM dbo.POPayment WHERE {$column} = :id")->execute(['id' => $id]);
+    $pdo->prepare("DELETE FROM dbo.POPaymentAttachment WHERE {$column} = :id")->execute(['id' => $id]);
+}
+
+function po_delete_supplier_invoice_cascade(PDO $pdo, int $invoiceId): void
+{
+    po_delete_approval_for_entity($pdo, 'SupplierInvoice', $invoiceId);
+    po_delete_payments_for_scope($pdo, 'SupplierInvoiceID', $invoiceId);
+    $pdo->prepare('DELETE FROM dbo.SupplierInvoice WHERE SupplierInvoiceID = :id')
+        ->execute(['id' => $invoiceId]);
+}
+
+function po_delete_related_records(PDO $pdo, int $poId): void
+{
+    $stmt = $pdo->prepare('SELECT SupplierInvoiceID FROM dbo.SupplierInvoice WHERE POID = :po_id');
+    $stmt->execute(['po_id' => $poId]);
+    foreach (array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)) as $invoiceId) {
+        po_delete_supplier_invoice_cascade($pdo, $invoiceId);
+    }
+
+    $pdo->prepare(
+        'DELETE FROM dbo.DeliveryAppointmentScheduling WHERE POReceiptID IN (SELECT PORID FROM dbo.POReceipt WHERE POID = :po_id)'
+    )->execute(['po_id' => $poId]);
+    $pdo->prepare('DELETE FROM dbo.DeliveryAppointmentScheduling WHERE POID = :po_id')
+        ->execute(['po_id' => $poId]);
+
+    po_delete_approval_for_entity($pdo, 'PurchaseOrder', $poId);
+    $pdo->prepare('DELETE FROM dbo.POEventLog WHERE POID = :po_id')->execute(['po_id' => $poId]);
+
+    po_delete_payments_for_scope($pdo, 'POID', $poId);
+    $pdo->prepare('DELETE FROM dbo.POReceipt WHERE POID = :po_id')->execute(['po_id' => $poId]);
+    $pdo->prepare('DELETE FROM dbo.POProductionStatus WHERE POID = :po_id')->execute(['po_id' => $poId]);
+}
+
 function po_delete_order(int $poId): array
 {
+    if (!po_can_delete()) {
+        return ['ok' => false, 'error' => 'You do not have permission to delete purchase orders.'];
+    }
+
     $order = po_get_order($poId);
     if ($order === null) {
         return ['ok' => false, 'error' => 'Purchase order not found.'];
     }
 
-    if ($order['POStatus'] !== 'Created') {
-        return ['ok' => false, 'error' => 'Only purchase orders in Created status can be deleted.'];
-    }
-
     $lines = po_get_lines($poId);
     $pdo = db();
-    $pdo->prepare('DELETE FROM dbo.PurchaseOrder WHERE POID = :id')->execute(['id' => $poId]);
 
-    require_once __DIR__ . '/audit.php';
-    audit_log_po_delete($order, $lines);
+    try {
+        $pdo->beginTransaction();
+        po_delete_related_records($pdo, $poId);
+        $pdo->prepare('DELETE FROM dbo.PurchaseOrder WHERE POID = :id')->execute(['id' => $poId]);
+        $pdo->commit();
 
-    return ['ok' => true, 'error' => null];
+        require_once __DIR__ . '/audit.php';
+        audit_log_po_delete($order, $lines);
+
+        return ['ok' => true, 'error' => null, 'po_number' => (string) $order['PONumber']];
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        return ['ok' => false, 'error' => po_format_exception_message($e, 'delete this purchase order')];
+    }
 }

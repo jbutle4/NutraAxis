@@ -29,20 +29,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/travel-expense/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Expense Reports
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/travel-expense/',
+          'back_label' => 'Back to Expense Reports',
+          'category'   => 'Finance',
+          'title'      => 'New Expense Report',
+          'lead'       => 'Complete the NFC expense report form, attach receipts after saving, and submit for approval.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Finance</div>
-        <h1>New Expense Report</h1>
-        <p class="page-lead">Complete the NFC expense report form, attach receipts after saving, and submit for approval.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

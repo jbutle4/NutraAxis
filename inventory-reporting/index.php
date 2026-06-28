@@ -44,21 +44,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supply Chain Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Inventory</div>
-          <h1>Jazz Current Inventory</h1>
-          <p class="page-lead">Live inventory by SKU and facility from Jazz OMS.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(inventory_reporting_permission_value())) ?></p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Supply Chain Management',
+          'category'   => 'Inventory',
+          'title'      => 'Jazz Current Inventory',
+          'lead'       => 'Live inventory by SKU and facility from Jazz OMS.',
+          'permission' => permission_label(inventory_reporting_permission_value()),
+      ]); ?>
 
       <?php if ($configError !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($configError) ?></div>
@@ -77,7 +70,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $inventorySortColumns,
-                '/inventory-reporting',
+                data_profile_page_path('/inventory-reporting'),
                 $listFilters,
                 [],
                 ['available_quantity', 'on_hand_quantity', 'qty_ordered', 'total_quantity'],

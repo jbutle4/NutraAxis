@@ -2,8 +2,12 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/links.php';
 require dirname(__DIR__) . '/includes/hub-cards.php';
+require dirname(__DIR__) . '/includes/accs-test-order-client.php';
 
 auth_require_module_read('operations-dashboard');
+
+$accsTestOrderNotice = null;
+$accsTestOrderError = null;
 
 function operations_dashboard_normalize_link(array $link): array
 {
@@ -12,7 +16,7 @@ function operations_dashboard_normalize_link(array $link): array
             $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
         } elseif (preg_match('#zendesk\.com#i', (string) ($link['href'] ?? ''))) {
             $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
-        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
+        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|sandbox\.qbo\.intuit\.com|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
             $link['tier'] = ENVIRONMENT_TIER_UAT;
         } elseif (str_starts_with((string) ($link['href'] ?? ''), 'http')) {
             $link['tier'] = ENVIRONMENT_TIER_EXTERNAL;
@@ -26,7 +30,7 @@ function operations_dashboard_normalize_link(array $link): array
     return $link;
 }
 
-function operations_dashboard_render_section_links(array $links): void
+function operations_dashboard_render_section_links(array $links, array $actionCards = []): void
 {
     $filtered = [];
     foreach ($links as $link) {
@@ -37,6 +41,7 @@ function operations_dashboard_render_section_links(array $links): void
     }
 
     $sections = hub_cards_partition_uat($filtered);
+    $actionSections = hub_cards_partition_uat($actionCards);
 
     if ($sections['production'] !== []) {
         echo '<div class="functions operations-dashboard-links">';
@@ -44,10 +49,42 @@ function operations_dashboard_render_section_links(array $links): void
         echo '</div>';
     }
 
-    if ($sections['uat'] !== []) {
+    if ($sections['uat'] !== [] || $actionSections['uat'] !== []) {
         echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
         echo '<div class="functions operations-dashboard-links">';
         hub_render_function_card_grid($sections['uat'], false);
+        operations_dashboard_render_action_cards($actionSections['uat']);
+        echo '</div>';
+    }
+
+    if ($actionSections['production'] !== []) {
+        echo '<div class="functions operations-dashboard-links">';
+        operations_dashboard_render_action_cards($actionSections['production']);
+        echo '</div>';
+    }
+}
+
+function operations_dashboard_render_action_cards(array $cards): void
+{
+    foreach ($cards as $card) {
+        if (($card['action'] ?? '') !== 'accs_test_orders') {
+            continue;
+        }
+
+        $tierClass = hub_card_tier_class($card);
+        echo '<div class="function-card operations-dashboard-action-card ' . htmlspecialchars($tierClass) . '">';
+
+        if (!empty($card['icon']) && function_exists('icon_svg')) {
+            echo '<div class="function-icon">' . icon_svg((string) $card['icon']) . '</div>';
+        }
+
+        echo '<h3>' . htmlspecialchars((string) ($card['title'] ?? '')) . '</h3>';
+        echo '<p>' . htmlspecialchars((string) ($card['desc'] ?? '')) . '</p>';
+        echo '<p class="operations-dashboard-action-note">Runs in the background — you can keep using the portal while orders are created.</p>';
+        echo '<form id="accs-test-orders-form" method="post" action="/operations-dashboard/accs-test-orders-run.php" class="operations-dashboard-action-form">';
+        echo '<input type="hidden" name="dashboard_action" value="accs_test_orders" />';
+        echo '<button type="submit" class="btn-primary" id="accs-test-orders-submit">Create 5 test orders</button>';
+        echo '</form>';
         echo '</div>';
     }
 }
@@ -56,6 +93,16 @@ $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
 $linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
 $indexLinks = $canManageLinks ? links_list($linkListFilters) : [];
+
+$dashboardActionCards = [
+    [
+        'title'  => 'ACCS Test Order Creation',
+        'desc'   => 'Create 5 ACCS Stage test orders (4 random catalog SKUs each) using the same customer, address, and payment as order 000000094.',
+        'icon'   => 'chart',
+        'tier'   => ENVIRONMENT_TIER_UAT,
+        'action' => 'accs_test_orders',
+    ],
+];
 
 $dashboardSections = [
     [
@@ -91,6 +138,7 @@ $dashboardSections = [
                 'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                 'href'  => 'https://qbo.intuit.com/app/my-accountant',
                 'icon'  => 'accounting',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
             ],
             [
                 'title' => 'Lucid Chart',
@@ -112,8 +160,8 @@ $dashboardSections = [
                 'internal' => true,
             ],
             [
-                'title'    => 'Enhancement Log',
-                'desc'     => 'Track portal enhancement requests, status, due dates, and implementation notes.',
+                'title'    => 'IT Product Backlog',
+                'desc'     => 'Track IT product backlog items, status, due dates, and implementation notes.',
                 'href'     => '/enhancement-log/',
                 'icon'     => 'clipboard',
                 'internal' => true,
@@ -166,6 +214,12 @@ $dashboardSections = [
                 'title' => 'Intuit Development Registration',
                 'desc'  => 'Intuit Developer workspaces for QuickBooks API apps, keys, and OAuth configuration.',
                 'href'  => 'https://developer.intuit.com/workspaces',
+                'icon'  => 'accounting',
+            ],
+            [
+                'title' => 'Intuit Developer',
+                'desc'  => 'Intuit Developer dashboard — manage QuickBooks API apps, credentials, and OAuth settings.',
+                'href'  => 'https://developer.intuit.com/dashboard?id=9341457225981893&tab=apps',
                 'icon'  => 'accounting',
             ],
             [
@@ -239,6 +293,13 @@ $dashboardSections = [
                 'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [
+                'title' => 'QuickBooks Sandbox',
+                'desc'  => 'UAT System — QuickBooks Online sandbox company for testing accounting integrations.',
+                'href'  => 'https://sandbox.qbo.intuit.com/app/homepage',
+                'icon'  => 'accounting',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
                 'title' => 'NA Test Site',
                 'desc'  => 'UAT System — NutraAxis site index, HTML previews, concept pages, and test renders.',
                 'href'  => 'https://nutraaxisweb.azurewebsites.net/nutraaxis_test/',
@@ -271,30 +332,34 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Overview',
+          'title'      => 'Operations Dashboard',
+          'lead'       => 'Shortcuts to planning, documents, accounting, Adobe Commerce, and support tools.',
+          'permission' => auth_module_permission_label('operations-dashboard'),
+      ]); ?>
 
-      <div class="page-hero">
-        <div class="page-hero-head">
-          <div class="module-icon"><?= icon_svg('dashboard', 28) ?></div>
-          <?php if ($canManageLinks): ?>
-          <a class="btn-secondary" href="/links-index/">Manage Links</a>
-          <?php endif; ?>
-        </div>
-        <div class="section-label">Overview</div>
-        <h1>Operations Dashboard</h1>
-        <p class="page-lead">Shortcuts to planning, documents, accounting, Adobe Commerce, and support tools.</p>
-        <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('operations-dashboard')) ?></p>
-      </div>
+      <?php if ($accsTestOrderNotice !== null): ?>
+      <div class="admin-notice is-success" role="status"><?= htmlspecialchars($accsTestOrderNotice) ?></div>
+      <?php elseif ($accsTestOrderError !== null): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($accsTestOrderError) ?></div>
+      <?php endif; ?>
+      <div id="accs-test-orders-banner"></div>
+
+      <?php
+      $listToolbar = $canManageLinks ? '<a class="btn-secondary" href="/links-index/">Manage Links</a>' : null;
+      render_list_page_toolbar($listToolbar);
+      ?>
 
       <?php foreach ($dashboardSections as $section): ?>
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title"><?= htmlspecialchars($section['title']) ?></h2>
-        <?php operations_dashboard_render_section_links($section['links']); ?>
+        <?php
+        $actionCards = ($section['title'] ?? '') === 'IT and eCommerce' ? $dashboardActionCards : [];
+        operations_dashboard_render_section_links($section['links'], $actionCards);
+        ?>
       </section>
       <?php endforeach; ?>
 
@@ -348,5 +413,63 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
     </div>
   </main>
+  <script>
+  (function () {
+    const form = document.getElementById('accs-test-orders-form');
+    const banner = document.getElementById('accs-test-orders-banner');
+    if (!form || !banner) return;
+
+    const button = document.getElementById('accs-test-orders-submit');
+    const defaultLabel = button ? button.textContent : 'Create 5 test orders';
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Starting…';
+      }
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+          body: new URLSearchParams(new FormData(form)),
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (error) {
+          data = { ok: false, message: 'Could not read the server response.' };
+        }
+
+        const message = data.message || data.error || 'Test order creation could not be started.';
+        const cssClass = data.ok ? 'admin-notice is-success' : 'admin-notice is-error';
+        const role = data.ok ? 'status' : 'alert';
+        banner.innerHTML = '<div class="' + cssClass + '" role="' + role + '">' + escapeHtml(message) + '</div>';
+        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (error) {
+        banner.innerHTML = '<div class="admin-notice is-error" role="alert">Could not reach the server to start test order creation.</div>';
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = defaultLabel;
+        }
+      }
+    });
+  })();
+  </script>
 <?php
 require dirname(__DIR__) . '/includes/footer.php';

@@ -45,9 +45,69 @@
     closeBtn.addEventListener('click', closeMenu);
     overlay.addEventListener('click', closeMenu);
 
+    document.querySelectorAll('.nav-parent-toggle').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var group = button.closest('.nav-group');
+        if (!group) {
+          return;
+        }
+
+        var expanded = group.classList.toggle('is-expanded');
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        var label = button.getAttribute('aria-label') || '';
+        var section = label.replace(/^(Expand|Collapse)\s+/, '');
+        button.setAttribute('aria-label', (expanded ? 'Collapse ' : 'Expand ') + section);
+      });
+    });
+
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') closeMenu();
     });
+
+    var topChrome = document.querySelector('.site-top-chrome');
+    var topChromeSpacer = document.querySelector('.site-top-chrome-spacer');
+    function syncTopChromeSpacer() {
+      if (!topChrome || !topChromeSpacer) {
+        return;
+      }
+      var height = topChrome.offsetHeight;
+      topChromeSpacer.style.height = height + 'px';
+      document.documentElement.style.setProperty('--site-top-chrome-height', height + 'px');
+    }
+    syncTopChromeSpacer();
+    window.addEventListener('resize', syncTopChromeSpacer);
+
+    function wrapListPageStickyTop() {
+      document.querySelectorAll('.page-inner').forEach(function (inner) {
+        if (inner.querySelector('.page-sticky-top')) {
+          return;
+        }
+
+        var table = inner.querySelector('.admin-table-wrap');
+        var contentRoot = table
+          || inner.querySelector('.capability-grid, .detail-grid, .functions, .legal-prose, .account-card, .admin-form, .form-card');
+        if (!contentRoot) {
+          return;
+        }
+
+        var sticky = document.createElement('div');
+        sticky.className = 'page-sticky-top';
+        var node = inner.firstElementChild;
+        while (node && node !== contentRoot) {
+          var next = node.nextElementSibling;
+          sticky.appendChild(node);
+          node = next;
+        }
+
+        if (sticky.childElementCount === 0) {
+          return;
+        }
+
+        inner.insertBefore(sticky, contentRoot);
+      });
+    }
+
+    wrapListPageStickyTop();
   })();
   </script>
 

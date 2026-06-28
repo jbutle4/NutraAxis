@@ -24,41 +24,38 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/links-index/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Links Index
-      </a>
+      <?php
+      ob_start();
+      ?>
+      <a class="btn-primary" href="<?= htmlspecialchars($href) ?>" <?= links_external_target_attrs() ?>>Open Link</a>
+      <?php if (links_can_update()): ?>
+      <a class="btn-secondary" href="/links-index/edit.php?id=<?= $linkId ?>">Edit</a>
+      <?php endif; ?>
+      <?php if (links_can_delete()): ?>
+      <form id="link-delete-form" method="post" action="/links-index/delete.php" class="visually-hidden-form" onsubmit="return confirm('Delete this link from the index?');">
+        <input type="hidden" name="link_id" value="<?= $linkId ?>" />
+      </form>
+      <button type="submit" form="link-delete-form" class="btn-danger">Delete</button>
+      <?php endif;
+      $pageToolbar = ob_get_clean();
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Link</div>
-          <h1><?= htmlspecialchars((string) $link['LinkName']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= links_status_class((string) $link['LinkStatus']) ?>"><?= htmlspecialchars(links_status_label((string) $link['LinkStatus'])) ?></span>
-            · <?= htmlspecialchars((string) $link['LinkCategory']) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <a class="btn-primary" href="<?= htmlspecialchars($href) ?>" <?= links_external_target_attrs() ?>>Open Link</a>
-          <?php if (links_can_update()): ?>
-          <a class="btn-secondary" href="/links-index/edit.php?id=<?= $linkId ?>">Edit</a>
-          <?php endif; ?>
-          <?php if (links_can_delete()): ?>
-          <form id="link-delete-form" method="post" action="/links-index/delete.php" class="visually-hidden-form" onsubmit="return confirm('Delete this link from the index?');">
-            <input type="hidden" name="link_id" value="<?= $linkId ?>" />
-          </form>
-          <button type="submit" form="link-delete-form" class="btn-danger">Delete</button>
-          <?php endif; ?>
-        </div>
-      </div>
+      render_list_page_header([
+          'back_href'  => '/links-index/',
+          'back_label' => 'Back to Links Index',
+          'category'   => 'Link',
+          'title'      => (string) $link['LinkName'],
+          'lead'       => '<span class="status-badge ' . links_status_class((string) $link['LinkStatus']) . '">' . htmlspecialchars(links_status_label((string) $link['LinkStatus'])) . '</span> · ' . htmlspecialchars((string) $link['LinkCategory']),
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Link saved successfully.</div>
       <?php elseif ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars((string) $error) ?></div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($pageToolbar); ?>
 
       <div class="detail-grid">
         <section class="detail-card">

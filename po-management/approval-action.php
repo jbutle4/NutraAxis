@@ -4,7 +4,7 @@ require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-approval.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /po-management/approvals.php', true, 302);
+    header('Location: /approvals/?type=PO&status=pending', true, 302);
     exit;
 }
 
@@ -50,7 +50,7 @@ po_require_approval_action();
 $result = po_process_approval_action($poId, $action, $comments);
 
 if ($result['ok']) {
-    header('Location: /po-management/approvals.php?notice=actioned', true, 302);
+    header('Location: /approvals/?type=PO&status=pending&notice=actioned', true, 302);
     exit;
 }
 

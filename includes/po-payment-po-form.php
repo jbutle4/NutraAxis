@@ -38,14 +38,15 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
                 <th>Confirmation #</th>
                 <th>Made by</th>
                 <th>Comments</th>
-                <?php if (po_payment_can_delete()): ?>
-                <th>Delete</th>
+                <th>Files</th>
+                <?php if (po_payment_can_update() || po_payment_can_delete()): ?>
+                <th>Actions</th>
                 <?php endif; ?>
               </tr>
             </thead>
             <tbody>
               <?php if ($poPayments === []): ?>
-              <tr><td colspan="<?= po_payment_can_delete() ? 8 : 7 ?>">No payments recorded for this purchase order.</td></tr>
+              <tr><td colspan="<?= (po_payment_can_update() || po_payment_can_delete()) ? 9 : 8 ?>">No payments recorded for this purchase order.</td></tr>
               <?php else: ?>
               <?php foreach ($poPayments as $payment): ?>
               <tr>
@@ -56,9 +57,22 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
                 <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
                 <td><?= htmlspecialchars($payment['PaymentMadeBy'] ?? '—') ?></td>
                 <td><?= htmlspecialchars($payment['PaymentComments'] ?? '—') ?></td>
-                <?php if (po_payment_can_delete()): ?>
-                <?php table_actions_cell([
-                    [
+                <td>
+                  <?php $attachmentCount = (int) ($payment['AttachmentCount'] ?? 0); ?>
+                  <?php if ($attachmentCount > 0 && po_payment_can_update()): ?>
+                  <a class="btn-text" href="/po-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>"><?= $attachmentCount === 1 ? '1 file' : $attachmentCount . ' files' ?></a>
+                  <?php else: ?>
+                  <?= $attachmentCount > 0 ? ($attachmentCount === 1 ? '1 file' : $attachmentCount . ' files') : '—' ?>
+                  <?php endif; ?>
+                </td>
+                <?php if (po_payment_can_update() || po_payment_can_delete()): ?>
+                <?php
+                $paymentRowActions = [];
+                if (po_payment_can_update()) {
+                    $paymentRowActions[] = ['href' => '/po-payments/edit.php?id=' . (int) $payment['PaymentID'], 'label' => 'Edit'];
+                }
+                if (po_payment_can_delete()) {
+                    $paymentRowActions[] = [
                         'html' => table_action_delete_form(
                             '/po-management/payments.php',
                             [
@@ -68,8 +82,10 @@ if (isset($order['TotalDue']) && $order['TotalDue'] !== null && $order['TotalDue
                             ],
                             'Delete this payment record?'
                         ),
-                    ],
-                ]); ?>
+                    ];
+                }
+                table_actions_cell($paymentRowActions);
+                ?>
                 <?php endif; ?>
               </tr>
               <?php endforeach; ?>

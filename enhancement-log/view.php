@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/enhancement-log.php';
+require dirname(__DIR__) . '/includes/enhancement-log-attachments.php';
 
 enhancement_log_require_read();
 
@@ -15,46 +16,51 @@ if ($entry === null) {
 $activeSlug = 'enhancement-log';
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'Enhancement #' . $logId . ' | Enhancement Log';
+$pageTitle = 'Backlog Item #' . $logId . ' | IT Product Backlog';
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/enhancement-log/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Enhancement Log
-      </a>
+      <?php
+      ob_start();
+      if (enhancement_log_can_update()):
+      ?>
+      <a class="btn-primary" href="/enhancement-log/edit.php?id=<?= $logId ?>">Edit</a>
+      <?php endif;
+      $pageToolbar = ob_get_clean();
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Operations</div>
-          <h1><?= htmlspecialchars((string) $entry['EnhancementTitle']) ?></h1>
-          <p class="page-lead">
-            Log #<?= (int) $entry['EnhancementLogID'] ?>
-            · <span class="status-badge <?= enhancement_log_status_class((string) $entry['RequestStatus']) ?>">
-              <?= htmlspecialchars(enhancement_log_status_label((string) $entry['RequestStatus'])) ?>
-            </span>
-          </p>
-        </div>
-        <?php if (enhancement_log_can_update()): ?>
-        <a class="btn-primary" href="/enhancement-log/edit.php?id=<?= $logId ?>">Edit</a>
-        <?php endif; ?>
-      </div>
+      render_list_page_header([
+          'back_href'  => '/enhancement-log/',
+          'back_label' => 'Back to IT Product Backlog',
+          'category'   => 'Operations',
+          'title'      => (string) $entry['EnhancementTitle'],
+          'lead'       => 'Log #' . (int) $entry['EnhancementLogID'] . ' · <span class="status-badge ' . enhancement_log_status_class((string) $entry['RequestStatus']) . '">' . htmlspecialchars(enhancement_log_status_label((string) $entry['RequestStatus'])) . '</span>',
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
-      <div class="admin-notice is-success" role="status">Enhancement log entry created successfully.</div>
+      <div class="admin-notice is-success" role="status">Backlog item created successfully.</div>
       <?php elseif ($notice === 'updated'): ?>
-      <div class="admin-notice is-success" role="status">Enhancement log entry updated successfully.</div>
+      <div class="admin-notice is-success" role="status">Backlog item updated successfully.</div>
+      <?php elseif ($notice === 'attachment'): ?>
+      <div class="admin-notice is-success" role="status">Screenshot uploaded successfully.</div>
+      <?php elseif ($notice === 'attachment_deleted'): ?>
+      <div class="admin-notice is-success" role="status">Screenshot deleted successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($pageToolbar); ?>
 
       <div class="detail-grid">
         <section class="detail-card">
           <h2>Request</h2>
-          <dl class="detail-list">
+          <dl class="detail-list detail-list-inline">
+            <div><dt>Type</dt><dd><?= htmlspecialchars((string) ($entry['EnhType'] ?? '—')) ?></dd></div>
+            <div><dt>IT product</dt><dd><?= htmlspecialchars((string) ($entry['ITProduct'] ?? '—')) ?></dd></div>
+            <div><dt>Priority</dt><dd><?= htmlspecialchars((string) ($entry['Priority'] ?? '—')) ?></dd></div>
+            <div><dt>Impact</dt><dd><?= htmlspecialchars((string) ($entry['Impact'] ?? '—')) ?></dd></div>
             <div><dt>Requested by</dt><dd><?= htmlspecialchars((string) ($entry['RequestedBy'] ?? '—')) ?></dd></div>
             <div><dt>Request date</dt><dd><?= htmlspecialchars(enhancement_log_format_date((string) ($entry['RequestDate'] ?? ''))) ?></dd></div>
             <div><dt>Due date</dt><dd><?= htmlspecialchars(enhancement_log_format_date((string) ($entry['ReqDueDate'] ?? ''))) ?></dd></div>
@@ -67,7 +73,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <h2>Description</h2>
           <dl class="detail-list">
             <div>
-              <dt>Enhancement description</dt>
+              <dt>Description</dt>
               <dd class="is-prose"><?= trim((string) ($entry['EnhDesc'] ?? '')) !== '' ? htmlspecialchars((string) $entry['EnhDesc']) : '—' ?></dd>
             </div>
           </dl>
@@ -83,6 +89,11 @@ require dirname(__DIR__) . '/includes/header.php';
           </dl>
         </section>
       </div>
+
+      <?php
+        $showUploadForm = enh_log_can_add_attachments();
+        require dirname(__DIR__) . '/includes/enhancement-log-attachments-section.php';
+      ?>
     </div>
   </main>
 <?php

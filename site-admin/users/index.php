@@ -20,26 +20,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/site-admin/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Site Admin
-      </a>
+      <?php
+      $listToolbar = $canCreate ? '<a class="btn-primary" href="/site-admin/users/new.php">New User</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/site-admin/',
+          'back_label' => 'Back to Site Admin',
+          'category'   => 'Site Admin',
+          'title'      => 'Users',
+          'lead'       => 'Operations portal accounts and role assignments.',
+          'permission' => permission_label(auth_permission_value('UserAdmin')),
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/admin-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Site Admin</div>
-          <h1>Users</h1>
-          <p class="page-lead">Operations portal accounts and role assignments.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(auth_permission_value('UserAdmin'))) ?></p>
-        </div>
-        <?php if ($canCreate): ?>
-        <a class="btn-primary" href="/site-admin/users/new.php">New User</a>
-        <?php endif; ?>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">User created successfully.</div>
@@ -48,6 +41,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif ($notice === 'deleted'): ?>
       <div class="admin-notice is-success" role="status">User deleted successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">

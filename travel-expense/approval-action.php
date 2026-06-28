@@ -5,7 +5,7 @@ require dirname(__DIR__) . '/includes/te-approval.php';
 require dirname(__DIR__) . '/includes/te-approval-token.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /travel-expense/approvals.php', true, 302);
+    header('Location: /approvals/?type=TE&status=pending', true, 302);
     exit;
 }
 
@@ -51,7 +51,7 @@ te_require_approval_action();
 $result = te_process_approval_action($reportId, $action, $comments);
 
 if ($result['ok']) {
-    header('Location: /travel-expense/approvals.php?notice=actioned', true, 302);
+    header('Location: /approvals/?type=TE&status=pending&notice=actioned', true, 302);
     exit;
 }
 

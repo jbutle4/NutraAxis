@@ -94,29 +94,10 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/view.php?id=<?= $porId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Receipt
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">PO Receipt · ASN</div>
-          <h1>ASN Data — <?= htmlspecialchars($receipt['PONumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= por_status_class($receipt['PORStatus']) ?>"><?= htmlspecialchars($receipt['PORStatus']) ?></span>
-            · <?= htmlspecialchars($receipt['SupplierName']) ?>
-            <?php if (!empty($receipt['JazzASN'])): ?>
-            · Jazz ASN: <strong><?= htmlspecialchars($receipt['JazzASN']) ?></strong>
-            <?php endif; ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <?php
-          $dasUrl = das_appointment_url_for_por($porId, ['return_to' => 'asn', 'por_id' => $porId]);
-          ?>
+      <?php
+      ob_start();
+      $dasUrl = das_appointment_url_for_por($porId, ['return_to' => 'asn', 'por_id' => $porId]);
+      ?>
           <a class="btn-secondary" href="<?= htmlspecialchars($dasUrl) ?>">Delivery appointment</a>
           <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Jazz ASNs</a>
           <a class="btn-secondary" href="/po-receiving/asn.php?id=<?= $porId ?>&format=csv">Download CSV</a>
@@ -128,8 +109,21 @@ require dirname(__DIR__) . '/includes/header.php';
             <?= $jazzConfigError !== null ? 'aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.55"' : '' ?>
           >Transmit to Jazz</a>
           <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      $asnLead = '<span class="status-badge ' . por_status_class($receipt['PORStatus']) . '">' . htmlspecialchars($receipt['PORStatus']) . '</span> · ' . htmlspecialchars($receipt['SupplierName']);
+      if (!empty($receipt['JazzASN'])) {
+          $asnLead .= ' · Jazz ASN: <strong>' . htmlspecialchars($receipt['JazzASN']) . '</strong>';
+      }
+      render_list_page_header([
+          'back_href'  => '/po-receiving/view.php?id=' . $porId,
+          'back_label' => 'Back to Receipt',
+          'category'   => 'PO Receipt · ASN',
+          'title'      => 'ASN Data — ' . $receipt['PONumber'],
+          'lead'       => $asnLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -155,6 +149,8 @@ require dirname(__DIR__) . '/includes/header.php';
         Only Draft or Scheduled receipts can be sent to Jazz.
       </div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="account-card">
         <h2>ASN preview</h2>

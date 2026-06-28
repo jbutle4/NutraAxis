@@ -6,7 +6,7 @@ require dirname(__DIR__) . '/includes/te-approval.php';
 te_require_read();
 
 if (te_can_read_approval_queue() && !te_can_create() && !isset($_GET['skip_approver_redirect'])) {
-    header('Location: /travel-expense/approvals.php', true, 302);
+    header('Location: /approvals/?type=TE&status=pending', true, 302);
     exit;
 }
 
@@ -32,26 +32,19 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php
+      $listToolbar = $canCreate ? '<a class="btn-primary" href="/travel-expense/new.php">New Expense Report</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Finance',
+          'title'      => 'Travel & Expense Reports',
+          'lead'       => 'Submit expense reports for reimbursement, attach receipt PDFs, and route through approval.',
+          'permission' => permission_label(te_permission_value()),
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Finance</div>
-          <h1>Travel &amp; Expense Reports</h1>
-          <p class="page-lead">Submit expense reports for reimbursement, attach receipt PDFs, and route through approval.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(te_permission_value())) ?></p>
-        </div>
-        <?php if ($canCreate): ?>
-        <a class="btn-primary" href="/travel-expense/new.php">New Expense Report</a>
-        <?php endif; ?>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Expense report created successfully.</div>
@@ -69,11 +62,11 @@ require dirname(__DIR__) . '/includes/header.php';
           <strong><?= $pendingApprovalCount === 1 ? '1 expense report is' : $pendingApprovalCount . ' expense reports are' ?> waiting for approval</strong>
           <p>Review submitted reports and take approval action from the approval queue.</p>
         </div>
-        <a class="btn-primary" href="/travel-expense/approvals.php">Open Approval Queue</a>
+        <a class="btn-primary" href="/approvals/?type=TE&status=pending">Open Approval Queue</a>
       </div>
       <?php endif; ?>
 
-      <form class="po-filter" method="get" action="/travel-expense/">
+      <form class="po-filter page-list-filters" method="get" action="/travel-expense/">
         <?php table_sort_hidden_inputs($listFilters, 'submitted', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
@@ -83,6 +76,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php endforeach; ?>
         </select>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">

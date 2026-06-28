@@ -10,6 +10,8 @@ require dirname(__DIR__) . '/includes/po-receiving.php';
 
 po_require_read();
 
+$pageContainerClass = 'page-inner--wide';
+
 $poId = (int) ($_GET['id'] ?? 0);
 $order = po_get_order($poId);
 
@@ -38,6 +40,7 @@ $approverEmails = $order['POStatus'] === PO_STATUS_SUBMITTED
     ? array_keys(po_recipient_emails_for_approvers())
     : [];
 $canUpdate = po_can_update();
+$canDelete = po_can_delete();
 $canApprove = po_can_read_approval_queue();
 $canSubmitForApproval = po_can_submit_for_approval($order);
 $needsReapproval = po_requires_reapproval($order);
@@ -48,6 +51,8 @@ $paymentNotice = $_GET['payment_notice'] ?? null;
 $paymentError = $_GET['payment_error'] ?? null;
 $notesError = isset($_GET['notes_error']) ? (string) $_GET['notes_error'] : null;
 $canAddNotesAndAttachments = po_can_add_notes_and_attachments($order);
+require dirname(__DIR__) . '/includes/po-lifecycle.php';
+$poLifecycleSteps = po_lifecycle_timeline($poId, $order);
 
 $pageTitle = $order['PONumber'] . ' | PO Management';
 $pageDescription = 'View purchase order details.';
@@ -56,26 +61,10 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Purchase Orders
-      </a>
-
-      <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Procurement</div>
-          <h1><?= htmlspecialchars($order['PONumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
-            · <?= htmlspecialchars($order['SupplierName']) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
+    <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
+      <?php
+      ob_start();
+      ?>
           <a class="btn-secondary" href="/po-management/print.php?id=<?= $poId ?>" target="_blank" rel="noopener">Printable View</a>
           <?php if ($canApprove && $order['POStatus'] === PO_STATUS_SUBMITTED): ?>
           <a class="btn-primary" href="/po-management/approve.php?id=<?= $poId ?>">Review for Approval</a>
@@ -114,8 +103,27 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php if (por_can_create()): ?>
           <a class="btn-secondary" href="/po-receiving/new.php?po_id=<?= $poId ?>">New PO Receipt</a>
           <?php endif; ?>
-        </div>
-      </div>
+          <?php if ($canDelete): ?>
+          <?= table_action_delete_form(
+              '/po-management/delete.php',
+              ['po_id' => $poId],
+              po_delete_confirm_message((string) $order['PONumber']),
+              'Delete PO'
+          ) ?>
+          <?php endif; ?>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      render_list_page_header([
+          'back_href'  => '/po-management/',
+          'back_label' => 'Back to Purchase Orders',
+          'category'   => 'Procurement',
+          'title'      => $order['PONumber'],
+          'lead'       => '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['SupplierName']),
+          'lead_html'  => true,
+      ]);
+      ?>
+
+      <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
 
       <?php if ($notice === 'created' || $notice === 'imported'): ?>
       <div class="admin-notice is-success" role="status">Purchase order created successfully.</div>
@@ -141,6 +149,10 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Production status updated successfully.</div>
       <?php endif; ?>
 
+      <?php if (!empty($_GET['delete_error'])): ?>
+      <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars((string) $_GET['delete_error']) ?></div>
+      <?php endif; ?>
+
       <?php if (isset($_GET['reapproval']) && $_GET['reapproval'] === '1'): ?>
       <div class="admin-notice is-error is-detail" role="alert">
         Total due changed after approval. This purchase order must be resubmitted for approval before it can be sent to accounting.
@@ -159,11 +171,11 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_SUBMITTED): ?>
       <div class="admin-notice" role="status">
-        This purchase order is in the approval queue. Approvers can review it under <a href="/po-management/approvals.php">Approvals</a>.
+        This purchase order is in the approval queue. Approvers can review it under <a href="/approvals/?type=PO&status=pending">Approvals</a>.
         <?php if ($approverEmails !== []): ?>
         Approval emails are sent to designated PO approvers: <strong><?= htmlspecialchars(implode(', ', $approverEmails)) ?></strong>.
         <?php else: ?>
-        <strong>No PO approvers are configured.</strong> Mark users as PO approvers in Site Admin → Users.
+        <strong>No PO approvers are configured.</strong> Assign a role with PO Approval Update access in Site Admin → Roles.
         <?php endif; ?>
         Use <strong>Resend Approval Notification</strong> if approvers did not receive the email.
       </div>
@@ -178,6 +190,10 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($notesError !== null && $notesError !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($notesError) ?></div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
+
+      <?php require dirname(__DIR__) . '/includes/po-lifecycle-bar.php'; ?>
 
       <?php
       $showUploadForm = $canAddNotesAndAttachments;

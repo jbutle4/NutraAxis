@@ -24,41 +24,37 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/legal-agreements/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Contract Register
-      </a>
+      <?php
+      ob_start();
+      if (legal_can_update()):
+      ?>
+      <a class="btn-primary" href="/legal-agreements/edit.php?id=<?= $contractId ?>">Edit</a>
+      <?php endif; ?>
+      <?php if (legal_can_delete()): ?>
+      <form method="post" action="/legal-agreements/delete.php" class="inline-form" onsubmit="return confirm('Delete this contract from the register?');">
+        <input type="hidden" name="contract_id" value="<?= $contractId ?>" />
+        <button type="submit" class="btn-text btn-text-danger">Delete</button>
+      </form>
+      <?php endif;
+      $pageToolbar = ob_get_clean();
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Contract</div>
-          <h1><?= htmlspecialchars($contract['ContractName']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= legal_status_class($contract['ContractStatus']) ?>"><?= htmlspecialchars($contract['ContractStatus']) ?></span>
-            · <?= htmlspecialchars($contract['ContractNumber']) ?>
-            · <?= htmlspecialchars($contract['Counterparty']) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <?php if (legal_can_update()): ?>
-          <a class="btn-primary" href="/legal-agreements/edit.php?id=<?= $contractId ?>">Edit</a>
-          <?php endif; ?>
-          <?php if (legal_can_delete()): ?>
-          <form method="post" action="/legal-agreements/delete.php" class="inline-form" onsubmit="return confirm('Delete this contract from the register?');">
-            <input type="hidden" name="contract_id" value="<?= $contractId ?>" />
-            <button type="submit" class="btn-text btn-text-danger">Delete</button>
-          </form>
-          <?php endif; ?>
-        </div>
-      </div>
+      render_list_page_header([
+          'back_href'  => '/legal-agreements/',
+          'back_label' => 'Back to Contract Register',
+          'category'   => 'Contract',
+          'title'      => (string) $contract['ContractName'],
+          'lead'       => '<span class="status-badge ' . legal_status_class($contract['ContractStatus']) . '">' . htmlspecialchars((string) $contract['ContractStatus']) . '</span> · ' . htmlspecialchars((string) $contract['ContractNumber']) . ' · ' . htmlspecialchars((string) $contract['Counterparty']),
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Contract saved successfully.</div>
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($pageToolbar); ?>
 
       <div class="detail-grid">
         <section class="detail-card">

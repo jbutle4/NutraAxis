@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/po.php';
+require_once __DIR__ . '/attachment-storage.php';
 
 const PO_ATTACHMENT_KINDS = ['SourcePDF', 'SignedPDF', 'ImportExcel', 'ImportCSV', 'Other'];
 
@@ -38,24 +39,35 @@ function po_save_attachment(int $poId, array $file, string $kind = 'SourcePDF'):
 
     try {
         $pdo = db();
+        $fileName = (string) ($file['name'] ?? 'attachment');
+        $contentType = (string) ($file['type'] ?? 'application/octet-stream');
+
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.POAttachment (
-                POID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind, UploadedByUser
+                POID, FileName, ContentType, FileSizeBytes, FileData, BlobPath, AttachmentKind, UploadedByUser
             )
             OUTPUT INSERTED.AttachmentID AS inserted_id
-            VALUES (:po, :name, :type, :size, :data, :kind, :user)
+            VALUES (:po, :name, :type, :size, NULL, NULL, :kind, :user)
         SQL);
 
         $stmt->bindValue(':po', $poId, PDO::PARAM_INT);
-        $stmt->bindValue(':name', (string) ($file['name'] ?? 'attachment'));
-        $stmt->bindValue(':type', (string) ($file['type'] ?? 'application/octet-stream'));
+        $stmt->bindValue(':name', $fileName);
+        $stmt->bindValue(':type', $contentType);
         $stmt->bindValue(':size', (int) $file['size'], PDO::PARAM_INT);
-        $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->bindValue(':kind', $kind);
         $stmt->bindValue(':user', auth_user()['UserID'] ?? 0, PDO::PARAM_INT);
         $stmt->execute();
 
         $id = db_fetch_inserted_int($stmt, 'inserted_id');
+        $stored = attachment_storage_save('po', $poId, $id, $fileName, $contentType, $content);
+        if (!$stored['ok']) {
+            $pdo->prepare('DELETE FROM dbo.POAttachment WHERE AttachmentID = :id')->execute(['id' => $id]);
+
+            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save attachment to blob storage.'];
+        }
+
+        $pdo->prepare('UPDATE dbo.POAttachment SET BlobPath = :path, FileData = NULL WHERE AttachmentID = :id')
+            ->execute(['path' => $stored['blob_path'], 'id' => $id]);
 
         require_once __DIR__ . '/audit.php';
         $attachment = po_get_attachment($id);

@@ -17,20 +17,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Administration',
+          'title'      => 'Site Admin',
+          'lead'       => 'User and role management for NutraAxis Operations.',
+      ]); ?>
 
       <?php require dirname(__DIR__) . '/includes/admin-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Administration</div>
-        <h1>Site Admin</h1>
-        <p class="page-lead">User and role management for NutraAxis Operations.</p>
-      </div>
 
       <div class="capability-grid">
         <?php if ($canUsers): ?>

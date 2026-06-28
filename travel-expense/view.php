@@ -39,26 +39,9 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/travel-expense/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Expense Reports
-      </a>
-
-      <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Finance</div>
-          <h1><?= htmlspecialchars($report['ReportNumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= te_status_class($report['ReportStatus']) ?>"><?= htmlspecialchars($report['ReportStatus']) ?></span>
-            · <?= htmlspecialchars($report['EmployeeName']) ?>
-            · <?= htmlspecialchars(te_period_label($report)) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
+      <?php
+      ob_start();
+      ?>
           <a class="btn-secondary" href="/travel-expense/print.php?id=<?= $reportId ?>" target="_blank" rel="noopener">Printable View</a>
           <?php if ($canApprove && $report['ReportStatus'] === TE_STATUS_SUBMITTED): ?>
           <a class="btn-primary" href="/travel-expense/approve.php?id=<?= $reportId ?>">Review for Approval</a>
@@ -80,8 +63,20 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-secondary">Resend Approval Notification</button>
           </form>
           <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      $teLead = '<span class="status-badge ' . te_status_class($report['ReportStatus']) . '">' . htmlspecialchars($report['ReportStatus']) . '</span> · ' . htmlspecialchars($report['EmployeeName']) . ' · ' . htmlspecialchars(te_period_label($report));
+      render_list_page_header([
+          'back_href'  => '/travel-expense/',
+          'back_label' => 'Back to Expense Reports',
+          'category'   => 'Finance',
+          'title'      => $report['ReportNumber'],
+          'lead'       => $teLead,
+          'lead_html'  => true,
+      ]);
+      ?>
+
+      <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Expense report saved successfully.</div>
@@ -101,10 +96,12 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if (te_can_update() && $report['ReportStatus'] === TE_STATUS_SUBMITTED): ?>
       <div class="admin-notice" role="status">
-        This expense report is in the approval queue. Approvers can review it under <a href="/travel-expense/approvals.php">Approvals</a>.
+        This expense report is in the approval queue. Approvers can review it under <a href="/approvals/?type=TE&status=pending">Approvals</a>.
         Use <strong>Resend Approval Notification</strong> if approvers did not receive the email.
       </div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <section class="account-card">
         <h2>Reimbursement summary</h2>

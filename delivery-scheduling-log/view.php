@@ -28,24 +28,9 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="<?= htmlspecialchars($breadcrumb['href']) ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        <?= htmlspecialchars($breadcrumb['label']) ?>
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Delivery scheduling</div>
-          <h1>Appointment #<?= $apptId ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= das_status_class((string) $appointment['AppointmentStatus']) ?>"><?= htmlspecialchars($appointment['AppointmentStatus']) ?></span>
-            · PO <?= htmlspecialchars($appointment['PONumber']) ?>
-            · <?= htmlspecialchars($appointment['CompanyName'] ?? '—') ?>
-          </p>
-        </div>
-        <div class="admin-actions">
+      <?php
+      ob_start();
+      ?>
           <?php if (das_can_update()): ?>
           <a class="btn-primary" href="/delivery-scheduling-log/edit.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit</a>
           <a class="btn-secondary" href="<?= htmlspecialchars(das_send_reminder_url($apptId, $returnContext)) ?>">Send reminder</a>
@@ -53,8 +38,18 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php if (das_record_int($appointment, 'POReceiptID') > 0): ?>
           <a class="btn-secondary" href="/po-receiving/view.php?id=<?= das_record_int($appointment, 'POReceiptID') ?>">PO Receipt</a>
           <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      $dasLead = '<span class="status-badge ' . das_status_class((string) $appointment['AppointmentStatus']) . '">' . htmlspecialchars($appointment['AppointmentStatus']) . '</span> · PO ' . htmlspecialchars($appointment['PONumber']) . ' · ' . htmlspecialchars($appointment['CompanyName'] ?? '—');
+      render_list_page_header([
+          'back_href'  => $breadcrumb['href'],
+          'back_label' => $breadcrumb['label'],
+          'category'   => 'Delivery scheduling',
+          'title'      => 'Appointment #' . $apptId,
+          'lead'       => $dasLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($emailNotice === 'sent'): ?>
       <div class="admin-notice is-success" role="status">Scheduling request email sent<?= $emailRecipients !== '' ? ' to ' . htmlspecialchars($emailRecipients) : ' successfully' ?>.</div>
@@ -64,6 +59,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($emailError !== null && $emailError !== ''): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($emailError) ?></div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="detail-grid detail-grid-stacked">
         <section class="detail-card">

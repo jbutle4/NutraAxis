@@ -18,6 +18,8 @@ const MODULE_PERMISSION_COLUMNS = [
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
     'accs-order-report-uat'  => 'SalesReporting',
+    'jazz-order-report'      => 'SalesReporting',
+    'jazz-order-report-uat'  => 'SalesReporting',
     'sales-daily-summary'    => 'SalesReporting',
     'sales-monthly-summary'  => 'SalesReporting',
     'inventory-forecasting'  => 'InventoryForecasting',
@@ -79,6 +81,9 @@ function auth_permissions_from_role_row(array $row): array
         'POApproval'           => $row['POApproval'],
         'TEManagement'         => $row['TEManagement'] ?? null,
         'TEApproval'           => $row['TEApproval'] ?? null,
+        'TEProcessing'         => $row['TEProcessing'] ?? null,
+        'QBOInsertApproval'    => $row['QBOInsertApproval'] ?? null,
+        'PaymentApproval'      => $row['PaymentApproval'] ?? null,
     ];
 }
 
@@ -87,6 +92,11 @@ function auth_refresh_permissions(): void
     auth_start_session();
     $user = $_SESSION[AUTH_SESSION_KEY] ?? null;
     if (!is_array($user) || empty($user['UserAssignedRole'])) {
+        return;
+    }
+
+    $refreshedAt = (int) ($user['permissions_refreshed_at'] ?? 0);
+    if (!empty($user['permissions']) && $refreshedAt > 0 && (time() - $refreshedAt) < 60) {
         return;
     }
 
@@ -110,7 +120,10 @@ function auth_refresh_permissions(): void
                 RoleAdmin,
                 POApproval,
                 TEManagement,
-                TEApproval
+                TEApproval,
+                TEProcessing,
+                QBOInsertApproval,
+                PaymentApproval
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -123,6 +136,7 @@ function auth_refresh_permissions(): void
 
         $_SESSION[AUTH_SESSION_KEY]['RoleName'] = (string) $row['RoleName'];
         $_SESSION[AUTH_SESSION_KEY]['permissions'] = auth_permissions_from_role_row($row);
+        $_SESSION[AUTH_SESSION_KEY]['permissions_refreshed_at'] = time();
     } catch (Throwable) {
         // Keep cached session permissions when the database is unreachable.
         return;
@@ -495,7 +509,10 @@ function auth_attempt_login(string $login, string $password): array
             r.RoleAdmin,
             r.POApproval,
             r.TEManagement,
-            r.TEApproval
+            r.TEApproval,
+            r.TEProcessing,
+            r.QBOInsertApproval,
+            r.PaymentApproval
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login
@@ -519,6 +536,7 @@ function auth_attempt_login(string $login, string $password): array
         'UserAssignedRole'=> (int) $row['UserAssignedRole'],
         'RoleName'        => (string) $row['RoleName'],
         'permissions'     => auth_permissions_from_role_row($row),
+        'permissions_refreshed_at' => time(),
     ];
 
     $update = $pdo->prepare('UPDATE dbo.[User] SET LastLoginDate = SYSUTCDATETIME() WHERE UserID = :id');

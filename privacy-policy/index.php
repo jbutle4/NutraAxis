@@ -10,18 +10,13 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner legal-document">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Legal</div>
-        <h1>Privacy Policy</h1>
-        <p class="page-lead"><?= htmlspecialchars(LEGAL_APP_NAME) ?> · Effective <?= htmlspecialchars(LEGAL_EFFECTIVE_DATE) ?></p>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Legal',
+          'title'      => 'Privacy Policy',
+          'lead'       => LEGAL_APP_NAME . ' · Effective ' . LEGAL_EFFECTIVE_DATE,
+      ]); ?>
 
       <div class="legal-prose">
         <p>This Privacy Policy describes how <?= htmlspecialchars(LEGAL_COMPANY_NAME) ?> (“NutraAxis,” “we,” “us,” or “our”) collects, uses, and protects information when you use the <?= htmlspecialchars(LEGAL_APP_NAME) ?> web application (the “Application”).</p>

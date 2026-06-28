@@ -6,18 +6,9 @@ require dirname(__DIR__, 2) . '/includes/sales-reporting.php';
 sales_reporting_require_read();
 
 $activeSlug = $activeSlug ?? 'accs-order-report';
-$reportListPath = data_profile_is_uat()
-    ? '/sales-reporting/accs-order-report-uat/'
-    : '/sales-reporting/accs-order-report/';
-$orderDetailPath = data_profile_is_uat()
-    ? '/sales-reporting/order-uat.php'
-    : '/sales-reporting/order.php';
-$reportListSortPath = data_profile_is_uat()
-    ? '/sales-reporting/accs-order-report-uat'
-    : '/sales-reporting/accs-order-report';
-$orderDetailPath = data_profile_is_uat()
-    ? '/sales-reporting/order-uat.php'
-    : '/sales-reporting/order.php';
+$reportListPath = data_profile_page_path('/sales-reporting/accs-order-report/');
+$orderDetailPath = data_profile_page_path('/sales-reporting/order.php');
+$reportListSortPath = data_profile_page_path('/sales-reporting/accs-order-report');
 $configError = adobe_commerce_config_error();
 $search = trim($_GET['order'] ?? '');
 $listResult = ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
@@ -61,27 +52,20 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/sales-reporting/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Sales Reporting Summaries
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Sales</div>
-          <h1>ACCS Order Report</h1>
-          <p class="page-lead">Adobe Commerce (ACCS) orders — search by order number or browse recent orders.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(sales_reporting_permission_value())) ?></p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/sales-reporting/',
+          'back_label' => 'Back to Sales Reporting Summaries',
+          'category'   => 'Sales',
+          'title'      => 'ACCS Order Report',
+          'lead'       => 'Adobe Commerce (ACCS) orders — search by order number or browse recent orders.',
+          'permission' => permission_label(sales_reporting_permission_value()),
+      ]); ?>
 
       <?php if ($configError !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($configError) ?></div>
       <?php else: ?>
 
-      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($orderDetailPath) ?>">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="<?= htmlspecialchars($orderDetailPath) ?>">
         <div class="audit-filter-grid">
           <div class="audit-filter-wide">
             <label for="order">Order number</label>

@@ -33,7 +33,7 @@ if ($report === null) {
     $pageTitle = 'Report Not Found';
     require dirname(__DIR__) . '/includes/head.php';
     require dirname(__DIR__) . '/includes/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Expense report not found</h1><div class="module-actions"><a class="btn-secondary" href="/travel-expense/approvals.php">Back to Approvals</a></div></div></div></main>';
+    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Expense report not found</h1><div class="module-actions"><a class="btn-secondary" href="/approvals/?type=TE&status=pending">Back to Approvals</a></div></div></div></main>';
     require dirname(__DIR__) . '/includes/footer.php';
     exit;
 }
@@ -61,32 +61,23 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <?php if (!$isTokenAccess): ?>
-      <a class="breadcrumb" href="/travel-expense/approvals.php">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Approval Queue
-      </a>
-      <?php endif; ?>
+      <?php
+      $teApproveLead = '<span class="status-badge ' . te_status_class($report['ReportStatus']) . '">' . htmlspecialchars($report['ReportStatus']) . '</span> · ' . htmlspecialchars($report['EmployeeName']) . ' · ' . htmlspecialchars(te_format_money($totals['total_due']));
+      if ($isTokenAccess) {
+          $teApproveLead .= ' · Acting as ' . htmlspecialchars($approverLabel);
+      }
+      $listToolbar = '<a class="btn-secondary" href="/travel-expense/print.php?id=' . $reportId . '" target="_blank" rel="noopener">Printable View</a>';
+      render_list_page_header([
+          'back_href'  => '/approvals/?type=TE&status=pending',
+          'back_label' => 'Back to Approvals',
+          'category'   => 'T&E Approval',
+          'title'      => $report['ReportNumber'],
+          'lead'       => $teApproveLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">T&amp;E Approval</div>
-          <h1><?= htmlspecialchars($report['ReportNumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= te_status_class($report['ReportStatus']) ?>"><?= htmlspecialchars($report['ReportStatus']) ?></span>
-            · <?= htmlspecialchars($report['EmployeeName']) ?>
-            · <?= htmlspecialchars(te_format_money($totals['total_due'])) ?>
-            <?php if ($isTokenAccess): ?>
-            · Acting as <?= htmlspecialchars($approverLabel) ?>
-            <?php endif; ?>
-          </p>
-        </div>
-        <a class="btn-secondary" href="/travel-expense/print.php?id=<?= $reportId ?>" target="_blank" rel="noopener">Printable View</a>
-      </div>
 
       <?php if ($notice === 'actioned'): ?>
       <div class="admin-notice is-success" role="status">Your approval action was recorded successfully.</div>
@@ -134,6 +125,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php else: ?>
       <div class="admin-notice" role="status">You have read-only access to this approval review.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <section class="account-card" style="margin-top: 20px;">
         <h2>Reimbursement summary</h2>

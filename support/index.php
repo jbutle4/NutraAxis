@@ -32,32 +32,24 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Support</div>
-          <h1>Zendesk Tickets</h1>
-          <p class="page-lead">
-            <?php if (support_is_agent()): ?>
-            Browse all Zendesk tickets, reply, and manage status and priority.
-            <?php elseif (support_can_create()): ?>
-            View tickets submitted under your email and create new support requests.
-            <?php else: ?>
-            View tickets submitted under your NutraAxis email. Editing and replies require agent access.
-            <?php endif; ?>
-          </p>
-          <p class="permission-note">Role access: <?= htmlspecialchars(permission_label(support_permission_value())) ?> · <?= htmlspecialchars(support_access_mode_label()) ?></p>
-        </div>
-        <?php if (support_can_create() && $configError === null): ?>
-        <a class="btn-primary" href="/support/new.php">New Ticket</a>
-        <?php endif; ?>
-      </div>
+      <?php
+      if (support_is_agent()) {
+          $supportLead = 'Browse all Zendesk tickets, reply, and manage status and priority.';
+      } elseif (support_can_create()) {
+          $supportLead = 'View tickets submitted under your email and create new support requests.';
+      } else {
+          $supportLead = 'View tickets submitted under your NutraAxis email. Editing and replies require agent access.';
+      }
+      $listToolbar = (support_can_create() && $configError === null) ? '<a class="btn-primary" href="/support/new.php">New Ticket</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Support',
+          'title'      => 'Zendesk Tickets',
+          'lead'       => $supportLead,
+          'permission' => permission_label(support_permission_value()) . ' · ' . support_access_mode_label(),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Support ticket created successfully.</div>
@@ -74,7 +66,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <?php if ($configError === null): ?>
-      <form class="po-filter audit-filter" method="get" action="/support/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/support/">
         <?php table_sort_hidden_inputs($listFilters, 'updated', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -96,6 +88,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/support/">Clear</a>
         </div>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <?php if ($listResult['ok']): ?>
       <div class="admin-table-wrap">

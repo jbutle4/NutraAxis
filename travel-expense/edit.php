@@ -49,20 +49,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/travel-expense/view.php?id=<?= $reportId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($report['ReportNumber']) ?>
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/travel-expense/view.php?id=' . $reportId,
+          'back_label' => 'Back to ' . $report['ReportNumber'],
+          'category'   => 'Finance',
+          'title'      => 'Edit ' . $report['ReportNumber'],
+          'lead'       => 'Update expense lines, mileage, and receipt attachments before submitting for approval.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/te-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Finance</div>
-        <h1>Edit <?= htmlspecialchars($report['ReportNumber']) ?></h1>
-        <p class="page-lead">Update expense lines, mileage, and receipt attachments before submitting for approval.</p>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Expense report created. Add receipt PDFs below, then submit for approval when ready.</div>

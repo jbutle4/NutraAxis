@@ -3,47 +3,6 @@
 require_once __DIR__ . '/process-log.php';
 require_once __DIR__ . '/process-functions-client.php';
 
-function process_registry(): array
-{
-    return [
-        'daily-sales-summary' => [
-            'code'          => 'daily-sales-summary',
-            'name'          => 'Daily Sales Summary',
-            'description'   => 'Summarize previous day ACCS sales by SKU into DailySalesSummary.',
-            'function_name' => 'daily-sales-summary',
-            'schedule'      => 'Daily at 2:00 AM US Central',
-        ],
-        'jazz-inventory-snapshot' => [
-            'code'          => 'jazz-inventory-snapshot',
-            'name'          => 'Jazz Inventory Snapshot',
-            'description'   => 'Capture weekly Jazz OMS inventory levels by SKU and facility.',
-            'function_name' => 'jazz-inventory-snapshot',
-            'schedule'      => 'Every Sunday at 12:00 PM US Central',
-        ],
-        'monthly-sales-summary' => [
-            'code'          => 'monthly-sales-summary',
-            'name'          => 'Monthly Sales Summary',
-            'description'   => 'Roll up DailySalesSummary into monthly SKU totals for forecasting.',
-            'function_name' => 'weekly-chain',
-            'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
-        ],
-        'forecast-plan' => [
-            'code'          => 'forecast-plan',
-            'name'          => 'Inventory Forecast Plan',
-            'description'   => 'Generate weighted moving average forecasts and inventory projections by SKU.',
-            'function_name' => 'weekly-chain',
-            'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
-        ],
-        'staging-db-sync' => [
-            'code'          => 'staging-db-sync',
-            'name'          => 'Staging Database Sync',
-            'description'   => 'Incremental production to staging SQL database sync.',
-            'function_name' => 'staging-db-sync',
-            'schedule'      => 'Daily at 2:30 AM US Central',
-        ],
-    ];
-}
-
 function process_registry_entry(string $code): ?array
 {
     $registry = process_registry();
@@ -79,5 +38,5 @@ function process_rerun_failed_log(int $logId, ?int $triggeredByUserId = null): a
         return ['ok' => false, 'error' => 'Only failed or abandoned process runs can be rerun.', 'log_id' => $logId];
     }
 
-    return process_functions_rerun($logId, $triggeredByUserId);
+    return process_functions_rerun($logId, $triggeredByUserId, (string) ($log['ProcessCode'] ?? ''));
 }

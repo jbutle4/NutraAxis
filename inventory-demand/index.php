@@ -25,20 +25,16 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supply Chain Management
-      </a>
-
-      <div class="page-hero">
-        <div class="module-icon"><?= icon_svg($module['icon'], 28) ?></div>
-        <div class="section-label"><?= htmlspecialchars($module['label']) ?></div>
-        <h1><?= htmlspecialchars($module['headline']) ?></h1>
-        <p class="page-lead"><?= htmlspecialchars($module['lead']) ?></p>
-        <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('inventory-forecasting')) ?></p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Supply Chain Management',
+          'category'   => $module['label'],
+          'title'      => $module['headline'],
+          'lead'       => $module['lead'],
+          'permission' => auth_module_permission_label('inventory-forecasting'),
+      ]);
+      ?>
 
       <section class="capability-card demand-summary-card">
         <div class="demand-summary-card-head">

@@ -53,27 +53,19 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to appointment #<?= $apptId ?>
-      </a>
+      <?php
+      $listToolbar = '<a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=' . $apptId . htmlspecialchars(das_return_query($returnContext)) . '">View appointment</a>'
+          . '<a class="btn-secondary" href="/delivery-scheduling-log/edit.php?id=' . $apptId . htmlspecialchars(das_return_query($returnContext)) . '">Edit appointment</a>';
+      render_list_page_header([
+          'back_href'  => '/delivery-scheduling-log/view.php?id=' . $apptId . das_return_query($returnContext),
+          'back_label' => 'Back to appointment #' . $apptId,
+          'category'   => 'Delivery scheduling',
+          'title'      => 'Send reminder email',
+          'lead'       => 'Appointment #' . $apptId . ' · PO ' . $appointment['PONumber'] . ' · ' . ($appointment['CompanyName'] ?? '—'),
+      ]);
+      ?>
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Delivery scheduling</div>
-          <h1>Send reminder email</h1>
-          <p class="page-lead">
-            Appointment #<?= $apptId ?> · PO <?= htmlspecialchars($appointment['PONumber']) ?>
-            · <?= htmlspecialchars($appointment['CompanyName'] ?? '—') ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View appointment</a>
-          <a class="btn-secondary" href="/delivery-scheduling-log/edit.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit appointment</a>
-        </div>
-      </div>
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="account-card">
         <h2>Email scheduling reminder</h2>

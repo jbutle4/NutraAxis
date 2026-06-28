@@ -629,7 +629,7 @@ function jazz_oms_list_asns(): array
 
 function jazz_oms_asn_detail_url(int|string $id): string
 {
-    return '/po-receiving/jazz-asn.php?id=' . rawurlencode(trim((string) $id));
+    return data_profile_page_path('/po-receiving/jazz-asn.php') . '?id=' . rawurlencode(trim((string) $id));
 }
 
 /**

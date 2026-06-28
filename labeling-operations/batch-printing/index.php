@@ -22,30 +22,27 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars(label_module_title()) ?>
-      </a>
+      <?php
+      $listToolbar = '';
+      if (label_can_create()) {
+          $listToolbar = '<a class="btn-primary" href="/labeling-operations/batch-printing/new-run.php">New Order Run</a><a class="btn-secondary" href="/labeling-operations/batch-printing/new-print-order.php">New Print Order</a>';
+      }
+      render_list_page_header([
+          'back_href'  => '/labeling-operations/',
+          'back_label' => 'Back to ' . label_module_title(),
+          'category'   => 'Label Batch Printing',
+          'title'      => 'Label Order Runs & Print Orders',
+          'lead'       => 'Track label order runs and the third-party print orders associated with each run.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Label Batch Printing</div>
-          <h1>Label Order Runs &amp; Print Orders</h1>
-          <p class="page-lead">Track label order runs and the third-party print orders associated with each run.</p>
-        </div>
-        <?php if (label_can_create()): ?>
-        <a class="btn-primary" href="/labeling-operations/batch-printing/new-run.php">New Order Run</a>
-        <a class="btn-secondary" href="/labeling-operations/batch-printing/new-print-order.php">New Print Order</a>
-        <?php endif; ?>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Record created successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <section class="detail-card">
         <h2>Label Order Runs</h2>

@@ -51,6 +51,7 @@ SET
     InventoryForecasting   = N'CRUD',
     LabelingOperations     = N'R',
     OperationsDashboard    = N'R',
+    ProductCatalog         = N'R',
     UserAdmin              = NULL,
     RoleAdmin              = NULL
 WHERE RoleName = N'Inventory User';
@@ -67,6 +68,7 @@ SET
     InventoryForecasting   = N'R',
     LabelingOperations     = N'CRUD',
     OperationsDashboard    = N'R',
+    ProductCatalog         = N'R',
     UserAdmin              = NULL,
     RoleAdmin              = NULL
 WHERE RoleName = N'Labeling User';
@@ -80,9 +82,10 @@ SET
     POManagement           = NULL,
     InventoryReporting     = N'R',
     SalesReporting         = N'R',
-    InventoryForecasting   = NULL,
-    LabelingOperations     = NULL,
+    InventoryForecasting   = N'R',
     OperationsDashboard    = N'R',
+    ProductCatalog         = N'R',
+    Accounting             = N'R',
     UserAdmin              = NULL,
     RoleAdmin              = NULL
 WHERE RoleName = N'Reporting User';

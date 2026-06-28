@@ -21,25 +21,18 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars(label_module_title()) ?>
-      </a>
+      <?php
+      $listToolbar = label_can_create() ? '<a class="btn-primary" href="/labeling-operations/white-label-orders/new.php">Import Order</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/labeling-operations/',
+          'back_label' => 'Back to ' . label_module_title(),
+          'category'   => 'White Label Production',
+          'title'      => 'Adobe Commerce Orders',
+          'lead'       => 'Track production orders received from Adobe Commerce with order header and line item detail.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">White Label Production</div>
-          <h1>Adobe Commerce Orders</h1>
-          <p class="page-lead">Track production orders received from Adobe Commerce with order header and line item detail.</p>
-        </div>
-        <?php if (label_can_create()): ?>
-        <a class="btn-primary" href="/labeling-operations/white-label-orders/new.php">Import Order</a>
-        <?php endif; ?>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">White label production order saved successfully.</div>
@@ -55,6 +48,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php endforeach; ?>
         </select>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">

@@ -28,6 +28,12 @@ const CATALOG_SKU_STATUSES = [
     'On Hold',
 ];
 
+const CATALOG_QBO_SYNC_STATUSES = ['NotSynced', 'Synced', 'Error', 'Pending'];
+
+const CATALOG_QBO_NAME_MAX_LENGTH = 100;
+
+const CATALOG_QBO_DESCRIPTION_MAX_LENGTH = 4000;
+
 const CATALOG_LABEL_SELECTIONS = [
     'Teal Only',
     'Teal and Coral',
@@ -52,10 +58,19 @@ const CATALOG_LIST_SORT_COLUMNS = [
     'brand'          => 'Brand',
     'category'       => 'Category',
     'status'         => 'Status',
-    'serving_count'  => 'Serving count',
+    'serving_count'  => '#SRV',
+    'capsule_count'  => '#CAP',
     'cogs'           => 'COGS',
-    'wholesale_price'=> 'Wholesale',
+    'wholesale_price'=> 'WHSLE',
     'msrp'           => 'MSRP',
+    'qbo'            => 'QuickBooks',
+];
+
+const CATALOG_LIST_COLUMN_CLASSES = [
+    'product_name'    => 'catalog-col-product-name',
+    'serving_count'   => 'catalog-col-srv',
+    'capsule_count'   => 'catalog-col-cap',
+    'wholesale_price' => 'catalog-col-whsle',
 ];
 
 const CATALOG_LIST_SORT_SQL = [
@@ -66,10 +81,17 @@ const CATALOG_LIST_SORT_SQL = [
     'category'        => 's.PrimaryTherapeuticCategory',
     'status'          => 's.SKUStatus',
     'serving_count'   => 's.ServingCount',
+    'capsule_count'   => 's.CapsuleCount',
     'cogs'            => 's.COGS',
     'wholesale_price' => 's.WholesalePrice',
     'msrp'            => 's.MSRP',
+    'qbo'             => 's.QBO_SyncStatus',
 ];
+
+function catalog_list_column_class(string $column): string
+{
+    return CATALOG_LIST_COLUMN_CLASSES[$column] ?? '';
+}
 
 function catalog_list_sort_state(array $input = []): array
 {
@@ -106,7 +128,7 @@ function catalog_list_sort_href(string $column, array $filters): string
     if ($currentSort === $column) {
         $nextDir = $currentDir === 'asc' ? 'desc' : 'asc';
     } else {
-        $nextDir = in_array($column, ['cogs', 'wholesale_price', 'msrp', 'serving_count'], true) ? 'desc' : 'asc';
+        $nextDir = in_array($column, ['cogs', 'wholesale_price', 'msrp', 'serving_count', 'capsule_count'], true) ? 'desc' : 'asc';
     }
 
     $query = array_filter([
@@ -207,6 +229,36 @@ function catalog_status_class(string $status): string
     };
 }
 
+function catalog_qbo_sync_status_label(string $status): string
+{
+    return match ($status) {
+        'Synced'  => 'Synced to QuickBooks',
+        'Error'   => 'QuickBooks sync error',
+        'Pending' => 'Sync pending',
+        default   => 'Not synced to QuickBooks',
+    };
+}
+
+function catalog_qbo_sync_status_class(string $status): string
+{
+    return match ($status) {
+        'Synced'  => 'status-received',
+        'Error'   => 'status-cancelled',
+        'Pending' => 'status-submitted',
+        default   => 'status-draft',
+    };
+}
+
+function catalog_qbo_sync_status_short_label(string $status): string
+{
+    return match ($status) {
+        'Synced'  => 'Synced',
+        'Error'   => 'Error',
+        'Pending' => 'Pending',
+        default   => 'Not synced',
+    };
+}
+
 function catalog_format_date(?string $value): string
 {
     if ($value === null || $value === '') {
@@ -274,6 +326,42 @@ function catalog_allergens_to_storage(array $selected): string
     }
 
     return implode(', ', $valid);
+}
+
+function catalog_resolve_qbo_account_ref(array &$data, string $prefix): void
+{
+    $valueKey = $prefix . '_account_ref_value';
+    $nameKey = $prefix . '_account_ref_name';
+    $value = trim((string) ($data[$valueKey] ?? ''));
+    $name = trim((string) ($data[$nameKey] ?? ''));
+
+    if ($value === '') {
+        $data[$valueKey] = '';
+        $data[$nameKey] = '';
+
+        return;
+    }
+
+    $purpose = match ($prefix) {
+        'qbo_income'  => 'income',
+        'qbo_expense' => 'expense',
+        'qbo_asset'   => 'asset',
+        default       => null,
+    };
+
+    if ($purpose !== null) {
+        foreach (catalog_qbo_account_options($purpose) as $option) {
+            if ((string) $option['id'] === $value) {
+                $data[$valueKey] = (string) $option['id'];
+                $data[$nameKey] = (string) $option['name'];
+
+                return;
+            }
+        }
+    }
+
+    $data[$valueKey] = $value;
+    $data[$nameKey] = $name;
 }
 
 function catalog_supplier_options(?int $selectedId = null): array
@@ -346,6 +434,14 @@ function catalog_sku_to_form(array $sku): array
         'directions'                  => (string) ($sku['Directions'] ?? ''),
         'capsule_count'               => $sku['CapsuleCount'] !== null ? (string) $sku['CapsuleCount'] : '',
         'certs_on_label'              => (string) ($sku['CertsOnLabel'] ?? ''),
+        'qbo_purchase_desc'           => (string) ($sku['QBO_PurchaseDesc'] ?? ''),
+        'qbo_taxable'                 => !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']),
+        'qbo_income_account_ref_value'=> (string) ($sku['QBO_IncomeAccountRefValue'] ?? ''),
+        'qbo_income_account_ref_name' => (string) ($sku['QBO_IncomeAccountRefName'] ?? ''),
+        'qbo_expense_account_ref_value'=> (string) ($sku['QBO_ExpenseAccountRefValue'] ?? ''),
+        'qbo_expense_account_ref_name' => (string) ($sku['QBO_ExpenseAccountRefName'] ?? ''),
+        'qbo_asset_account_ref_value' => (string) ($sku['QBO_AssetAccountRefValue'] ?? ''),
+        'qbo_asset_account_ref_name'  => (string) ($sku['QBO_AssetAccountRefName'] ?? ''),
     ];
 }
 
@@ -363,13 +459,15 @@ function catalog_list_skus(array $filters = []): array
             s.SecondaryCategory,
             s.SKUStatus,
             s.ServingCount,
+            s.CapsuleCount,
             s.BottleSize,
             s.GTIN14,
             s.UPC,
             s.COGS,
             s.WholesalePrice,
             s.MSRP,
-            s.LaunchDate
+            s.LaunchDate,
+            s.QBO_SyncStatus
         FROM dbo.SKUMaster s
         WHERE 1 = 1
     SQL;
@@ -387,26 +485,34 @@ function catalog_list_skus(array $filters = []): array
 
     if (!empty($filters['category'])) {
         $sql .= ' AND (
-            s.PrimaryTherapeuticCategory = :category OR
-            s.SecondaryCategory = :category
+            s.PrimaryTherapeuticCategory = :category_primary OR
+            s.SecondaryCategory = :category_secondary
         )';
-        $params['category'] = $filters['category'];
+        $params['category_primary'] = $filters['category'];
+        $params['category_secondary'] = $filters['category'];
     }
 
     if (!empty($filters['q'])) {
         $sql .= ' AND (
-            s.SKUCode LIKE :q OR
-            s.ProductName LIKE :q OR
-            s.GTIN14 LIKE :q OR
-            s.UPC LIKE :q
+            s.SKUCode LIKE :q_sku OR
+            s.ProductName LIKE :q_name OR
+            s.GTIN14 LIKE :q_gtin OR
+            s.UPC LIKE :q_upc
         )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        $like = '%' . $filters['q'] . '%';
+        $params['q_sku'] = $like;
+        $params['q_name'] = $like;
+        $params['q_gtin'] = $like;
+        $params['q_upc'] = $like;
     }
 
     $sortState = catalog_list_sort_state($filters);
     $sortColumn = CATALOG_LIST_SORT_SQL[$sortState['sort']] ?? CATALOG_LIST_SORT_SQL['sku_code'];
     $sortDir = $sortState['dir'] === 'desc' ? 'DESC' : 'ASC';
-    $sql .= " ORDER BY {$sortColumn} {$sortDir}, s.SKUCode ASC";
+    $sql .= " ORDER BY {$sortColumn} {$sortDir}";
+    if ($sortState['sort'] !== 'sku_code') {
+        $sql .= ', s.SKUCode ASC';
+    }
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -474,6 +580,14 @@ function catalog_sku_from_input(array $input): array
         'directions'                   => trim($input['directions'] ?? ''),
         'capsule_count'                => trim($input['capsule_count'] ?? ''),
         'certs_on_label'               => trim($input['certs_on_label'] ?? ''),
+        'qbo_purchase_desc'            => trim($input['qbo_purchase_desc'] ?? ''),
+        'qbo_taxable'                  => (string) ($input['qbo_taxable'] ?? '1') === '1',
+        'qbo_income_account_ref_value' => trim($input['qbo_income_account_ref_value'] ?? ''),
+        'qbo_income_account_ref_name'  => trim($input['qbo_income_account_ref_name'] ?? ''),
+        'qbo_expense_account_ref_value'=> trim($input['qbo_expense_account_ref_value'] ?? ''),
+        'qbo_expense_account_ref_name' => trim($input['qbo_expense_account_ref_name'] ?? ''),
+        'qbo_asset_account_ref_value'  => trim($input['qbo_asset_account_ref_value'] ?? ''),
+        'qbo_asset_account_ref_name'   => trim($input['qbo_asset_account_ref_name'] ?? ''),
     ];
 }
 
@@ -556,6 +670,15 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
         }
     }
 
+    catalog_resolve_qbo_account_ref($data, 'qbo_income');
+    catalog_resolve_qbo_account_ref($data, 'qbo_expense');
+    catalog_resolve_qbo_account_ref($data, 'qbo_asset');
+
+    $qboFieldError = catalog_validate_qbo_fields($data);
+    if ($qboFieldError !== null) {
+        return ['ok' => false, 'error' => $qboFieldError];
+    }
+
     $params = [
         'code'             => $data['sku_code'],
         'name'             => $data['product_name'],
@@ -589,6 +712,14 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
         'directions'       => $data['directions'] !== '' ? $data['directions'] : null,
         'capsule_count'    => $capsuleCount,
         'certs_on_label'   => $data['certs_on_label'] !== '' ? $data['certs_on_label'] : null,
+        'qbo_purchase_desc'=> $data['qbo_purchase_desc'] !== '' ? $data['qbo_purchase_desc'] : null,
+        'qbo_taxable'      => $data['qbo_taxable'] ? 1 : 0,
+        'qbo_income_value' => $data['qbo_income_account_ref_value'] !== '' ? $data['qbo_income_account_ref_value'] : null,
+        'qbo_income_name'  => $data['qbo_income_account_ref_name'] !== '' ? $data['qbo_income_account_ref_name'] : null,
+        'qbo_expense_value'=> $data['qbo_expense_account_ref_value'] !== '' ? $data['qbo_expense_account_ref_value'] : null,
+        'qbo_expense_name' => $data['qbo_expense_account_ref_name'] !== '' ? $data['qbo_expense_account_ref_name'] : null,
+        'qbo_asset_value'  => $data['qbo_asset_account_ref_value'] !== '' ? $data['qbo_asset_account_ref_value'] : null,
+        'qbo_asset_name'   => $data['qbo_asset_account_ref_name'] !== '' ? $data['qbo_asset_account_ref_name'] : null,
         'actor'            => $actorId,
     ];
 
@@ -604,6 +735,10 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     COGS, WholesalePrice, MSRP, SFPLink, LabelPrintReadyLink,
                     LaunchDate, Notes, Formulation, Product, LabelSelection,
                     Directions, CapsuleCount, CertsOnLabel,
+                    QBO_PurchaseDesc, QBO_Taxable,
+                    QBO_IncomeAccountRefValue, QBO_IncomeAccountRefName,
+                    QBO_ExpenseAccountRefValue, QBO_ExpenseAccountRefName,
+                    QBO_AssetAccountRefValue, QBO_AssetAccountRefName,
                     CreatedByUser, ModifiedbyUser
                 )
                 OUTPUT INSERTED.SKUID AS inserted_id
@@ -616,6 +751,10 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     :cogs, :wholesale, :msrp, :sfp_link, :label_link,
                     :launch, :notes, :formulation, :product, :label_selection,
                     :directions, :capsule_count, :certs_on_label,
+                    :qbo_purchase_desc, :qbo_taxable,
+                    :qbo_income_value, :qbo_income_name,
+                    :qbo_expense_value, :qbo_expense_name,
+                    :qbo_asset_value, :qbo_asset_name,
                     :actor, :actor
                 )
             SQL);
@@ -661,6 +800,14 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     Directions = :directions,
                     CapsuleCount = :capsule_count,
                     CertsOnLabel = :certs_on_label,
+                    QBO_PurchaseDesc = :qbo_purchase_desc,
+                    QBO_Taxable = :qbo_taxable,
+                    QBO_IncomeAccountRefValue = :qbo_income_value,
+                    QBO_IncomeAccountRefName = :qbo_income_name,
+                    QBO_ExpenseAccountRefValue = :qbo_expense_value,
+                    QBO_ExpenseAccountRefName = :qbo_expense_name,
+                    QBO_AssetAccountRefValue = :qbo_asset_value,
+                    QBO_AssetAccountRefName = :qbo_asset_name,
                     ModifiedDate = SYSUTCDATETIME(),
                     ModifiedbyUser = :actor
                 WHERE SKUID = :id
@@ -669,7 +816,9 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
         }
 
         return ['ok' => true, 'error' => null, 'id' => $skuId];
-    } catch (Throwable) {
+    } catch (Throwable $e) {
+        error_log('catalog_save_sku failed: ' . $e->getMessage());
+
         return ['ok' => false, 'error' => 'Unable to save SKU. Please check your entries and try again.'];
     }
 }
@@ -708,4 +857,529 @@ function catalog_link_display_label(string $url, string $fallback = 'document'):
     $basename = str_replace('_', ' ', trim($basename));
 
     return $basename !== '' ? $basename : $fallback;
+}
+
+function catalog_qbo_truncate(?string $value, int $max): string
+{
+    $value = trim((string) ($value ?? ''));
+    if ($value === '') {
+        return '';
+    }
+
+    if (mb_strlen($value) <= $max) {
+        return $value;
+    }
+
+    return mb_substr($value, 0, $max);
+}
+
+function catalog_build_qbo_item_base_name(array $sku): string
+{
+    $brand = trim((string) ($sku['Brand'] ?? ''));
+    $product = trim((string) ($sku['ProductName'] ?? ''));
+    if ($brand === '') {
+        return $product;
+    }
+    if ($product === '') {
+        return $brand;
+    }
+
+    return $brand . ' ' . $product;
+}
+
+function catalog_qbo_item_name_needs_sku_suffix(array $sku): bool
+{
+    $skuId = (int) ($sku['SKUID'] ?? 0);
+    $brand = trim((string) ($sku['Brand'] ?? ''));
+    $productName = trim((string) ($sku['ProductName'] ?? ''));
+    if ($brand === '' || $productName === '') {
+        return false;
+    }
+
+    $pdo = db();
+    $dup = $pdo->prepare(<<<SQL
+        SELECT TOP 1 SKUID
+        FROM dbo.SKUMaster
+        WHERE Brand = :brand
+          AND ProductName = :product_name
+          AND SKUID <> :id
+    SQL);
+    $dup->execute([
+        'brand'        => $brand,
+        'product_name' => $productName,
+        'id'           => $skuId,
+    ]);
+    if ($dup->fetch() !== false) {
+        return true;
+    }
+
+    if (!is_file(__DIR__ . '/quickbooks.php')) {
+        return false;
+    }
+
+    require_once __DIR__ . '/quickbooks.php';
+    if (!qbo_is_connected()) {
+        return false;
+    }
+
+    $baseName = catalog_build_qbo_item_base_name($sku);
+    $fetch = qbo_find_item_by_name($baseName);
+    if (!$fetch['ok'] || !is_array($fetch['item'] ?? null)) {
+        return false;
+    }
+
+    $item = $fetch['item'];
+    $linkedId = trim((string) ($sku['QBO_ItemID'] ?? ''));
+    $existingId = trim((string) ($item['Id'] ?? ''));
+    if ($linkedId !== '' && $existingId !== '' && $linkedId === $existingId) {
+        return false;
+    }
+
+    $existingSku = trim((string) ($item['Sku'] ?? ''));
+    $localSku = trim((string) ($sku['SKUCode'] ?? ''));
+
+    return $existingSku === '' || strcasecmp($existingSku, $localSku) !== 0;
+}
+
+function catalog_build_qbo_item_name(array $sku): string
+{
+    $name = catalog_build_qbo_item_base_name($sku);
+    if ($name === '') {
+        return '';
+    }
+
+    if (catalog_qbo_item_name_needs_sku_suffix($sku)) {
+        $suffix = ' (' . trim((string) ($sku['SKUCode'] ?? '')) . ')';
+        $maxBase = CATALOG_QBO_NAME_MAX_LENGTH - mb_strlen($suffix);
+        if ($maxBase < 1) {
+            $maxBase = 1;
+        }
+        $name = mb_substr($name, 0, $maxBase) . $suffix;
+    }
+
+    return catalog_qbo_truncate($name, CATALOG_QBO_NAME_MAX_LENGTH);
+}
+
+function catalog_build_qbo_item_description(array $sku): string
+{
+    $product = trim((string) ($sku['Product'] ?? ''));
+    if ($product !== '') {
+        return catalog_qbo_truncate($product, CATALOG_QBO_DESCRIPTION_MAX_LENGTH);
+    }
+
+    return catalog_qbo_truncate((string) ($sku['ProductName'] ?? ''), CATALOG_QBO_DESCRIPTION_MAX_LENGTH);
+}
+
+function catalog_build_qbo_purchase_desc(array $sku): string
+{
+    $purchaseDesc = trim((string) ($sku['QBO_PurchaseDesc'] ?? ''));
+    if ($purchaseDesc !== '') {
+        return catalog_qbo_truncate($purchaseDesc, CATALOG_QBO_DESCRIPTION_MAX_LENGTH);
+    }
+
+    return catalog_build_qbo_item_description($sku);
+}
+
+function catalog_sku_is_qbo_active(array $sku): bool
+{
+    return (string) ($sku['SKUStatus'] ?? '') === 'Active';
+}
+
+function catalog_validate_qbo_fields(array $data): ?string
+{
+    $name = catalog_build_qbo_item_name([
+        'SKUID'       => 0,
+        'Brand'       => $data['brand'] ?? '',
+        'ProductName' => $data['product_name'] ?? '',
+        'SKUCode'     => $data['sku_code'] ?? '',
+    ]);
+    if ($name !== '' && mb_strlen($name) > CATALOG_QBO_NAME_MAX_LENGTH) {
+        return 'QuickBooks item name must be ' . CATALOG_QBO_NAME_MAX_LENGTH . ' characters or fewer.';
+    }
+
+    $description = trim((string) ($data['product'] ?? ''));
+    if ($description === '') {
+        $description = trim((string) ($data['product_name'] ?? ''));
+    }
+    if (mb_strlen($description) > CATALOG_QBO_DESCRIPTION_MAX_LENGTH) {
+        return 'QuickBooks description must be ' . CATALOG_QBO_DESCRIPTION_MAX_LENGTH . ' characters or fewer.';
+    }
+
+    $purchaseDesc = trim((string) ($data['qbo_purchase_desc'] ?? ''));
+    if ($purchaseDesc !== '' && mb_strlen($purchaseDesc) > CATALOG_QBO_DESCRIPTION_MAX_LENGTH) {
+        return 'QuickBooks purchase description must be ' . CATALOG_QBO_DESCRIPTION_MAX_LENGTH . ' characters or fewer.';
+    }
+
+    return null;
+}
+
+function catalog_qbo_sync_blockers(array $sku): array
+{
+    require_once __DIR__ . '/quickbooks.php';
+
+    $blockers = [];
+
+    if (trim((string) ($sku['SKUCode'] ?? '')) === '') {
+        $blockers[] = 'SKU code is required.';
+    }
+    if (trim((string) ($sku['ProductName'] ?? '')) === '') {
+        $blockers[] = 'Product name is required.';
+    }
+    if (trim((string) ($sku['Brand'] ?? '')) === '') {
+        $blockers[] = 'Brand is required.';
+    }
+    if ($sku['MSRP'] === null || $sku['MSRP'] === '') {
+        $blockers[] = 'MSRP is required (maps to QBO Unit Price).';
+    }
+    if ($sku['COGS'] === null || $sku['COGS'] === '') {
+        $blockers[] = 'COGS is required (maps to QBO Purchase Cost).';
+    }
+    if (trim((string) ($sku['QBO_IncomeAccountRefValue'] ?? '')) === '') {
+        $blockers[] = 'Income account is required.';
+    }
+    if (trim((string) ($sku['QBO_ExpenseAccountRefValue'] ?? '')) === '') {
+        $blockers[] = 'COGS account is required.';
+    }
+    if (qbo_sku_uses_inventory_tracking() && trim((string) ($sku['QBO_AssetAccountRefValue'] ?? '')) === '') {
+        $blockers[] = 'Inventory asset account is required.';
+    }
+
+    $name = catalog_build_qbo_item_name($sku);
+    if ($name === '' && $blockers === []) {
+        $blockers[] = 'Unable to build QuickBooks item name.';
+    }
+
+    return $blockers;
+}
+
+function catalog_validate_qbo_item_ready(array $sku): ?string
+{
+    $blockers = catalog_qbo_sync_blockers($sku);
+
+    return $blockers === [] ? null : $blockers[0];
+}
+
+function catalog_build_qbo_account_ref(array $sku, string $prefix): array
+{
+    $value = trim((string) ($sku[$prefix . 'AccountRefValue'] ?? ''));
+    $ref = ['value' => $value];
+    $name = trim((string) ($sku[$prefix . 'AccountRefName'] ?? ''));
+    if ($name !== '') {
+        $ref['name'] = $name;
+    }
+
+    return $ref;
+}
+
+function catalog_build_qbo_item_payload(array $sku, bool $isCreate, ?string $itemType = null): array
+{
+    require_once __DIR__ . '/quickbooks.php';
+
+    $itemType = $itemType ?? qbo_sku_item_type();
+    $useInventoryTracking = strcasecmp($itemType, 'NonInventory') !== 0;
+
+    $name = catalog_build_qbo_item_name($sku);
+    $description = catalog_build_qbo_item_description($sku);
+    $purchaseDesc = catalog_build_qbo_purchase_desc($sku);
+
+    $payload = [
+        'Name'          => $name,
+        'Sku'           => trim((string) ($sku['SKUCode'] ?? '')),
+        'Type'          => $useInventoryTracking ? 'Inventory' : 'NonInventory',
+        'Description'   => $description !== '' ? $description : null,
+        'PurchaseDesc'  => $purchaseDesc !== '' ? $purchaseDesc : null,
+        'UnitPrice'     => round((float) $sku['MSRP'], 2),
+        'PurchaseCost'  => round((float) $sku['COGS'], 2),
+        'Active'        => catalog_sku_is_qbo_active($sku),
+        'Taxable'       => !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']),
+        'IncomeAccountRef'  => catalog_build_qbo_account_ref($sku, 'QBO_Income'),
+        'ExpenseAccountRef' => catalog_build_qbo_account_ref($sku, 'QBO_Expense'),
+    ];
+
+    if ($useInventoryTracking) {
+        $payload['AssetAccountRef'] = catalog_build_qbo_account_ref($sku, 'QBO_Asset');
+
+        if ($isCreate) {
+            $invStartDate = trim((string) ($sku['LaunchDate'] ?? ''));
+            if ($invStartDate === '') {
+                $invStartDate = (new DateTimeImmutable('today'))->format('Y-m-d');
+            }
+
+            $payload['TrackQtyOnHand'] = true;
+            $payload['QtyOnHand'] = 0;
+            $payload['InvStartDate'] = $invStartDate;
+        }
+    }
+
+    if (!empty($sku['QBO_ItemID'])) {
+        $payload['Id'] = (string) $sku['QBO_ItemID'];
+    }
+    if (!empty($sku['QBO_SyncToken'])) {
+        $payload['SyncToken'] = (string) $sku['QBO_SyncToken'];
+    }
+
+    foreach (['Description', 'PurchaseDesc'] as $optionalField) {
+        if (($payload[$optionalField] ?? null) === null) {
+            unset($payload[$optionalField]);
+        }
+    }
+
+    return $payload;
+}
+
+function catalog_mark_qbo_sync(int $skuId, string $status, ?string $error = null): void
+{
+    if (!in_array($status, CATALOG_QBO_SYNC_STATUSES, true)) {
+        $status = 'Error';
+    }
+
+    $pdo = db();
+    $errorText = $error !== null && $error !== '' ? $error : null;
+
+    if ($status === 'Synced') {
+        if ($errorText === null) {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.SKUMaster
+                SET QBO_SyncStatus = :status,
+                    QBO_SyncError = NULL,
+                    QBO_SyncedAt = SYSUTCDATETIME(),
+                    ModifiedDate = SYSUTCDATETIME()
+                WHERE SKUID = :id
+            SQL)->execute([
+                'status' => $status,
+                'id'     => $skuId,
+            ]);
+
+            return;
+        }
+
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.SKUMaster
+            SET QBO_SyncStatus = :status,
+                QBO_SyncError = :error,
+                QBO_SyncedAt = SYSUTCDATETIME(),
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE SKUID = :id
+        SQL)->execute([
+            'status' => $status,
+            'error'  => $errorText,
+            'id'     => $skuId,
+        ]);
+
+        return;
+    }
+
+    if ($errorText === null) {
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.SKUMaster
+            SET QBO_SyncStatus = :status,
+                QBO_SyncError = NULL,
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE SKUID = :id
+        SQL)->execute([
+            'status' => $status,
+            'id'     => $skuId,
+        ]);
+
+        return;
+    }
+
+    $pdo->prepare(<<<SQL
+        UPDATE dbo.SKUMaster
+        SET QBO_SyncStatus = :status,
+            QBO_SyncError = :error,
+            ModifiedDate = SYSUTCDATETIME()
+        WHERE SKUID = :id
+    SQL)->execute([
+        'status' => $status,
+        'error'  => $errorText,
+        'id'     => $skuId,
+    ]);
+}
+
+function catalog_apply_qbo_item_response(int $skuId, array $item): void
+{
+    $pdo = db();
+    $pdo->prepare(<<<SQL
+        UPDATE dbo.SKUMaster
+        SET QBO_ItemID = :qbo_id,
+            QBO_SyncToken = :sync_token,
+            QBO_DisplayName = :display_name,
+            QBO_SyncStatus = N'Synced',
+            QBO_SyncError = NULL,
+            QBO_SyncedAt = SYSUTCDATETIME(),
+            ModifiedDate = SYSUTCDATETIME()
+        WHERE SKUID = :id
+    SQL)->execute([
+        'qbo_id'       => (string) ($item['Id'] ?? ''),
+        'sync_token'   => (string) ($item['SyncToken'] ?? ''),
+        'display_name' => (string) ($item['Name'] ?? ''),
+        'id'           => $skuId,
+    ]);
+}
+
+function catalog_store_qbo_item_identity(int $skuId, array $item): void
+{
+    $params = [
+        'qbo_id'     => (string) ($item['Id'] ?? ''),
+        'sync_token' => (string) ($item['SyncToken'] ?? ''),
+        'id'         => $skuId,
+    ];
+    $displayName = trim((string) ($item['Name'] ?? ''));
+
+    if ($displayName !== '') {
+        db()->prepare(<<<SQL
+            UPDATE dbo.SKUMaster
+            SET QBO_ItemID = :qbo_id,
+                QBO_SyncToken = :sync_token,
+                QBO_DisplayName = :display_name,
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE SKUID = :id
+        SQL)->execute($params + ['display_name' => $displayName]);
+
+        return;
+    }
+
+    db()->prepare(<<<SQL
+        UPDATE dbo.SKUMaster
+        SET QBO_ItemID = :qbo_id,
+            QBO_SyncToken = :sync_token,
+            ModifiedDate = SYSUTCDATETIME()
+        WHERE SKUID = :id
+    SQL)->execute($params);
+}
+
+function catalog_qbo_account_options(string $purpose): array
+{
+    if (!is_file(__DIR__ . '/quickbooks.php')) {
+        return [];
+    }
+
+    require_once __DIR__ . '/quickbooks.php';
+    $result = qbo_coa_list_accounts(true);
+    if (!$result['ok']) {
+        return [];
+    }
+
+    $options = [];
+    foreach ($result['rows'] as $row) {
+        $accountType = (string) ($row['AccountType'] ?? '');
+        $subType = (string) ($row['AccountSubType'] ?? '');
+        $matches = match ($purpose) {
+            'income'  => $accountType === 'Income',
+            'expense' => $accountType === 'Cost of Goods Sold',
+            'asset'   => $accountType === 'Other Current Asset' && $subType === 'Inventory',
+            default   => false,
+        };
+        if (!$matches) {
+            continue;
+        }
+
+        $id = trim((string) ($row['Id'] ?? ''));
+        $name = trim((string) ($row['Name'] ?? ''));
+        if ($id === '' || $name === '') {
+            continue;
+        }
+
+        $label = $name;
+        if (!empty($row['FullyQualifiedName']) && $row['FullyQualifiedName'] !== $name) {
+            $label = (string) $row['FullyQualifiedName'];
+        }
+
+        $options[] = [
+            'id'    => $id,
+            'name'  => $name,
+            'label' => $label,
+        ];
+    }
+
+    usort($options, fn(array $a, array $b): int => strcasecmp($a['label'], $b['label']));
+
+    return $options;
+}
+
+function qbo_sync_sku(int $skuId): array
+{
+    if (!is_file(__DIR__ . '/quickbooks.php')) {
+        return ['ok' => false, 'error' => 'QuickBooks integration is not available.'];
+    }
+
+    require_once __DIR__ . '/quickbooks.php';
+
+    return qbo_sync_sku_to_quickbooks($skuId);
+}
+
+const CATALOG_QBO_BULK_SYNC_SESSION_KEY = 'catalog_qbo_bulk_sync_result';
+
+function catalog_sync_all_skus_to_qbo(): array
+{
+    if (!qbo_is_connected()) {
+        return ['ok' => false, 'error' => 'QuickBooks is not connected.', 'total' => 0, 'synced' => 0, 'reconciled' => 0, 'failed' => 0, 'failures' => []];
+    }
+
+    $pdo = db();
+    $stmt = $pdo->query('SELECT SKUID, SKUCode FROM dbo.SKUMaster ORDER BY SKUCode');
+    $rows = $stmt->fetchAll();
+
+    $summary = [
+        'ok'         => true,
+        'error'      => null,
+        'total'      => count($rows),
+        'synced'     => 0,
+        'reconciled' => 0,
+        'failed'     => 0,
+        'failures'   => [],
+        'warnings'   => 0,
+    ];
+
+    foreach ($rows as $row) {
+        $skuId = (int) ($row['SKUID'] ?? 0);
+        $skuCode = (string) ($row['SKUCode'] ?? '');
+        if ($skuId <= 0) {
+            continue;
+        }
+
+        $result = qbo_sync_sku($skuId);
+        if ($result['ok']) {
+            if (!empty($result['reconciled'])) {
+                $summary['reconciled']++;
+            } else {
+                $summary['synced']++;
+            }
+            if (!empty($result['warning'])) {
+                $summary['warnings']++;
+            }
+            continue;
+        }
+
+        $summary['failed']++;
+        $summary['failures'][] = [
+            'sku_id'   => $skuId,
+            'sku_code' => $skuCode,
+            'error'    => (string) ($result['error'] ?? 'QuickBooks sync failed.'),
+        ];
+    }
+
+    if ($summary['total'] === 0) {
+        $summary['ok'] = false;
+        $summary['error'] = 'No SKUs found to sync.';
+    } elseif ($summary['synced'] === 0 && $summary['reconciled'] === 0 && $summary['failed'] > 0) {
+        $summary['ok'] = false;
+        $summary['error'] = 'All SKU syncs failed.';
+    }
+
+    return $summary;
+}
+
+function catalog_store_bulk_sync_result(array $result): void
+{
+    $_SESSION[CATALOG_QBO_BULK_SYNC_SESSION_KEY] = $result;
+}
+
+function catalog_take_bulk_sync_result(): ?array
+{
+    $result = $_SESSION[CATALOG_QBO_BULK_SYNC_SESSION_KEY] ?? null;
+    unset($_SESSION[CATALOG_QBO_BULK_SYNC_SESSION_KEY]);
+
+    return is_array($result) ? $result : null;
 }

@@ -25,35 +25,30 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/supplier-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supplier Management
-      </a>
+      <?php
+      ob_start();
+      if (supplier_can_update()):
+      ?>
+      <a class="btn-primary" href="/supplier-management/edit.php?id=<?= $supplierId ?>">Edit</a>
+      <?php endif; ?>
+      <?php if (supplier_can_delete()): ?>
+      <form method="post" action="/supplier-management/status.php" class="inline-form" onsubmit="return confirm('<?= $isActive ? 'Deactivate this supplier? It will no longer appear in new PO supplier lists.' : 'Reactivate this supplier?' ?>');">
+        <input type="hidden" name="supplier_id" value="<?= $supplierId ?>" />
+        <input type="hidden" name="is_active" value="<?= $isActive ? '0' : '1' ?>" />
+        <button type="submit" class="btn-text <?= $isActive ? 'btn-text-danger' : '' ?>"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
+      </form>
+      <?php endif;
+      $pageToolbar = ob_get_clean();
 
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supplier</div>
-          <h1><?= htmlspecialchars($supplier['SupplierName']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= supplier_status_class($isActive) ?>"><?= htmlspecialchars(supplier_status_label($isActive)) ?></span>
-            · <?= htmlspecialchars($supplier['SupplierCode'] ?? '—') ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <?php if (supplier_can_update()): ?>
-          <a class="btn-primary" href="/supplier-management/edit.php?id=<?= $supplierId ?>">Edit</a>
-          <?php endif; ?>
-          <?php if (supplier_can_delete()): ?>
-          <form method="post" action="/supplier-management/status.php" class="inline-form" onsubmit="return confirm('<?= $isActive ? 'Deactivate this supplier? It will no longer appear in new PO supplier lists.' : 'Reactivate this supplier?' ?>');">
-            <input type="hidden" name="supplier_id" value="<?= $supplierId ?>" />
-            <input type="hidden" name="is_active" value="<?= $isActive ? '0' : '1' ?>" />
-            <button type="submit" class="btn-text <?= $isActive ? 'btn-text-danger' : '' ?>"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
-          </form>
-          <?php endif; ?>
-        </div>
-      </div>
+      render_list_page_header([
+          'back_href'  => '/supplier-management/',
+          'back_label' => 'Back to Supplier Management',
+          'category'   => 'Supplier',
+          'title'      => (string) $supplier['SupplierName'],
+          'lead'       => '<span class="status-badge ' . supplier_status_class($isActive) . '">' . htmlspecialchars(supplier_status_label($isActive)) . '</span> · ' . htmlspecialchars($supplier['SupplierCode'] ?? '—'),
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Supplier saved successfully.</div>
@@ -61,6 +56,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($pageToolbar); ?>
 
       <div class="detail-grid">
         <section class="detail-card">

@@ -22,27 +22,20 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supply Chain Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>PO Receiving</h1>
-          <p class="page-lead">Schedule and record inbound shipments against purchase orders.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
-        </div>
-        <div class="admin-actions">
-          <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Jazz ASNs</a>
-          <?php if (por_can_create()): ?>
-          <a class="btn-primary" href="/po-receiving/new.php">New Receipt</a>
-          <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $porHeaderActions = '<a class="btn-secondary" href="/po-receiving/jazz-asns.php">Jazz ASNs</a>';
+      if (por_can_create()) {
+          $porHeaderActions .= '<a class="btn-primary" href="/po-receiving/new.php">New Receipt</a>';
+      }
+      render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Supply Chain Management',
+          'category'   => 'Supply Chain',
+          'title'      => 'PO Receiving',
+          'lead'       => 'Schedule and record inbound shipments against purchase orders.',
+          'permission' => permission_label(po_permission_value()),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Receipt created successfully.</div>
@@ -54,7 +47,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/po-receiving/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/po-receiving/">
         <?php table_sort_hidden_inputs($listFilters, 'scheduled', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -76,6 +69,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/po-receiving/">Clear</a>
         </div>
       </form>
+
+      <?php render_list_page_toolbar($porHeaderActions !== '' ? $porHeaderActions : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">

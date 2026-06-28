@@ -13,9 +13,41 @@ const ENHANCEMENT_LOG_STATUSES = [
     'Canceled',
 ];
 
+const ENHANCEMENT_LOG_TYPES = [
+    'Enhancement',
+    'Bug',
+    'UI',
+    'New Feature',
+];
+
+const ENHANCEMENT_LOG_IT_PRODUCTS = [
+    'ACCS',
+    'QBO',
+    'Operations Portal',
+    'Integration or Automation',
+    'Other - add in description',
+];
+
+const ENHANCEMENT_LOG_PRIORITIES = [
+    'High',
+    'Medium',
+    'Low',
+];
+
+const ENHANCEMENT_LOG_IMPACTS = [
+    'Critical',
+    'High',
+    'Medium',
+    'Low',
+];
+
 const ENHANCEMENT_LOG_LIST_SORT_COLUMNS = [
     'id'           => 'ID',
     'title'        => 'Title',
+    'enh_type'     => 'Type',
+    'it_product'   => 'IT Product',
+    'priority'     => 'Priority',
+    'impact'       => 'Impact',
     'requested_by' => 'Requested By',
     'request_date' => 'Request Date',
     'status'       => 'Status',
@@ -25,6 +57,10 @@ const ENHANCEMENT_LOG_LIST_SORT_COLUMNS = [
 const ENHANCEMENT_LOG_LIST_SORT_SQL = [
     'id'           => 'EnhancementLogID',
     'title'        => 'EnhancementTitle',
+    'enh_type'     => 'EnhType',
+    'it_product'   => 'ITProduct',
+    'priority'     => 'Priority',
+    'impact'       => 'Impact',
     'requested_by' => 'RequestedBy',
     'request_date' => 'RequestDate',
     'status'       => 'RequestStatus',
@@ -62,7 +98,7 @@ function enhancement_log_require_create(): void
     if (enhancement_log_can_create()) {
         return;
     }
-    auth_render_access_denied('You do not have permission to create enhancement log entries.');
+    auth_render_access_denied('You do not have permission to create backlog items.');
 }
 
 function enhancement_log_require_update(): void
@@ -71,7 +107,7 @@ function enhancement_log_require_update(): void
     if (enhancement_log_can_update()) {
         return;
     }
-    auth_render_access_denied('You do not have permission to update enhancement log entries.');
+    auth_render_access_denied('You do not have permission to update backlog items.');
 }
 
 function enhancement_log_status_label(string $status): string
@@ -150,6 +186,10 @@ function enhancement_log_from_input(array $input): array
     return [
         'enhancement_title' => trim((string) ($input['enhancement_title'] ?? '')),
         'enh_desc'          => trim((string) ($input['enh_desc'] ?? '')),
+        'enh_type'          => trim((string) ($input['enh_type'] ?? '')),
+        'it_product'        => trim((string) ($input['it_product'] ?? '')),
+        'priority'          => trim((string) ($input['priority'] ?? '')),
+        'impact'            => trim((string) ($input['impact'] ?? '')),
         'requested_by'      => trim((string) ($input['requested_by'] ?? '')),
         'request_date'      => trim((string) ($input['request_date'] ?? '')),
         'request_status'    => trim((string) ($input['request_status'] ?? 'New')),
@@ -185,6 +225,10 @@ function enhancement_log_to_form(array $row): array
     return [
         'enhancement_title' => (string) ($row['EnhancementTitle'] ?? ''),
         'enh_desc'          => (string) ($row['EnhDesc'] ?? ''),
+        'enh_type'          => (string) ($row['EnhType'] ?? ''),
+        'it_product'        => (string) ($row['ITProduct'] ?? ''),
+        'priority'          => (string) ($row['Priority'] ?? ''),
+        'impact'            => (string) ($row['Impact'] ?? ''),
         'requested_by'      => (string) ($row['RequestedBy'] ?? ''),
         'request_date'      => $requestDate,
         'request_status'    => (string) ($row['RequestStatus'] ?? 'New'),
@@ -196,7 +240,23 @@ function enhancement_log_to_form(array $row): array
 function enhancement_log_validate_form(array $form): ?string
 {
     if ($form['enhancement_title'] === '') {
-        return 'Enhancement title is required.';
+        return 'Backlog item title is required.';
+    }
+
+    if (!in_array($form['enh_type'], ENHANCEMENT_LOG_TYPES, true)) {
+        return 'Type is required.';
+    }
+
+    if (!in_array($form['it_product'], ENHANCEMENT_LOG_IT_PRODUCTS, true)) {
+        return 'IT product is required.';
+    }
+
+    if ($form['priority'] !== '' && !in_array($form['priority'], ENHANCEMENT_LOG_PRIORITIES, true)) {
+        return 'Invalid priority.';
+    }
+
+    if ($form['impact'] !== '' && !in_array($form['impact'], ENHANCEMENT_LOG_IMPACTS, true)) {
+        return 'Invalid impact.';
     }
 
     if (!in_array($form['request_status'], ENHANCEMENT_LOG_STATUSES, true)) {
@@ -240,6 +300,10 @@ function enhancement_log_list(array $filters = []): array
             EnhancementLogID,
             EnhancementTitle,
             EnhDesc,
+            EnhType,
+            ITProduct,
+            Priority,
+            Impact,
             RequestedBy,
             RequestDate,
             RequestStatus,
@@ -259,6 +323,18 @@ function enhancement_log_list(array $filters = []): array
         $params['status'] = $status;
     }
 
+    $enhType = trim((string) ($filters['enh_type'] ?? ''));
+    if ($enhType !== '' && in_array($enhType, ENHANCEMENT_LOG_TYPES, true)) {
+        $sql .= ' AND EnhType = :enh_type';
+        $params['enh_type'] = $enhType;
+    }
+
+    $itProduct = trim((string) ($filters['it_product'] ?? ''));
+    if ($itProduct !== '' && in_array($itProduct, ENHANCEMENT_LOG_IT_PRODUCTS, true)) {
+        $sql .= ' AND ITProduct = :it_product';
+        $params['it_product'] = $itProduct;
+    }
+
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
         $sql .= ' AND (
@@ -266,6 +342,10 @@ function enhancement_log_list(array $filters = []): array
             OR EnhDesc LIKE :q
             OR RequestedBy LIKE :q
             OR ReqNotes LIKE :q
+            OR EnhType LIKE :q
+            OR ITProduct LIKE :q
+            OR Priority LIKE :q
+            OR Impact LIKE :q
         )';
         $params['q'] = '%' . $search . '%';
     }
@@ -293,6 +373,10 @@ function enhancement_log_save(array $input, ?int $logId = null): array
     $params = [
         'enhancement_title' => $form['enhancement_title'],
         'enh_desc'          => $form['enh_desc'] !== '' ? $form['enh_desc'] : null,
+        'enh_type'          => $form['enh_type'],
+        'it_product'        => $form['it_product'],
+        'priority'          => $form['priority'] !== '' ? $form['priority'] : null,
+        'impact'            => $form['impact'] !== '' ? $form['impact'] : null,
         'requested_by'      => $form['requested_by'] !== '' ? $form['requested_by'] : null,
         'request_date'      => enhancement_log_parse_date_input($form['request_date']),
         'request_status'    => $form['request_status'],
@@ -304,12 +388,12 @@ function enhancement_log_save(array $input, ?int $logId = null): array
         if ($logId === null) {
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO dbo.EnhancementLog (
-                    EnhancementTitle, EnhDesc, RequestedBy, RequestDate,
+                    EnhancementTitle, EnhDesc, EnhType, ITProduct, Priority, Impact, RequestedBy, RequestDate,
                     RequestStatus, ReqDueDate, ReqNotes
                 )
                 OUTPUT INSERTED.EnhancementLogID
                 VALUES (
-                    :enhancement_title, :enh_desc, :requested_by, :request_date,
+                    :enhancement_title, :enh_desc, :enh_type, :it_product, :priority, :impact, :requested_by, :request_date,
                     :request_status, :req_due_date, :req_notes
                 )
             SQL);
@@ -321,7 +405,7 @@ function enhancement_log_save(array $input, ?int $logId = null): array
 
         $existing = enhancement_log_get($logId);
         if ($existing === null) {
-            return ['ok' => false, 'error' => 'Enhancement log entry not found.', 'id' => null];
+            return ['ok' => false, 'error' => 'Backlog item not found.', 'id' => null];
         }
 
         $params['id'] = $logId;
@@ -330,6 +414,10 @@ function enhancement_log_save(array $input, ?int $logId = null): array
             SET
                 EnhancementTitle = :enhancement_title,
                 EnhDesc = :enh_desc,
+                EnhType = :enh_type,
+                ITProduct = :it_product,
+                Priority = :priority,
+                Impact = :impact,
                 RequestedBy = :requested_by,
                 RequestDate = :request_date,
                 RequestStatus = :request_status,
@@ -343,6 +431,6 @@ function enhancement_log_save(array $input, ?int $logId = null): array
     } catch (Throwable $e) {
         error_log('enhancement_log_save: ' . $e->getMessage());
 
-        return ['ok' => false, 'error' => 'Unable to save enhancement log entry.', 'id' => null];
+        return ['ok' => false, 'error' => 'Unable to save backlog item.', 'id' => null];
     }
 }

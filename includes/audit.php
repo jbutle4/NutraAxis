@@ -8,7 +8,7 @@ const AUDIT_BATCH_SEPARATOR = "\n-- AUDIT BATCH --\n";
 const AUDIT_ALLOWED_TABLES = [
     'PurchaseOrder',
     'POLineItem',
-    'POApprovalLog',
+    'ApprovalLog',
     'POAttachment',
     'User',
     'Role',
@@ -571,13 +571,15 @@ function audit_log_po_approval_action(int $poId, string $oldStatus, string $newS
     if (isset($logRow['ApprovalID'])) {
         $approvalValues = [
             'ApprovalID'       => $logRow['ApprovalID'],
-            'POID'             => $logRow['POID'],
+            'ApprovalType'     => 'PO',
+            'EntityType'       => 'PurchaseOrder',
+            'EntityID'         => $logRow['EntityID'] ?? $poId,
             'ApproverName'     => $logRow['ApproverName'],
             'ApproverResult'   => $logRow['ApproverResult'],
             'ApproverComments' => $logRow['ApproverComments'] ?? null,
         ];
-        $changeParts[] = audit_build_insert('POApprovalLog', $approvalValues, 'ApprovalID', $logRow['ApprovalID'])['change'];
-        $reverseParts[] = 'DELETE FROM dbo.POApprovalLog WHERE ApprovalID = ' . audit_sql_literal($logRow['ApprovalID']);
+        $changeParts[] = audit_build_insert('ApprovalLog', $approvalValues, 'ApprovalID', $logRow['ApprovalID'])['change'];
+        $reverseParts[] = 'DELETE FROM dbo.ApprovalLog WHERE ApprovalID = ' . audit_sql_literal($logRow['ApprovalID']);
     }
 
     $reverseParts[] = audit_build_update('PurchaseOrder', 'POID', $poId, ['POStatus' => $oldStatus], ['POStatus' => $newStatus])['reverse'];

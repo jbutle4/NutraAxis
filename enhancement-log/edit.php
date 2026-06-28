@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/enhancement-log.php';
+require dirname(__DIR__) . '/includes/enhancement-log-attachments.php';
 
 enhancement_log_require_update();
 
@@ -28,25 +29,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $error = $result['error'];
 }
 
-$pageTitle = 'Edit Enhancement #' . $logId . ' | Enhancement Log';
+$pageTitle = 'Edit Backlog Item #' . $logId . ' | IT Product Backlog';
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/enhancement-log/view.php?id=<?= $logId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Enhancement #<?= $logId ?>
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Operations</div>
-        <h1>Edit Enhancement</h1>
-        <p class="page-lead"><?= htmlspecialchars((string) $entry['EnhancementTitle']) ?></p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/enhancement-log/view.php?id=' . $logId,
+          'back_label' => 'Back to Backlog Item #' . $logId,
+          'category'   => 'Operations',
+          'title'      => 'Edit Backlog Item',
+          'lead'       => (string) $entry['EnhancementTitle'],
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -56,6 +54,11 @@ require dirname(__DIR__) . '/includes/header.php';
         $isEdit = true;
         $formAction = '/enhancement-log/edit.php?id=' . $logId;
         require dirname(__DIR__) . '/includes/enhancement-log-form.php';
+      ?>
+
+      <?php
+        $showUploadForm = enh_log_can_add_attachments();
+        require dirname(__DIR__) . '/includes/enhancement-log-attachments-section.php';
       ?>
     </div>
   </main>

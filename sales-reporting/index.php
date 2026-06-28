@@ -15,19 +15,13 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="page-hero">
-        <div class="module-icon"><?= icon_svg('chart', 28) ?></div>
-        <div class="section-label">Sales</div>
-        <h1>Sales Reporting Summaries</h1>
-        <p class="page-lead">ACCS order lookup plus daily and monthly SKU sales tables populated by scheduled background jobs.</p>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Sales',
+          'title'      => 'Sales Reporting Summaries',
+          'lead'       => 'ACCS order lookup plus daily and monthly SKU sales tables populated by scheduled background jobs.',
+      ]); ?>
 
       <?php if ($areas === []): ?>
       <div class="status-banner">

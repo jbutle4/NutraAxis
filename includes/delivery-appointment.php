@@ -600,11 +600,11 @@ function das_breadcrumb(array $context): array
     }
 
     if ($returnTo === 'jazz-asn' && $jazzAsnId !== '') {
-        return ['href' => '/po-receiving/jazz-asn.php?id=' . rawurlencode($jazzAsnId), 'label' => 'Back to Jazz ASN'];
+        return ['href' => data_profile_page_path('/po-receiving/jazz-asn.php') . '?id=' . rawurlencode($jazzAsnId), 'label' => 'Back to Jazz ASN'];
     }
 
     if ($returnTo === 'jazz-asns') {
-        return ['href' => '/po-receiving/jazz-asns.php', 'label' => 'Back to Jazz ASNs'];
+        return ['href' => data_profile_page_path('/po-receiving/jazz-asns.php'), 'label' => 'Back to Jazz ASNs'];
     }
 
     return ['href' => '/delivery-scheduling-log/', 'label' => 'Back to Delivery Scheduling Log'];

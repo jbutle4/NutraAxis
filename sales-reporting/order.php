@@ -6,12 +6,8 @@ require dirname(__DIR__) . '/includes/sales-reporting.php';
 sales_reporting_require_read();
 
 $activeSlug = $activeSlug ?? 'accs-order-report';
-$reportListPath = data_profile_is_uat()
-    ? '/sales-reporting/accs-order-report-uat/'
-    : '/sales-reporting/accs-order-report/';
-$orderDetailPath = data_profile_is_uat()
-    ? '/sales-reporting/order-uat.php'
-    : '/sales-reporting/order.php';
+$reportListPath = data_profile_page_path('/sales-reporting/accs-order-report/');
+$orderDetailPath = data_profile_page_path('/sales-reporting/order.php');
 $orderNumber = trim($_GET['order'] ?? '');
 $configError = adobe_commerce_config_error();
 $order = null;
@@ -65,12 +61,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="<?= htmlspecialchars($reportListPath) ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to ACCS Order Report
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => $reportListPath,
+          'back_label' => 'Back to ACCS Order Report',
+          'category'   => 'Adobe Commerce',
+          'title'      => $order !== null ? 'Order #' . ($order['increment_id'] ?? $orderNumber) : 'Order Detail',
+          'lead'       => $order !== null
+              ? substr((string) ($order['created_at'] ?? ''), 0, 19) . ' · ' . ($order['status'] ?? '') . ' · ' . ($order['store_name'] ?? '')
+              : '',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -78,17 +79,6 @@ require dirname(__DIR__) . '/includes/header.php';
         <a class="btn-secondary" href="<?= htmlspecialchars($reportListPath) ?>">Back to Orders</a>
       </div>
       <?php elseif ($order !== null): ?>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Adobe Commerce</div>
-          <h1>Order #<?= htmlspecialchars((string) ($order['increment_id'] ?? $orderNumber)) ?></h1>
-          <p class="page-lead">
-            <?= htmlspecialchars(substr((string) ($order['created_at'] ?? ''), 0, 19)) ?>
-            · <?= htmlspecialchars((string) ($order['status'] ?? '')) ?>
-            · <?= htmlspecialchars((string) ($order['store_name'] ?? '')) ?>
-          </p>
-        </div>
-      </div>
 
       <div class="detail-grid">
         <section class="detail-card">

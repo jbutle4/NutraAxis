@@ -12,6 +12,39 @@ function process_functions_base_url(): string
     return rtrim($configured, '/');
 }
 
+/** Processes that must run on Nutra-forecast-tool-prod (production ACCS). */
+function process_functions_prod_only_codes(): array
+{
+    return ['accs-sales-order-sync', 'qbo-coa-sync'];
+}
+
+function process_functions_base_url_for(string $processCode = ''): string
+{
+    if ($processCode !== '' && in_array($processCode, process_functions_prod_only_codes(), true)) {
+        $prod = trim((string) env(
+            'NUTRA_FUNCTIONS_PROD_BASE_URL',
+            'https://nutra-forecast-tool-prod.azurewebsites.net'
+        ));
+        if ($prod !== '') {
+            return rtrim($prod, '/');
+        }
+    }
+
+    return process_functions_base_url();
+}
+
+function process_functions_key_for(string $processCode = ''): string
+{
+    if ($processCode !== '' && in_array($processCode, process_functions_prod_only_codes(), true)) {
+        $prodKey = trim((string) env('NUTRA_FUNCTIONS_PROD_KEY', ''));
+        if ($prodKey !== '') {
+            return $prodKey;
+        }
+    }
+
+    return process_functions_key();
+}
+
 function process_functions_key(): string
 {
     return trim((string) env('NUTRA_FUNCTIONS_KEY', ''));
@@ -22,9 +55,13 @@ function process_functions_is_configured(): bool
     return process_functions_key() !== '';
 }
 
-function process_functions_request(array $payload): array
+function process_functions_request(array $payload, string $processCode = ''): array
 {
-    $key = process_functions_key();
+    if ($processCode === '' && isset($payload['code'])) {
+        $processCode = (string) $payload['code'];
+    }
+
+    $key = process_functions_key_for($processCode);
     if ($key === '') {
         return [
             'ok'    => false,
@@ -33,7 +70,7 @@ function process_functions_request(array $payload): array
         ];
     }
 
-    $url = process_functions_base_url() . '/api/process-execute?code=' . rawurlencode($key);
+    $url = process_functions_base_url_for($processCode) . '/api/process-execute?code=' . rawurlencode($key);
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if ($body === false) {
         return [
@@ -119,7 +156,7 @@ function process_functions_execute(
     return process_functions_request($payload);
 }
 
-function process_functions_rerun(int $logId, ?int $triggeredByUserId = null): array
+function process_functions_rerun(int $logId, ?int $triggeredByUserId = null, string $processCode = ''): array
 {
     $payload = ['log_id' => $logId];
 
@@ -127,5 +164,5 @@ function process_functions_rerun(int $logId, ?int $triggeredByUserId = null): ar
         $payload['triggered_by_user_id'] = $triggeredByUserId;
     }
 
-    return process_functions_request($payload);
+    return process_functions_request($payload, $processCode);
 }

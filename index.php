@@ -49,7 +49,7 @@ require __DIR__ . '/includes/header.php';
             <strong><?= $pendingApprovalCount === 1 ? '1 purchase order needs' : $pendingApprovalCount . ' purchase orders need' ?> your approval</strong>
             <p>Email notifications may be unavailable. Use the approval queue to review and action submitted POs.</p>
           </div>
-          <a class="btn-primary" href="/po-management/approvals.php">Review Approvals</a>
+          <a class="btn-primary" href="/approvals/?status=pending">Review Approvals</a>
         </div>
         <?php endif; ?>
 

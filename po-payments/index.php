@@ -23,25 +23,18 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Inventory Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Inventory</div>
-          <h1>PO Payments</h1>
-          <p class="page-lead">Record and review payments applied to purchase orders.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
-        </div>
-        <?php if (po_payment_can_create()): ?>
-        <a class="btn-primary" href="/po-payments/new.php">Record Payment</a>
-        <?php endif; ?>
-      </div>
+    <div class="container page-inner page-inner--wide">
+      <?php
+      $listToolbar = po_payment_can_create() ? '<a class="btn-primary" href="/po-payments/new.php">Record Payment</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Inventory Management',
+          'category'   => 'Inventory',
+          'title'      => 'Supplier Payments',
+          'lead'       => 'Record and review payments applied to purchase orders or supplier invoices without a PO.',
+          'permission' => permission_label(po_permission_value()),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Payment recorded successfully.</div>
@@ -51,7 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Payment deleted successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/po-payments/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/po-payments/">
         <?php table_sort_hidden_inputs($listFilters, 'payment_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -74,7 +67,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </div>
           <div class="audit-filter-wide">
             <label for="q">Search</label>
-            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="PO number, supplier, confirmation #, or payer" />
+            <input class="form-input" type="search" id="q" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="PO number, invoice #, supplier, confirmation #, or payer" />
           </div>
         </div>
         <div class="audit-filter-actions">
@@ -82,6 +75,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/po-payments/">Clear</a>
         </div>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -95,7 +90,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 'payment_date',
                 'desc',
                 'payment_date',
-                table_actions_header(po_payment_can_update() ? ['View PO', 'Edit'] : ['View PO'])
+                table_actions_header(po_payment_can_update() ? ['View', 'Edit'] : ['View'])
             ); ?>
           </thead>
           <tbody>
@@ -105,17 +100,34 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php foreach ($payments as $payment): ?>
             <tr>
               <td><?= htmlspecialchars(po_payment_format_datetime($payment['PaymentDate'])) ?></td>
-              <td><a class="btn-text" href="/po-management/view.php?id=<?= (int) $payment['POID'] ?>"><?= htmlspecialchars($payment['PONumber']) ?></a></td>
+              <td>
+                <?php $referenceHref = po_payment_reference_href($payment); ?>
+                <?php if ($referenceHref !== null): ?>
+                <a class="btn-text" href="<?= htmlspecialchars($referenceHref) ?>"><?= htmlspecialchars(po_payment_reference_label($payment)) ?></a>
+                <?php else: ?>
+                <?= htmlspecialchars(po_payment_reference_label($payment)) ?>
+                <?php endif; ?>
+              </td>
               <td><?= htmlspecialchars($payment['SupplierName']) ?></td>
               <td><?= htmlspecialchars(po_format_money($payment['PaymentAmount'])) ?></td>
               <td><?= htmlspecialchars($payment['PaymentType']) ?></td>
               <td><span class="status-badge <?= po_payment_status_class((string) ($payment['PaymentStatus'] ?? '')) ?>"><?= htmlspecialchars(po_payment_format_status($payment['PaymentStatus'] ?? null)) ?></span></td>
               <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
               <td><?= htmlspecialchars($payment['PaymentMadeBy'] ?? '—') ?></td>
+              <td>
+                <?php $attachmentCount = (int) ($payment['AttachmentCount'] ?? 0); ?>
+                <?php if ($attachmentCount > 0 && po_payment_can_update()): ?>
+                <a class="btn-text" href="/po-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>"><?= $attachmentCount === 1 ? '1 file' : $attachmentCount . ' files' ?></a>
+                <?php else: ?>
+                <?= $attachmentCount > 0 ? ($attachmentCount === 1 ? '1 file' : $attachmentCount . ' files') : '—' ?>
+                <?php endif; ?>
+              </td>
               <?php
-              $paymentActions = [
-                  ['href' => '/po-management/view.php?id=' . (int) $payment['POID'], 'label' => 'View PO'],
-              ];
+              $paymentActions = [];
+              $referenceHref = po_payment_reference_href($payment);
+              if ($referenceHref !== null) {
+                  $paymentActions[] = ['href' => $referenceHref, 'label' => 'View PO'];
+              }
               if (po_payment_can_update()) {
                   $paymentActions[] = ['href' => '/po-payments/edit.php?id=' . (int) $payment['PaymentID'], 'label' => 'Edit'];
               }

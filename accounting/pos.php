@@ -33,14 +33,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/accounting/">Back to Accounting</a>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">QuickBooks</div>
-          <h1>Purchase Orders</h1>
-          <p class="page-lead">QuickBooks purchase orders. Read-only today; create and update from Operations is planned.</p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/accounting/',
+          'back_label' => 'Back to Accounting',
+          'category'   => 'QuickBooks',
+          'title'      => 'Purchase Orders',
+          'lead'       => 'QuickBooks purchase orders. Read-only today; create and update from Operations is planned.',
+      ]); ?>
+
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
       <?php if (!$listResult['ok']): ?>

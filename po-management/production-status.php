@@ -55,26 +55,18 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/view.php?id=<?= $poId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($order['PONumber']) ?>
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/po-management/view.php?id=' . $poId,
+          'back_label' => 'Back to ' . $order['PONumber'],
+          'category'   => 'Procurement',
+          'title'      => 'Production status',
+          'lead'       => '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['PONumber']) . ' · ' . htmlspecialchars($order['SupplierName']),
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Procurement</div>
-          <h1>Production status</h1>
-          <p class="page-lead">
-            <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
-            · <?= htmlspecialchars($order['PONumber']) ?>
-            · <?= htmlspecialchars($order['SupplierName']) ?>
-          </p>
-        </div>
-      </div>
 
       <?php require dirname(__DIR__) . '/includes/po-production-form.php'; ?>
     </div>

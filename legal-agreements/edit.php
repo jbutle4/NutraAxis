@@ -40,18 +40,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/legal-agreements/view.php?id=<?= $contractId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($contract['ContractNumber']) ?>
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Legal</div>
-        <h1>Edit <?= htmlspecialchars($contract['ContractNumber']) ?></h1>
-        <p class="page-lead">Update contract register details for <?= htmlspecialchars($contract['ContractName']) ?>.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/legal-agreements/view.php?id=' . $contractId,
+          'back_label' => 'Back to ' . (string) $contract['ContractNumber'],
+          'category'   => 'Legal',
+          'title'      => 'Edit ' . (string) $contract['ContractNumber'],
+          'lead'       => 'Update contract register details for ' . (string) $contract['ContractName'] . '.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

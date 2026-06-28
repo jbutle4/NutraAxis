@@ -6,7 +6,7 @@ require dirname(__DIR__) . '/includes/po-approval.php';
 po_require_read();
 
 if (po_can_read_approval_queue() && !po_can_create() && !isset($_GET['skip_approver_redirect'])) {
-    header('Location: /po-management/approvals.php', true, 302);
+    header('Location: /approvals/?type=PO&status=pending', true, 302);
     exit;
 }
 
@@ -32,27 +32,19 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php
+      $listToolbar = $canCreate ? '<a class="btn-primary" href="/po-management/new.php">New Purchase Order</a><a class="btn-secondary" href="/po-management/import.php">Import from Excel</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Procurement',
+          'title'      => 'Purchase Orders',
+          'lead'       => 'Create and track supplier purchase orders from creation through approval and payment.',
+          'permission' => permission_label(po_permission_value()),
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Procurement</div>
-          <h1>Purchase Orders</h1>
-          <p class="page-lead">Create and track supplier purchase orders from creation through approval and payment.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
-        </div>
-        <?php if ($canCreate): ?>
-        <a class="btn-primary" href="/po-management/new.php">New Purchase Order</a>
-        <a class="btn-secondary" href="/po-management/import.php">Import from Excel</a>
-        <?php endif; ?>
-      </div>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Purchase order created successfully.</div>
@@ -64,17 +56,21 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Purchase order submitted for approval.</div>
       <?php endif; ?>
 
+      <?php if (!empty($_GET['delete_error'])): ?>
+      <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars((string) $_GET['delete_error']) ?></div>
+      <?php endif; ?>
+
       <?php if ($canApprove && $pendingApprovalCount > 0): ?>
       <div class="status-banner status-banner-approval">
         <div>
           <strong><?= $pendingApprovalCount === 1 ? '1 purchase order is' : $pendingApprovalCount . ' purchase orders are' ?> waiting for approval</strong>
           <p>Review submitted POs and take approval action from the approval queue.</p>
         </div>
-        <a class="btn-primary" href="/po-management/approvals.php">Open Approval Queue</a>
+        <a class="btn-primary" href="/approvals/?type=PO&status=pending">Open Approval Queue</a>
       </div>
       <?php endif; ?>
 
-      <form class="po-filter" method="get" action="/po-management/">
+      <form class="po-filter page-list-filters" method="get" action="/po-management/">
         <?php table_sort_hidden_inputs($listFilters, 'order_date', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
@@ -84,6 +80,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php endforeach; ?>
         </select>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">
@@ -134,12 +132,12 @@ require dirname(__DIR__) . '/includes/header.php';
               if (po_can_edit_order($order)) {
                   $poActions[] = ['href' => '/po-management/edit.php?id=' . (int) $order['POID'], 'label' => 'Edit'];
               }
-              if ($canDelete && $order['POStatus'] === 'Created') {
+              if ($canDelete) {
                   $poActions[] = [
                       'html' => table_action_delete_form(
                           '/po-management/delete.php',
                           ['po_id' => (int) $order['POID']],
-                          'Delete this purchase order?'
+                          po_delete_confirm_message((string) $order['PONumber'])
                       ),
                   ];
               }

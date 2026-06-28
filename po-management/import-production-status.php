@@ -77,21 +77,34 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Purchase Orders
-      </a>
+      <?php
+      if ($step === 'complete' && $result !== null) {
+          $prodImportTitle = 'Production status import complete';
+          $prodImportLead = 'Updated ' . (int) $result['updated'] . ' PO line(s)' . ((int) $result['skipped'] > 0 ? ', skipped ' . (int) $result['skipped'] : '') . '.';
+      } elseif ($step === 'preview' && $previewRows !== null) {
+          $readyCount = count(array_filter($previewRows, fn(array $row): bool => !empty($row['match']['found']) && !empty($row['match']['editable'])));
+          $skipCount = count($previewRows) - $readyCount;
+          $prodImportTitle = 'Review production status import';
+          $prodImportLead = 'File: <strong>' . htmlspecialchars($pendingFilename) . '</strong> · ' . count($previewRows) . ' row(s) · ' . $readyCount . ' ready to update' . ($skipCount > 0 ? ' · ' . $skipCount . ' will be skipped' : '');
+          $prodImportLeadHtml = true;
+      } else {
+          $prodImportTitle = 'Import Production Status';
+          $prodImportLead = 'Upload a Wells open-order report or similar spreadsheet to update production status on existing PO lines.';
+          $prodImportLeadHtml = false;
+      }
+      render_list_page_header([
+          'back_href'  => '/po-management/',
+          'back_label' => 'Back to Purchase Orders',
+          'category'   => 'Procurement',
+          'title'      => $prodImportTitle,
+          'lead'       => $prodImportLead,
+          'lead_html'  => $prodImportLeadHtml ?? false,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
 
       <?php if ($step === 'complete' && $result !== null): ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Production status import complete</h1>
-        <p class="page-lead">Updated <?= (int) $result['updated'] ?> PO line(s)<?php if ((int) $result['skipped'] > 0): ?>, skipped <?= (int) $result['skipped'] ?><?php endif; ?>.</p>
-      </div>
 
       <?php if (!empty($result['errors'])): ?>
       <div class="admin-notice is-error is-detail" role="alert">
@@ -105,26 +118,15 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <div class="admin-notice is-success" role="status">Production status records were saved successfully.</div>
 
-      <div class="module-actions">
-        <a class="btn-primary" href="/po-management/">Back to PO list</a>
-        <a class="btn-secondary" href="/po-management/import-production-status.php">Import another file</a>
-      </div>
+      <?php render_list_page_toolbar(
+          '<a class="btn-primary" href="/po-management/">Back to PO list</a>'
+          . '<a class="btn-secondary" href="/po-management/import-production-status.php">Import another file</a>'
+      ); ?>
 
       <?php elseif ($step === 'preview' && $previewRows !== null): ?>
       <?php
         $readyCount = count(array_filter($previewRows, fn(array $row): bool => !empty($row['match']['found']) && !empty($row['match']['editable'])));
-        $skipCount = count($previewRows) - $readyCount;
       ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Review production status import</h1>
-        <p class="page-lead">
-          File: <strong><?= htmlspecialchars($pendingFilename) ?></strong>
-          · <?= count($previewRows) ?> row(s)
-          · <?= $readyCount ?> ready to update
-          <?php if ($skipCount > 0): ?> · <?= $skipCount ?> will be skipped<?php endif; ?>
-        </p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -202,11 +204,6 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <?php else: ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Import Production Status</h1>
-        <p class="page-lead">Upload a Wells open-order report or similar spreadsheet to update production status on existing PO lines.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

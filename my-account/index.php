@@ -12,6 +12,9 @@ $permissionRows = [
     ['PO Approval', auth_permission_value('POApproval')],
     ['Travel & Expense', auth_permission_value('TEManagement')],
     ['T&E Approval', auth_permission_value('TEApproval')],
+    ['T&E Processing', auth_permission_value('TEProcessing')],
+    ['QBO Insert Approval', auth_permission_value('QBOInsertApproval')],
+    ['Payment Approval', auth_permission_value('PaymentApproval')],
     ['Jazz Current Inventory', auth_permission_value('InventoryReporting')],
     ['Sales Reporting', auth_permission_value('SalesReporting')],
     ['Inventory Forecasting', auth_permission_value('InventoryForecasting')],
@@ -31,18 +34,13 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Account</div>
-        <h1>My Account</h1>
-        <p class="page-lead">Your profile and role-based access for NutraAxis Operations.</p>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Account',
+          'title'      => 'My Account',
+          'lead'       => 'Your profile and role-based access for NutraAxis Operations.',
+      ]); ?>
 
       <div class="account-grid">
         <div class="account-card">

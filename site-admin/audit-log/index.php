@@ -30,22 +30,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/site-admin/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Site Admin
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/site-admin/',
+          'back_label' => 'Back to Site Admin',
+          'category'   => 'Site Admin',
+          'title'      => 'Audit Change Log',
+          'lead'       => 'Insert, update, and delete activity across purchase orders, users, and roles.',
+      ]); ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/admin-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Site Admin</div>
-          <h1>Audit Change Log</h1>
-          <p class="page-lead">Insert, update, and delete activity across purchase orders, users, and roles.</p>
-        </div>
-      </div>
 
       <?php if ($notice === 'rolled_back'): ?>
       <div class="admin-notice is-success" role="status">Change rolled back successfully.</div>
@@ -53,7 +46,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/site-admin/audit-log/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/site-admin/audit-log/">
         <?php table_sort_hidden_inputs($filters, 'change_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>

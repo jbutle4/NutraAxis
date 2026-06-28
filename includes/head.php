@@ -1,6 +1,7 @@
 <?php
 $pageTitle = $pageTitle ?? 'NutraAxis Operations';
 $pageDescription = $pageDescription ?? 'NutraAxis Operations — internal tools and resources for the NutraAxis team.';
+require_once __DIR__ . '/assets.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -10,9 +11,6 @@ $pageDescription = $pageDescription ?? 'NutraAxis Operations — internal tools 
   <title><?= htmlspecialchars($pageTitle) ?></title>
   <meta name="description" content="<?= htmlspecialchars($pageDescription) ?>" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/operations.css?v=<?= (int) @filemtime(dirname(__DIR__) . '/assets/css/operations.css') ?>" />
+  <link rel="stylesheet" href="/assets/css/operations.css?v=<?= htmlspecialchars(asset_css_version()) ?>" />
 </head>
 <body<?= !empty($bodyClass) ? ' class="' . htmlspecialchars((string) $bodyClass) . '"' : '' ?>>

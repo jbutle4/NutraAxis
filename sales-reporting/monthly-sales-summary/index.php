@@ -49,27 +49,20 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/sales-reporting/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Sales Reporting Summaries
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Sales</div>
-          <h1>Monthly Sales Summary</h1>
-          <p class="page-lead">SKU quantities sold per calendar month, rolled up from daily sales by the weekly chain job.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(sales_reporting_permission_value())) ?></p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/sales-reporting/',
+          'back_label' => 'Back to Sales Reporting Summaries',
+          'category'   => 'Sales',
+          'title'      => 'Monthly Sales Summary',
+          'lead'       => 'SKU quantities sold per calendar month, rolled up from daily sales by the weekly chain job.',
+          'permission' => permission_label(sales_reporting_permission_value()),
+      ]); ?>
 
       <?php if ($dbError !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($dbError) ?></div>
       <?php else: ?>
 
-      <form class="po-filter audit-filter" method="get" action="/sales-reporting/monthly-sales-summary/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/sales-reporting/monthly-sales-summary/">
         <?php table_sort_hidden_inputs($filters, 'month', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>

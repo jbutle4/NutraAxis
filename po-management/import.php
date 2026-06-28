@@ -139,21 +139,33 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Purchase Orders
-      </a>
+      <?php
+      if ($step === 'complete' && $completePo !== null) {
+          $importTitle = 'Import complete';
+          $importLead = 'Purchase order <strong>' . htmlspecialchars($completePo['PONumber']) . '</strong> was created from your import file.';
+          $importLeadHtml = true;
+      } elseif ($step === 'supplier' && $supplierForm !== null) {
+          $importTitle = 'Create supplier for import';
+          $importLead = 'The supplier in your import file is not in the system yet. Review the details below, then create the supplier and finish the import.';
+          $importLeadHtml = false;
+      } else {
+          $importTitle = 'Import Purchase Order';
+          $importLead = 'Upload a completed Excel or CSV template to create a draft PO.';
+          $importLeadHtml = false;
+      }
+      render_list_page_header([
+          'back_href'  => '/po-management/',
+          'back_label' => 'Back to Purchase Orders',
+          'category'   => 'Procurement',
+          'title'      => $importTitle,
+          'lead'       => $importLead,
+          'lead_html'  => $importLeadHtml,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
 
       <?php if ($step === 'complete' && $completePo !== null): ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Import complete</h1>
-        <p class="page-lead">Purchase order <strong><?= htmlspecialchars($completePo['PONumber']) ?></strong> was created from your import file.</p>
-      </div>
 
       <?php if ($warning !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($warning) ?></div>
@@ -163,18 +175,13 @@ require dirname(__DIR__) . '/includes/header.php';
         The draft PO for <?= htmlspecialchars($completePo['SupplierName']) ?> is ready for review.
       </div>
 
-      <div class="module-actions">
-        <a class="btn-primary" href="/po-management/view.php?id=<?= (int) $completePo['POID'] ?>">View Imported PO</a>
-        <a class="btn-secondary" href="/po-management/import.php">Import new PO</a>
-        <a class="btn-secondary" href="/po-management/">Back to PO list</a>
-      </div>
+      <?php render_list_page_toolbar(
+          '<a class="btn-primary" href="/po-management/view.php?id=' . (int) $completePo['POID'] . '">View Imported PO</a>'
+          . '<a class="btn-secondary" href="/po-management/import.php">Import new PO</a>'
+          . '<a class="btn-secondary" href="/po-management/">Back to PO list</a>'
+      ); ?>
 
       <?php elseif ($step === 'supplier' && $supplierForm !== null): ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Create supplier for import</h1>
-        <p class="page-lead">The supplier in your import file is not in the system yet. Review the details below, then create the supplier and finish the import.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -186,11 +193,6 @@ require dirname(__DIR__) . '/includes/header.php';
       ?>
 
       <?php else: ?>
-      <div class="page-hero">
-        <div class="section-label">Procurement</div>
-        <h1>Import Purchase Order</h1>
-        <p class="page-lead">Upload a completed Excel or CSV template to create a draft PO.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

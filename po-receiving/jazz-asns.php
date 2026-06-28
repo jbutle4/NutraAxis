@@ -8,6 +8,7 @@ require dirname(__DIR__) . '/includes/delivery-appointment.php';
 por_require_read();
 
 $activeSlug = $activeSlug ?? 'jazz-asns';
+$jazzAsnsPath = data_profile_page_path('/po-receiving/jazz-asns.php');
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_asns() : ['ok' => true, 'error' => null, 'rows' => []];
 $rows = $listResult['rows'] ?? [];
@@ -45,21 +46,16 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to PO Receiving
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>Jazz ASNs</h1>
-          <p class="page-lead">Advanced shipping notices on file in Jazz OMS.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
-        </div>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => $jazzAsnsPath,
+          'back_label' => 'Back to Jazz ASNs',
+          'category'   => 'Supply Chain',
+          'title'      => 'Jazz ASNs',
+          'lead'       => 'Advanced shipping notices on file in Jazz OMS.',
+          'permission' => permission_label(po_permission_value()),
+      ]);
+      ?>
 
       <?php if ($notice === 'transmitted'): ?>
       <div class="admin-notice is-success" role="status">
@@ -101,7 +97,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php table_sort_render_th(
                   $column,
                   jazz_oms_asn_column_label($column),
-                  '/po-receiving/jazz-asns.php',
+                  $jazzAsnsPath,
                   $asnSortColumns,
                   $listFilters,
                   [],

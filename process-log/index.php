@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/process-log.php';
-require dirname(__DIR__) . '/includes/process-runner.php';
 
 auth_require_module_read('process-log');
 
@@ -11,7 +10,7 @@ $canRerun = auth_can_update(MODULE_PERMISSION_COLUMNS['process-log']);
 $filters = [
     'process_code' => trim($_GET['process_code'] ?? ''),
     'status'       => trim($_GET['status'] ?? ''),
-    'limit'        => 100,
+    'limit'        => 25,
 ] + table_sort_state(PROCESS_LOG_LIST_SORT_COLUMNS, 'started', 'desc', $_GET);
 
 $logs = process_log_list($filters);
@@ -27,22 +26,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner page-inner--wide">
-      <a class="breadcrumb" href="/operations-dashboard/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Dashboard
-      </a>
-
-      <div class="page-hero">
-        <div class="page-hero-head">
-          <div class="module-icon"><?= icon_svg('dashboard', 28) ?></div>
-        </div>
-        <div class="section-label">Operations</div>
-        <h1>Process Log</h1>
-        <p class="page-lead">Execution history for background jobs on Azure Function App Nutra-forecast-tool. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.</p>
-        <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('process-log')) ?></p>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/operations-dashboard/',
+          'back_label' => 'Back to Operations Dashboard',
+          'category'   => 'Operations',
+          'title'      => 'Process Log',
+          'lead'       => 'Execution history for background jobs on Azure Function App Nutra-forecast-tool. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.',
+          'permission' => auth_module_permission_label('process-log'),
+      ]); ?>
 
       <?php if ($notice === 'rerun_success'): ?>
       <div class="admin-notice is-success" role="status">Process rerun completed successfully.</div>
@@ -52,7 +43,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/process-log/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/process-log/">
         <?php table_sort_hidden_inputs($filters, 'started', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -166,8 +157,9 @@ require dirname(__DIR__) . '/includes/header.php';
         </table>
       </div>
 
+      <details class="site-doc-expand">
+        <summary>Registered processes</summary>
       <section class="operations-dashboard-section">
-        <h2 class="operations-dashboard-section-title">Registered Processes</h2>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -191,6 +183,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </table>
         </div>
       </section>
+      </details>
     </div>
   </main>
 <?php

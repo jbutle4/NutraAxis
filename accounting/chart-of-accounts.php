@@ -7,7 +7,7 @@ accounting_require_read();
 
 $activeSlug = 'accounting';
 $accountingSection = 'accounts';
-$listResult = qbo_is_connected() ? qbo_list_accounts() : ['ok' => true, 'rows' => [], 'error' => null];
+$listResult = qbo_list_accounts();
 $qboSortColumns = [
     'number'  => 'Number',
     'name'    => 'Name',
@@ -25,8 +25,13 @@ $qboSortAccessors = [
     'balance' => fn(array $row) => $row['CurrentBalance'] ?? 0,
     'active'  => fn(array $row): string => !empty($row['Active']) ? 'Yes' : 'No',
 ];
-if ($listResult['ok'] && qbo_is_connected()) {
+if ($listResult['ok']) {
     $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['balance'], 'number', 'asc');
+}
+
+$coaLead = 'General ledger accounts synced nightly from QuickBooks Online into Operations. Read-only.';
+if (!empty($listResult['synced_at'])) {
+    $coaLead .= ' Last synced ' . (string) $listResult['synced_at'] . ' UTC.';
 }
 
 $pageTitle = 'Chart of Accounts | Accounting';
@@ -35,19 +40,19 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/accounting/">Back to Accounting</a>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">QuickBooks</div>
-          <h1>Chart of Accounts</h1>
-          <p class="page-lead">General ledger accounts from QuickBooks Online. Read-only.</p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/accounting/',
+          'back_label' => 'Back to Accounting',
+          'category'   => 'QuickBooks',
+          'title'      => 'Chart of Accounts',
+          'lead'       => $coaLead,
+      ]); ?>
+
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
       <?php if (!$listResult['ok']): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($listResult['error']) ?></div>
-      <?php elseif (qbo_is_connected()): ?>
+      <?php elseif (($listResult['rows'] ?? []) !== []): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/chart-of-accounts.php', $listFilters, [], ['balance'], 'number', 'asc'); ?></thead>
@@ -66,6 +71,10 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php endif; ?>
           </tbody>
         </table>
+      </div>
+      <?php else: ?>
+      <div class="admin-notice is-detail" role="status">
+        No cached chart of accounts yet. Connect QuickBooks in Accounting, then run the <strong>QBO Chart of Accounts Sync</strong> process from Process Log.
       </div>
       <?php endif; ?>
     </div>

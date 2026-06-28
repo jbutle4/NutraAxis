@@ -58,11 +58,12 @@ $canManagePayments = po_payment_can_create() || po_payment_can_delete();
                 <th>Confirmation #</th>
                 <th>Made by</th>
                 <th>Comments</th>
+                <th>Files</th>
               </tr>
             </thead>
             <tbody>
               <?php if ($poPayments === []): ?>
-              <tr><td colspan="7">No payments recorded for this purchase order.</td></tr>
+              <tr><td colspan="8">No payments recorded for this purchase order.</td></tr>
               <?php else: ?>
               <?php foreach ($poPayments as $payment): ?>
               <?php
@@ -77,6 +78,14 @@ $canManagePayments = po_payment_can_create() || po_payment_can_delete();
                 <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
                 <td><?= htmlspecialchars($payment['PaymentMadeBy'] ?? '—') ?></td>
                 <td class="production-comments-cell"<?= $comments !== '' ? ' title="' . htmlspecialchars($comments) . '"' : '' ?>><?= htmlspecialchars($commentsPreview) ?></td>
+                <td>
+                  <?php $attachmentCount = (int) ($payment['AttachmentCount'] ?? 0); ?>
+                  <?php if ($attachmentCount > 0 && po_payment_can_update()): ?>
+                  <a class="btn-text" href="/po-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>"><?= $attachmentCount === 1 ? '1 file' : $attachmentCount . ' files' ?></a>
+                  <?php else: ?>
+                  <?= $attachmentCount > 0 ? ($attachmentCount === 1 ? '1 file' : $attachmentCount . ' files') : '—' ?>
+                  <?php endif; ?>
+                </td>
               </tr>
               <?php endforeach; ?>
               <?php endif; ?>

@@ -17,22 +17,16 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Compliance',
+          'title'      => label_module_title(),
+          'lead'       => 'Manage supplement label templates, print batches, compliance checks, version history, white label production orders, and One-A-Day pack fulfillment.',
+          'permission' => permission_label(label_permission_value()),
+      ]); ?>
 
       <?php require dirname(__DIR__) . '/includes/labeling-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="module-icon"><?= icon_svg('tag', 28) ?></div>
-        <div class="section-label">Compliance</div>
-        <h1><?= htmlspecialchars(label_module_title()) ?></h1>
-        <p class="page-lead">Manage supplement label templates, print batches, compliance checks, version history, white label production orders, and One-A-Day pack fulfillment.</p>
-        <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(label_permission_value())) ?></p>
-      </div>
 
       <div class="capability-grid">
         <?php foreach ($areas as $area): ?>

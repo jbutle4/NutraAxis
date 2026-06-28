@@ -29,18 +29,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to PO Receiving
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Supply Chain</div>
-        <h1>New PO Receipt</h1>
-        <p class="page-lead">Create an advanced shipping notice and receiving record for a purchase order.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/po-receiving/',
+          'back_label' => 'Back to PO Receiving',
+          'category'   => 'Supply Chain',
+          'title'      => 'New PO Receipt',
+          'lead'       => 'Create an advanced shipping notice and receiving record for a purchase order.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

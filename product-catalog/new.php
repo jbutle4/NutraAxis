@@ -33,18 +33,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/product-catalog/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to SKU Master
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Products</div>
-        <h1>New SKU</h1>
-        <p class="page-lead">Add a product to the SKU master catalog.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/product-catalog/',
+          'back_label' => 'Back to SKU Master',
+          'category'   => 'Products',
+          'title'      => 'New SKU',
+          'lead'       => 'Add a product to the SKU master catalog.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

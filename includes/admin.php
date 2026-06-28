@@ -8,7 +8,10 @@ const ROLE_PERMISSION_FIELDS = [
     'POApproval'           => 'PO Approval',
     'TEManagement'         => 'Travel & Expense',
     'TEApproval'           => 'T&E Approval',
-    'InventoryReporting'   => 'Jazz Current Inventory',
+    'TEProcessing'         => 'T&E Processing',
+    'QBOInsertApproval'    => 'QBO Insert Approval',
+    'PaymentApproval'      => 'Payment Approval',
+    'InventoryReporting'   => 'Inventory Reporting (Jazz / ACCS / UAT)',
     'SalesReporting'       => 'Sales Reporting',
     'InventoryForecasting' => 'Inventory Forecasting',
     'LabelingOperations'   => 'Labeling Operations',
@@ -46,18 +49,49 @@ const ADMIN_ROLES_LIST_SORT_SQL = [
     'description' => 'RoleDesc',
 ];
 
-function admin_format_datetime(?string $value): string
+function admin_db_to_string(mixed $value): string
+{
+    if ($value === null) {
+        return '';
+    }
+
+    if (is_string($value)) {
+        return $value;
+    }
+
+    if ($value instanceof DateTimeInterface) {
+        return $value->format('Y-m-d H:i:s');
+    }
+
+    if (is_resource($value) && get_resource_type($value) === 'stream') {
+        $contents = stream_get_contents($value);
+
+        return is_string($contents) ? $contents : '';
+    }
+
+    if (is_scalar($value)) {
+        return (string) $value;
+    }
+
+    return '';
+}
+
+function admin_format_datetime(DateTimeInterface|string|null $value): string
 {
     if ($value === null || $value === '') {
         return '—';
     }
 
     try {
-        $dt = new DateTimeImmutable($value);
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('M j, Y g:i A');
+        }
+
+        $dt = new DateTimeImmutable((string) $value);
 
         return $dt->format('M j, Y g:i A');
     } catch (Throwable) {
-        return $value;
+        return is_scalar($value) ? (string) $value : '—';
     }
 }
 
@@ -98,10 +132,7 @@ function admin_get_user(int $userId): ?array
             u.CreateDate,
             u.ModifiedDate,
             u.LastLoginDate,
-            u.LastPasswordReset,
-            u.IsPOApprover,
-            u.IsTEApprover,
-            u.IsPOProcessor
+            u.LastPasswordReset
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserID = :id
@@ -110,6 +141,57 @@ function admin_get_user(int $userId): ?array
     $row = $stmt->fetch();
 
     return $row === false ? null : $row;
+}
+
+function admin_list_users_with_permission(string $column, string $action = 'U'): array
+{
+    if (!array_key_exists($column, ROLE_PERMISSION_FIELDS)) {
+        return [];
+    }
+
+    $action = strtoupper($action);
+    if (!isset(PERMISSION_ACTIONS[$action])) {
+        return [];
+    }
+
+    $pdo = db();
+    $sql = <<<SQL
+        SELECT
+            u.UserID,
+            u.UserName,
+            u.UserLogin,
+            r.RoleName
+        FROM dbo.[User] u
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE r.{$column} LIKE :permission_pattern
+          AND u.UserLogin IS NOT NULL
+          AND LTRIM(RTRIM(u.UserLogin)) <> ''
+        ORDER BY u.UserName
+    SQL;
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['permission_pattern' => '%' . $action . '%']);
+
+    return $stmt->fetchAll();
+}
+
+function admin_user_has_role_permission(int $userId, string $column, string $action = 'U'): bool
+{
+    if (!array_key_exists($column, ROLE_PERMISSION_FIELDS)) {
+        return false;
+    }
+
+    $pdo = db();
+    $sql = <<<SQL
+        SELECT r.{$column}
+        FROM dbo.[User] u
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE u.UserID = :user_id
+    SQL;
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['user_id' => $userId]);
+    $value = $stmt->fetchColumn();
+
+    return permission_has($value === false ? null : (string) $value, $action);
 }
 
 function admin_list_roles(array $filters = []): array
@@ -154,9 +236,6 @@ function admin_save_user(array $input, ?int $userId = null): array
     $userLogin = trim($input['user_login'] ?? '');
     $password = (string) ($input['user_password'] ?? '');
     $roleId = (int) ($input['user_assigned_role'] ?? 0);
-    $isPoApprover = !empty($input['is_po_approver']);
-    $isTeApprover = !empty($input['is_te_approver']);
-    $isPoProcessor = !empty($input['is_po_processor']);
     $actorId = auth_user()['UserID'] ?? null;
 
     if ($userName === '' || $userLogin === '' || $roleId <= 0) {
@@ -183,25 +262,20 @@ function admin_save_user(array $input, ?int $userId = null): array
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.[User] (
                 UserName, UserLogin, UserPassword, UserAssignedRole,
-                IsPOApprover, IsTEApprover, IsPOProcessor,
                 CreateDate, ModifiedDate, LastPasswordReset, Modifiedbyuser
             )
             OUTPUT INSERTED.UserID AS inserted_id
             VALUES (
                 :name, :login, :password, :role,
-                :is_po_approver, :is_te_approver, :is_po_processor,
                 SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME(), :modified_by
             )
         SQL);
         $stmt->execute([
-            'name'            => $userName,
-            'login'           => $userLogin,
-            'password'        => $password,
-            'role'            => $roleId,
-            'is_po_approver'  => $isPoApprover ? 1 : 0,
-            'is_te_approver'  => $isTeApprover ? 1 : 0,
-            'is_po_processor' => $isPoProcessor ? 1 : 0,
-            'modified_by'     => $actorId,
+            'name'        => $userName,
+            'login'       => $userLogin,
+            'password'    => $password,
+            'role'        => $roleId,
+            'modified_by' => $actorId,
         ]);
 
         $newId = db_fetch_inserted_int($stmt, 'inserted_id');
@@ -221,14 +295,11 @@ function admin_save_user(array $input, ?int $userId = null): array
     }
 
     $fields = [
-        'name'            => $userName,
-        'login'           => $userLogin,
-        'role'            => $roleId,
-        'is_po_approver'  => $isPoApprover ? 1 : 0,
-        'is_te_approver'  => $isTeApprover ? 1 : 0,
-        'is_po_processor' => $isPoProcessor ? 1 : 0,
-        'actor'           => $actorId,
-        'id'              => $userId,
+        'name'  => $userName,
+        'login' => $userLogin,
+        'role'  => $roleId,
+        'actor' => $actorId,
+        'id'    => $userId,
     ];
 
     if ($password !== '') {
@@ -238,9 +309,6 @@ function admin_save_user(array $input, ?int $userId = null): array
                 UserLogin = :login,
                 UserPassword = :password,
                 UserAssignedRole = :role,
-                IsPOApprover = :is_po_approver,
-                IsTEApprover = :is_te_approver,
-                IsPOProcessor = :is_po_processor,
                 ModifiedDate = SYSUTCDATETIME(),
                 LastPasswordReset = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
@@ -253,9 +321,6 @@ function admin_save_user(array $input, ?int $userId = null): array
             SET UserName = :name,
                 UserLogin = :login,
                 UserAssignedRole = :role,
-                IsPOApprover = :is_po_approver,
-                IsTEApprover = :is_te_approver,
-                IsPOProcessor = :is_po_processor,
                 ModifiedDate = SYSUTCDATETIME(),
                 Modifiedbyuser = :actor
             WHERE UserID = :id
@@ -346,7 +411,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.Role (
                 RoleName, RoleDesc, RoleCreateDate, ModifiedbyUser,
-                POManagement, POApproval, TEManagement, TEApproval,
+                POManagement, POApproval, TEManagement, TEApproval, TEProcessing,
+                QBOInsertApproval, PaymentApproval,
                 InventoryReporting, SalesReporting, InventoryForecasting,
                 LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, Support, Accounting,
                 UserAdmin, RoleAdmin
@@ -354,32 +420,36 @@ function admin_save_role(array $input, ?int $roleId = null): array
             OUTPUT INSERTED.RoleID AS inserted_id
             VALUES (
                 :name, :desc, SYSUTCDATETIME(), :modified_by,
-                :po, :po_approval, :te_mgmt, :te_approval,
+                :po, :po_approval, :te_mgmt, :te_approval, :te_processing,
+                :qbo_insert_approval, :payment_approval,
                 :inv_rep, :sales_rep, :inv_forecast,
                 :labeling, :dashboard, :legal, :catalog, :links, :support, :accounting,
                 :user_admin, :role_admin
             )
         SQL);
         $stmt->execute([
-            'name'          => $roleName,
-            'desc'          => $roleDesc !== '' ? $roleDesc : null,
-            'modified_by'   => $actorId,
-            'po'            => $permissions['POManagement'],
-            'po_approval'   => $permissions['POApproval'],
-            'te_mgmt'       => $permissions['TEManagement'],
-            'te_approval'   => $permissions['TEApproval'],
-            'inv_rep'       => $permissions['InventoryReporting'],
-            'sales_rep'     => $permissions['SalesReporting'],
-            'inv_forecast'  => $permissions['InventoryForecasting'],
-            'labeling'      => $permissions['LabelingOperations'],
-            'dashboard'     => $permissions['OperationsDashboard'],
-            'legal'         => $permissions['LegalAgreements'],
-            'catalog'       => $permissions['ProductCatalog'],
-            'links'         => $permissions['LinksIndex'],
-            'support'       => $permissions['Support'],
-            'accounting'    => $permissions['Accounting'],
-            'user_admin'    => $permissions['UserAdmin'],
-            'role_admin'    => $permissions['RoleAdmin'],
+            'name'                 => $roleName,
+            'desc'                   => $roleDesc !== '' ? $roleDesc : null,
+            'modified_by'            => $actorId,
+            'po'                     => $permissions['POManagement'],
+            'po_approval'            => $permissions['POApproval'],
+            'te_mgmt'                => $permissions['TEManagement'],
+            'te_approval'            => $permissions['TEApproval'],
+            'te_processing'          => $permissions['TEProcessing'],
+            'qbo_insert_approval'    => $permissions['QBOInsertApproval'],
+            'payment_approval'       => $permissions['PaymentApproval'],
+            'inv_rep'                => $permissions['InventoryReporting'],
+            'sales_rep'              => $permissions['SalesReporting'],
+            'inv_forecast'           => $permissions['InventoryForecasting'],
+            'labeling'               => $permissions['LabelingOperations'],
+            'dashboard'              => $permissions['OperationsDashboard'],
+            'legal'                  => $permissions['LegalAgreements'],
+            'catalog'                => $permissions['ProductCatalog'],
+            'links'                  => $permissions['LinksIndex'],
+            'support'                => $permissions['Support'],
+            'accounting'             => $permissions['Accounting'],
+            'user_admin'             => $permissions['UserAdmin'],
+            'role_admin'             => $permissions['RoleAdmin'],
         ]);
 
         $newId = db_fetch_inserted_int($stmt, 'inserted_id');
@@ -407,6 +477,9 @@ function admin_save_role(array $input, ?int $roleId = null): array
             POApproval = :po_approval,
             TEManagement = :te_mgmt,
             TEApproval = :te_approval,
+            TEProcessing = :te_processing,
+            QBOInsertApproval = :qbo_insert_approval,
+            PaymentApproval = :payment_approval,
             InventoryReporting = :inv_rep,
             SalesReporting = :sales_rep,
             InventoryForecasting = :inv_forecast,
@@ -425,9 +498,14 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'name'          => $roleName,
         'desc'          => $roleDesc !== '' ? $roleDesc : null,
         'actor'         => $actorId,
-        'po'            => $permissions['POManagement'],
-        'po_approval'   => $permissions['POApproval'],
-        'inv_rep'       => $permissions['InventoryReporting'],
+        'po'                  => $permissions['POManagement'],
+        'po_approval'         => $permissions['POApproval'],
+        'te_mgmt'             => $permissions['TEManagement'],
+        'te_approval'         => $permissions['TEApproval'],
+        'te_processing'       => $permissions['TEProcessing'],
+        'qbo_insert_approval' => $permissions['QBOInsertApproval'],
+        'payment_approval'    => $permissions['PaymentApproval'],
+        'inv_rep'             => $permissions['InventoryReporting'],
         'sales_rep'     => $permissions['SalesReporting'],
         'inv_forecast'  => $permissions['InventoryForecasting'],
         'labeling'      => $permissions['LabelingOperations'],

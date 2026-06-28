@@ -7,6 +7,126 @@ function site_documentation_require_read(): void
     auth_require_module_read('site-documentation');
 }
 
+function site_documentation_data_profile_overview(): array
+{
+    return [
+        [
+            'title' => 'Production (default)',
+            'body'  => 'Most portal pages use the production data profile. Azure SQL connects to nutraaxis (DB_NAME). Jazz OMS reads JAZZ_DOMAIN_PROD / JAZZ_*_PROD keys. Adobe Commerce reads ACCS production tenant (ADOBE_COMMERCE_PRODUCTION_ENVIRONMENT or production). QuickBooks uses QBO_CLIENT_ID_PROD when connected.',
+        ],
+        [
+            'title' => 'UAT / test profile',
+            'body'  => 'Pages under *-uat/ paths or jazz-asns-uat.php set data_profile_set(\'uat\') before loading shared templates. Jazz uses JAZZ_UAT_* (fallback JAZZ_*). Adobe Commerce uses stage/dev tenant (ADOBE_COMMERCE_UAT_ENVIRONMENT, default stage). Portal SQL is still nutraaxis — UAT pages only change external API targets, not the operations database.',
+        ],
+        [
+            'title' => 'Background jobs',
+            'body'  => 'Scheduled Azure Functions write to production SQL (nutraaxis) and call production ACCS/Jazz credentials configured on the Function App. Manual reruns from Process Log call Nutra-forecast-tool via NUTRA_FUNCTIONS_BASE_URL.',
+        ],
+    ];
+}
+
+function site_documentation_page_data_sources(): array
+{
+    return [
+        ['path' => '/po-management/', 'title' => 'PO Management', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'Portal PO workflow data'],
+        ['path' => '/po-receiving/', 'title' => 'PO Receiving', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => 'prod (transmit)', 'accs' => '—', 'notes' => 'ASN transmit uses production Jazz'],
+        ['path' => '/po-payments/', 'title' => 'PO Payments', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
+        ['path' => '/product-catalog/', 'title' => 'Product SKU Master', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
+        ['path' => '/supplier-management/', 'title' => 'Supplier Management', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
+        ['path' => '/delivery-scheduling-log/', 'title' => 'Delivery Schedule Log', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => 'prod (links)', 'accs' => '—', 'notes' => ''],
+        ['path' => '/inventory-demand/', 'title' => 'Inventory Forecasting', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'Reads ForecastPlan, JazzInventorySnapshot tables'],
+        ['path' => '/accs-inventory-reporting/', 'title' => 'ACCS Inventory Reporting', 'tier' => 'production', 'sql' => '—', 'jazz' => '—', 'accs' => 'production', 'notes' => 'Live ACCS MSI source items'],
+        ['path' => '/accs-inventory-reporting-uat/', 'title' => 'ACCS Inventory (stage)', 'tier' => 'uat', 'sql' => '—', 'jazz' => '—', 'accs' => 'stage', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/inventory-reporting/', 'title' => 'Jazz Current Inventory', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => '—', 'notes' => 'Live Jazz OMS inventory API'],
+        ['path' => '/inventory-reporting-uat/', 'title' => 'Jazz Current Inventory (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'UAT', 'accs' => '—', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/inventory-reconciliation/', 'title' => 'Inventory Reconciliation', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => 'production', 'notes' => 'Side-by-side Jazz + ACCS'],
+        ['path' => '/inventory-reconciliation-uat/', 'title' => 'Inventory Reconciliation (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'UAT', 'accs' => 'stage', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/jazz-item-master/', 'title' => 'Jazz Item Master', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => '—', 'notes' => ''],
+        ['path' => '/jazz-item-master-uat/', 'title' => 'Jazz Item Master (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'UAT', 'accs' => '—', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/po-receiving/jazz-asns.php', 'title' => 'Jazz ASNs', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => '—', 'notes' => 'Read-only Jazz ASN list'],
+        ['path' => '/po-receiving/jazz-asns-uat.php', 'title' => 'Jazz ASNs (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'UAT', 'accs' => '—', 'notes' => 'UAT wrapper → jazz-asns.php'],
+        ['path' => '/sales-reporting/accs-order-report/', 'title' => 'ACCS Order Report', 'tier' => 'production', 'sql' => '—', 'jazz' => '—', 'accs' => 'production', 'notes' => ''],
+        ['path' => '/sales-reporting/jazz-order-report/', 'title' => 'Jazz Order Report', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => '—', 'notes' => 'Jazz OMS /api/v1/order/status'],
+        ['path' => '/sales-reporting/accs-order-report-uat/', 'title' => 'ACCS Order Report (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => '—', 'accs' => 'stage', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/sales-reporting/jazz-order-report-uat/', 'title' => 'Jazz Order Report (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'uat', 'accs' => '—', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/sales-reporting/daily-sales-summary/', 'title' => 'Daily Sales Summary', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'DailySalesSummary table (prod ACCS rollup)'],
+        ['path' => '/sales-reporting/monthly-sales-summary/', 'title' => 'Monthly Sales Summary', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'MonthlySalesSummary table'],
+        ['path' => '/accounting/', 'title' => 'Accounting', 'tier' => 'production', 'sql' => 'nutraaxis (tokens)', 'jazz' => '—', 'accs' => '—', 'notes' => 'QuickBooks Online production (QBO_*_PROD)'],
+        ['path' => '/labeling-operations/', 'title' => 'Custom Order Fulfillment', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
+        ['path' => '/legal-agreements/', 'title' => 'Legal Agreements', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
+        ['path' => '/support/', 'title' => 'Support', 'tier' => 'external', 'sql' => '—', 'jazz' => '—', 'accs' => '—', 'notes' => 'Zendesk API'],
+        ['path' => '/process-log/', 'title' => 'Process Log', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'ProcessExecutionLog; reruns call Function App'],
+        ['path' => '/site-admin/', 'title' => 'Site Administration', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'Users, roles, audit log'],
+    ];
+}
+
+function site_documentation_azure_sql(): array
+{
+    return [
+        'summary' => 'Operations portal and Azure Functions share Azure SQL Server nutraaxisdb01. The PHP App Service and scheduled jobs read/write nutraaxis only.',
+        'databases' => [
+            ['name' => 'nutraaxis', 'role' => 'Production', 'used_by' => 'PHP portal (DB_NAME), Azure Functions scheduled jobs, Process Log'],
+        ],
+        'connection' => [
+            'Portal env keys' => 'DB_HOST or DB_SERVER, DB_NAME, DB_USER, DB_PASS (or DB_PASSWORD), DB_PORT',
+            'Function App keys' => 'DB_SERVER, DB_NAME_PRODUCTION (or DB_NAME)',
+            'Local dev' => '.env in repo root (never deployed)',
+        ],
+        'migrations' => 'Schema changes live in sql/ as numbered .sql files (e.g. 075_create_po_payment_attachment.sql). Apply to nutraaxis before deploying code that depends on new columns or tables.',
+    ];
+}
+
+function site_documentation_function_apps(): array
+{
+    return [
+        'apps' => [
+            [
+                'name' => 'Nutra-forecast-tool',
+                'role' => 'Default Function App for scheduled jobs and Process Log reruns',
+                'url_key' => 'NUTRA_FUNCTIONS_BASE_URL',
+                'key_key' => 'NUTRA_FUNCTIONS_KEY',
+            ],
+            [
+                'name' => 'Nutra-forecast-tool-prod',
+                'role' => 'Production-only processes (e.g. accs-sales-order-sync)',
+                'url_key' => 'NUTRA_FUNCTIONS_PROD_BASE_URL',
+                'key_key' => 'NUTRA_FUNCTIONS_PROD_KEY',
+            ],
+        ],
+        'functions' => [
+            ['name' => 'daily-sales-summary', 'trigger' => 'Timer (daily 2:00 AM Central)', 'data' => 'Production ACCS orders → nutraaxis.DailySalesSummary'],
+            ['name' => 'weekly-chain', 'trigger' => 'Timer (Sunday 1:00 AM Central)', 'data' => 'MonthlySalesSummary rollup + ForecastPlan refresh'],
+            ['name' => 'jazz-inventory-snapshot', 'trigger' => 'Timer (Sunday noon Central)', 'data' => 'Production Jazz OMS → nutraaxis.JazzInventorySnapshot'],
+            ['name' => 'process-retry', 'trigger' => 'Service Bus queue process-retry', 'data' => 'Retries failed ProcessExecutionLog jobs'],
+            ['name' => 'process-execute', 'trigger' => 'HTTP POST (function key)', 'data' => 'Manual/portal-triggered job execution'],
+            ['name' => 'accs-sales-order-sync', 'trigger' => 'Timer (every 2 hours)', 'data' => 'Production ACCS order detail sync — Nutra-forecast-tool-prod only'],
+            ['name' => 'accs-order-webhook', 'trigger' => 'HTTP (anonymous + secret header)', 'data' => 'Production ACCS order events → fulfillment routing email'],
+            ['name' => 'accs-employee-customer-create', 'trigger' => 'HTTP (function key)', 'data' => 'Creates ACCS customers from employee list'],
+            ['name' => 'ping', 'trigger' => 'HTTP', 'data' => 'Health check'],
+            ['name' => 'accs-jazz-order-test', 'trigger' => 'HTTP (function key)', 'data' => 'Integration test endpoint — not scheduled'],
+        ],
+        'source' => 'Function source is in the repo functions/ folder. Deploy separately from the PHP portal (not included in npm run upload).',
+    ];
+}
+
+function site_documentation_service_bus(): array
+{
+    return [
+        'summary' => 'Azure Service Bus schedules delayed retries when a background job fails. The process-retry function consumes messages from the process-retry queue.',
+        'env_keys' => [
+            'SERVICEBUS_CONNECTION_STRING' => 'Namespace connection string on the Function App',
+            'SERVICEBUS_PROCESS_RETRY_QUEUE' => 'Queue name (default: process-retry)',
+        ],
+        'flow' => [
+            'A timer or manual job fails after writing ProcessExecutionLog.',
+            'process-runner schedules a Service Bus message with NextRetryAt (2, 4, 8 minute backoff).',
+            'process-retry function dequeues the message and re-runs the job.',
+            'After max attempts the job is marked Abandoned and may email alerts@nutraaxislabs.zendesk.com.',
+        ],
+        'message_type' => 'process-retry — body includes log_id, process_code, attempt_count',
+    ];
+}
+
 function site_documentation_module_sections(): array
 {
     global $appFunctions, $inventorySubModules;
@@ -24,11 +144,25 @@ function site_documentation_module_sections(): array
         if ($module['slug'] === 'inventory-management') {
             foreach ($inventorySubModules as $child) {
                 $childModule = get_module($child['slug']);
+                $dataSource = site_documentation_data_source_note($child['href'], $child['tier'] ?? ENVIRONMENT_TIER_PRODUCTION);
                 $entry['children'][] = [
                     'title'       => $child['title'],
                     'description' => $child['desc'],
                     'href'        => $child['href'],
                     'note'        => $childModule['headline'] ?? null,
+                    'data_source' => $dataSource,
+                ];
+            }
+        }
+
+        if ($module['slug'] === 'sales-reporting') {
+            foreach (app_sales_submodules() as $child) {
+                $dataSource = site_documentation_data_source_note($child['href'], $child['tier'] ?? ENVIRONMENT_TIER_PRODUCTION);
+                $entry['children'][] = [
+                    'title'       => $child['title'],
+                    'description' => $child['desc'],
+                    'href'        => $child['href'],
+                    'data_source' => $dataSource,
                 ];
             }
         }
@@ -53,7 +187,7 @@ function site_documentation_module_sections(): array
         'href'        => null,
         'children'    => [
             ['title' => 'Process Log', 'description' => 'Execution history for scheduled background jobs, with manual rerun for failed runs.', 'href' => '/process-log/'],
-            ['title' => 'Enhancement Log', 'description' => 'Portal enhancement requests with status, due dates, and notes.', 'href' => '/enhancement-log/'],
+            ['title' => 'IT Product Backlog', 'description' => 'IT product backlog items with type, status, due dates, and notes.', 'href' => '/enhancement-log/'],
             ['title' => 'Links Index', 'description' => 'Curated shortcuts surfaced on the Operations Dashboard.', 'href' => '/links-index/'],
             ['title' => 'My Account', 'description' => 'View your profile and change your password.', 'href' => '/my-account/'],
             ['title' => 'Site Documentation', 'description' => 'This page — module reference and scheduled process guide.', 'href' => '/site-documentation/'],
@@ -61,6 +195,37 @@ function site_documentation_module_sections(): array
     ];
 
     return $sections;
+}
+
+function site_documentation_data_source_note(string $href, string $tier = ENVIRONMENT_TIER_PRODUCTION): string
+{
+    $normalizedHref = parse_url($href, PHP_URL_PATH) ?: $href;
+
+    foreach (site_documentation_page_data_sources() as $row) {
+        $rowPath = rtrim($row['path'], '/');
+        $checkPath = rtrim($normalizedHref, '/');
+        if ($row['path'] === $href || $rowPath === $checkPath) {
+            $parts = [];
+            if (($row['sql'] ?? '') !== '' && $row['sql'] !== '—') {
+                $parts[] = 'SQL: ' . $row['sql'];
+            }
+            if (($row['jazz'] ?? '') !== '' && $row['jazz'] !== '—') {
+                $parts[] = 'Jazz: ' . $row['jazz'];
+            }
+            if (($row['accs'] ?? '') !== '' && $row['accs'] !== '—') {
+                $parts[] = 'ACCS: ' . $row['accs'];
+            }
+            if ($parts === []) {
+                $parts[] = 'Portal SQL: nutraaxis';
+            }
+
+            return implode(' · ', $parts);
+        }
+    }
+
+    return environment_tier_normalize($tier) === ENVIRONMENT_TIER_UAT
+        ? 'UAT profile — external APIs use test credentials'
+        : 'Production profile — portal SQL nutraaxis';
 }
 
 function site_documentation_scheduled_processes(): array
@@ -85,10 +250,6 @@ function site_documentation_scheduled_processes(): array
         array_merge($registry['jazz-inventory-snapshot'], [
             'writes_to' => 'JazzInventorySnapshot',
             'notes'     => 'Pulls live Jazz OMS inventory by SKU and facility.',
-        ]),
-        array_merge($registry['staging-db-sync'], [
-            'writes_to' => 'Staging database tables',
-            'notes'     => 'Incremental sync from production SQL to staging SQL.',
         ]),
         [
             'code'          => 'process-retry',
@@ -139,7 +300,7 @@ function site_documentation_process_monitoring(): array
         ],
         [
             'title' => 'Manual execution',
-            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Reruns call Azure Function App process-execute (requires NUTRA_FUNCTIONS_BASE_URL and NUTRA_FUNCTIONS_KEY on this App Service). Function App source and scheduled job logic live in the separate nutraaxis-azure repository; developers can POST to /api/process-execute on the Function App or run jobs from that repo locally.',
+            'body'  => 'Operators with update access can rerun failed or abandoned jobs from Process Log. Reruns call Azure Function App process-execute (requires NUTRA_FUNCTIONS_BASE_URL and NUTRA_FUNCTIONS_KEY on this App Service). Function source lives in the repo functions/ folder; deploy to Nutra-forecast-tool separately from the PHP portal.',
         ],
     ];
 }

@@ -22,24 +22,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Inventory Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Inventory</div>
-          <h1>Supplier Management</h1>
-          <p class="page-lead">Maintain supplier profiles, contacts, and addresses used when creating purchase orders.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(supplier_permission_value())) ?></p>
-        </div>
-        <?php if (supplier_can_create()): ?>
-        <a class="btn-primary" href="/supplier-management/new.php">New Supplier</a>
-        <?php endif; ?>
-      </div>
+      <?php
+      $listToolbar = supplier_can_create() ? '<a class="btn-primary" href="/supplier-management/new.php">New Supplier</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Inventory Management',
+          'category'   => 'Inventory',
+          'title'      => 'Supplier Management',
+          'lead'       => 'Maintain supplier profiles, contacts, and addresses used when creating purchase orders.',
+          'permission' => permission_label(supplier_permission_value()),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Supplier created successfully.</div>
@@ -51,7 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Supplier activated successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/supplier-management/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/supplier-management/">
         <?php table_sort_hidden_inputs($listFilters, 'name', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -73,6 +66,8 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </form>
 
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
+
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -90,7 +85,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($suppliers === []): ?>
-            <tr><td colspan="7">No suppliers match your filters.</td></tr>
+            <tr><td colspan="8">No suppliers match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($suppliers as $supplier): ?>
             <tr>
@@ -104,6 +99,10 @@ require dirname(__DIR__) . '/includes/header.php';
                 <?php endif; ?>
               </td>
               <td><span class="status-badge <?= supplier_status_class(!empty($supplier['IsActive'])) ?>"><?= htmlspecialchars(supplier_status_label(!empty($supplier['IsActive']))) ?></span></td>
+              <td>
+                <?php $qboStatus = (string) ($supplier['QBO_SyncStatus'] ?? 'NotSynced'); ?>
+                <span class="status-badge <?= supplier_qbo_sync_status_class($qboStatus) ?>" title="<?= htmlspecialchars(supplier_qbo_sync_status_label($qboStatus)) ?>"><?= htmlspecialchars(supplier_qbo_sync_status_short_label($qboStatus)) ?></span>
+              </td>
               <td><?= (int) $supplier['POCount'] ?></td>
               <?php table_view_edit_cell(
                   '/supplier-management/view.php?id=' . (int) $supplier['SupplierID'],

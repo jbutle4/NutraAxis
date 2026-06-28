@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         po_payment_require_create();
         $result = po_payment_save($_POST);
         if ($result['ok']) {
-            header('Location: /po-management/view.php?id=' . $poId . '&payment_notice=added', true, 302);
+            header('Location: /po-payments/edit.php?id=' . (int) $result['id'] . '&notice=created', true, 302);
             exit;
         }
         $error = $result['error'];
@@ -67,27 +67,19 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
-      <a class="breadcrumb" href="/po-management/view.php?id=<?= $poId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($order['PONumber']) ?>
-      </a>
+    <div class="container page-inner page-inner--wide">
+      <?php
+      render_list_page_header([
+          'back_href'  => '/po-management/view.php?id=' . $poId,
+          'back_label' => 'Back to ' . $order['PONumber'],
+          'category'   => 'Procurement',
+          'title'      => 'PO payments',
+          'lead'       => '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['PONumber']) . ' · ' . htmlspecialchars($order['SupplierName']),
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php require dirname(__DIR__) . '/includes/po-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Procurement</div>
-          <h1>PO payments</h1>
-          <p class="page-lead">
-            <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
-            · <?= htmlspecialchars($order['PONumber']) ?>
-            · <?= htmlspecialchars($order['SupplierName']) ?>
-          </p>
-        </div>
-      </div>
 
       <?php require dirname(__DIR__) . '/includes/po-payment-po-form.php'; ?>
     </div>

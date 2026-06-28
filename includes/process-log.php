@@ -29,7 +29,7 @@ const PROCESS_LOG_LIST_SORT_SQL = [
     'process'    => 'pel.ProcessName',
     'started'    => 'pel.StartedAt',
     'finished'   => 'pel.FinishedAt',
-    'duration'   => 'pel.StartedAt',
+    'duration'   => 'DATEDIFF(SECOND, pel.StartedAt, ISNULL(pel.FinishedAt, pel.StartedAt))',
     'attempts'   => 'pel.AttemptCount',
     'next_retry' => 'pel.NextRetryAt',
     'trigger'    => 'pel.TriggerType',
@@ -355,6 +355,101 @@ function process_log_select_columns(): string
     SQL;
 }
 
+function process_log_list_select_columns(): string
+{
+    return <<<SQL
+        pel.ProcessExecutionLogID,
+        pel.ProcessCode,
+        pel.ProcessName,
+        pel.StartedAt,
+        pel.FinishedAt,
+        pel.Status,
+        pel.ResultMessage,
+        LEFT(CAST(pel.ErrorMessage AS NVARCHAR(500)), 500) AS ErrorMessage,
+        pel.TriggerType,
+        pel.TriggeredByUserID,
+        pel.AttemptCount,
+        pel.MaxAttempts,
+        pel.NextRetryAt
+    SQL;
+}
+
+function process_registry(): array
+{
+    return [
+        'daily-sales-summary' => [
+            'code'          => 'daily-sales-summary',
+            'name'          => 'Daily Sales Summary',
+            'description'   => 'Summarize previous day ACCS sales by SKU into DailySalesSummary.',
+            'function_name' => 'daily-sales-summary',
+            'schedule'      => 'Daily at 2:00 AM US Central',
+        ],
+        'jazz-inventory-snapshot' => [
+            'code'          => 'jazz-inventory-snapshot',
+            'name'          => 'Jazz Inventory Snapshot',
+            'description'   => 'Capture weekly Jazz OMS inventory levels by SKU and facility.',
+            'function_name' => 'jazz-inventory-snapshot',
+            'schedule'      => 'Every Sunday at 12:00 PM US Central',
+        ],
+        'monthly-sales-summary' => [
+            'code'          => 'monthly-sales-summary',
+            'name'          => 'Monthly Sales Summary',
+            'description'   => 'Roll up DailySalesSummary into monthly SKU totals for forecasting.',
+            'function_name' => 'weekly-chain',
+            'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
+        ],
+        'forecast-plan' => [
+            'code'          => 'forecast-plan',
+            'name'          => 'Inventory Forecast Plan',
+            'description'   => 'Generate weighted moving average forecasts and inventory projections by SKU.',
+            'function_name' => 'weekly-chain',
+            'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
+        ],
+        'qbo-coa-sync' => [
+            'code'          => 'qbo-coa-sync',
+            'name'          => 'QBO Chart of Accounts Sync',
+            'description'   => 'Sync QuickBooks Online chart of accounts into dbo.QBO_COA.',
+            'function_name' => 'qbo-coa-sync',
+            'schedule'      => 'Every Friday at 6:00 PM US Central',
+        ],
+        'accs-order-fulfillment-jazz' => [
+            'code'          => 'accs-order-fulfillment-jazz',
+            'name'          => 'ACCS Jazz Order Fulfillment',
+            'description'   => 'Service Bus subscriber that submits Cart fulfillment lines to Jazz OMS UAT.',
+            'function_name' => 'accs-order-fulfillment-jazz',
+            'schedule'      => 'Service Bus subscriber (not scheduled)',
+        ],
+        'accs-cppc-test-new-order' => [
+            'code'          => 'accs-cppc-test-new-order',
+            'name'          => 'ACCS CPPC Order Notification',
+            'description'   => 'Service Bus subscriber that emails CPPC fulfillment lines for test orders.',
+            'function_name' => 'accs-cppc-test-new-order',
+            'schedule'      => 'Service Bus subscriber (not scheduled)',
+        ],
+        'accs-mtl-test-new-order' => [
+            'code'          => 'accs-mtl-test-new-order',
+            'name'          => 'ACCS MTL Order Notification',
+            'description'   => 'Service Bus subscriber that emails MTL fulfillment lines for test orders.',
+            'function_name' => 'accs-mtl-test-new-order',
+            'schedule'      => 'Service Bus subscriber (not scheduled)',
+        ],
+        'accs-qbo-sandbox-new-order-insert' => [
+            'code'          => 'accs-qbo-sandbox-new-order-insert',
+            'name'          => 'ACCS QBO Sandbox Order Insert',
+            'description'   => 'Service Bus subscriber that posts QuickBooks sandbox sales receipts for test orders.',
+            'function_name' => 'accs-qbo-sandbox-new-order-insert',
+            'schedule'      => 'Service Bus subscriber (not scheduled)',
+        ],
+        'accs-order-webhook' => [
+            'code'          => 'accs-order-webhook',
+            'name'          => 'ACCS Order Webhook',
+            'description'   => 'Inbound ACCS webhook that publishes canonical orders to Service Bus.',
+            'function_name' => 'accs-order-webhook',
+            'schedule'      => 'HTTP webhook (not scheduled)',
+        ],
+    ];
+}
+
 function process_log_get(int $logId): ?array
 {
     if ($logId <= 0) {
@@ -383,21 +478,20 @@ function process_log_get(int $logId): ?array
 function process_log_list(array $filters = []): array
 {
     $pdo = db();
-    db_apply_sql_server_options($pdo);
+
+    $limit = max(1, min(100, (int) ($filters['limit'] ?? 25)));
 
     $sql = <<<SQL
-        SELECT TOP (:limit)
+        SELECT TOP ({$limit})
             {cols},
             u.UserName AS TriggeredByUserName
         FROM dbo.ProcessExecutionLog pel
         LEFT JOIN dbo.[User] u ON u.UserID = pel.TriggeredByUserID
         WHERE 1 = 1
     SQL;
-    $sql = str_replace('{cols}', process_log_select_columns(), $sql);
+    $sql = str_replace('{cols}', process_log_list_select_columns(), $sql);
 
-    $params = [
-        'limit' => max(1, min(500, (int) ($filters['limit'] ?? 100))),
-    ];
+    $params = [];
 
     $processCode = trim((string) ($filters['process_code'] ?? ''));
     if ($processCode !== '') {

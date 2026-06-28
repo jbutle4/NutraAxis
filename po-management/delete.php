@@ -17,19 +17,10 @@ if ($result['ok']) {
     exit;
 }
 
-$activeSlug = 'po-management';
-$pageTitle = 'Delete PO | PO Management';
+if ($poId > 0) {
+    header('Location: /po-management/view.php?id=' . $poId . '&delete_error=' . rawurlencode((string) $result['error']), true, 302);
+    exit;
+}
 
-require dirname(__DIR__) . '/includes/head.php';
-require dirname(__DIR__) . '/includes/header.php';
-?>
-  <main class="page-main">
-    <div class="container page-inner">
-      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($result['error']) ?></div>
-      <div class="module-actions">
-        <a class="btn-secondary" href="/po-management/">Back to Purchase Orders</a>
-      </div>
-    </div>
-  </main>
-<?php
-require dirname(__DIR__) . '/includes/footer.php';
+header('Location: /po-management/?delete_error=' . rawurlencode((string) $result['error']), true, 302);
+exit;

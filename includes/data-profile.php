@@ -58,6 +58,12 @@ function environment_tier_card_class(?string $tier): string
 function environment_tier_sort(array $items): array
 {
     usort($items, static function (array $a, array $b): int {
+        $sortA = $a['sort'] ?? null;
+        $sortB = $b['sort'] ?? null;
+        if ($sortA !== null || $sortB !== null) {
+            return ($sortA ?? PHP_INT_MAX) <=> ($sortB ?? PHP_INT_MAX);
+        }
+
         $orderA = ENVIRONMENT_TIER_ORDER[environment_tier_normalize($a['tier'] ?? ENVIRONMENT_TIER_PRODUCTION)] ?? 99;
         $orderB = ENVIRONMENT_TIER_ORDER[environment_tier_normalize($b['tier'] ?? ENVIRONMENT_TIER_PRODUCTION)] ?? 99;
 
@@ -83,6 +89,37 @@ function data_profile_env_value(string $uatKey, string $productionKey, string $l
 function hub_card_tier_class(array $item): string
 {
     return environment_tier_card_class($item['tier'] ?? ENVIRONMENT_TIER_PRODUCTION);
+}
+
+/**
+ * Map a production page path to its UAT twin when the active data profile is UAT.
+ */
+function data_profile_page_path(string $productionPath): string
+{
+    if (!data_profile_is_uat()) {
+        return $productionPath;
+    }
+
+    static $map = [
+        '/inventory-reporting'              => '/inventory-reporting-uat',
+        '/inventory-reporting/'             => '/inventory-reporting-uat/',
+        '/accs-inventory-reporting'         => '/accs-inventory-reporting-uat',
+        '/accs-inventory-reporting/'        => '/accs-inventory-reporting-uat/',
+        '/inventory-reconciliation'       => '/inventory-reconciliation-uat',
+        '/inventory-reconciliation/'        => '/inventory-reconciliation-uat/',
+        '/jazz-item-master'                 => '/jazz-item-master-uat',
+        '/jazz-item-master/'                => '/jazz-item-master-uat/',
+        '/po-receiving/jazz-asns.php'       => '/po-receiving/jazz-asns-uat.php',
+        '/po-receiving/jazz-asn.php'        => '/po-receiving/jazz-asn-uat.php',
+        '/sales-reporting/accs-order-report'  => '/sales-reporting/accs-order-report-uat',
+        '/sales-reporting/accs-order-report/' => '/sales-reporting/accs-order-report-uat/',
+        '/sales-reporting/order.php'        => '/sales-reporting/order-uat.php',
+        '/sales-reporting/jazz-order-report'  => '/sales-reporting/jazz-order-report-uat',
+        '/sales-reporting/jazz-order-report/' => '/sales-reporting/jazz-order-report-uat/',
+        '/sales-reporting/jazz-order.php'     => '/sales-reporting/jazz-order-uat.php',
+    ];
+
+    return $map[$productionPath] ?? $productionPath;
 }
 
 function hub_cards_partition_uat(array $items): array

@@ -23,7 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = supplier_save($_POST, $supplierId);
 
     if ($result['ok']) {
-        header('Location: /supplier-management/view.php?id=' . $supplierId . '&notice=updated', true, 302);
+        $syncError = supplier_maybe_sync_qbo($supplierId);
+        $query = http_build_query(array_filter([
+            'id'     => $supplierId,
+            'notice' => 'updated',
+            'error'  => $syncError,
+        ]));
+        header('Location: /supplier-management/view.php?' . $query, true, 302);
         exit;
     }
 
@@ -37,18 +43,15 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/supplier-management/view.php?id=<?= $supplierId ?>">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to <?= htmlspecialchars($supplier['SupplierName']) ?>
-      </a>
-
-      <div class="page-hero">
-        <div class="section-label">Inventory</div>
-        <h1>Edit <?= htmlspecialchars($supplier['SupplierName']) ?></h1>
-        <p class="page-lead">Update supplier profile and contact details.</p>
-      </div>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/supplier-management/view.php?id=' . $supplierId,
+          'back_label' => 'Back to ' . (string) $supplier['SupplierName'],
+          'category'   => 'Inventory',
+          'title'      => 'Edit ' . (string) $supplier['SupplierName'],
+          'lead'       => 'Update supplier profile and contact details.',
+      ]);
+      ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

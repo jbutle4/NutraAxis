@@ -32,20 +32,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/labeling-operations/compliance/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Label Compliance Review
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/labeling-operations/compliance/',
+          'back_label' => 'Back to Label Compliance Review',
+          'category'   => 'Label Compliance Review',
+          'title'      => 'Log Review',
+          'lead'       => 'Record an approval or review outcome for batch printing or label order production.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/labeling-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Label Compliance Review</div>
-        <h1>Log Review</h1>
-        <p class="page-lead">Record an approval or review outcome for batch printing or label order production.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

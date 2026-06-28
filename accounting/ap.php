@@ -42,14 +42,14 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/accounting/">Back to Accounting</a>
-      <div class="admin-header">
-        <div>
-          <div class="section-label">QuickBooks</div>
-          <h1>Accounts Payable</h1>
-          <p class="page-lead">Vendor bills from QuickBooks Online. Read-only.</p>
-        </div>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/accounting/',
+          'back_label' => 'Back to Accounting',
+          'category'   => 'QuickBooks',
+          'title'      => 'Accounts Payable',
+          'lead'       => 'Vendor bills from QuickBooks Online. Read-only.',
+      ]); ?>
+
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
       <?php if (!$listResult['ok']): ?>

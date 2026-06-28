@@ -8,7 +8,16 @@ if ($module === null) {
     $pageDescription = 'The requested operations module could not be found.';
     require __DIR__ . '/head.php';
     require __DIR__ . '/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Page not found</h1><p class="page-lead">That operations module does not exist.</p><div class="module-actions"><a class="btn-secondary" href="/">Back to Home</a></div></div></div></main>';
+    echo '<main class="page-main"><div class="container page-inner">';
+    render_list_page_header([
+        'back_href'  => '/',
+        'back_label' => 'Back to Home',
+        'category'   => 'Not Found',
+        'title'      => 'Page not found',
+        'lead'       => 'That operations module does not exist.',
+    ]);
+    render_list_page_toolbar('<a class="btn-secondary" href="/">Back to Home</a>');
+    echo '</div></main>';
     require __DIR__ . '/footer.php';
     exit;
 }

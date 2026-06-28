@@ -25,24 +25,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="/inventory-management/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Supply Chain Management
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>Delivery Scheduling Log</h1>
-          <p class="page-lead">Track inbound delivery appointments, carrier updates, and warehouse scheduling for purchase order receipts.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('delivery-scheduling-log')) ?></p>
-        </div>
-        <?php if (das_can_create()): ?>
-        <a class="btn-primary" href="/delivery-scheduling-log/new.php">New appointment</a>
-        <?php endif; ?>
-      </div>
+      <?php
+      $listToolbar = das_can_create() ? '<a class="btn-primary" href="/delivery-scheduling-log/new.php">New appointment</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/inventory-management/',
+          'back_label' => 'Back to Supply Chain Management',
+          'category'   => 'Supply Chain',
+          'title'      => 'Delivery Scheduling Log',
+          'lead'       => 'Track inbound delivery appointments, carrier updates, and warehouse scheduling for purchase order receipts.',
+          'permission' => auth_module_permission_label('delivery-scheduling-log'),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Appointment created successfully.</div>
@@ -56,7 +49,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($emailError) ?></div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/delivery-scheduling-log/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/delivery-scheduling-log/">
         <?php table_sort_hidden_inputs($listFilters, 'appointment', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -78,6 +71,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/delivery-scheduling-log/">Clear</a>
         </div>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">

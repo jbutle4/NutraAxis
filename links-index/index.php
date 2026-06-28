@@ -24,24 +24,17 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Resources</div>
-          <h1>Links Index</h1>
-          <p class="page-lead">Curated shortcuts to web applications, Microsoft 365 apps, documents, and external reference sites used across NutraAxis operations.</p>
-          <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(links_permission_value())) ?></p>
-        </div>
-        <?php if (links_can_create()): ?>
-        <a class="btn-primary" href="/links-index/new.php">New Link</a>
-        <?php endif; ?>
-      </div>
+      <?php
+      $listToolbar = links_can_create() ? '<a class="btn-primary" href="/links-index/new.php">New Link</a>' : '';
+      render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Resources',
+          'title'      => 'Links Index',
+          'lead'       => 'Curated shortcuts to web applications, Microsoft 365 apps, documents, and external reference sites used across NutraAxis operations.',
+          'permission' => permission_label(links_permission_value()),
+      ]);
+      ?>
 
       <?php if ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Link created successfully.</div>
@@ -51,7 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Link deleted successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/links-index/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="/links-index/">
         <?php table_sort_hidden_inputs($listFilters, 'category', 'asc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -82,6 +75,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/links-index/">Clear</a>
         </div>
       </form>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <?php if ($links === []): ?>
       <div class="status-banner">

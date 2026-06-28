@@ -43,26 +43,10 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to PO Receiving
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">PO Receipt</div>
-          <h1><?= htmlspecialchars($receipt['PONumber']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= por_status_class($receipt['PORStatus']) ?>"><?= htmlspecialchars($receipt['PORStatus']) ?></span>
-            · <?= htmlspecialchars($receipt['SupplierName']) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
-          <?php
-          $dasUrl = das_appointment_url_for_por($porId, ['return_to' => 'por', 'por_id' => $porId]);
-          ?>
+      <?php
+      ob_start();
+      $dasUrl = das_appointment_url_for_por($porId, ['return_to' => 'por', 'por_id' => $porId]);
+      ?>
           <a class="btn-secondary" href="<?= htmlspecialchars($dasUrl) ?>">Delivery appointment</a>
           <?php if (por_can_transmit($receipt)): ?>
           <a class="btn-primary" href="/po-receiving/asn.php?id=<?= $porId ?>&amp;v=20260611">View ASN &amp; Transmit to Jazz</a>
@@ -79,8 +63,18 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-text btn-text-danger">Delete</button>
           </form>
           <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      $porLead = '<span class="status-badge ' . por_status_class($receipt['PORStatus']) . '">' . htmlspecialchars($receipt['PORStatus']) . '</span> · ' . htmlspecialchars($receipt['SupplierName']);
+      render_list_page_header([
+          'back_href'  => '/po-receiving/',
+          'back_label' => 'Back to PO Receiving',
+          'category'   => 'PO Receipt',
+          'title'      => $receipt['PONumber'],
+          'lead'       => $porLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($syncWarning !== null && $syncWarning !== ''): ?>
       <div class="admin-notice<?= !$syncResult['ok'] ? ' is-error' : '' ?>" role="status"><?= htmlspecialchars($syncWarning) ?></div>
@@ -105,6 +99,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php endif; ?>
+
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
       <div class="detail-grid detail-grid-stacked">
         <section class="detail-card">

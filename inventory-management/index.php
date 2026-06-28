@@ -15,19 +15,13 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
-
-      <div class="page-hero">
-        <div class="module-icon"><?= icon_svg('inventory', 28) ?></div>
-        <div class="section-label">Supply Chain</div>
-        <h1>Supply Chain Management</h1>
-        <p class="page-lead">Central hub for inventory reporting, demand forecasting, supplier records, SKU master data, purchase orders, and advanced shipping notices.</p>
-      </div>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Supply Chain',
+          'title'      => 'Supply Chain Management',
+          'lead'       => 'Central hub for inventory reporting, demand forecasting, supplier records, SKU master data, purchase orders, and advanced shipping notices.',
+      ]); ?>
 
       <?php if ($areas === []): ?>
       <div class="status-banner">
@@ -37,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </div>
       <?php else: ?>
-      <?php hub_render_capability_cards($areas); ?>
+      <?php hub_render_capability_cards($areas, 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
       <?php endif; ?>
     </div>
   </main>

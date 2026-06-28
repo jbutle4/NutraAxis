@@ -42,7 +42,7 @@ function db(): PDO
         throw new RuntimeException('Database credentials are not configured.');
     }
 
-    $connectionTimeout = 5;
+    $connectionTimeout = env_is_azure_hosted() ? 2 : 5;
     $drivers = [
         'sqlsrv' => "sqlsrv:Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout}",
         'dblib'  => "dblib:host={$host}:{$port};dbname={$name};charset=UTF-8",
@@ -51,15 +51,18 @@ function db(): PDO
     ];
 
     $attempts = [];
-    if (in_array('sqlsrv', PDO::getAvailableDrivers(), true)) {
+    $preferred = trim((string) env('DB_PDO_DRIVER', ''));
+    if ($preferred !== '' && isset($drivers[$preferred])) {
+        $attempts[] = $drivers[$preferred];
+    } elseif (in_array('sqlsrv', PDO::getAvailableDrivers(), true)) {
         $attempts[] = $drivers['sqlsrv'];
-    }
-    if (in_array('dblib', PDO::getAvailableDrivers(), true)) {
-        $attempts[] = $drivers['dblib'];
-    }
-    if (in_array('odbc', PDO::getAvailableDrivers(), true)) {
+    } elseif (in_array('odbc', PDO::getAvailableDrivers(), true)) {
         $attempts[] = $drivers['odbc18'];
-        $attempts[] = $drivers['odbc17'];
+        if (!env_is_azure_hosted()) {
+            $attempts[] = $drivers['odbc17'];
+        }
+    } elseif (in_array('dblib', PDO::getAvailableDrivers(), true)) {
+        $attempts[] = $drivers['dblib'];
     }
 
     if ($attempts === []) {

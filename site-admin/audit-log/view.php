@@ -26,22 +26,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/site-admin/audit-log/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Audit Log
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/site-admin/audit-log/',
+          'back_label' => 'Back to Audit Log',
+          'category'   => 'Audit Log',
+          'title'      => 'Entry #' . $log['LogID'],
+          'lead'       => 'Recorded ' . admin_format_datetime($log['ChangeDate']) . ' by ' . $log['UserName'] . '.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/admin-nav.php'; ?>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">Audit Log</div>
-          <h1>Entry #<?= (int) $log['LogID'] ?></h1>
-          <p class="page-lead">Recorded <?= htmlspecialchars(admin_format_datetime($log['ChangeDate'])) ?> by <?= htmlspecialchars($log['UserName']) ?>.</p>
-        </div>
-      </div>
 
       <?php if ($notice === 'rolled_back'): ?>
       <div class="admin-notice is-success" role="status">Change rolled back successfully.</div>
