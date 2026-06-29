@@ -34,9 +34,10 @@ function site_documentation_page_data_sources(): array
         ['path' => '/product-catalog/', 'title' => 'Product SKU Master', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
         ['path' => '/supplier-management/', 'title' => 'Supplier Management', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => ''],
         ['path' => '/delivery-scheduling-log/', 'title' => 'Delivery Schedule Log', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => 'prod (links)', 'accs' => '—', 'notes' => ''],
-        ['path' => '/inventory-demand/', 'title' => 'Inventory Forecasting', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'Reads ForecastPlan, JazzInventorySnapshot tables'],
+        ['path' => '/inventory-demand/', 'title' => 'Inventory Forecasting', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'Reads ForecastPlan, InventoryBalance tables'],
         ['path' => '/accs-inventory-reporting/', 'title' => 'ACCS Inventory Reporting', 'tier' => 'production', 'sql' => '—', 'jazz' => '—', 'accs' => 'production', 'notes' => 'Live ACCS MSI source items'],
         ['path' => '/accs-inventory-reporting-uat/', 'title' => 'ACCS Inventory (stage)', 'tier' => 'uat', 'sql' => '—', 'jazz' => '—', 'accs' => 'stage', 'notes' => 'UAT wrapper → shared template'],
+        ['path' => '/inventory-balances/', 'title' => 'Inventory Balances', 'tier' => 'production', 'sql' => 'nutraaxis', 'jazz' => '—', 'accs' => '—', 'notes' => 'InvCurrentBalance + Facility IMS ledger (bootstrap from InventoryBalance snapshot)'],
         ['path' => '/inventory-reporting/', 'title' => 'Jazz Current Inventory', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => '—', 'notes' => 'Live Jazz OMS inventory API'],
         ['path' => '/inventory-reporting-uat/', 'title' => 'Jazz Current Inventory (UAT)', 'tier' => 'uat', 'sql' => '—', 'jazz' => 'UAT', 'accs' => '—', 'notes' => 'UAT wrapper → shared template'],
         ['path' => '/inventory-reconciliation/', 'title' => 'Inventory Reconciliation', 'tier' => 'production', 'sql' => '—', 'jazz' => 'production', 'accs' => 'production', 'notes' => 'Side-by-side Jazz + ACCS'],
@@ -96,7 +97,7 @@ function site_documentation_function_apps(): array
         'functions' => [
             ['name' => 'daily-sales-summary', 'trigger' => 'Timer (daily 2:00 AM Central)', 'data' => 'Production ACCS orders → nutraaxis.DailySalesSummary'],
             ['name' => 'weekly-chain', 'trigger' => 'Timer (Sunday 1:00 AM Central)', 'data' => 'MonthlySalesSummary rollup + ForecastPlan refresh'],
-            ['name' => 'jazz-inventory-snapshot', 'trigger' => 'Timer (Sunday noon Central)', 'data' => 'Production Jazz OMS → nutraaxis.JazzInventorySnapshot'],
+            ['name' => 'jazz-inventory-snapshot', 'trigger' => 'Timer (Sunday noon Central)', 'data' => 'Production Jazz OMS → nutraaxis.InventoryBalance'],
             ['name' => 'process-retry', 'trigger' => 'Service Bus queue process-retry', 'data' => 'Retries failed ProcessExecutionLog jobs'],
             ['name' => 'process-execute', 'trigger' => 'HTTP POST (function key)', 'data' => 'Manual/portal-triggered job execution'],
             ['name' => 'accs-sales-order-sync', 'trigger' => 'Timer (every 2 hours)', 'data' => 'Production ACCS order detail sync — Nutra-forecast-tool-prod only'],
@@ -129,7 +130,7 @@ function site_documentation_service_bus(): array
 
 function site_documentation_module_sections(): array
 {
-    global $appFunctions, $inventorySubModules;
+    global $appFunctions;
 
     $sections = [];
 
@@ -141,8 +142,8 @@ function site_documentation_module_sections(): array
             'children'    => [],
         ];
 
-        if ($module['slug'] === 'inventory-management') {
-            foreach ($inventorySubModules as $child) {
+        if (function_exists('app_hub_slugs') && in_array($module['slug'], app_hub_slugs(), true)) {
+            foreach (app_hub_submodules($module['slug']) as $child) {
                 $childModule = get_module($child['slug']);
                 $dataSource = site_documentation_data_source_note($child['href'], $child['tier'] ?? ENVIRONMENT_TIER_PRODUCTION);
                 $entry['children'][] = [
@@ -150,18 +151,6 @@ function site_documentation_module_sections(): array
                     'description' => $child['desc'],
                     'href'        => $child['href'],
                     'note'        => $childModule['headline'] ?? null,
-                    'data_source' => $dataSource,
-                ];
-            }
-        }
-
-        if ($module['slug'] === 'sales-reporting') {
-            foreach (app_sales_submodules() as $child) {
-                $dataSource = site_documentation_data_source_note($child['href'], $child['tier'] ?? ENVIRONMENT_TIER_PRODUCTION);
-                $entry['children'][] = [
-                    'title'       => $child['title'],
-                    'description' => $child['desc'],
-                    'href'        => $child['href'],
                     'data_source' => $dataSource,
                 ];
             }
@@ -248,7 +237,7 @@ function site_documentation_scheduled_processes(): array
             'notes'     => 'Second step of weekly-chain: weighted moving average demand projection. View on Inventory Forecasting (/inventory-demand/).',
         ]),
         array_merge($registry['jazz-inventory-snapshot'], [
-            'writes_to' => 'JazzInventorySnapshot',
+            'writes_to' => 'InventoryBalance',
             'notes'     => 'Pulls live Jazz OMS inventory by SKU and facility.',
         ]),
         [

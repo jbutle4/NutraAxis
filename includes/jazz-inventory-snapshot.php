@@ -53,7 +53,7 @@ function jazz_inventory_snapshot_run(?DateTimeImmutable $snapshotAt = null): arr
         $pdo->beginTransaction();
 
         $stmt = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.JazzInventorySnapshot (
+            INSERT INTO dbo.InventoryBalance (
                 SnapshotDateTime, SKU, FacilityCode,
                 AvailableQuantity, OnHandQuantity, QtyOrdered, TotalQuantity
             )

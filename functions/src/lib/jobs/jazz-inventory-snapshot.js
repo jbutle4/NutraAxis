@@ -67,7 +67,7 @@ async function run(pool = null) {
         .input('ordered', sql.Decimal(18, 4), normalized.ordered)
         .input('total', sql.Decimal(18, 4), normalized.total)
         .query(`
-          INSERT INTO dbo.JazzInventorySnapshot (
+          INSERT INTO dbo.InventoryBalance (
             SnapshotDateTime, SKU, FacilityCode,
             AvailableQuantity, OnHandQuantity, QtyOrdered, TotalQuantity
           )

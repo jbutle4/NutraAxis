@@ -16,8 +16,6 @@ $action = trim($_POST['action'] ?? $_POST['new_status'] ?? '');
 $result = match ($action) {
     'submit', 'Submitted for Approval' => po_submit_for_approval($poId),
     'resubmit' => po_resubmit_for_approval($poId),
-    'accounting', PO_STATUS_ACCOUNTING => po_advance_accounting_status($poId, PO_STATUS_ACCOUNTING),
-    'paid', PO_STATUS_PAID => po_advance_accounting_status($poId, PO_STATUS_PAID),
     default => ['ok' => false, 'error' => 'Invalid status action.'],
 };
 
@@ -25,8 +23,6 @@ if ($result['ok']) {
     $notice = match ($action) {
         'submit', 'Submitted for Approval' => 'submitted',
         'resubmit' => 'resubmitted',
-        'accounting', PO_STATUS_ACCOUNTING => 'accounting',
-        'paid', PO_STATUS_PAID => 'paid',
         default => 'updated',
     };
 

@@ -39,8 +39,9 @@ $catalogListColumnClasses = [
     'wholesale_price' => 'catalog-col-whsle',
 ];
 
-$pageTitle = 'Product SKU Master | Inventory Management';
+$pageTitle = 'Product SKU Master | Product Master';
 $pageDescription = 'View and manage the master product catalog and SKU reference data.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -56,9 +57,9 @@ require dirname(__DIR__) . '/includes/header.php';
           $catalogHeaderActions .= '<a class="btn-primary" href="/product-catalog/new.php">New SKU</a>';
       }
       render_list_page_header([
-          'back_href'  => '/',
-          'back_label' => 'Back to Operations Home',
-          'category'   => 'Inventory',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Master Data',
           'title'      => 'Product SKU Master',
           'lead'       => 'Maintain SKU codes, product attributes, pricing, and catalog data used across NutraAxis operations. Sync to QuickBooks from row actions or the SKU detail page. Compare against <a href="/accounting/inventory.php">QBO SKU Master</a>.',
           'lead_html'  => true,
@@ -116,20 +117,6 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
       <?php if (catalog_can_update() && !$qboConnected): ?>
       <div class="admin-notice is-warning" role="status">QuickBooks is not connected. Connect in <a href="/accounting/">Accounting</a> to enable SKU sync.</div>
-      <?php elseif ($qboConnected): ?>
-      <div class="status-banner">
-        <div>
-          <strong>QuickBooks SKU sync — <?= htmlspecialchars(qbo_sku_sync_mode_label()) ?></strong>
-          <p>
-            SKUs sync as <strong>Non-inventory product items</strong> (MSRP, COGS, income, and expense accounts are sent; no quantity on hand in QuickBooks).
-            <?php if (qbo_sku_uses_inventory_tracking()): ?>
-            Set <code>QBO_SKU_ITEM_TYPE=NonInventory</code> in app settings to use Non-inventory items instead.
-            <?php else: ?>
-            Set <code>QBO_SKU_ITEM_TYPE=Inventory</code> after upgrading QuickBooks to <strong>Plus</strong> or <strong>Advanced</strong> for quantity tracking.
-            <?php endif; ?>
-          </p>
-        </div>
-      </div>
       <?php endif; ?>
 
       <form class="po-filter audit-filter page-list-filters" method="get" action="/product-catalog/">

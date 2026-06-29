@@ -19,6 +19,7 @@ $planRows = inventory_forecasting_list_plan_rows($listFilters);
 
 $pageTitle = 'Inventory Forecasting | NutraAxis Operations';
 $pageDescription = $module['lead'] ?? 'Project demand and plan replenishment with confidence.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -27,8 +28,8 @@ require dirname(__DIR__) . '/includes/header.php';
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Supply Chain Management',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
           'category'   => $module['label'],
           'title'      => $module['headline'],
           'lead'       => $module['lead'],
@@ -146,7 +147,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </section>
 
       <div class="module-actions">
-        <a class="btn-secondary" href="/inventory-management/">All Supply Chain Applications</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($hubBack['href']) ?>"><?= htmlspecialchars($hubBack['label']) ?></a>
         <?php if (auth_can_read(MODULE_PERMISSION_COLUMNS['process-log'] ?? '')): ?>
         <a class="btn-secondary" href="/process-log/">Process Log</a>
         <?php endif; ?>

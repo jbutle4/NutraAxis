@@ -31,8 +31,9 @@ if ($rows !== [] && $sortAccessors !== []) {
     $rows = table_sort_rows($rows, $listFilters, $sortAccessors, [], $defaultSortColumn, 'asc');
 }
 
-$pageTitle = 'Jazz Item Master | Supply Chain Management';
+$pageTitle = 'Jazz Item Master | Product Master';
 $pageDescription = 'SKU and item reference data from Jazz OMS.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -40,9 +41,9 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Supply Chain Management',
-          'category'   => 'Supply Chain',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Master Data',
           'title'      => 'Jazz Item Master',
           'lead'       => 'SKU and item reference data from Jazz OMS.',
           'permission' => permission_label(inventory_reporting_permission_value()),

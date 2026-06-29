@@ -19,7 +19,7 @@ WHERE t.name IN (N'text', N'ntext')
      OR (OBJECT_NAME(c.object_id) = N'PurchaseOrder' AND c.name = N'POStatus')
      OR (OBJECT_NAME(c.object_id) = N'POReceipt' AND c.name = N'PORStatus')
      OR (OBJECT_NAME(c.object_id) = N'MonthlySalesSummary' AND c.name = N'SKU')
-     OR (OBJECT_NAME(c.object_id) = N'JazzInventorySnapshot' AND c.name = N'SKU')
+     OR (OBJECT_NAME(c.object_id) = N'InventoryBalance' AND c.name = N'SKU')
      OR (OBJECT_NAME(c.object_id) = N'ForecastPlan' AND c.name = N'SKU')
   );
 

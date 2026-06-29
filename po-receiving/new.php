@@ -33,7 +33,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => '/po-receiving/',
           'back_label' => 'Back to PO Receiving',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'New PO Receipt',
           'lead'       => 'Create an advanced shipping notice and receiving record for a purchase order.',
       ]);

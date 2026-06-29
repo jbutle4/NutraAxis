@@ -224,14 +224,14 @@ function forecast_plan_load_beginning_inventory(PDO $pdo): array
     $stmt = $pdo->query(<<<SQL
         WITH LatestSnapshot AS (
             SELECT MAX(SnapshotDateTime) AS SnapshotDateTime
-            FROM dbo.JazzInventorySnapshot
+            FROM dbo.InventoryBalance
         )
         SELECT
-            CAST(jis.SKU AS NVARCHAR(200)) AS SKU,
-            SUM(jis.AvailableQuantity) AS BeginOH
-        FROM dbo.JazzInventorySnapshot jis
-        INNER JOIN LatestSnapshot ls ON ls.SnapshotDateTime = jis.SnapshotDateTime
-        GROUP BY CAST(jis.SKU AS NVARCHAR(200))
+            CAST(ib.SKU AS NVARCHAR(200)) AS SKU,
+            SUM(ib.AvailableQuantity) AS BeginOH
+        FROM dbo.InventoryBalance ib
+        INNER JOIN LatestSnapshot ls ON ls.SnapshotDateTime = ib.SnapshotDateTime
+        GROUP BY CAST(ib.SKU AS NVARCHAR(200))
     SQL);
 
     $inventory = [];

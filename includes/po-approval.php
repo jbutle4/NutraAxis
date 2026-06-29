@@ -14,6 +14,21 @@ const PO_STATUS_VIEWED = 'Viewed by Approver';
 const PO_STATUS_ACCOUNTING = 'Submitted to Accounting for Payment';
 const PO_STATUS_PAID = 'Paid';
 
+function po_is_legacy_accounting_po_status(string $status): bool
+{
+    return in_array($status, [PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true);
+}
+
+function po_view_status_label(string $status): string
+{
+    return po_is_legacy_accounting_po_status($status) ? PO_STATUS_APPROVED : $status;
+}
+
+function po_view_status_class(string $status): string
+{
+    return po_status_class(po_view_status_label($status));
+}
+
 const PO_APPROVAL_ACTIONS = [
     'approve'   => [
         'label'            => 'Approve PO',
@@ -304,61 +319,6 @@ function po_process_approval_action(int $poId, string $action, string $comments 
 
         return ['ok' => false, 'error' => po_format_exception_message($e, 'process this approval action')];
     }
-}
-
-function po_advance_accounting_status(int $poId, string $newStatus): array
-{
-    if (!in_array($newStatus, [PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true)) {
-        return ['ok' => false, 'error' => 'Invalid accounting status.'];
-    }
-
-    $order = po_get_order($poId);
-    if ($order === null) {
-        return ['ok' => false, 'error' => 'Purchase order not found.'];
-    }
-
-    $allowed = match ($newStatus) {
-        PO_STATUS_ACCOUNTING => $order['POStatus'] === PO_STATUS_APPROVED,
-        PO_STATUS_PAID       => $order['POStatus'] === PO_STATUS_ACCOUNTING,
-        default              => false,
-    };
-
-    if (!$allowed) {
-        return ['ok' => false, 'error' => "Cannot change status from {$order['POStatus']} to {$newStatus}."];
-    }
-
-    if ($newStatus === PO_STATUS_ACCOUNTING && po_requires_reapproval($order)) {
-        return [
-            'ok'    => false,
-            'error' => 'Total due changed after approval. Resubmit this purchase order for approval before sending to accounting.',
-        ];
-    }
-
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        UPDATE dbo.PurchaseOrder
-        SET POStatus = :status,
-            ModifiedDate = SYSUTCDATETIME(),
-            ModifiedbyUser = :modified_by
-        WHERE POID = :id
-    SQL);
-    $oldStatus = $order['POStatus'];
-    $stmt->execute([
-        'status'      => $newStatus,
-        'modified_by' => auth_user()['UserID'] ?? null,
-        'id'          => $poId,
-    ]);
-
-    require_once __DIR__ . '/audit.php';
-    audit_log_po_status_change($poId, $oldStatus, $newStatus);
-
-    po_notify_po_users_of_status_change($order, [
-        'result'         => $newStatus,
-        'status'         => $newStatus,
-        'viewed_message' => false,
-    ], (string) (auth_user()['UserName'] ?? 'System'), '');
-
-    return ['ok' => true, 'error' => null];
 }
 
 function po_recipient_emails_for_approvers(): array

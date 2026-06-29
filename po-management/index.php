@@ -26,6 +26,7 @@ $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'PO Management | NutraAxis Operations';
 $pageDescription = 'Create, track, and manage purchase orders across suppliers.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -35,8 +36,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php
       $listToolbar = $canCreate ? '<a class="btn-primary" href="/po-management/new.php">New Purchase Order</a><a class="btn-secondary" href="/po-management/import.php">Import from Excel</a>' : '';
       render_list_page_header([
-          'back_href'  => '/',
-          'back_label' => 'Back to Operations Home',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
           'category'   => 'Procurement',
           'title'      => 'Purchase Orders',
           'lead'       => 'Create and track supplier purchase orders from creation through approval and payment.',
@@ -117,7 +118,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <tr>
               <td><a class="btn-text" href="/po-management/view.php?id=<?= (int) $order['POID'] ?>"><?= htmlspecialchars($order['PONumber']) ?></a></td>
               <td><?= htmlspecialchars($order['SupplierName']) ?></td>
-              <td><span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span></td>
+              <td><span class="status-badge <?= po_view_status_class($order['POStatus']) ?>"><?= htmlspecialchars(po_view_status_label($order['POStatus'])) ?></span></td>
               <td><?= htmlspecialchars(po_format_date($order['OrderDate'])) ?></td>
               <td><?= htmlspecialchars(po_format_date($order['ExpectedDeliveryDate'])) ?></td>
               <td><?= htmlspecialchars(po_format_money($order['Subtotal'])) ?></td>

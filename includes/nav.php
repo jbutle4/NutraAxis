@@ -69,23 +69,21 @@ function nav_labeling_children(): array
 
 function nav_children_for_parent(string $parentSlug): array
 {
+    if (function_exists('app_hub_slugs') && in_array($parentSlug, app_hub_slugs(), true)) {
+        return auth_filter_hub_submodules(app_hub_submodules($parentSlug));
+    }
+
     return match ($parentSlug) {
-        'inventory-management' => auth_filter_inventory_submodules(app_inventory_submodules()),
-        'sales-reporting'      => auth_filter_sales_submodules(app_sales_submodules()),
-        'accounting'           => nav_accounting_children(),
-        'labeling-operations'  => nav_labeling_children(),
-        default                => [],
+        'accounting'          => nav_accounting_children(),
+        'labeling-operations' => nav_labeling_children(),
+        default               => [],
     };
 }
 
 function nav_parent_is_active(string $parentSlug, ?string $activeSlug): bool
 {
-    if ($parentSlug === 'inventory-management') {
-        return auth_inventory_nav_active($activeSlug);
-    }
-
-    if ($parentSlug === 'sales-reporting') {
-        return auth_sales_nav_active($activeSlug);
+    if (function_exists('app_hub_slugs') && in_array($parentSlug, app_hub_slugs(), true)) {
+        return auth_hub_nav_active($parentSlug, $activeSlug);
     }
 
     if ($parentSlug === 'accounting' || $parentSlug === 'labeling-operations') {

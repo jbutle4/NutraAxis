@@ -36,8 +36,9 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
     );
 }
 
-$pageTitle = 'Jazz Current Inventory | Supply Chain Management';
+$pageTitle = 'Jazz Current Inventory | Inventory Management';
 $pageDescription = 'View stock on hand and availability from Jazz OMS.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -45,8 +46,8 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Supply Chain Management',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
           'title'      => 'Jazz Current Inventory',
           'lead'       => 'Live inventory by SKU and facility from Jazz OMS.',

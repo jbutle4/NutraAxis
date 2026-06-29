@@ -16,8 +16,9 @@ $listFilters = [
 $payments = po_payment_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'PO Payments | Inventory Management';
+$pageTitle = 'PO Payments | Procurement';
 $pageDescription = 'Track payments made against purchase orders.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -27,9 +28,9 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php
       $listToolbar = po_payment_can_create() ? '<a class="btn-primary" href="/po-payments/new.php">Record Payment</a>' : '';
       render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Inventory Management',
-          'category'   => 'Inventory',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Procurement',
           'title'      => 'Supplier Payments',
           'lead'       => 'Record and review payments applied to purchase orders or supplier invoices without a PO.',
           'permission' => permission_label(po_permission_value()),

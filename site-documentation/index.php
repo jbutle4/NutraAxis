@@ -54,7 +54,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="detail-card site-doc-section">
         <h2>Application modules</h2>
-        <p>Each module below maps to a landing page or workflow area in the portal. Supply Chain Management and Sales Reporting include production and UAT variants where external APIs differ.</p>
+        <p>Each module below maps to a landing page or workflow area in the portal. Product Master, Inventory, Procurement, Inbound & Receiving, and Sales Reporting include production and UAT variants where external APIs differ.</p>
 
         <?php foreach ($moduleSections as $section): ?>
         <div class="site-doc-module-group">
@@ -270,7 +270,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <ol class="site-doc-list">
           <li><strong>Daily Sales Summary</strong> loads ACCS orders and writes daily SKU totals to <code>DailySalesSummary</code>.</li>
           <li><strong>Weekly chain</strong> (Sunday 1:00 AM) runs monthly rollup into <code>MonthlySalesSummary</code>, then refreshes SKU projections in <code>ForecastPlan</code>.</li>
-          <li><strong>Jazz Inventory Snapshot</strong> (Sunday noon) captures facility-level on-hand quantities in <code>JazzInventorySnapshot</code>.</li>
+          <li><strong>Jazz Inventory Snapshot</strong> (Sunday noon) captures facility-level on-hand quantities in <code>InventoryBalance</code>.</li>
           <li><strong>Staging DB Sync</strong> (daily 3:00 AM) incrementally copies production SQL changes into the staging database.</li>
         </ol>
       </section>

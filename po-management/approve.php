@@ -61,7 +61,7 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php
-      $approveLead = '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['SupplierName']);
+      $approveLead = '<span class="status-badge ' . po_view_status_class($order['POStatus']) . '">' . htmlspecialchars(po_view_status_label($order['POStatus'])) . '</span> · ' . htmlspecialchars($order['SupplierName']);
       if ($isTokenAccess) {
           $approveLead .= ' · Acting as ' . htmlspecialchars($approverLabel);
       }
@@ -94,7 +94,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
       <div class="account-card approval-actions-card">
         <h2>Approver actions</h2>
-        <p class="account-card-lead">Choose an action for this purchase order. PO users will be notified by email.</p>
+        <p class="account-card-lead">Choose an action for this purchase order. Approving authorizes sending the PO to QuickBooks and does not submit a payment request. PO users will be notified by email.</p>
         <form class="admin-form" method="post" action="/po-management/approval-action.php">
           <input type="hidden" name="po_id" value="<?= $poId ?>" />
           <?php if ($isTokenAccess): ?>

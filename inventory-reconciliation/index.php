@@ -70,6 +70,7 @@ $mismatchCount = $canRenderTable ? inventory_reconciliation_count_mismatches($ro
 
 $pageTitle = 'Inventory Reconciliation (Jazz-ACCS) | Inventory Management';
 $pageDescription = 'Compare Jazz OMS and Adobe Commerce inventory levels by SKU.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -77,8 +78,8 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Inventory Management',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
           'title'      => 'Inventory Reconciliation (Jazz-ACCS)',
           'lead'       => 'Side-by-side Jazz OMS and Adobe Commerce quantities for the same SKU to spot reporting differences.',

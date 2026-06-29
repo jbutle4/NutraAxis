@@ -7,6 +7,8 @@ require dirname(__DIR__) . '/includes/po-approval.php';
 require dirname(__DIR__) . '/includes/po-production.php';
 require dirname(__DIR__) . '/includes/po-payment.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+require dirname(__DIR__) . '/includes/supplier-invoice.php';
+require dirname(__DIR__) . '/includes/po-qbo.php';
 
 po_require_read();
 
@@ -51,6 +53,8 @@ $paymentNotice = $_GET['payment_notice'] ?? null;
 $paymentError = $_GET['payment_error'] ?? null;
 $notesError = isset($_GET['notes_error']) ? (string) $_GET['notes_error'] : null;
 $canAddNotesAndAttachments = po_can_add_notes_and_attachments($order);
+$poQboSyncBlockers = po_qbo_can_sync($order) ? po_qbo_sync_blockers($order, $lines) : [];
+$canSyncQbo = po_qbo_can_sync($order);
 require dirname(__DIR__) . '/includes/po-lifecycle.php';
 $poLifecycleSteps = po_lifecycle_timeline($poId, $order);
 
@@ -86,22 +90,19 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-secondary">Resend Approval Notification</button>
           </form>
           <?php endif; ?>
-          <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_APPROVED && !$needsReapproval): ?>
-          <form method="post" action="/po-management/status.php" class="inline-form">
+          <?php if ($canSyncQbo): ?>
+          <form method="post" action="/po-management/sync-qbo.php" class="inline-form" onsubmit="return confirm('Sync this purchase order to QuickBooks?');">
             <input type="hidden" name="po_id" value="<?= $poId ?>" />
-            <input type="hidden" name="action" value="accounting" />
-            <button type="submit" class="btn-primary">Submit to Accounting</button>
+            <button type="submit" class="btn-secondary"<?= $poQboSyncBlockers !== [] ? ' title="' . htmlspecialchars(implode(' ', $poQboSyncBlockers)) . '"' : '' ?>>Sync to QuickBooks</button>
           </form>
-          <?php endif; ?>
-          <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_ACCOUNTING): ?>
-          <form method="post" action="/po-management/status.php" class="inline-form">
-            <input type="hidden" name="po_id" value="<?= $poId ?>" />
-            <input type="hidden" name="action" value="paid" />
-            <button type="submit" class="btn-primary">Mark as Paid</button>
-          </form>
+          <?php elseif ($canUpdate && !qbo_is_connected() && po_is_post_approval_edit($order)): ?>
+          <a class="btn-secondary" href="/accounting/">Connect QuickBooks</a>
           <?php endif; ?>
           <?php if (por_can_create()): ?>
           <a class="btn-secondary" href="/po-receiving/new.php?po_id=<?= $poId ?>">New PO Receipt</a>
+          <?php endif; ?>
+          <?php if (supplier_invoice_can_create() && po_is_post_approval_edit($order)): ?>
+          <a class="btn-secondary" href="/accounting/supplier-invoices/new.php?po_id=<?= $poId ?>">New Payment Request</a>
           <?php endif; ?>
           <?php if ($canDelete): ?>
           <?= table_action_delete_form(
@@ -118,7 +119,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => 'Back to Purchase Orders',
           'category'   => 'Procurement',
           'title'      => $order['PONumber'],
-          'lead'       => '<span class="status-badge ' . po_status_class($order['POStatus']) . '">' . htmlspecialchars($order['POStatus']) . '</span> · ' . htmlspecialchars($order['SupplierName']),
+          'lead'       => '<span class="status-badge ' . po_view_status_class($order['POStatus']) . '">' . htmlspecialchars(po_view_status_label($order['POStatus'])) . '</span> · ' . htmlspecialchars($order['SupplierName']),
           'lead_html'  => true,
       ]);
       ?>
@@ -137,16 +138,34 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice <?= $mailWarning ? 'is-error is-detail' : 'is-success' ?>" role="status">
         <?= htmlspecialchars($mailMessage ?? 'Approval notification resent to approvers.') ?>
       </div>
-      <?php elseif ($notice === 'accounting'): ?>
-      <div class="admin-notice is-success" role="status">Purchase order submitted to accounting for payment.</div>
-      <?php elseif ($notice === 'paid'): ?>
-      <div class="admin-notice is-success" role="status">Purchase order marked as paid.</div>
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php elseif ($notice === 'notes_updated'): ?>
       <div class="admin-notice is-success" role="status">Notes saved successfully.</div>
       <?php elseif ($notice === 'production_updated'): ?>
       <div class="admin-notice is-success" role="status">Production status updated successfully.</div>
+      <?php elseif ($notice === 'qbo_synced'): ?>
+      <div class="admin-notice is-success" role="status">Purchase order synced to QuickBooks successfully.</div>
+      <?php endif; ?>
+
+      <?php if ($warning !== null && $warning !== ''): ?>
+      <div class="admin-notice is-warning" role="status"><?= htmlspecialchars($warning) ?></div>
+      <?php endif; ?>
+      <?php if (isset($_GET['error']) && $_GET['error'] !== ''): ?>
+      <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars(qbo_humanize_error((string) $_GET['error'])) ?></div>
+      <?php endif; ?>
+
+      <?php if ($poQboSyncBlockers !== []): ?>
+      <div class="admin-notice is-warning" role="status">
+        <strong>QuickBooks PO sync is not ready.</strong>
+        <ul class="notice-list">
+          <?php foreach ($poQboSyncBlockers as $blocker): ?>
+          <li><?= htmlspecialchars($blocker) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+      <?php elseif ($canSyncQbo && !empty($order['QBO_POID'])): ?>
+      <div class="admin-notice" role="status">Linked to QuickBooks purchase order <strong><?= htmlspecialchars((string) $order['QBO_POID']) ?></strong>.</div>
       <?php endif; ?>
 
       <?php if (!empty($_GET['delete_error'])): ?>
@@ -155,13 +174,13 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if (isset($_GET['reapproval']) && $_GET['reapproval'] === '1'): ?>
       <div class="admin-notice is-error is-detail" role="alert">
-        Total due changed after approval. This purchase order must be resubmitted for approval before it can be sent to accounting.
+        Total due changed after approval. This purchase order must be resubmitted for approval before it can be sent to QuickBooks.
       </div>
       <?php endif; ?>
 
       <?php if ($needsReapproval && $order['POStatus'] === PO_STATUS_APPROVED): ?>
       <div class="admin-notice is-error is-detail" role="alert">
-        Total due changed after approval. Use <strong>Resubmit for Approval</strong> before sending this PO to accounting.
+        Total due changed after approval. Use <strong>Resubmit for Approval</strong> before this PO can be sent to QuickBooks.
         <?php if (!empty($order['ApprovedTotalDue'])): ?>
         Approved total: <strong><?= htmlspecialchars(po_format_money((float) $order['ApprovedTotalDue'])) ?></strong>
         · Current total: <strong><?= htmlspecialchars(po_format_money((float) $order['TotalDue'])) ?></strong>
@@ -169,9 +188,17 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
       <?php endif; ?>
 
+      <?php if (in_array($order['POStatus'], [PO_STATUS_APPROVED, PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true)): ?>
+      <div class="admin-notice" role="status">
+        PO approval is for the purchase order only. After approval, the PO is sent to QuickBooks.
+        Payment approval requires a supplier invoice and is handled on <a href="/po-payments/">PO Payments</a>.
+      </div>
+      <?php endif; ?>
+
       <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_SUBMITTED): ?>
       <div class="admin-notice" role="status">
-        This purchase order is in the approval queue. Approvers can review it under <a href="/approvals/?type=PO&status=pending">Approvals</a>.
+        This purchase order is awaiting PO approver review under <a href="/approvals/?type=PO&status=pending">Approvals</a>.
+        This step does not submit a payment request.
         <?php if ($approverEmails !== []): ?>
         Approval emails are sent to designated PO approvers: <strong><?= htmlspecialchars(implode(', ', $approverEmails)) ?></strong>.
         <?php else: ?>

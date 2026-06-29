@@ -95,10 +95,10 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
 
-      <div class="detail-grid">
-        <section class="detail-card">
+      <div class="account-grid po-summary-grid">
+        <div class="account-card">
           <h2>Product details</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>SKU code</dt><dd><?= htmlspecialchars($sku['SKUCode']) ?></dd></div>
             <div><dt>Brand</dt><dd><?= htmlspecialchars($sku['Brand']) ?></dd></div>
             <div><dt>Manufacturer</dt><dd><?= htmlspecialchars($sku['Manufacturer']) ?></dd></div>
@@ -121,11 +121,11 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Launch date</dt><dd><?= htmlspecialchars(catalog_format_date($sku['LaunchDate'])) ?></dd></div>
             <div><dt>Last modified</dt><dd><?= htmlspecialchars(admin_format_datetime($sku['ModifiedDate'])) ?><?= !empty($sku['ModifiedByName']) ? ' by ' . htmlspecialchars($sku['ModifiedByName']) : '' ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card">
           <h2>Packaging &amp; identifiers</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>Capsule count</dt><dd><?= $sku['CapsuleCount'] !== null ? (int) $sku['CapsuleCount'] : '—' ?></dd></div>
             <div><dt>Servings per container</dt><dd><?= $sku['ServingCount'] !== null ? (int) $sku['ServingCount'] : '—' ?></dd></div>
             <div><dt>Bottle size</dt><dd><?= htmlspecialchars($sku['BottleSize'] ?? '—') ?></dd></div>
@@ -138,11 +138,11 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Non-GMO certified</dt><dd><?= !empty($sku['NonGMOCertified']) ? 'Yes' : 'No' ?></dd></div>
             <div><dt>Allergen statement</dt><dd><?= htmlspecialchars(catalog_format_allergens($sku['AllergenStatement'] ?? null)) ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card">
           <h2>QuickBooks</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>Sync status</dt><dd><?= htmlspecialchars(catalog_qbo_sync_status_label((string) ($sku['QBO_SyncStatus'] ?? 'NotSynced'))) ?></dd></div>
             <div><dt>QBO item ID</dt><dd><?= htmlspecialchars($sku['QBO_ItemID'] ?? '—') ?></dd></div>
             <div><dt>Display name</dt><dd><?= htmlspecialchars($sku['QBO_DisplayName'] ?? catalog_build_qbo_item_name($sku) ?: '—') ?></dd></div>
@@ -156,20 +156,20 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Sync error</dt><dd><?= htmlspecialchars(qbo_humanize_error((string) $sku['QBO_SyncError'])) ?></dd></div>
             <?php endif; ?>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card">
           <h2>Pricing</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>COGS</dt><dd><?= htmlspecialchars(catalog_format_money($sku['COGS'])) ?></dd></div>
-            <div><dt>Wholesale price</dt><dd><?= htmlspecialchars(catalog_format_money($sku['WholesalePrice'])) ?></dd></div>
+            <div><dt>WHSLE</dt><dd><?= htmlspecialchars(catalog_format_money($sku['WholesalePrice'])) ?></dd></div>
             <div><dt>MSRP</dt><dd><?= htmlspecialchars(catalog_format_money($sku['MSRP'])) ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card account-grid-span-full">
           <h2>Documents &amp; notes</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div>
               <dt>SFP link</dt>
               <dd>
@@ -187,7 +187,7 @@ require dirname(__DIR__) . '/includes/header.php';
               </dd>
             </div>
             <div>
-              <dt>Label (print-ready) link</dt>
+              <dt>Label link</dt>
               <dd>
                 <?php if (!empty($sku['LabelPrintReadyLink'])): ?>
                 <?php $labelLinkName = catalog_link_display_label($sku['LabelPrintReadyLink'], 'product label'); ?>
@@ -197,32 +197,26 @@ require dirname(__DIR__) . '/includes/header.php';
                 <?php endif; ?>
               </dd>
             </div>
+            <?php if (!empty($sku['Formulation'])): ?>
+            <div><dt>Formulation</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Formulation'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Product'])): ?>
+            <div><dt>Product</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Product'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Claims'])): ?>
+            <div><dt>Claims</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Claims'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Directions'])): ?>
+            <div><dt>Directions</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Directions'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['CertsOnLabel'])): ?>
+            <div><dt>Certs on label</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['CertsOnLabel'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Notes'])): ?>
+            <div><dt>Notes</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Notes'])) ?></dd></div>
+            <?php endif; ?>
           </dl>
-          <?php if (!empty($sku['Formulation'])): ?>
-          <h3 class="production-line-header">Formulation</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Formulation'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Product'])): ?>
-          <h3 class="production-line-header">Product</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Product'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Claims'])): ?>
-          <h3 class="production-line-header">Claims</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Claims'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Directions'])): ?>
-          <h3 class="production-line-header">Directions</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Directions'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['CertsOnLabel'])): ?>
-          <h3 class="production-line-header">Certs on label</h3>
-          <p><?= nl2br(htmlspecialchars($sku['CertsOnLabel'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Notes'])): ?>
-          <h3 class="production-line-header">Notes</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Notes'])) ?></p>
-          <?php endif; ?>
-        </section>
+        </div>
       </div>
 
       <?php

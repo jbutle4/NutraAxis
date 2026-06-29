@@ -168,6 +168,9 @@ function po_lifecycle_timeline(int $poId, array $order): array
         $approvedDate = min($approvedDate, $approvedStatusDate);
     } elseif ($approvedStatusDate !== null) {
         $approvedDate = $approvedStatusDate;
+    } elseif ($approvedDate === null && po_is_legacy_accounting_po_status((string) ($order['POStatus'] ?? ''))) {
+        $legacyDate = $statusDates[PO_STATUS_ACCOUNTING] ?? null;
+        $approvedDate = $legacyDate ?? (($order['ModifiedDate'] ?? '') !== '' ? (string) $order['ModifiedDate'] : null);
     }
 
     $qboDate = po_lifecycle_qbo_sent_date($poId, $order);
@@ -175,6 +178,9 @@ function po_lifecycle_timeline(int $poId, array $order): array
     $asnDate = $requiresReceiving ? po_lifecycle_first_asn_date($poId) : null;
     $paymentDate = po_lifecycle_first_payment_date($poId);
     $closedDate = $statusDates[PO_STATUS_PAID] ?? null;
+    if ($closedDate === null && (string) ($order['POStatus'] ?? '') === PO_STATUS_PAID) {
+        $closedDate = ($order['ModifiedDate'] ?? '') !== '' ? (string) $order['ModifiedDate'] : null;
+    }
 
     $steps = [
         'created'   => ['label' => PO_LIFECYCLE_STEPS['created'], 'date' => $createdDate !== '' ? $createdDate : null, 'applicable' => true],

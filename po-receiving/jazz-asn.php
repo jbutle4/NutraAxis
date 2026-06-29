@@ -35,7 +35,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => $jazzAsnsPath,
           'back_label' => 'Back to Jazz ASNs',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'Jazz ASN ' . $asnId,
       ]);
       ?>
@@ -46,7 +46,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => $jazzAsnsPath,
           'back_label' => 'Back to Jazz ASNs',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'Jazz ASN ' . $asnId,
       ]);
       ?>
@@ -67,7 +67,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => $jazzAsnsPath,
           'back_label' => 'Back to Jazz ASNs',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'Jazz ASN ' . ($asn['id'] ?? $asnId),
           'lead'       => $jazzAsnLead,
           'lead_html'  => true,

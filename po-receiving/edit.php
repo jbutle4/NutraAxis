@@ -44,7 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => '/po-receiving/view.php?id=' . $porId,
           'back_label' => 'Back to Receipt',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'Edit PO Receipt',
           'lead'       => $receipt['PONumber'] . ' · ' . $receipt['SupplierName'],
       ]);

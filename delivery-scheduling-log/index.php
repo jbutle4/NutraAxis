@@ -17,8 +17,9 @@ $notice = $_GET['notice'] ?? null;
 $emailNotice = $_GET['email_notice'] ?? null;
 $emailError = isset($_GET['email_error']) ? (string) $_GET['email_error'] : null;
 
-$pageTitle = 'Delivery Scheduling Log | Supply Chain Management';
+$pageTitle = 'Delivery Scheduling Log | Inbound & Receiving';
 $pageDescription = 'Track inbound delivery appointments and scheduling updates.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -28,9 +29,9 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php
       $listToolbar = das_can_create() ? '<a class="btn-primary" href="/delivery-scheduling-log/new.php">New appointment</a>' : '';
       render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Supply Chain Management',
-          'category'   => 'Supply Chain',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Inbound',
           'title'      => 'Delivery Scheduling Log',
           'lead'       => 'Track inbound delivery appointments, carrier updates, and warehouse scheduling for purchase order receipts.',
           'permission' => auth_module_permission_label('delivery-scheduling-log'),

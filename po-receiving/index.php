@@ -14,8 +14,9 @@ $listFilters = [
 $receipts = por_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'PO Receiving | Supply Chain Management';
+$pageTitle = 'PO Receiving | Inbound & Receiving';
 $pageDescription = 'Advanced shipping notices and purchase order receiving.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -28,9 +29,9 @@ require dirname(__DIR__) . '/includes/header.php';
           $porHeaderActions .= '<a class="btn-primary" href="/po-receiving/new.php">New Receipt</a>';
       }
       render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Supply Chain Management',
-          'category'   => 'Supply Chain',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Inbound',
           'title'      => 'PO Receiving',
           'lead'       => 'Schedule and record inbound shipments against purchase orders.',
           'permission' => permission_label(po_permission_value()),

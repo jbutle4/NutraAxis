@@ -50,7 +50,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => $jazzAsnsPath,
           'back_label' => 'Back to Jazz ASNs',
-          'category'   => 'Supply Chain',
+          'category'   => 'Inbound',
           'title'      => 'Jazz ASNs',
           'lead'       => 'Advanced shipping notices on file in Jazz OMS.',
           'permission' => permission_label(po_permission_value()),

@@ -401,6 +401,7 @@ function po_get_order(int $poId): ?array
             s.SupplierName,
             s.SupplierCode,
             s.SupplierType,
+            s.QBO_SupplierID,
             s.Address AS SupplierTableAddress,
             s.ContactName,
             s.ContactEmail,

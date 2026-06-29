@@ -449,6 +449,184 @@ function qbo_api_request(string $method, string $path, ?array $query = null, ?ar
     return ['ok' => true, 'error' => null, 'data' => $data];
 }
 
+function qbo_api_upload_request(string $fileName, string $contentType, string $fileContent, array $metadata): array
+{
+    $configError = qbo_config_error();
+    if ($configError !== null) {
+        return ['ok' => false, 'error' => $configError, 'data' => null];
+    }
+
+    $tokenResult = qbo_ensure_access_token();
+    if (!$tokenResult['ok']) {
+        return $tokenResult;
+    }
+
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'error' => 'cURL is required to connect to QuickBooks.', 'data' => null];
+    }
+
+    $connection = $tokenResult['connection'];
+    $realmId = (string) $connection['RealmID'];
+    $url = qbo_api_base_url() . '/v3/company/' . rawurlencode($realmId) . '/upload?minorversion=65';
+
+    $metadataJson = json_encode($metadata, JSON_UNESCAPED_UNICODE);
+    if ($metadataJson === false) {
+        return ['ok' => false, 'error' => 'Unable to encode QuickBooks attachment metadata.', 'data' => null];
+    }
+
+    $boundary = '-------------' . bin2hex(random_bytes(12));
+    $safeFileName = str_replace(['"', "\r", "\n"], '', $fileName);
+    $body = ''
+        . "--{$boundary}\r\n"
+        . 'Content-Disposition: form-data; name="file_content_0"; filename="' . $safeFileName . "\"\r\n"
+        . 'Content-Type: ' . $contentType . "\r\n"
+        . "Content-Transfer-Encoding: binary\r\n\r\n"
+        . $fileContent . "\r\n"
+        . "--{$boundary}\r\n"
+        . "Content-Disposition: form-data; name=\"file_metadata_0\"\r\n"
+        . "Content-Type: application/json; charset=UTF-8\r\n"
+        . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+        . $metadataJson . "\r\n"
+        . "--{$boundary}--\r\n";
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            'Authorization: Bearer ' . (string) $connection['AccessToken'],
+            'Content-Type: multipart/form-data; boundary=' . $boundary,
+        ],
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_TIMEOUT    => 120,
+    ]);
+
+    $responseBody = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if (is_resource($ch)) {
+        curl_close($ch);
+    }
+
+    if ($responseBody === false) {
+        return ['ok' => false, 'error' => 'Unable to reach QuickBooks.', 'data' => null];
+    }
+
+    try {
+        $data = json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'QuickBooks returned an unexpected upload response.', 'data' => null];
+    }
+
+    if ($status >= 400) {
+        $rawMessage = qbo_api_format_fault_message($data);
+
+        return [
+            'ok'        => false,
+            'error'     => qbo_humanize_error($rawMessage),
+            'raw_error' => $rawMessage,
+            'data'      => $data,
+            'status'    => $status,
+        ];
+    }
+
+    return ['ok' => true, 'error' => null, 'data' => $data];
+}
+
+function qbo_list_entity_attachables(string $entityType, string $entityId): array
+{
+    $entityType = trim($entityType);
+    $entityId = trim($entityId);
+    if ($entityType === '' || $entityId === '') {
+        return ['ok' => false, 'error' => 'Entity type and ID are required.', 'attachables' => []];
+    }
+
+    $escapedId = str_replace("'", "\\'", $entityId);
+    $escapedType = str_replace("'", "\\'", $entityType);
+    $queries = [
+        "SELECT Id, FileName, Size, SyncToken, Note, ContentType FROM Attachable WHERE AttachableRef.EntityRef.Type = '{$escapedType}' AND AttachableRef.EntityRef.value = '{$escapedId}'",
+        "SELECT Id, FileName, Size, SyncToken, Note, ContentType FROM Attachable WHERE AttachableRef.EntityRef.value = '{$escapedId}'",
+    ];
+
+    foreach ($queries as $sql) {
+        $result = qbo_query($sql, 100);
+        if (!$result['ok']) {
+            continue;
+        }
+
+        $rows = qbo_extract_rows($result['data'] ?? [], ['Attachable']);
+        if ($rows !== []) {
+            return ['ok' => true, 'error' => null, 'attachables' => $rows];
+        }
+    }
+
+    return ['ok' => true, 'error' => null, 'attachables' => []];
+}
+
+function qbo_delete_attachable(string $attachableId, string $syncToken): array
+{
+    $attachableId = trim($attachableId);
+    $syncToken = trim($syncToken);
+    if ($attachableId === '' || $syncToken === '') {
+        return ['ok' => false, 'error' => 'QuickBooks attachment ID and sync token are required.'];
+    }
+
+    return qbo_api_request('POST', '/attachable', ['operation' => 'delete', 'minorversion' => 65], [
+        'Id'        => $attachableId,
+        'SyncToken' => $syncToken,
+    ]);
+}
+
+function qbo_upload_entity_attachment(
+    string $entityType,
+    string $entityId,
+    string $fileName,
+    string $contentType,
+    string $fileContent,
+    ?string $note = null
+): array {
+    $entityType = trim($entityType);
+    $entityId = trim($entityId);
+    $fileName = trim($fileName);
+    if ($entityType === '' || $entityId === '' || $fileName === '') {
+        return ['ok' => false, 'error' => 'Entity, file name, and content are required for QuickBooks upload.'];
+    }
+
+    if ($fileContent === '') {
+        return ['ok' => false, 'error' => 'Attachment file is empty.'];
+    }
+
+    $metadata = [
+        'AttachableRef' => [[
+            'EntityRef' => [
+                'type'  => $entityType,
+                'value' => $entityId,
+            ],
+        ]],
+        'FileName'    => $fileName,
+        'ContentType' => $contentType !== '' ? $contentType : 'application/octet-stream',
+    ];
+    if ($note !== null && trim($note) !== '') {
+        $metadata['Note'] = trim($note);
+    }
+
+    $result = qbo_api_upload_request($fileName, $metadata['ContentType'], $fileContent, $metadata);
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $attachable = $result['data']['AttachableResponse'][0]['Attachable']
+        ?? $result['data']['Attachable']
+        ?? null;
+
+    return [
+        'ok'         => is_array($attachable),
+        'error'      => is_array($attachable) ? null : 'QuickBooks did not return attachment details.',
+        'attachable' => is_array($attachable) ? $attachable : null,
+        'data'       => $result['data'],
+    ];
+}
+
 function qbo_api_format_fault_message(array $data): string
 {
     $fault = $data['Fault']['Error'][0] ?? $data['fault']['error'][0] ?? [];

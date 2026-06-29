@@ -36,6 +36,7 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
 
 $pageTitle = 'ACCS Inventory Reporting | Inventory Management';
 $pageDescription = 'View stock levels by SKU and source from Adobe Commerce (ACCS).';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -43,8 +44,8 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Inventory Management',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
           'title'      => 'ACCS Inventory Reporting',
           'lead'       => 'Live inventory by SKU and source from Adobe Commerce (ACCS).',

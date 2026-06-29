@@ -16,6 +16,7 @@ $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Supplier Management | NutraAxis Operations';
 $pageDescription = 'View and manage supplier profiles used across purchase orders.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -25,9 +26,9 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php
       $listToolbar = supplier_can_create() ? '<a class="btn-primary" href="/supplier-management/new.php">New Supplier</a>' : '';
       render_list_page_header([
-          'back_href'  => '/inventory-management/',
-          'back_label' => 'Back to Inventory Management',
-          'category'   => 'Inventory',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Procurement',
           'title'      => 'Supplier Management',
           'lead'       => 'Maintain supplier profiles, contacts, and addresses used when creating purchase orders.',
           'permission' => permission_label(supplier_permission_value()),
