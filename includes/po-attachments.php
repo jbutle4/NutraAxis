@@ -5,6 +5,14 @@ require_once __DIR__ . '/attachment-storage.php';
 
 const PO_ATTACHMENT_KINDS = ['SourcePDF', 'SignedPDF', 'ImportExcel', 'ImportCSV', 'Other'];
 
+const PO_ATTACHMENT_KIND_LABELS = [
+    'SourcePDF'   => 'Source PDF',
+    'SignedPDF'   => 'Signed PDF',
+    'ImportExcel' => 'Import Excel',
+    'ImportCSV'   => 'Import CSV',
+    'Other'       => 'Other',
+];
+
 function po_save_attachment(int $poId, array $file, string $kind = 'SourcePDF'): array
 {
     $order = po_get_order($poId);
@@ -123,4 +131,9 @@ function po_format_file_size(int $bytes): string
     }
 
     return round($bytes / 1048576, 1) . ' MB';
+}
+
+function po_attachment_kind_label(string $kind): string
+{
+    return PO_ATTACHMENT_KIND_LABELS[$kind] ?? $kind;
 }

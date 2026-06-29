@@ -4,8 +4,15 @@
 /** @var bool $isEdit */
 /** @var array $userOptions */
 $isEdit = $isEdit ?? false;
+$formActions = capture_form_actions(function () use ($isEdit, $form) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Contract' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit ? '/legal-agreements/view.php?id=' . (int) ($form['contract_id'] ?? 0) : '/legal-agreements/' ?>">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="contract_number">Contract ID</label>
@@ -119,8 +126,5 @@ $isEdit = $isEdit ?? false;
             <textarea class="form-input" id="notes" name="notes" rows="4"><?= htmlspecialchars($form['notes'] ?? '') ?></textarea>
           </div>
         </div>
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Contract' ?></button>
-          <a class="btn-secondary" href="<?= $isEdit ? '/legal-agreements/view.php?id=' . (int) ($form['contract_id'] ?? 0) : '/legal-agreements/' ?>">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>

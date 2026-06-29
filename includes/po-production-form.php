@@ -5,6 +5,12 @@
 /** @var string|null $error */
 $productionByLine = $productionByLine ?? [];
 $error = $error ?? null;
+$formActions = capture_form_actions(function () use ($order) {
+    ?>
+    <button type="submit" class="btn-primary">Save production status</button>
+    <a class="btn-secondary" href="/po-management/view.php?id=<?= (int) $order['POID'] ?>">Cancel</a>
+    <?php
+});
 ?>
       <div class="account-card production-status-card">
         <h2>Production status</h2>
@@ -16,6 +22,7 @@ $error = $error ?? null;
 
         <form class="admin-form" method="post" action="/po-management/production-status.php">
           <input type="hidden" name="po_id" value="<?= (int) $order['POID'] ?>" />
+          <?php render_form_actions($formActions, 'top'); ?>
 
           <?php foreach ($lines as $line): ?>
           <?php
@@ -97,9 +104,6 @@ $error = $error ?? null;
           </div>
           <?php endforeach; ?>
 
-          <div class="module-actions">
-            <button type="submit" class="btn-primary">Save production status</button>
-            <a class="btn-secondary" href="/po-management/view.php?id=<?= (int) $order['POID'] ?>">Cancel</a>
-          </div>
+          <?php render_form_actions($formActions, 'bottom'); ?>
         </form>
       </div>

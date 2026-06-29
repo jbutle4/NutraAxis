@@ -33,7 +33,7 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
+    <div class="container page-inner page-no-sticky-top">
       <?php
       render_list_page_header([
           'back_href'  => '/po-management/',

@@ -13,8 +13,15 @@ $supplierOptions = $supplierOptions ?? catalog_supplier_options(
 $qboIncomeAccounts = $qboIncomeAccounts ?? catalog_qbo_account_options('income');
 $qboExpenseAccounts = $qboExpenseAccounts ?? catalog_qbo_account_options('expense');
 $qboAssetAccounts = $qboAssetAccounts ?? catalog_qbo_account_options('asset');
+$formActions = capture_form_actions(function () use ($isEdit, $form) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create SKU' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit ? '/product-catalog/view.php?id=' . (int) ($form['sku_id'] ?? 0) : '/product-catalog/' ?>">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="sku_code">SKU / Item code</label>
@@ -256,10 +263,7 @@ $qboAssetAccounts = $qboAssetAccounts ?? catalog_qbo_account_options('asset');
             <input type="hidden" id="qbo_asset_account_ref_name" name="qbo_asset_account_ref_name" value="<?= htmlspecialchars($form['qbo_asset_account_ref_name'] ?? '') ?>" />
           </div>
         </div>
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create SKU' ?></button>
-          <a class="btn-secondary" href="<?= $isEdit ? '/product-catalog/view.php?id=' . (int) ($form['sku_id'] ?? 0) : '/product-catalog/' ?>">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
       <script>
         document.querySelectorAll('.qbo-account-select').forEach(function (select) {

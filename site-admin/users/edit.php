@@ -86,6 +86,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="admin-form" method="post" action="/site-admin/users/edit.php?id=<?= $userId ?>">
+        <?php
+        $formActions = capture_form_actions(function () {
+            ?>
+            <button class="btn-primary" type="submit">Save Changes</button>
+            <a class="btn-secondary" href="/site-admin/users/">Cancel</a>
+            <?php
+        });
+        render_form_actions($formActions, 'top');
+        ?>
         <div class="form-group">
           <label for="user_name">Full name</label>
           <input class="form-input" type="text" id="user_name" name="user_name" value="<?= htmlspecialchars($form['user_name']) ?>" required />
@@ -127,10 +136,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           require dirname(__DIR__, 2) . '/includes/admin-user-alert-subscriptions.php';
         ?>
 
-        <div class="module-actions">
-          <button class="btn-primary" type="submit">Save Changes</button>
-          <a class="btn-secondary" href="/site-admin/users/">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
     </div>
   </main>

@@ -8,11 +8,22 @@
 /** @var array $returnContext */
 $isEdit = $isEdit ?? false;
 $returnContext = $returnContext ?? das_return_context_from_query();
+$formActions = capture_form_actions(function () use ($isEdit, $form, $returnContext) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Save appointment' ?></button>
+    <?php if ($isEdit): ?>
+    <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= (int) ($form['appt_id'] ?? 0) ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Cancel</a>
+    <?php else: ?>
+    <a class="btn-secondary" href="/delivery-scheduling-log/">Cancel</a>
+    <?php endif; ?>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
         <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnContext['return_to'] ?? '') ?>" />
         <input type="hidden" name="por_id" value="<?= (int) ($returnContext['por_id'] ?? 0) ?>" />
         <input type="hidden" name="jazz_asn_id" value="<?= htmlspecialchars($returnContext['jazz_asn_id'] ?? '') ?>" />
+        <?php render_form_actions($formActions, 'top'); ?>
 
         <div class="form-grid">
           <div class="form-group">
@@ -122,12 +133,7 @@ $returnContext = $returnContext ?? das_return_context_from_query();
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Save appointment</button>
-          <?php if ($isEdit): ?>
-          <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= (int) ($form['appt_id'] ?? 0) ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View</a>
-          <?php endif; ?>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
       <script>
       (function () {

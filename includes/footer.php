@@ -77,15 +77,33 @@
     syncTopChromeSpacer();
     window.addEventListener('resize', syncTopChromeSpacer);
 
+    function directPageInnerChild(inner, selector) {
+      var children = inner.children;
+      var i;
+      for (i = 0; i < children.length; i++) {
+        if (children[i].matches(selector)) {
+          return children[i];
+        }
+      }
+      return null;
+    }
+
     function wrapListPageStickyTop() {
       document.querySelectorAll('.page-inner').forEach(function (inner) {
-        if (inner.querySelector('.page-sticky-top')) {
+        if (inner.classList.contains('page-no-sticky-top') || inner.querySelector('.page-sticky-top')) {
           return;
         }
 
-        var table = inner.querySelector('.admin-table-wrap');
-        var contentRoot = table
-          || inner.querySelector('.capability-grid, .detail-grid, .functions, .legal-prose, .account-card, .admin-form, .form-card');
+        // Form/edit and detail/view pages scroll normally; sticky wrapping breaks nested layouts.
+        if (directPageInnerChild(inner, '.admin-form, .form-card, .account-grid')) {
+          return;
+        }
+
+        var contentRoot = directPageInnerChild(inner, '.admin-table-wrap')
+          || directPageInnerChild(inner, '.detail-grid')
+          || directPageInnerChild(inner, '.capability-grid')
+          || directPageInnerChild(inner, '.functions')
+          || directPageInnerChild(inner, '.legal-prose');
         if (!contentRoot) {
           return;
         }

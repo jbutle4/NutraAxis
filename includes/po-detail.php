@@ -12,7 +12,7 @@ $approvalLog = $approvalLog ?? [];
 $productionByLine = $productionByLine ?? [];
 $canEditProduction = $canEditProduction ?? false;
 ?>
-      <div class="account-grid">
+      <div class="account-grid po-summary-grid">
         <div class="account-card">
           <h2>Buyer</h2>
           <dl class="account-details">
@@ -68,7 +68,12 @@ $canEditProduction = $canEditProduction ?? false;
       </div>
       <?php endif; ?>
 
-      <div class="admin-table-wrap" style="margin-top: 20px;">
+      <section class="detail-card" style="margin-top: 20px;">
+        <h2>Line items</h2>
+        <?php if ($lines === []): ?>
+        <p class="account-card-lead">No line items on this purchase order.</p>
+        <?php else: ?>
+        <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
@@ -97,7 +102,9 @@ $canEditProduction = $canEditProduction ?? false;
             <?php endforeach; ?>
           </tbody>
         </table>
-      </div>
+        </div>
+        <?php endif; ?>
+      </section>
 
       <?php require __DIR__ . '/po-production-detail.php'; ?>
 
@@ -119,57 +126,11 @@ $canEditProduction = $canEditProduction ?? false;
         <?php endif; ?>
       </div>
 
-      <div class="account-card" style="margin-top: 20px;">
-        <h2>Attachments</h2>
-        <?php if ($attachments === []): ?>
-        <p class="account-card-lead">No files attached yet.</p>
-        <?php else: ?>
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>File</th>
-              <th>Type</th>
-              <th>Size</th>
-              <th>Uploaded</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($attachments as $file): ?>
-            <tr>
-              <td><a class="btn-text" href="/po-management/attachment.php?id=<?= (int) $file['AttachmentID'] ?>"><?= htmlspecialchars($file['FileName']) ?></a></td>
-              <td><?= htmlspecialchars($file['AttachmentKind']) ?></td>
-              <td><?= htmlspecialchars(po_format_file_size((int) $file['FileSizeBytes'])) ?></td>
-              <td><?= htmlspecialchars(admin_format_datetime($file['UploadDate'])) ?></td>
-              <td><?= htmlspecialchars($file['UploadedByName']) ?></td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-        <?php endif; ?>
-
-        <?php if ($showUploadForm): ?>
-        <form class="admin-form" method="post" enctype="multipart/form-data" action="/po-management/upload-attachment.php" style="margin-top: 16px;">
-          <input type="hidden" name="po_id" value="<?= (int) $order['POID'] ?>" />
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="attachment">Upload PDF or file</label>
-              <input class="form-input" type="file" id="attachment" name="attachment" accept=".pdf,.xlsx,.csv,application/pdf" required />
-            </div>
-            <div class="form-group">
-              <label for="attachment_kind">Attachment type</label>
-              <select class="form-input" id="attachment_kind" name="attachment_kind">
-                <option value="SourcePDF">Source PDF</option>
-                <option value="SignedPDF">Signed PDF</option>
-                <option value="ImportExcel">Import Excel</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn-secondary btn-small" type="submit">Upload attachment</button>
-        </form>
-        <?php endif; ?>
-      </div>
+      <?php
+      $poId = (int) $order['POID'];
+      $uploadReturnPath = '/po-management/view.php?id=' . $poId;
+      require __DIR__ . '/po-attachments-section.php';
+      ?>
 
       <?php if ($approvalLog !== []): ?>
       <div class="account-card" style="margin-top: 20px;">

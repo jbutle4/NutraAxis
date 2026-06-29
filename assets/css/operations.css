@@ -1386,6 +1386,66 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   font-weight: 600;
 }
 
+/* PO view: compact label–value rows to keep line items visible above the fold */
+.po-summary-grid {
+  gap: 12px;
+}
+
+.po-summary-grid .account-card {
+  padding: 14px 16px;
+}
+
+.po-summary-grid .account-card h2 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.po-summary-grid .account-details {
+  gap: 5px;
+}
+
+.po-summary-grid .account-details > div {
+  display: grid;
+  grid-template-columns: 6.75rem minmax(0, 1fr);
+  gap: 0 10px;
+  align-items: baseline;
+}
+
+.po-summary-grid .account-details dt {
+  margin-bottom: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.po-summary-grid .account-details dt::after {
+  content: ':';
+}
+
+.po-summary-grid .account-details dd {
+  font-size: 0.86rem;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.po-summary-grid .account-details dd strong {
+  font-weight: 700;
+}
+
+.form-actions-bar--top {
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-actions-bar--bottom {
+  margin-top: 24px;
+}
+
 .permission-table {
   width: 100%;
   border-collapse: collapse;

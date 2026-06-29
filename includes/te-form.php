@@ -110,8 +110,20 @@ $renderField = static function (string $name, string $value, string $type = 'tex
     }
 };
 ?>
-<?php if (!$readonly): ?>
+<?php if (!$readonly):
+$formActions = capture_form_actions(function () use ($reportId) {
+    ?>
+    <button class="btn-primary" type="submit">Save expense report</button>
+    <?php if ($reportId !== null): ?>
+    <a class="btn-secondary" href="/travel-expense/view.php?id=<?= (int) $reportId ?>">Cancel</a>
+    <?php else: ?>
+    <a class="btn-secondary" href="/travel-expense/">Cancel</a>
+    <?php endif; ?>
+    <?php
+});
+?>
 <form class="admin-form te-report-form" method="post"<?= $formAction !== null ? ' action="' . htmlspecialchars($formAction) . '"' : '' ?>>
+<?php render_form_actions($formActions, 'top'); ?>
 <?php endif; ?>
 
   <section class="account-card">
@@ -285,13 +297,6 @@ $renderField = static function (string $name, string $value, string $type = 'tex
   </section>
 
 <?php if (!$readonly): ?>
-  <div class="module-actions" style="margin-top: 20px;">
-    <button class="btn-primary" type="submit">Save expense report</button>
-    <?php if ($reportId !== null): ?>
-    <a class="btn-secondary" href="/travel-expense/view.php?id=<?= (int) $reportId ?>">Cancel</a>
-    <?php else: ?>
-    <a class="btn-secondary" href="/travel-expense/">Cancel</a>
-    <?php endif; ?>
-  </div>
+  <?php render_form_actions($formActions, 'bottom'); ?>
 </form>
 <?php endif; ?>

@@ -13,9 +13,35 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $poId = (int) ($_POST['po_id'] ?? 0);
 $kind = $_POST['attachment_kind'] ?? 'SourcePDF';
 $result = po_save_attachment($poId, $_FILES['attachment'] ?? [], $kind);
+$isAjax = !empty($_POST['ajax'])
+    || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+$returnTo = trim((string) ($_POST['return_to'] ?? ''));
+$successRedirect = '/po-management/view.php?id=' . $poId . '&notice=attachment';
+if ($returnTo !== '' && str_starts_with($returnTo, '/po-management/')) {
+    $successRedirect = $returnTo . (str_contains($returnTo, '?') ? '&' : '?') . 'notice=attachment';
+}
+
+if ($isAjax) {
+    header('Content-Type: application/json; charset=utf-8');
+    if ($result['ok']) {
+        echo json_encode([
+            'ok'       => true,
+            'error'    => null,
+            'redirect' => $successRedirect,
+        ], JSON_UNESCAPED_SLASHES);
+    } else {
+        http_response_code(400);
+        echo json_encode([
+            'ok'    => false,
+            'error' => $result['error'] ?? 'Unable to upload attachment.',
+        ], JSON_UNESCAPED_SLASHES);
+    }
+    exit;
+}
 
 if ($result['ok']) {
-    header('Location: /po-management/view.php?id=' . $poId . '&notice=attachment', true, 302);
+    header('Location: ' . $successRedirect, true, 302);
     exit;
 }
 

@@ -28,8 +28,15 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
 
     return $html;
 };
+$formActions = capture_form_actions(function () use ($isEdit) {
+    ?>
+    <button class="btn-primary" type="submit"><?= $isEdit ? 'Save Changes' : 'Create Purchase Order' ?></button>
+    <a class="btn-secondary" href="/po-management/">Cancel</a>
+    <?php
+});
 ?>
 <form class="admin-form po-form" method="post" enctype="multipart/form-data"<?= !empty($formAction) ? ' action="' . htmlspecialchars($formAction) . '"' : '' ?>>
+  <?php render_form_actions($formActions, 'top'); ?>
   <h2 class="admin-form-subhead">Purchase order</h2>
   <div class="form-grid">
     <div class="form-group">
@@ -166,10 +173,7 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
     </div>
   </div>
 
-  <div class="module-actions">
-    <button class="btn-primary" type="submit"><?= $isEdit ? 'Save Changes' : 'Create Purchase Order' ?></button>
-    <a class="btn-secondary" href="/po-management/">Cancel</a>
-  </div>
+  <?php render_form_actions($formActions, 'bottom'); ?>
 </form>
 
 <script>
@@ -178,7 +182,7 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
   var addBtn = document.getElementById('add-line-item');
   if (!body || !addBtn) return;
 
-  var skuSelectTemplate = <?= json_encode($renderSkuSelect(0, '')) ?>;
+  var skuSelectTemplate = <?= json_encode($renderSkuSelect(0, ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
   function bindRemoveButtons() {
     body.querySelectorAll('.remove-line').forEach(function (btn) {

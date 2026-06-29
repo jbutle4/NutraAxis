@@ -2,8 +2,21 @@
 /** @var array $form */
 /** @var string $formAction */
 /** @var bool $isEdit */
+/** @var int|null $logId */
+$logId = $logId ?? null;
+$formActions = capture_form_actions(function () use ($isEdit, $logId) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Backlog Item' ?></button>
+    <?php if ($isEdit && !empty($logId)): ?>
+    <a class="btn-secondary" href="/enhancement-log/view.php?id=<?= (int) $logId ?>">Cancel</a>
+    <?php else: ?>
+    <a class="btn-secondary" href="/enhancement-log/">Cancel</a>
+    <?php endif; ?>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="enhancement_title">Backlog item title <span class="required">*</span></label>
@@ -95,12 +108,5 @@
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Backlog Item' ?></button>
-          <?php if ($isEdit && !empty($logId)): ?>
-          <a class="btn-secondary" href="/enhancement-log/view.php?id=<?= (int) $logId ?>">Cancel</a>
-          <?php else: ?>
-          <a class="btn-secondary" href="/enhancement-log/">Cancel</a>
-          <?php endif; ?>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>

@@ -5,8 +5,18 @@
 /** @var int|null $linkId */
 $isEdit = $isEdit ?? false;
 $linkId = isset($linkId) ? (int) $linkId : 0;
+$formActions = capture_form_actions(function () use ($isEdit, $linkId) {
+    ?>
+    <button type="submit" form="link-form" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Link' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit && $linkId > 0 ? '/links-index/view.php?id=' . $linkId : '/links-index/' ?>">Cancel</a>
+    <?php if ($isEdit && $linkId > 0 && links_can_delete()): ?>
+    <button type="submit" form="link-delete-form" class="btn-danger">Delete</button>
+    <?php endif; ?>
+    <?php
+});
 ?>
       <div class="admin-form">
+      <?php render_form_actions($formActions, 'top'); ?>
       <?php if ($isEdit && $linkId > 0 && links_can_delete()): ?>
       <form id="link-delete-form" method="post" action="/links-index/delete.php" class="visually-hidden-form" onsubmit="return confirm('Delete this link from the index?');">
         <input type="hidden" name="link_id" value="<?= $linkId ?>" />
@@ -51,11 +61,5 @@ $linkId = isset($linkId) ? (int) $linkId : 0;
           </div>
         </div>
       </form>
-      <div class="form-actions">
-        <button type="submit" form="link-form" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Link' ?></button>
-        <a class="btn-secondary" href="<?= $isEdit && $linkId > 0 ? '/links-index/view.php?id=' . $linkId : '/links-index/' ?>">Cancel</a>
-        <?php if ($isEdit && $linkId > 0 && links_can_delete()): ?>
-        <button type="submit" form="link-delete-form" class="btn-danger">Delete</button>
-        <?php endif; ?>
-      </div>
+      <?php render_form_actions($formActions, 'bottom'); ?>
       </div>

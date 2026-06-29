@@ -7,8 +7,15 @@ $isEdit = $isEdit ?? false;
 $poOptions = $poOptions ?? por_po_options();
 $lines = $form['lines'] ?? [];
 $lineColspan = 12;
+$formActions = capture_form_actions(function () use ($isEdit, $form) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Receipt' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit ? '/po-receiving/view.php?id=' . (int) ($form['por_id'] ?? 0) : '/po-receiving/' ?>">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="po_id">Purchase order</label>
@@ -155,8 +162,5 @@ $lineColspan = 12;
           </table>
         </div>
 
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Receipt' ?></button>
-          <a class="btn-secondary" href="<?= $isEdit ? '/po-receiving/view.php?id=' . (int) ($form['por_id'] ?? 0) : '/po-receiving/' ?>">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>

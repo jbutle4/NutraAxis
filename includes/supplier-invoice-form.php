@@ -10,8 +10,20 @@ $isLocked = $isLocked ?? false;
 $form = $form ?? supplier_invoice_to_form([]);
 $lines = $form['lines'] ?? [supplier_invoice_default_line()];
 $poOptions = $poOptions ?? [];
+$formActions = '';
+if (!$isLocked) {
+    $formActions = capture_form_actions(function () use ($isEdit) {
+        ?>
+        <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Invoice' ?></button>
+        <a class="btn-secondary" href="/accounting/supplier-invoices/">Cancel</a>
+        <?php
+    });
+}
 ?>
 <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+  <?php if ($formActions !== '') {
+      render_form_actions($formActions, 'top');
+  } ?>
   <h2 class="admin-form-subhead">Invoice header</h2>
   <div class="form-grid">
     <div class="form-group">
@@ -148,10 +160,7 @@ $poOptions = $poOptions ?? [];
   <?php endif; ?>
 
   <?php if (!$isLocked): ?>
-  <div class="module-actions">
-    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Invoice' ?></button>
-    <a class="btn-secondary" href="/accounting/supplier-invoices/">Cancel</a>
-  </div>
+  <?php render_form_actions($formActions, 'bottom'); ?>
   <?php endif; ?>
 </form>
 <?php if (!$isLocked): ?>

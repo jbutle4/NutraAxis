@@ -62,6 +62,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <form class="admin-form" method="post" action="/site-admin/roles/edit.php?id=<?= $roleId ?>">
+        <?php
+        $formActions = capture_form_actions(function () {
+            ?>
+            <button class="btn-primary" type="submit">Save Role</button>
+            <a class="btn-secondary" href="/site-admin/roles/">Cancel</a>
+            <?php
+        });
+        render_form_actions($formActions, 'top');
+        ?>
         <div class="form-group">
           <label for="role_name">Role name</label>
           <input class="form-input" type="text" id="role_name" name="role_name" value="<?= htmlspecialchars($role['RoleName']) ?>" required />
@@ -77,10 +86,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
         <?php $editable = true; require dirname(__DIR__, 2) . '/includes/admin-permission-grid.php'; ?>
 
-        <div class="module-actions">
-          <button class="btn-primary" type="submit">Save Role</button>
-          <a class="btn-secondary" href="/site-admin/roles/">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
     </div>
   </main>

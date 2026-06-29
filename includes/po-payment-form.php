@@ -9,8 +9,15 @@ $isEdit = $isEdit ?? false;
 $invoiceOptions = $invoiceOptions ?? [];
 $invoiceOnly = $invoiceOnly ?? false;
 $paymentTarget = $invoiceOnly ? 'invoice' : (($form['payment_target'] ?? 'po') === 'invoice' ? 'invoice' : 'po');
+$formActions = capture_form_actions(function () use ($isEdit) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Record Payment' ?></button>
+    <a class="btn-secondary" href="/po-payments/">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>" id="po-payment-form">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <?php if ($invoiceOnly): ?>
           <input type="hidden" name="payment_target" value="invoice" />
@@ -108,10 +115,7 @@ $paymentTarget = $invoiceOnly ? 'invoice' : (($form['payment_target'] ?? 'po') =
             <textarea class="form-input" id="payment_comments" name="payment_comments" rows="4"><?= htmlspecialchars($form['payment_comments'] ?? '') ?></textarea>
           </div>
         </div>
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Record Payment' ?></button>
-          <a class="btn-secondary" href="/po-payments/">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
       <?php if (!$isEdit && !$invoiceOnly): ?>
       <script>

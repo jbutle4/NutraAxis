@@ -6,8 +6,15 @@ $isEdit = $isEdit ?? false;
 $qboPaymentTerms = supplier_form_payment_terms();
 $selectedTermValue = (string) ($form['term_ref_value'] ?? '');
 $selectedTermName = (string) ($form['term_ref_name'] ?? '');
+$formActions = capture_form_actions(function () use ($isEdit, $form) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Supplier' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit ? '/supplier-management/view.php?id=' . (int) ($form['supplier_id'] ?? 0) : '/supplier-management/' ?>">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="supplier_code">Supplier code</label>
@@ -224,10 +231,7 @@ $selectedTermName = (string) ($form['term_ref_name'] ?? '');
           </div>
         </div>
 
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Supplier' ?></button>
-          <a class="btn-secondary" href="<?= $isEdit ? '/supplier-management/view.php?id=' . (int) ($form['supplier_id'] ?? 0) : '/supplier-management/' ?>">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
         <?php if (!empty($qboPaymentTerms)): ?>
         <script>
           (function () {
