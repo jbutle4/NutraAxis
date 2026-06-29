@@ -65,7 +65,10 @@ function inventory_ledger_list_facilities(): array
             FacilityCode,
             FacilityName,
             FacilityType,
-            IsActive
+            IsActive,
+            IsMothership,
+            ReceivesPurchaseOrders,
+            IntegrationMode
         FROM dbo.Facility
         ORDER BY IsActive DESC, FacilityCode ASC
     SQL);

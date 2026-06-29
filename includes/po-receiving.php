@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/po.php';
+require_once __DIR__ . '/facility.php';
 
 const POR_STATUSES = ['Draft', 'Scheduled', 'Transmitted', 'Complete', 'Cancelled'];
 
@@ -443,7 +444,7 @@ function por_default_header_fields(): array
         'por_notes'              => '',
         'business_type'          => '',
         'shipment_number'        => '',
-        'facility'               => '',
+        'facility'               => facility_default_po_receipt_code(),
         'carrier_number'         => '',
         'seal_number'            => '',
         'load_number'            => '',
@@ -713,6 +714,11 @@ function por_save(array $input, ?int $porId = null): array
     $shippedAt = por_parse_datetime($data['shipped_at']);
     if ($data['shipped_at'] !== '' && $shippedAt === null) {
         return ['ok' => false, 'error' => 'Shipped date/time is not valid.'];
+    }
+
+    $facilityError = facility_validate_po_receipt_destination($data['facility']);
+    if ($facilityError !== null) {
+        return ['ok' => false, 'error' => $facilityError];
     }
 
     $pdo = db();

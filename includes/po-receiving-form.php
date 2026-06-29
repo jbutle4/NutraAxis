@@ -53,7 +53,41 @@ $formActions = capture_form_actions(function () use ($isEdit, $form) {
           </div>
           <div class="form-group">
             <label for="facility">Facility</label>
-            <input class="form-input" type="text" id="facility" name="facility" maxlength="100" value="<?= htmlspecialchars($form['facility'] ?? '') ?>" />
+            <?php
+              $poReceiptFacilities = facility_list_po_receipt_destinations();
+              $selectedFacility = trim((string) ($form['facility'] ?? ''));
+              if ($selectedFacility === '' && $poReceiptFacilities !== []) {
+                  $selectedFacility = facility_default_po_receipt_code();
+              }
+              $selectedFacilityKnown = false;
+              foreach ($poReceiptFacilities as $poReceiptFacility) {
+                  if (strcasecmp((string) $poReceiptFacility['FacilityCode'], $selectedFacility) === 0) {
+                      $selectedFacilityKnown = true;
+                      break;
+                  }
+              }
+            ?>
+            <select class="form-input" id="facility" name="facility">
+              <?php foreach ($poReceiptFacilities as $poReceiptFacility): ?>
+              <?php
+                $facilityCode = (string) $poReceiptFacility['FacilityCode'];
+                $facilityLabel = (string) $poReceiptFacility['FacilityName'];
+                $externalCode = trim((string) ($poReceiptFacility['ExternalReferenceCode'] ?? ''));
+                if ($externalCode !== '' && strcasecmp($externalCode, $facilityCode) !== 0) {
+                    $facilityLabel .= ' (Jazz: ' . $externalCode . ')';
+                }
+              ?>
+              <option value="<?= htmlspecialchars($facilityCode) ?>" <?= strcasecmp($selectedFacility, $facilityCode) === 0 ? 'selected' : '' ?>>
+                <?= htmlspecialchars($facilityLabel) ?>
+              </option>
+              <?php endforeach; ?>
+              <?php if ($selectedFacility !== '' && !$selectedFacilityKnown): ?>
+              <option value="<?= htmlspecialchars($selectedFacility) ?>" selected>
+                <?= htmlspecialchars($selectedFacility) ?> (legacy Jazz code)
+              </option>
+              <?php endif; ?>
+            </select>
+            <p class="form-hint">Supplier receipts must land at the Cart.com mothership. Downstream locations are replenished via facility transfer.</p>
           </div>
           <div class="form-group">
             <label for="carrier_number">Carrier number</label>

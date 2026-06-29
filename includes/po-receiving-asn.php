@@ -409,7 +409,7 @@ function por_asn_payload(array $receipt, array $lines): array
     foreach ([
         'po_number'       => (string) $receipt['PONumber'],
         'business_type'   => (string) ($receipt['BusinessType'] ?? ''),
-        'facility_code'   => (string) ($receipt['Facility'] ?? ''),
+        'facility_code'   => facility_jazz_facility_code((string) ($receipt['Facility'] ?? '')),
         'carrier_number'  => (string) ($receipt['CarrierNumber'] ?? ''),
         'seal_number'     => (string) ($receipt['SealNumber'] ?? ''),
         'load_number'     => (string) ($receipt['LoadNumber'] ?? ''),

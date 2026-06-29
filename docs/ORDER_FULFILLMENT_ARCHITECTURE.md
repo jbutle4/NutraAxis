@@ -245,3 +245,15 @@ See **Application Insights + Alerting Design** section in architecture canvas.
 - [ ] Should the topic use Standard or Premium (Premium required for VNet)?
 - [ ] Retry policy: 3 attempts then dead-letter, or escalate to Zendesk?
 - [ ] Should email stubs remain active in production as CC notifications?
+
+---
+
+## Inventory Management System (IMS)
+
+Physical inventory topology, facility flags, PO receipt rules, and transfer validation are documented in **[IMS Inventory Architecture](./IMS_INVENTORY_ARCHITECTURE.md)**.
+
+Summary:
+
+- **CART** is the mothership — all supplier PO receipts and Jazz ASNs.
+- **CPPC** and **WLO** are local IMS spokes replenished only by transfer from CART.
+- Facility columns `IsMothership`, `ReceivesPurchaseOrders`, and `IntegrationMode` (`Jazz` vs `Local`) drive validation in `includes/facility.php`.
