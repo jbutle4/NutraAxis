@@ -52,3 +52,19 @@ SET
 WHERE RoleName = N'Management User'
   AND (QBOInsertApproval IS NULL OR QBOInsertApproval = N'');
 GO
+
+UPDATE dbo.Role
+SET
+    QBOInsertApproval = N'CRUD',
+    PaymentApproval = N'CRUD',
+    ModifiedbyUser = 1
+WHERE RoleName = N'All Approver'
+  AND (
+      QBOInsertApproval IS NULL
+      OR QBOInsertApproval = N''
+      OR QBOInsertApproval NOT LIKE N'%U%'
+      OR PaymentApproval IS NULL
+      OR PaymentApproval = N''
+      OR PaymentApproval NOT LIKE N'%U%'
+  );
+GO

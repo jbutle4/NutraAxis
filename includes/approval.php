@@ -131,6 +131,18 @@ function approval_alert_name_for_type(string $approvalType): ?string
     };
 }
 
+function approval_filter_valid_email_users(array $rows): array
+{
+    return array_values(array_filter(
+        $rows,
+        static function (array $row): bool {
+            $email = strtolower(trim((string) ($row['UserLogin'] ?? '')));
+
+            return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
+        }
+    ));
+}
+
 function approval_list_alert_subscriber_approvers(string $alertName, string $permissionColumn, string $action = 'U'): array
 {
     require_once __DIR__ . '/alert-messages.php';
@@ -166,14 +178,36 @@ function approval_list_alert_subscriber_approvers(string $alertName, string $per
         'permission_pattern'   => '%' . $action . '%',
     ]);
 
-    return array_values(array_filter(
-        $stmt->fetchAll(),
-        static function (array $row): bool {
-            $email = strtolower(trim((string) ($row['UserLogin'] ?? '')));
+    return approval_filter_valid_email_users($stmt->fetchAll());
+}
 
-            return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
-        }
-    ));
+function approval_list_alert_subscriber_users(string $alertName): array
+{
+    require_once __DIR__ . '/alert-messages.php';
+    if (!alert_tables_available()) {
+        return [];
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT DISTINCT
+            u.UserID,
+            u.UserName,
+            u.UserLogin,
+            r.RoleName
+        FROM dbo.AlertMessage am
+        INNER JOIN dbo.AlertSubscription sub ON sub.alertID = am.alertID
+        INNER JOIN dbo.[User] u ON u.UserID = sub.UserID
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE am.AlertName = :alert_name
+          AND am.AlertStatus = 1
+          AND u.UserLogin IS NOT NULL
+          AND LTRIM(RTRIM(u.UserLogin)) <> ''
+        ORDER BY u.UserName
+    SQL);
+    $stmt->execute(['alert_name' => $alertName]);
+
+    return approval_filter_valid_email_users($stmt->fetchAll());
 }
 
 function approval_list_users_for_type(string $approvalType, string $action = 'U'): array
@@ -193,7 +227,12 @@ function approval_list_users_for_type(string $approvalType, string $action = 'U'
         return [];
     }
 
-    return approval_list_alert_subscriber_approvers($alertName, $column, $action);
+    $alertApprovers = approval_list_alert_subscriber_approvers($alertName, $column, $action);
+    if ($alertApprovers !== []) {
+        return $alertApprovers;
+    }
+
+    return approval_list_alert_subscriber_users($alertName);
 }
 
 function approval_list_log(
