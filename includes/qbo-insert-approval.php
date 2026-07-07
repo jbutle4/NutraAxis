@@ -375,7 +375,7 @@ function qbo_insert_approver_config_message(string $issue = 'no_roles'): string
         return 'QBO insert approvers are configured, but none have a valid email login. Update user email addresses in Site Admin → Users. No approval email was sent.';
     }
 
-    return 'No users with QBO Insert Approval access are configured. In Site Admin → Roles, grant QBO Insert Approval (Update) to at least one role, assign users to that role, and ensure each user has a valid email login. No approval email was sent.';
+    return 'No users with QBO Insert Approval access are configured. Grant QBO Insert Approval (Update) on a role in Site Admin → Roles, or subscribe users with that permission to the qbo-insert-approval-request alert. Each approver needs a valid email login. No approval email was sent.';
 }
 
 function qbo_insert_approver_config_issue(array $approvers): string

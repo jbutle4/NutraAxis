@@ -94,6 +94,88 @@ function approval_can_act_on_type(string $approvalType): bool
     return $column !== null && auth_can_update($column);
 }
 
+function approval_query_users_with_role_permission(string $column, string $action = 'U'): array
+{
+    $action = strtoupper($action);
+    if (!isset(PERMISSION_ACTIONS[$action])) {
+        return [];
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT
+            u.UserID,
+            u.UserName,
+            u.UserLogin,
+            r.RoleName
+        FROM dbo.[User] u
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE r.{$column} LIKE :permission_pattern
+          AND u.UserLogin IS NOT NULL
+          AND LTRIM(RTRIM(u.UserLogin)) <> ''
+        ORDER BY u.UserName
+    SQL);
+    $stmt->execute(['permission_pattern' => '%' . $action . '%']);
+
+    return $stmt->fetchAll();
+}
+
+function approval_alert_name_for_type(string $approvalType): ?string
+{
+    require_once __DIR__ . '/alert-messages.php';
+
+    return match ($approvalType) {
+        'QBOInsert' => ALERT_NAME_QBO_INSERT_APPROVAL_REQUEST,
+        'Payment'   => ALERT_NAME_PAYMENT_APPROVAL_REQUEST,
+        default     => null,
+    };
+}
+
+function approval_list_alert_subscriber_approvers(string $alertName, string $permissionColumn, string $action = 'U'): array
+{
+    require_once __DIR__ . '/alert-messages.php';
+    if (!alert_tables_available()) {
+        return [];
+    }
+
+    $action = strtoupper($action);
+    if (!isset(PERMISSION_ACTIONS[$action])) {
+        return [];
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT DISTINCT
+            u.UserID,
+            u.UserName,
+            u.UserLogin,
+            r.RoleName
+        FROM dbo.AlertMessage am
+        INNER JOIN dbo.AlertSubscription sub ON sub.alertID = am.alertID
+        INNER JOIN dbo.[User] u ON u.UserID = sub.UserID
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE am.AlertName = :alert_name
+          AND am.AlertStatus = 1
+          AND r.{$permissionColumn} LIKE :permission_pattern
+          AND u.UserLogin IS NOT NULL
+          AND LTRIM(RTRIM(u.UserLogin)) <> ''
+        ORDER BY u.UserName
+    SQL);
+    $stmt->execute([
+        'alert_name'           => $alertName,
+        'permission_pattern'   => '%' . $action . '%',
+    ]);
+
+    return array_values(array_filter(
+        $stmt->fetchAll(),
+        static function (array $row): bool {
+            $email = strtolower(trim((string) ($row['UserLogin'] ?? '')));
+
+            return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
+        }
+    ));
+}
+
 function approval_list_users_for_type(string $approvalType, string $action = 'U'): array
 {
     $column = approval_permission_column($approvalType);
@@ -101,9 +183,17 @@ function approval_list_users_for_type(string $approvalType, string $action = 'U'
         return [];
     }
 
-    require_once __DIR__ . '/admin.php';
+    $approvers = approval_query_users_with_role_permission($column, $action);
+    if ($approvers !== []) {
+        return $approvers;
+    }
 
-    return admin_list_users_with_permission($column, $action);
+    $alertName = approval_alert_name_for_type($approvalType);
+    if ($alertName === null) {
+        return [];
+    }
+
+    return approval_list_alert_subscriber_approvers($alertName, $column, $action);
 }
 
 function approval_list_log(
@@ -358,7 +448,7 @@ function approval_list_pending_entries(array $filters = []): array
         }
     }
 
-    if ($includeType('TE') && approval_can_read_type('TE')) {
+    if ($includeType('TE') && !app_approval_type_nav_hidden('TE') && approval_can_read_type('TE')) {
         require_once __DIR__ . '/te-approval.php';
         foreach (te_list_pending_approvals() as $row) {
             $entries[] = approval_pending_row(
@@ -542,6 +632,10 @@ function approval_types_for_user(): array
 {
     $types = [];
     foreach (array_keys(APPROVAL_TYPES) as $approvalType) {
+        if (app_approval_type_nav_hidden($approvalType)) {
+            continue;
+        }
+
         if (approval_can_read_type($approvalType)) {
             $types[] = $approvalType;
         }
@@ -573,7 +667,7 @@ function approval_queue_links_for_user(): array
         ];
     }
 
-    if (approval_can_read_type('TE')) {
+    if (approval_can_read_type('TE') && !app_approval_type_nav_hidden('TE')) {
         require_once __DIR__ . '/te-approval.php';
         $links[] = [
             'label'   => 'T&E Approval',
