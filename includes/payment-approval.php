@@ -198,9 +198,7 @@ function payment_approval_require_action(): void
 
 function payment_approval_is_invoice_payment(?array $payment): bool
 {
-    return $payment !== null
-        && !empty($payment['SupplierInvoiceID'])
-        && empty($payment['POID']);
+    return $payment !== null && !empty($payment['SupplierInvoiceID']);
 }
 
 function payment_approval_is_editable(?array $payment): bool
@@ -517,6 +515,10 @@ function payment_approval_invoice_notify_approvers(array $invoice, bool $isResub
     if ($approvers === []) {
         $result['skipped_reason'] = 'no_subscribers';
     } else {
+        $poId = !empty($invoice['POID']) ? (int) $invoice['POID'] : 0;
+        $attachments = approval_collect_submission_attachments($poId, $invoiceId);
+        $attachmentNote = approval_plain_attachment_note($attachments);
+
         foreach ($approvers as $approver) {
             $email = strtolower(trim((string) $approver['UserLogin']));
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -538,9 +540,7 @@ function payment_approval_invoice_notify_approvers(array $invoice, bool $isResub
                     . '&token=' . rawurlencode($token),
             ];
 
-            $intro = $isResubmit
-                ? 'A supplier invoice has been resubmitted for your payment approval.'
-                : 'A supplier invoice has been submitted for your payment approval.';
+            $intro = approval_submission_intro_text($isResubmit);
             $htmlBody = approval_build_action_email_html(
                 $intro,
                 [
@@ -564,11 +564,13 @@ function payment_approval_invoice_notify_approvers(array $invoice, bool $isResub
                 'Reject: ' . $actionUrls['reject'],
                 'Return for comment: ' . $actionUrls['send_back'],
                 'Review invoice: ' . $actionUrls['review'],
-            ]);
+            ]) . $attachmentNote;
 
             $result['recipients'][] = $email;
             $greeting = 'Hello ' . ((string) ($approver['UserName'] ?? $email)) . ',';
-            $send = mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody);
+            $send = $attachments === []
+                ? mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody)
+                : mail_send_multi_attachments_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody, $attachments);
             if ($send['ok']) {
                 $result['sent'][] = $email;
             } else {
@@ -615,8 +617,6 @@ function payment_approval_notify_approval_watchers_for_invoice(array $invoice, b
     }
 
     if ($watchers === []) {
-        $result['skipped_reason'] = 'no_subscribers';
-
         return $result;
     }
 
@@ -673,7 +673,7 @@ function payment_approval_list_pending_payments(array $filters = []): array
         INNER JOIN dbo.SupplierInvoice si ON si.SupplierInvoiceID = p.SupplierInvoiceID
         INNER JOIN dbo.Supplier s ON s.SupplierID = si.SupplierID
         LEFT JOIN dbo.[User] cu ON cu.UserID = p.CreatedByUser
-        WHERE p.POID IS NULL
+        WHERE p.SupplierInvoiceID IS NOT NULL
           AND p.PaymentStatus = :status
     SQL;
 
@@ -1020,7 +1020,7 @@ function payment_approval_merge_notify_results(array ...$results): array
     $merged['recipients'] = array_values(array_unique($merged['recipients']));
     $merged['sent'] = array_values(array_unique($merged['sent']));
 
-    if ($merged['sent'] !== []) {
+    if ($merged['sent'] !== [] || $merged['failed'] !== []) {
         $merged['skipped_reason'] = null;
     }
 
@@ -1058,8 +1058,6 @@ function payment_approval_notify_approval_watchers(array $payment, array $invoic
     }
 
     if ($watchers === []) {
-        $result['skipped_reason'] = 'no_subscribers';
-
         return $result;
     }
 
@@ -1125,6 +1123,11 @@ function payment_approval_notify_approvers_of_submission(array $payment, array $
     if ($approvers === []) {
         $result['skipped_reason'] = 'no_subscribers';
     } else {
+        $poId = !empty($payment['POID']) ? (int) $payment['POID'] : (!empty($invoice['POID']) ? (int) $invoice['POID'] : 0);
+        $attachments = approval_collect_submission_attachments($poId, $supplierInvoiceId);
+        $intro = approval_submission_intro_text($isResubmit);
+        $attachmentNote = approval_plain_attachment_note($attachments);
+
         foreach ($approvers as $approver) {
             $email = strtolower(trim((string) $approver['UserLogin']));
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -1146,9 +1149,6 @@ function payment_approval_notify_approvers_of_submission(array $payment, array $
                     . '&token=' . rawurlencode($token),
             ];
 
-            $intro = $isResubmit
-                ? 'An invoice payment request has been resubmitted for your approval.'
-                : 'An invoice payment request has been submitted for your approval.';
             $htmlBody = approval_build_action_email_html(
                 $intro,
                 [
@@ -1171,11 +1171,13 @@ function payment_approval_notify_approvers_of_submission(array $payment, array $
                 'Reject: ' . $actionUrls['reject'],
                 'Return for comment: ' . $actionUrls['send_back'],
                 'Review payment: ' . $actionUrls['review'],
-            ]);
+            ]) . $attachmentNote;
 
             $result['recipients'][] = $email;
             $greeting = 'Hello ' . ((string) ($approver['UserName'] ?? $email)) . ',';
-            $send = mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody);
+            $send = $attachments === []
+                ? mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody)
+                : mail_send_multi_attachments_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody, $attachments);
             if ($send['ok']) {
                 $result['sent'][] = $email;
             } else {

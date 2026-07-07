@@ -363,7 +363,7 @@ function po_merge_approval_notify_results(array ...$results): array
     $merged['recipients'] = array_values(array_unique($merged['recipients']));
     $merged['sent'] = array_values(array_unique($merged['sent']));
 
-    if ($merged['sent'] !== []) {
+    if ($merged['sent'] !== [] || $merged['failed'] !== []) {
         $merged['skipped_reason'] = null;
     }
 
@@ -386,7 +386,7 @@ function po_notify_approval_watchers(array $order, bool $isResubmit, string $sub
         return $result;
     }
 
-    $alertRecipients = alert_message_recipients(ALERT_NAME_PO_APPROVAL_REQUEST);
+    $alertRecipients = alert_message_recipients(ALERT_NAME_PO_APPROVAL_NOTICE);
     $approverEmails = array_keys(po_recipient_emails_for_approvers());
     $watchers = $alertRecipients['cc'];
 
@@ -401,8 +401,6 @@ function po_notify_approval_watchers(array $order, bool $isResubmit, string $sub
     }
 
     if ($watchers === []) {
-        $result['skipped_reason'] = 'no_subscribers';
-
         return $result;
     }
 
@@ -468,6 +466,10 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
         error_log('po_notify_approvers_of_submission skipped (no users with PO Approval Update) for PO ' . $poNumber);
         $result['skipped_reason'] = 'no_subscribers';
     } else {
+        $attachments = approval_collect_po_pdf_attachments($poId);
+        $intro = approval_submission_intro_text($isResubmit);
+        $attachmentNote = approval_plain_attachment_note($attachments);
+
         foreach ($approvers as $approver) {
             $email = strtolower(trim((string) $approver['UserLogin']));
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -491,9 +493,7 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
 
             $htmlBody = po_approval_build_action_email_html($order, $submitter, $isResubmit, $actionUrls);
             $plainBody = implode("\n", [
-                $isResubmit
-                    ? 'A purchase order has been resubmitted for your approval.'
-                    : 'A purchase order has been submitted for your approval.',
+                $intro,
                 '',
                 "PO Number: {$poNumber}",
                 'Supplier: ' . ($order['SupplierName'] ?? ''),
@@ -503,14 +503,16 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
                 'Approve: ' . $actionUrls['approve'],
                 'Reject: ' . $actionUrls['reject'],
                 'Return for comment: ' . $actionUrls['send_back'],
-                'Review PO: ' . $actionUrls['review'],
+                'Revise PO: ' . $actionUrls['review'],
                 '',
                 'These links expire in ' . PO_APPROVAL_TOKEN_EXPIRY_DAYS . ' days.',
-            ]);
+            ]) . $attachmentNote;
 
             $result['recipients'][] = $email;
             $greeting = 'Hello ' . ((string) ($approver['UserName'] ?? $email)) . ',';
-            $send = mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody);
+            $send = $attachments === []
+                ? mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody)
+                : mail_send_multi_attachments_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody, $attachments);
             if ($send['ok']) {
                 $result['sent'][] = $email;
             } else {

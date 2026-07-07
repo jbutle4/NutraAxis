@@ -18,6 +18,21 @@ const ALERT_NAME_PAYMENT_APPROVAL_REQUEST = 'payment-approval-request';
 const ALERT_NAME_PAYMENT_STATUS_UPDATE = 'payment-status-update';
 const ALERT_NAME_PAYMENT_VIEWED_BY_APPROVER = 'payment-viewed-by-approver';
 
+/** Alert types excluded from Site Admin subscription pickers (workflow retired from portal). */
+function alert_subscription_excluded_names(): array
+{
+    return [
+        ALERT_NAME_TE_APPROVAL_REQUEST,
+        ALERT_NAME_TE_STATUS_UPDATE,
+        ALERT_NAME_TE_VIEWED_BY_APPROVER,
+    ];
+}
+
+function alert_subscription_is_excluded(string $alertName): bool
+{
+    return in_array($alertName, alert_subscription_excluded_names(), true);
+}
+
 const ALERT_ADDRESS_TYPES = ['TO', 'CC'];
 
 function alert_tables_available(): bool
@@ -71,12 +86,16 @@ function alert_list_messages(): array
     }
 
     $pdo = db();
-
-    return $pdo->query(<<<SQL
+    $rows = $pdo->query(<<<SQL
         SELECT alertID, AlertName, AlertStatus, AlertDescription
         FROM dbo.AlertMessage
         ORDER BY AlertName
     SQL)->fetchAll();
+
+    return array_values(array_filter(
+        $rows,
+        fn(array $row): bool => !alert_subscription_is_excluded((string) ($row['AlertName'] ?? ''))
+    ));
 }
 
 function alert_get_message(int $alertId): ?array
@@ -119,7 +138,10 @@ function alert_list_user_subscription_rows(int $userId): array
     SQL);
     $stmt->execute(['user_id' => $userId]);
 
-    return $stmt->fetchAll();
+    return array_values(array_filter(
+        $stmt->fetchAll(),
+        fn(array $row): bool => !alert_subscription_is_excluded((string) ($row['AlertName'] ?? ''))
+    ));
 }
 
 function alert_list_available_for_user(int $userId): array
@@ -143,7 +165,10 @@ function alert_list_available_for_user(int $userId): array
     SQL);
     $stmt->execute(['user_id' => $userId]);
 
-    return $stmt->fetchAll();
+    return array_values(array_filter(
+        $stmt->fetchAll(),
+        fn(array $row): bool => !alert_subscription_is_excluded((string) ($row['AlertName'] ?? ''))
+    ));
 }
 
 function alert_save_user_subscription_changes(int $userId, array $rows, ?int $newAlertId, string $newAddressType): void
@@ -186,7 +211,8 @@ function alert_save_user_subscription_changes(int $userId, array $rows, ?int $ne
         }
 
         $newAlertId = (int) $newAlertId;
-        if ($newAlertId > 0 && alert_get_message($newAlertId) !== null) {
+        $newAlert = $newAlertId > 0 ? alert_get_message($newAlertId) : null;
+        if ($newAlert !== null && !alert_subscription_is_excluded((string) ($newAlert['AlertName'] ?? ''))) {
             $exists = $pdo->prepare('SELECT alertSubID FROM dbo.AlertSubscription WHERE alertID = :alert_id AND UserID = :user_id');
             $exists->execute(['alert_id' => $newAlertId, 'user_id' => $userId]);
             if ($exists->fetch() === false) {
@@ -313,28 +339,46 @@ function alert_send_message(string $alertName, string $subject, string $body): a
     return $result;
 }
 
+function alert_format_send_failures(array $failed): string
+{
+    if ($failed === []) {
+        return 'No email was sent.';
+    }
+
+    $errors = array_values(array_unique(array_map(
+        static fn($error): string => trim((string) $error),
+        $failed
+    )));
+
+    if (count($errors) === 1 && count($failed) > 1) {
+        return 'Approval email could not be sent: ' . $errors[0];
+    }
+
+    $parts = [];
+    foreach ($failed as $email => $error) {
+        $parts[] = is_int($email)
+            ? (string) $error
+            : $email . ($error !== '' ? ' (' . $error . ')' : '');
+    }
+
+    return 'Email failed for: ' . implode('; ', $parts) . '.';
+}
+
 function alert_format_notify_message(array $notify, string $emptyMessage): string
 {
     if (($notify['skipped_reason'] ?? null) === 'smtp_not_configured') {
         return 'SMTP is not configured, so no email was sent.';
     }
 
-    if (($notify['skipped_reason'] ?? null) === 'no_subscribers') {
-        return $emptyMessage;
-    }
-
     $sent = $notify['sent'] ?? [];
     $failed = $notify['failed'] ?? [];
 
     if ($sent === [] && $failed !== []) {
-        $parts = [];
-        foreach ($failed as $email => $error) {
-            $parts[] = is_int($email)
-                ? (string) $error
-                : $email . ($error !== '' ? ' (' . $error . ')' : '');
-        }
+        return alert_format_send_failures($failed);
+    }
 
-        return 'Email failed for: ' . implode('; ', $parts) . '.';
+    if (($notify['skipped_reason'] ?? null) === 'no_subscribers') {
+        return $emptyMessage;
     }
 
     if ($sent === []) {

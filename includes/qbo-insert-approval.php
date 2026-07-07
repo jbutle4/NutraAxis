@@ -436,7 +436,7 @@ function qbo_insert_merge_approval_notify_results(array ...$results): array
     $merged['recipients'] = array_values(array_unique($merged['recipients']));
     $merged['sent'] = array_values(array_unique($merged['sent']));
 
-    if ($merged['sent'] !== []) {
+    if ($merged['sent'] !== [] || $merged['failed'] !== []) {
         $merged['skipped_reason'] = null;
     }
 
@@ -474,8 +474,6 @@ function qbo_insert_notify_approval_watchers(array $invoice, bool $isResubmit, s
     }
 
     if ($watchers === []) {
-        $result['skipped_reason'] = 'no_subscribers';
-
         return $result;
     }
 
