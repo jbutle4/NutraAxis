@@ -2,7 +2,6 @@
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
-require dirname(__DIR__, 2) . '/includes/po.php';
 
 supplier_invoice_require_create();
 
@@ -11,12 +10,36 @@ $accountingSection = 'invoices';
 $error = null;
 $form = supplier_invoice_to_form([]);
 $preselectedPo = (int) ($_GET['po_id'] ?? 0);
+$prefillSupplierId = (int) ($_GET['supplier_id'] ?? 0);
+$prefillDocNumber = trim((string) ($_GET['doc_number'] ?? ''));
+$prefillTxnDate = trim((string) ($_GET['txn_date'] ?? ''));
+$prefillAmount = trim((string) ($_GET['amount'] ?? ''));
+
 if ($preselectedPo > 0) {
     $linkedPo = po_get_order($preselectedPo);
     if ($linkedPo !== null) {
         $form['po_id'] = (string) $preselectedPo;
         $form['supplier_id'] = (int) ($linkedPo['SupplierID'] ?? 0);
     }
+}
+
+if ($prefillSupplierId > 0) {
+    $form['supplier_id'] = $prefillSupplierId;
+}
+
+if ($prefillDocNumber !== '') {
+    $form['doc_number'] = $prefillDocNumber;
+}
+
+if ($prefillTxnDate !== '') {
+    $normalizedTxnDate = supplier_invoice_normalize_form_date($prefillTxnDate);
+    if ($normalizedTxnDate !== '') {
+        $form['txn_date'] = $normalizedTxnDate;
+    }
+}
+
+if ($prefillAmount !== '' && is_numeric($prefillAmount)) {
+    $form['lines'][0]['amount'] = number_format((float) $prefillAmount, 2, '.', '');
 }
 $suppliers = supplier_invoice_list_suppliers();
 $poOptions = supplier_invoice_po_options(

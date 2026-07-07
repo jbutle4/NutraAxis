@@ -91,7 +91,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php require dirname(__DIR__, 2) . '/includes/supplier-invoice-approval-history.php'; ?>
 
-      <?php if (supplier_invoice_can_delete() && !$isLocked): ?>
+      <?php if (supplier_invoice_may_delete($invoice)): ?>
       <form class="admin-form" method="post" action="/accounting/supplier-invoices/delete.php" style="margin-top: 24px;" onsubmit="return confirm('Delete this supplier invoice?');">
         <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
         <button type="submit" class="btn-secondary">Delete Invoice</button>

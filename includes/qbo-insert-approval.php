@@ -365,8 +365,33 @@ function qbo_insert_format_notify_message(array $notify): string
 {
     return alert_format_notify_message(
         $notify,
-        'No users with QBO Insert Approval access are configured. No approval email was sent.'
+        qbo_insert_approver_config_message($notify['approver_config_issue'] ?? 'no_roles')
     );
+}
+
+function qbo_insert_approver_config_message(string $issue = 'no_roles'): string
+{
+    if ($issue === 'invalid_email') {
+        return 'QBO insert approvers are configured, but none have a valid email login. Update user email addresses in Site Admin → Users. No approval email was sent.';
+    }
+
+    return 'No users with QBO Insert Approval access are configured. In Site Admin → Roles, grant QBO Insert Approval (Update) to at least one role, assign users to that role, and ensure each user has a valid email login. No approval email was sent.';
+}
+
+function qbo_insert_approver_config_issue(array $approvers): string
+{
+    if ($approvers === []) {
+        return 'no_roles';
+    }
+
+    foreach ($approvers as $approver) {
+        $email = strtolower(trim((string) ($approver['UserLogin'])));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return 'ok';
+        }
+    }
+
+    return 'invalid_email';
 }
 
 function qbo_insert_recipient_emails_for_approvers(): array
@@ -514,6 +539,7 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
 
     if ($approvers === []) {
         $result['skipped_reason'] = 'no_subscribers';
+        $result['approver_config_issue'] = 'no_roles';
     } else {
         foreach ($approvers as $approver) {
             $email = strtolower(trim((string) $approver['UserLogin']));
@@ -576,6 +602,7 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
 
         if ($result['sent'] === [] && $result['failed'] === []) {
             $result['skipped_reason'] = 'no_subscribers';
+            $result['approver_config_issue'] = qbo_insert_approver_config_issue($approvers);
         }
     }
 

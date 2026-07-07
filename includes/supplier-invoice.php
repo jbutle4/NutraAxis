@@ -66,7 +66,22 @@ function supplier_invoice_can_update(): bool
 
 function supplier_invoice_can_delete(): bool
 {
-    return accounting_can_delete();
+    return accounting_can_delete()
+        || auth_can_delete(ADMIN_PERMISSION_COLUMNS['users']);
+}
+
+function supplier_invoice_is_deletable(?array $invoice): bool
+{
+    return supplier_invoice_is_editable($invoice);
+}
+
+function supplier_invoice_may_delete(?array $invoice): bool
+{
+    if (!supplier_invoice_is_deletable($invoice)) {
+        return false;
+    }
+
+    return supplier_invoice_can_delete();
 }
 
 function supplier_invoice_is_qbo_stub_mode(): bool
@@ -136,7 +151,11 @@ function supplier_invoice_require_update(): void
 
 function supplier_invoice_require_delete(): void
 {
-    accounting_require_delete();
+    accounting_require_read();
+    if (supplier_invoice_can_delete()) {
+        return;
+    }
+    auth_render_access_denied('You do not have permission to delete Accounting records.');
 }
 
 function supplier_invoice_status_class(string $status): string
@@ -274,6 +293,11 @@ function supplier_invoice_list(array $filters = []): array
 
     if (!empty($filters['without_po'])) {
         $sql .= ' AND si.POID IS NULL';
+    }
+
+    if (!empty($filters['po_id'])) {
+        $sql .= ' AND si.POID = :po_id';
+        $params['po_id'] = (int) $filters['po_id'];
     }
 
     if (!empty($filters['q'])) {
@@ -592,7 +616,8 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
                     :total_amt, :sync_status, :created_by_user, :modified_by_user
                 )
             SQL);
-            $stmt->execute(supplier_invoice_insert_params($params));
+            supplier_invoice_bind_params($stmt, supplier_invoice_insert_params($params));
+            $stmt->execute();
             $invoiceId = db_fetch_inserted_int($stmt, 'inserted_id');
         } else {
             $params['id'] = $invoiceId;
@@ -617,7 +642,8 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
                     ModifiedByUser = :modified_by_user
                 WHERE SupplierInvoiceID = :id
             SQL);
-            $stmt->execute(supplier_invoice_update_params($params));
+            supplier_invoice_bind_params($stmt, supplier_invoice_update_params($params));
+            $stmt->execute();
 
             $pdo->prepare('DELETE FROM dbo.SupplierInvoiceLine WHERE SupplierInvoiceID = :id')
                 ->execute(['id' => $invoiceId]);
@@ -635,7 +661,7 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
         SQL);
 
         foreach ($lines as $line) {
-            $lineStmt->execute([
+            supplier_invoice_bind_params($lineStmt, [
                 'invoice_id'        => $invoiceId,
                 'line_number'       => $line['line_number'],
                 'description'       => $line['description'],
@@ -648,6 +674,7 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
                 'qty'               => $line['qty'],
                 'unit_price'        => $line['unit_price'],
             ]);
+            $lineStmt->execute();
         }
 
         $pdo->commit();
@@ -666,6 +693,34 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
         }
 
         return ['ok' => false, 'error' => $message];
+    }
+}
+
+function supplier_invoice_bind_params(PDOStatement $stmt, array $params): void
+{
+    $intParams = [
+        'supplier_id',
+        'po_id',
+        'created_by_user',
+        'modified_by_user',
+        'id',
+        'invoice_id',
+        'line_number',
+    ];
+
+    foreach ($params as $key => $value) {
+        $name = ':' . $key;
+        if ($value === null) {
+            $stmt->bindValue($name, null, PDO::PARAM_NULL);
+            continue;
+        }
+
+        if (in_array($key, $intParams, true)) {
+            $stmt->bindValue($name, (int) $value, PDO::PARAM_INT);
+            continue;
+        }
+
+        $stmt->bindValue($name, $value);
     }
 }
 
@@ -713,8 +768,12 @@ function supplier_invoice_delete(int $invoiceId): array
         return ['ok' => false, 'error' => 'Invoice not found.'];
     }
 
-    if (supplier_invoice_is_locked($invoice)) {
-        return ['ok' => false, 'error' => 'Posted or voided invoices cannot be deleted.'];
+    if (!supplier_invoice_may_delete($invoice)) {
+        if (!supplier_invoice_is_deletable($invoice)) {
+            return ['ok' => false, 'error' => 'This invoice cannot be deleted in its current status.'];
+        }
+
+        return ['ok' => false, 'error' => 'You do not have permission to delete supplier invoices.'];
     }
 
     $pdo = db();
