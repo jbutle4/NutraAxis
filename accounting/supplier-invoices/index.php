@@ -3,6 +3,17 @@ require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 
+if (isset($_GET['new'])) {
+    $params = $_GET;
+    unset($params['new']);
+    $redirect = '/accounting/supplier-invoices/new.php';
+    if ($params !== []) {
+        $redirect .= '?' . http_build_query($params);
+    }
+    header('Location: ' . $redirect, true, 302);
+    exit;
+}
+
 supplier_invoice_require_read();
 
 $activeSlug = 'accounting';
@@ -104,7 +115,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><?= !empty($invoice['PONumber']) ? htmlspecialchars($invoice['PONumber']) : '—' ?></td>
               <?php
               $actions = [['href' => '/accounting/supplier-invoices/view.php?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'View']];
-              if (supplier_invoice_can_update()) {
+              if (supplier_invoice_can_update() && supplier_invoice_is_editable($invoice)) {
                   $actions[] = ['href' => '/accounting/supplier-invoices/edit.php?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'Edit'];
               }
               table_actions_cell($actions);

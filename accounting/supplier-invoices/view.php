@@ -32,8 +32,9 @@ $canSubmitForApproval = supplier_invoice_can_update() && (
     || (!$isStandalone && qbo_insert_can_submit($invoice))
 );
 $canResubmitApproval = supplier_invoice_can_update() && $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED;
-$paidTotal = empty($invoice['POID']) ? po_payment_total_for_invoice($invoiceId) : 0.0;
-$invoicePayments = empty($invoice['POID']) ? po_payment_list(['supplier_invoice_id' => $invoiceId]) : [];
+$postedIsReopenable = supplier_invoice_posted_is_reopenable($invoice);
+$paidTotal = po_payment_total_for_invoice($invoiceId);
+$invoicePayments = po_payment_list(['supplier_invoice_id' => $invoiceId]);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = supplier_invoice_reference($invoice) . ' | Supplier Invoices';
@@ -49,14 +50,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php if (supplier_invoice_can_update() && $isEditable): ?>
           <a class="btn-primary" href="/accounting/supplier-invoices/edit.php?id=<?= $invoiceId ?>">Edit Invoice</a>
           <?php endif; ?>
+          <?php if (po_payment_can_create()): ?>
+          <a class="btn-secondary" href="/po-payments/new.php?supplier_invoice_id=<?= $invoiceId ?><?= !empty($invoice['POID']) ? '&po_id=' . (int) $invoice['POID'] : '' ?>">New Payment Request</a>
+          <?php endif; ?>
           <?php if ($canSubmitForApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form">
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for approval again? Approvers will receive a new approval email.' : 'Submit this invoice for approval? Approvers will be notified by email.'), ENT_QUOTES) ?>);">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
-            <button type="submit" name="action" value="submit" class="btn-primary">Submit for Approval</button>
+            <button type="submit" name="action" value="submit" class="btn-primary"><?= $postedIsReopenable ? 'Resubmit for Approval' : 'Submit for Approval' ?></button>
           </form>
           <?php endif; ?>
           <?php if ($canResubmitApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form">
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the approval email to approvers?');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="resubmit" class="btn-secondary">Resubmit to Approvers</button>
           </form>
@@ -81,12 +85,12 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php elseif ($notice === 'submitted'): ?>
-      <div class="admin-notice is-success" role="status">Invoice submitted for approval.</div>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for approval.')) ?></div>
       <?php elseif ($notice === 'resubmitted'): ?>
-      <div class="admin-notice is-success" role="status">Approval request resent to approvers.</div>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Approval request resent to approvers.')) ?></div>
       <?php endif; ?>
-      <?php if (!empty($_GET['mail_message'])): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? '' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) $_GET['mail_message']) ?></div>
+      <?php if (!empty($_GET['mail_message']) && !in_array($notice, ['submitted', 'resubmitted'], true)): ?>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) $_GET['mail_message']) ?></div>
       <?php endif; ?>
 
       <?php if ($isStandalone && payment_approval_is_stub_mode()): ?>
@@ -110,6 +114,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice" role="status">Submit this invoice for payment approver review. When approved, the bill is posted to QuickBooks. Payment activity is updated from the QBO integration.</div>
       <?php elseif ($invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED): ?>
       <div class="admin-notice" role="status">This invoice is in the QBO insert approval queue. <a href="/approvals/?type=QBOInsert&status=pending">View approvals</a></div>
+      <?php elseif ($postedIsReopenable): ?>
+      <div class="admin-notice" role="status">
+        <?php if (qbo_insert_is_stub_mode()): ?>
+        This invoice was approved in QBO insert test mode and was not posted to QuickBooks.
+        <?php else: ?>
+        This invoice is marked Posted but has no QuickBooks bill ID.
+        <?php endif; ?>
+        Edit the invoice if changes are needed, then resubmit for approval.
+      </div>
       <?php endif; ?>
 
       <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
@@ -168,8 +181,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if (empty($invoice['POID'])): ?>
       <section class="detail-card">
-        <h2>Payments</h2>
-        <p class="page-lead">Payment activity is synced from QuickBooks. Manual payment entry is not used for standalone invoices.</p>
+        <h2>Payment requests</h2>
+        <p class="page-lead">Payment requests for this standalone supplier invoice.</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -184,7 +197,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             </thead>
             <tbody>
               <?php if ($invoicePayments === []): ?>
-              <tr><td colspan="6">No payments recorded for this invoice.</td></tr>
+              <tr><td colspan="6">No payment requests for this invoice.</td></tr>
               <?php else: ?>
               <?php foreach ($invoicePayments as $payment): ?>
               <tr>
@@ -193,7 +206,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                 <td><?= htmlspecialchars($payment['PaymentType']) ?></td>
                 <td><span class="status-badge <?= po_payment_status_class((string) ($payment['PaymentStatus'] ?? '')) ?>"><?= htmlspecialchars(po_payment_format_status($payment['PaymentStatus'] ?? null)) ?></span></td>
                 <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
-                <td><a class="btn-text" href="/accounting/invoice-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>">View</a></td>
+                <td><a class="btn-text" href="/po-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>">View</a></td>
               </tr>
               <?php endforeach; ?>
               <?php endif; ?>
@@ -203,8 +216,42 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
       <?php else: ?>
       <section class="detail-card">
-        <h2>Payments</h2>
-        <p class="page-lead">This invoice is linked to a purchase order. Record payments against the PO in PO Payments.</p>
+        <h2>Payment requests</h2>
+        <p class="page-lead">
+          This invoice is linked to PO <a href="/po-management/view.php?id=<?= (int) $invoice['POID'] ?>"><?= htmlspecialchars($invoice['PONumber'] ?? '') ?></a>.
+          <?php if ($invoicePayments !== []): ?>
+          <?= count($invoicePayments) === 1 ? '1 payment request' : count($invoicePayments) . ' payment requests' ?> on this invoice
+          · Total requested: <strong><?= htmlspecialchars(accounting_format_money($paidTotal)) ?></strong>
+          <?php endif; ?>
+        </p>
+        <?php if ($invoicePayments !== []): ?>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Confirmation #</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($invoicePayments as $payment): ?>
+              <tr>
+                <td><?= htmlspecialchars(po_payment_format_datetime($payment['PaymentDate'])) ?></td>
+                <td><?= htmlspecialchars(accounting_format_money($payment['PaymentAmount'])) ?></td>
+                <td><?= htmlspecialchars($payment['PaymentType']) ?></td>
+                <td><span class="status-badge <?= po_payment_status_class((string) ($payment['PaymentStatus'] ?? '')) ?>"><?= htmlspecialchars(po_payment_format_status($payment['PaymentStatus'] ?? null)) ?></span></td>
+                <td><?= htmlspecialchars($payment['PaymentConfNumber'] ?? '—') ?></td>
+                <td><a class="btn-text" href="/po-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>">View</a></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <?php endif; ?>
       </section>
       <?php endif; ?>
 

@@ -162,7 +162,11 @@ function qbo_insert_list_approval_log(int $invoiceId): array
 
 function qbo_insert_can_submit(array $invoice): bool
 {
-    return in_array((string) ($invoice['SyncStatus'] ?? ''), QBO_INSERT_EDITABLE_STATUSES, true);
+    if (in_array((string) ($invoice['SyncStatus'] ?? ''), QBO_INSERT_EDITABLE_STATUSES, true)) {
+        return true;
+    }
+
+    return supplier_invoice_posted_is_reopenable($invoice);
 }
 
 function qbo_insert_has_invoice_attachment(int $invoiceId): bool

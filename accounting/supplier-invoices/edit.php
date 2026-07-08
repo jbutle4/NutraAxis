@@ -64,6 +64,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($isLocked): ?>
       <div class="admin-notice is-detail" role="status">This invoice is <?= htmlspecialchars(strtolower((string) $invoice['SyncStatus'])) ?> and cannot be edited.</div>
+      <?php elseif (supplier_invoice_posted_is_reopenable($invoice)): ?>
+      <div class="admin-notice" role="status">This invoice was approved<?= qbo_insert_is_stub_mode() ? ' in QBO insert test mode' : '' ?> and can be edited before resubmitting for approval from the invoice view page.</div>
       <?php endif; ?>
 
       <?php if ($error !== null): ?>

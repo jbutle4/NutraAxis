@@ -338,6 +338,101 @@ function admin_save_user(array $input, ?int $userId = null): array
     return ['ok' => true, 'error' => null, 'id' => $userId];
 }
 
+function admin_schema_table_exists(PDO $pdo, string $tableName): bool
+{
+    $stmt = $pdo->prepare('SELECT OBJECT_ID(:table_name, N\'U\') AS object_id');
+    $stmt->execute(['table_name' => $tableName]);
+
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+/**
+ * @return list<string>
+ */
+function admin_user_delete_blocking_references(PDO $pdo, int $userId): array
+{
+    $checks = [
+        'other user accounts (modified by this user)' => 'SELECT COUNT(*) FROM dbo.[User] WHERE Modifiedbyuser = :id',
+        'role records (modified by this user)' => 'SELECT COUNT(*) FROM dbo.Role WHERE ModifiedbyUser = :id',
+        'audit log entries' => 'SELECT COUNT(*) FROM dbo.AuditChangeLog WHERE UserID = :id',
+        'purchase orders' => 'SELECT COUNT(*) FROM dbo.PurchaseOrder WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'suppliers' => 'SELECT COUNT(*) FROM dbo.Supplier WHERE ModifiedbyUser = :id',
+        'PO payments' => 'SELECT COUNT(*) FROM dbo.POPayment WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'supplier invoices' => 'SELECT COUNT(*) FROM dbo.SupplierInvoice WHERE CreatedByUser = :id OR ModifiedByUser = :id',
+        'travel & expense reports' => 'SELECT COUNT(*) FROM dbo.TEReport WHERE EmployeeUserID = :id OR CreatedByUser = :id OR ModifiedByUser = :id',
+        'SKU master records' => 'SELECT COUNT(*) FROM dbo.SKUMaster WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'facilities' => 'SELECT COUNT(*) FROM dbo.Facility WHERE CreatedByUser = :id OR ModifiedByUser = :id',
+        'inventory transactions' => 'SELECT COUNT(*) FROM dbo.InvTxn WHERE CreatedByUser = :id',
+        'inventory adjustments' => 'SELECT COUNT(*) FROM dbo.InvAdj WHERE ApprovedByUser = :id OR CreatedByUser = :id',
+        'inventory transfers' => 'SELECT COUNT(*) FROM dbo.InvTrf WHERE RequestedByUser = :id OR ModifiedByUser = :id',
+        'inventory reclassifications' => 'SELECT COUNT(*) FROM dbo.InvRR WHERE CreatedByUser = :id OR ModifiedByUser = :id',
+        'inventory cycle counts' => 'SELECT COUNT(*) FROM dbo.InvCS WHERE CountedByUser = :id OR ApprovedByUser = :id OR CreatedByUser = :id',
+        'PO production status updates' => 'SELECT COUNT(*) FROM dbo.POProductionStatus WHERE LastUpdatedByUser = :id',
+        'contracts' => 'SELECT COUNT(*) FROM dbo.ContractRegister WHERE InternalOwnerUser = :id OR ModifiedbyUser = :id',
+        'QuickBooks connections' => 'SELECT COUNT(*) FROM dbo.QBOConnection WHERE ConnectedByUser = :id',
+        'links index entries' => 'SELECT COUNT(*) FROM dbo.LinksIndex WHERE ModifiedbyUser = :id',
+        'COA documents' => 'SELECT COUNT(*) FROM dbo.CoaDocument WHERE CreatedByUser = :id OR ModifiedByUser = :id',
+        'product enrichment records' => 'SELECT COUNT(*) FROM dbo.ProductEnrichment WHERE CreatedByUser = :id OR ModifiedByUser = :id',
+        'process execution log entries' => 'SELECT COUNT(*) FROM dbo.ProcessExecutionLog WHERE TriggeredByUserID = :id',
+        'label templates' => 'SELECT COUNT(*) FROM dbo.LabelTemplate WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'label template versions' => 'SELECT COUNT(*) FROM dbo.LabelTemplateVersion WHERE ApprovedByUser = :id OR CreatedByUser = :id',
+        'label order runs' => 'SELECT COUNT(*) FROM dbo.LabelOrderRun WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'batch print orders' => 'SELECT COUNT(*) FROM dbo.BatchPrintOrder WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'label compliance reviews' => 'SELECT COUNT(*) FROM dbo.LabelComplianceReview WHERE CreatedByUser = :id',
+        'white label production orders' => 'SELECT COUNT(*) FROM dbo.WhiteLabelProductionOrder WHERE CreatedByUser = :id OR ModifiedbyUser = :id',
+        'PO attachments' => 'SELECT COUNT(*) FROM dbo.POAttachment WHERE UploadedByUser = :id',
+        'PO receiving attachments' => 'SELECT COUNT(*) FROM dbo.PORAttachment WHERE UploadedByUser = :id',
+        'PO payment attachments' => 'SELECT COUNT(*) FROM dbo.POPaymentAttachment WHERE UploadedByUser = :id',
+        'supplier invoice attachments' => 'SELECT COUNT(*) FROM dbo.SupplierInvoiceAttachment WHERE UploadedByUser = :id',
+        'SKU master attachments' => 'SELECT COUNT(*) FROM dbo.SKUMasterAttachment WHERE UploadedByUser = :id',
+        'contract attachments' => 'SELECT COUNT(*) FROM dbo.ContractAttachment WHERE UploadedByUser = :id',
+        'enhanced log attachments' => 'SELECT COUNT(*) FROM dbo.EnhLogAttachment WHERE UploadedByUser = :id',
+        'travel & expense attachments' => 'SELECT COUNT(*) FROM dbo.TEAttachment WHERE UploadedByUser = :id',
+    ];
+
+    $blocking = [];
+    foreach ($checks as $label => $sql) {
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute(['id' => $userId]);
+            if ((int) $stmt->fetchColumn() > 0) {
+                $blocking[] = $label;
+            }
+        } catch (Throwable $e) {
+            // Table may not exist in older environments; skip unavailable checks.
+            continue;
+        }
+    }
+
+    return $blocking;
+}
+
+function admin_user_delete_dependent_rows(PDO $pdo, int $userId): void
+{
+    $deletes = [
+        'DELETE FROM dbo.AlertSubscription WHERE UserID = :id',
+        'DELETE FROM dbo.PasswordResetToken WHERE UserID = :id',
+        'DELETE FROM dbo.ApprovalToken WHERE UserID = :id',
+    ];
+
+    foreach ($deletes as $sql) {
+        $pdo->prepare($sql)->execute(['id' => $userId]);
+    }
+
+    foreach (['dbo.POApprovalToken', 'dbo.InvoicePaymentApprovalToken', 'dbo.TEApprovalToken'] as $legacyTable) {
+        if (!admin_schema_table_exists($pdo, $legacyTable)) {
+            continue;
+        }
+
+        $pdo->prepare("DELETE FROM {$legacyTable} WHERE UserID = :id")->execute(['id' => $userId]);
+    }
+
+    if (admin_schema_table_exists($pdo, 'dbo.ApprovalLog')) {
+        $pdo->prepare('UPDATE dbo.ApprovalLog SET ApproverUserID = NULL WHERE ApproverUserID = :id')
+            ->execute(['id' => $userId]);
+    }
+}
+
 function admin_delete_user(int $userId): array
 {
     $currentUserId = auth_user()['UserID'] ?? null;
@@ -352,19 +447,43 @@ function admin_delete_user(int $userId): array
 
     $pdo = db();
 
-    $refs = $pdo->prepare('SELECT COUNT(*) FROM dbo.[User] WHERE Modifiedbyuser = :id');
-    $refs->execute(['id' => $userId]);
-    if ((int) $refs->fetchColumn() > 0) {
-        return ['ok' => false, 'error' => 'This user is referenced as a modifier on other accounts and cannot be deleted.'];
+    $blocking = admin_user_delete_blocking_references($pdo, $userId);
+    if ($blocking !== []) {
+        return [
+            'ok' => false,
+            'error' => 'This user is referenced on business records and cannot be deleted: '
+                . implode(', ', $blocking)
+                . '.',
+        ];
     }
 
-    $roleRefs = $pdo->prepare('SELECT COUNT(*) FROM dbo.Role WHERE ModifiedbyUser = :id');
-    $roleRefs->execute(['id' => $userId]);
-    if ((int) $roleRefs->fetchColumn() > 0) {
-        return ['ok' => false, 'error' => 'This user is referenced on role records and cannot be deleted.'];
-    }
+    try {
+        $pdo->beginTransaction();
 
-    $pdo->prepare('DELETE FROM dbo.[User] WHERE UserID = :id')->execute(['id' => $userId]);
+        admin_user_delete_dependent_rows($pdo, $userId);
+
+        $deleted = $pdo->prepare('DELETE FROM dbo.[User] WHERE UserID = :id');
+        $deleted->execute(['id' => $userId]);
+        if ($deleted->rowCount() === 0) {
+            throw new RuntimeException('User record was not deleted.');
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        error_log('admin_delete_user failed for UserID ' . $userId . ': ' . $e->getMessage());
+
+        return [
+            'ok' => false,
+            'error' => 'Unable to delete user. '
+                . ($e instanceof PDOException
+                    ? 'Database constraint prevented deletion.'
+                    : $e->getMessage()),
+        ];
+    }
 
     require_once __DIR__ . '/audit.php';
     audit_log_user_delete($existing);

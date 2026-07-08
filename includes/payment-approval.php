@@ -260,7 +260,11 @@ function payment_approval_invoice_can_submit(array $invoice): bool
         return false;
     }
 
-    return in_array((string) ($invoice['SyncStatus'] ?? ''), QBO_INSERT_EDITABLE_STATUSES, true);
+    if (in_array((string) ($invoice['SyncStatus'] ?? ''), QBO_INSERT_EDITABLE_STATUSES, true)) {
+        return true;
+    }
+
+    return supplier_invoice_posted_is_reopenable($invoice);
 }
 
 function payment_approval_invoice_actions(): array

@@ -172,18 +172,40 @@ function supplier_invoice_status_class(string $status): string
     };
 }
 
+function supplier_invoice_posted_is_reopenable(?array $invoice): bool
+{
+    if ($invoice === null) {
+        return false;
+    }
+
+    if ((string) ($invoice['SyncStatus'] ?? '') !== 'Posted') {
+        return false;
+    }
+
+    // In QBO insert test mode, Posted means approval was recorded but no QuickBooks bill was created.
+    if (supplier_invoice_is_qbo_stub_mode()) {
+        return true;
+    }
+
+    return trim((string) ($invoice['QBO_BillId'] ?? '')) === '';
+}
+
 function supplier_invoice_is_editable(?array $invoice): bool
 {
     if ($invoice === null) {
         return true;
     }
 
-    return in_array((string) ($invoice['SyncStatus'] ?? ''), [
+    if (in_array((string) ($invoice['SyncStatus'] ?? ''), [
         'Draft',
         'Sent Back for Comment',
         'Rejected',
         'Failed',
-    ], true);
+    ], true)) {
+        return true;
+    }
+
+    return supplier_invoice_posted_is_reopenable($invoice);
 }
 
 function supplier_invoice_is_locked(?array $invoice): bool
@@ -192,7 +214,13 @@ function supplier_invoice_is_locked(?array $invoice): bool
         return false;
     }
 
-    return in_array((string) ($invoice['SyncStatus'] ?? ''), ['Posted', 'Voided', 'Submitted for Approval'], true);
+    $status = (string) ($invoice['SyncStatus'] ?? '');
+
+    if ($status === 'Posted' && supplier_invoice_posted_is_reopenable($invoice)) {
+        return false;
+    }
+
+    return in_array($status, ['Posted', 'Voided', 'Submitted for Approval'], true);
 }
 
 function supplier_invoice_list_suppliers(): array

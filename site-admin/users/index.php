@@ -11,6 +11,7 @@ $canDelete = auth_can_delete(ADMIN_PERMISSION_COLUMNS['users']);
 $listFilters = table_sort_state(ADMIN_USERS_LIST_SORT_COLUMNS, 'name', 'asc', $_GET);
 $users = admin_list_users($listFilters);
 $notice = $_GET['notice'] ?? null;
+$error = $_GET['error'] ?? null;
 
 $pageTitle = 'Users | Site Admin | NutraAxis Operations';
 $pageDescription = 'Manage NutraAxis Operations user accounts.';
@@ -40,6 +41,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">User updated successfully.</div>
       <?php elseif ($notice === 'deleted'): ?>
       <div class="admin-notice is-success" role="status">User deleted successfully.</div>
+      <?php elseif ($error !== null && $error !== ''): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
       <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
