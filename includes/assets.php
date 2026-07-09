@@ -16,7 +16,7 @@ function asset_css_version(): string
     }
 
     if (env_is_azure_hosted()) {
-        return $version = '20260629e';
+        return $version = '20260709a';
     }
 
     $path = dirname(__DIR__) . '/assets/css/operations.css';

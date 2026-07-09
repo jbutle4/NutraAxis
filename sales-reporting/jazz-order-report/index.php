@@ -43,6 +43,9 @@ if ($configError === null) {
         $filters['ordering'] = '-order_date';
     }
     $listResult = jazz_oms_list_orders_report($page, $filters);
+    if ($listResult['ok'] && ($listResult['rows'] ?? []) !== []) {
+        $listResult['rows'] = jazz_oms_enrich_order_rows_customer_names($listResult['rows']);
+    }
 }
 
 $orderSortAccessors = [

@@ -19,6 +19,7 @@ $lineItems = [];
 $itemSortColumns = [
     'line_number'   => 'Line',
     'sku'           => 'SKU',
+    'product'       => 'Product',
     'qty_ordered'   => 'Qty ordered',
     'qty_allocated' => 'Allocated',
     'qty_shipped'   => 'Shipped',
@@ -39,15 +40,20 @@ if ($error === null) {
         $contact = $contacts['customer'];
         $shipToContact = $contacts['ship_to'];
         $accsOrderNumber = $contacts['accs_order_number'];
+        $lineItems = jazz_oms_order_line_items($order);
+        $productLookups = jazz_oms_order_line_product_lookups($order, $lineItems);
+        foreach ($lineItems as $index => $line) {
+            $lineItems[$index]['product_label'] = jazz_oms_order_line_product_display($line, $productLookups);
+        }
         $itemSortAccessors = [
             'line_number'   => fn(array $item) => $item['line_number'] ?? 0,
             'sku'           => fn(array $item): string => (string) ($item['sku'] ?? $item['sku_code'] ?? ''),
+            'product'       => fn(array $item): string => (string) ($item['product_label'] ?? ''),
             'qty_ordered'   => fn(array $item) => $item['qty_ordered'] ?? $item['quantity'] ?? $item['ordered'] ?? 0,
             'qty_allocated' => fn(array $item) => $item['qty_allocated'] ?? $item['allocated'] ?? 0,
             'qty_shipped'   => fn(array $item) => $item['qty_shipped'] ?? $item['shipped'] ?? 0,
             'current_price' => fn(array $item) => $item['current_price'] ?? $item['price'] ?? $item['unit_price'] ?? 0,
         ];
-        $lineItems = jazz_oms_order_line_items($order);
         if ($lineItems !== []) {
             $lineItems = table_sort_rows(
                 $lineItems,
@@ -170,33 +176,37 @@ $displayValue = static function (?string $value): string {
       </div>
 
       <?php if ($lineItems !== []): ?>
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <?php table_sort_render_head_row(
-                $itemSortColumns,
-                data_profile_page_path('/sales-reporting/jazz-order.php') . '?order=' . rawurlencode($orderNumber),
-                $itemSortFilters,
-                [],
-                ['line_number', 'qty_ordered', 'qty_allocated', 'qty_shipped', 'current_price'],
-                'line_number',
-                'asc'
-            ); ?>
-          </thead>
-          <tbody>
-            <?php foreach ($lineItems as $item): ?>
-            <tr>
-              <td><?= htmlspecialchars((string) ($item['line_number'] ?? '')) ?></td>
-              <td><?= htmlspecialchars((string) ($item['sku'] ?? $item['sku_code'] ?? '')) ?></td>
-              <td><?= htmlspecialchars((string) ($item['qty_ordered'] ?? $item['quantity'] ?? $item['ordered'] ?? '0')) ?></td>
-              <td><?= htmlspecialchars((string) ($item['qty_allocated'] ?? $item['allocated'] ?? '0')) ?></td>
-              <td><?= htmlspecialchars((string) ($item['qty_shipped'] ?? $item['shipped'] ?? '0')) ?></td>
-              <td><?= htmlspecialchars((string) ($item['current_price'] ?? $item['unit_price'] ?? $item['price'] ?? '0')) ?></td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
+      <section class="detail-card jazz-order-lines">
+        <h2>Line items</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table jazz-order-lines-table">
+            <thead>
+              <?php table_sort_render_head_row(
+                  $itemSortColumns,
+                  data_profile_page_path('/sales-reporting/jazz-order.php') . '?order=' . rawurlencode($orderNumber),
+                  $itemSortFilters,
+                  [],
+                  ['line_number', 'qty_ordered', 'qty_allocated', 'qty_shipped', 'current_price'],
+                  'line_number',
+                  'asc'
+              ); ?>
+            </thead>
+            <tbody>
+              <?php foreach ($lineItems as $item): ?>
+              <tr>
+                <td><?= htmlspecialchars((string) ($item['line_number'] ?? '')) ?></td>
+                <td><span class="jazz-order-line-sku"><?= htmlspecialchars((string) ($item['sku'] ?? $item['sku_code'] ?? '')) ?></span></td>
+                <td><span class="jazz-order-line-product"><?= htmlspecialchars($displayValue((string) ($item['product_label'] ?? ''))) ?></span></td>
+                <td><?= htmlspecialchars((string) ($item['qty_ordered'] ?? $item['quantity'] ?? $item['ordered'] ?? '0')) ?></td>
+                <td><?= htmlspecialchars((string) ($item['qty_allocated'] ?? $item['allocated'] ?? '0')) ?></td>
+                <td><?= htmlspecialchars((string) ($item['qty_shipped'] ?? $item['shipped'] ?? '0')) ?></td>
+                <td><?= htmlspecialchars(jazz_oms_format_money($item['current_price'] ?? $item['unit_price'] ?? $item['price'] ?? null)) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
       <?php else: ?>
       <div class="admin-notice" role="status">No line items were returned for this order. Jazz may require a separate detail request for SKU-level data.</div>
       <?php endif; ?>

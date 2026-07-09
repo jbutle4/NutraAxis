@@ -23,7 +23,7 @@
  *   ADOBE_COMMERCE_API_HOST — override API host (normally derived per environment)
  *   ADOBE_COMMERCE_IMS_TOKEN_URL — override IMS token endpoint
  *   ADOBE_COMMERCE_ORG_ID — Adobe org ID (I/O Events / integrations)
- *   ADOBE_COMMERCE_PAGE_SIZE — order list page size (default 10)
+ *   ADOBE_COMMERCE_PAGE_SIZE — order list page size (default 25)
  *   ADOBE_COMMERCE_ORDERS_PAGE_SIZE — bulk order fetch page size (default 100)
  *   ADOBE_COMMERCE_INVENTORY_PAGE_SIZE — inventory fetch page size (default 100)
  *   ADOBE_COMMERCE_WEBHOOK_SECRET — Adobe I/O Events webhook signing secret

@@ -286,9 +286,26 @@ function adobe_commerce_format_money($value): string
 
 function adobe_commerce_page_size(): int
 {
-    $size = (int) env('ADOBE_COMMERCE_PAGE_SIZE', '10');
+    $size = (int) env('ADOBE_COMMERCE_PAGE_SIZE', '25');
 
-    return max(1, min(100, $size > 0 ? $size : 10));
+    return max(1, min(100, $size > 0 ? $size : 25));
+}
+
+/**
+ * @return list<string>
+ */
+function adobe_commerce_order_status_options(): array
+{
+    return [
+        'canceled',
+        'closed',
+        'complete',
+        'holded',
+        'payment_review',
+        'pending',
+        'pending_payment',
+        'processing',
+    ];
 }
 
 function adobe_commerce_order_item_qty(array $order): int
@@ -351,27 +368,50 @@ function adobe_commerce_fetch_paginated_orders(array $baseQuery = [], int $maxPa
     return ['ok' => true, 'error' => null, 'rows' => $rows, 'total' => $total];
 }
 
-function adobe_commerce_list_orders(?int $pageSize = null, int $currentPage = 1): array
+/**
+ * @param array{status?: string} $filters
+ * @return array{ok: bool, error: ?string, rows: list<array<string, mixed>>, total: int, page: int, page_size: int}
+ */
+function adobe_commerce_list_orders(int $currentPage = 1, array $filters = [], ?int $pageSize = null): array
 {
-    $pageSize = $pageSize ?? adobe_commerce_page_size();
-    $result = adobe_commerce_api_request('GET', '/orders', [
-        'searchCriteria[pageSize]'                 => max(1, min(100, $pageSize)),
-        'searchCriteria[currentPage]'                => max(1, $currentPage),
-        'searchCriteria[sortOrders][0][field]'       => 'created_at',
-        'searchCriteria[sortOrders][0][direction]'   => 'DESC',
-    ]);
+    $pageSize = max(1, min(100, $pageSize ?? adobe_commerce_page_size()));
+    $currentPage = max(1, $currentPage);
+    $query = [
+        'searchCriteria[pageSize]'                 => $pageSize,
+        'searchCriteria[currentPage]'              => $currentPage,
+        'searchCriteria[sortOrders][0][field]'     => 'created_at',
+        'searchCriteria[sortOrders][0][direction]' => 'DESC',
+    ];
+
+    $status = trim((string) ($filters['status'] ?? ''));
+    if ($status !== '') {
+        $query['searchCriteria[filter_groups][0][filters][0][field]'] = 'status';
+        $query['searchCriteria[filter_groups][0][filters][0][value]'] = $status;
+        $query['searchCriteria[filter_groups][0][filters][0][condition_type]'] = 'eq';
+    }
+
+    $result = adobe_commerce_api_request('GET', '/orders', $query);
 
     if (!$result['ok']) {
-        return $result;
+        return [
+            'ok'        => false,
+            'error'     => $result['error'] ?? 'Unable to load orders.',
+            'rows'      => [],
+            'total'     => 0,
+            'page'      => $currentPage,
+            'page_size' => $pageSize,
+        ];
     }
 
     $data = $result['data'] ?? [];
 
     return [
-        'ok'    => true,
-        'error' => null,
-        'rows'  => is_array($data['items'] ?? null) ? $data['items'] : [],
-        'total' => (int) ($data['total_count'] ?? 0),
+        'ok'        => true,
+        'error'     => null,
+        'rows'      => is_array($data['items'] ?? null) ? $data['items'] : [],
+        'total'     => (int) ($data['total_count'] ?? 0),
+        'page'      => $currentPage,
+        'page_size' => $pageSize,
     ];
 }
 

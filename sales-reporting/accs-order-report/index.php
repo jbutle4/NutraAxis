@@ -11,10 +11,23 @@ $orderDetailPath = data_profile_page_path('/sales-reporting/order.php');
 $reportListSortPath = data_profile_page_path('/sales-reporting/accs-order-report');
 $configError = adobe_commerce_config_error();
 $search = trim($_GET['order'] ?? '');
-$listResult = ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
+$statusFilter = trim($_GET['status'] ?? '');
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$listResult = [
+    'ok'        => true,
+    'error'     => null,
+    'rows'      => [],
+    'total'     => 0,
+    'page'      => $page,
+    'page_size' => adobe_commerce_page_size(),
+];
 
 if ($configError === null) {
-    $listResult = adobe_commerce_list_orders();
+    $apiFilters = [];
+    if ($statusFilter !== '') {
+        $apiFilters['status'] = $statusFilter;
+    }
+    $listResult = adobe_commerce_list_orders($page, $apiFilters);
 }
 $orderSortColumns = [
     'order_number' => 'Order #',
@@ -25,6 +38,9 @@ $orderSortColumns = [
     'items'        => 'Items',
 ];
 $listFilters = table_sort_state($orderSortColumns, 'date', 'desc', $_GET);
+if ($statusFilter !== '') {
+    $listFilters['status'] = $statusFilter;
+}
 $orderSortAccessors = [
     'order_number' => fn(array $row): string => (string) ($row['increment_id'] ?? ''),
     'date'         => fn(array $row): string => (string) ($row['created_at'] ?? ''),
@@ -43,6 +59,22 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
         'desc'
     );
 }
+
+$totalPages = $listResult['page_size'] > 0
+    ? max(1, (int) ceil($listResult['total'] / $listResult['page_size']))
+    : 1;
+$paginationQuery = static function (int $targetPage) use ($listFilters, $statusFilter): string {
+    $query = ['page' => $targetPage];
+    if (($listFilters['sort'] ?? '') !== 'date' || ($listFilters['dir'] ?? '') !== 'desc') {
+        $query['sort'] = $listFilters['sort'];
+        $query['dir'] = $listFilters['dir'];
+    }
+    if ($statusFilter !== '') {
+        $query['status'] = $statusFilter;
+    }
+
+    return '?' . http_build_query($query);
+};
 
 $pageTitle = 'ACCS Order Report | Sales Reporting Summaries';
 $pageDescription = 'View Adobe Commerce orders and order detail from ACCS.';
@@ -77,13 +109,42 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </div>
       </form>
 
+      <form class="po-filter audit-filter page-list-filters" method="get" action="<?= htmlspecialchars($reportListSortPath) ?>">
+        <?php table_sort_hidden_inputs($listFilters, 'date', 'desc'); ?>
+        <div class="audit-filter-grid">
+          <div>
+            <label for="status">Status</label>
+            <select class="form-input" id="status" name="status">
+              <option value="">All statuses</option>
+              <?php foreach (adobe_commerce_order_status_options() as $status): ?>
+              <option value="<?= htmlspecialchars($status) ?>" <?= $statusFilter === $status ? 'selected' : '' ?>><?= htmlspecialchars($status) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+        <div class="audit-filter-actions">
+          <button type="submit" class="btn-secondary">Apply Filters</button>
+          <?php if ($statusFilter !== ''): ?>
+          <a class="btn-secondary" href="<?= htmlspecialchars($reportListSortPath) ?>">Clear filters</a>
+          <?php endif; ?>
+        </div>
+      </form>
+
       <?php if (!$listResult['ok']): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($listResult['error']) ?></div>
       <?php else: ?>
       <div class="status-banner">
         <div>
           <strong>Adobe Commerce connected</strong>
-          <p><?= (int) $listResult['total'] ?> total orders in <?= htmlspecialchars(adobe_commerce_environment()) ?> · showing <?= count($listResult['rows']) ?> most recent · <?= htmlspecialchars(adobe_commerce_base_url()) ?></p>
+          <p>
+            <?= (int) $listResult['total'] ?> order<?= (int) $listResult['total'] === 1 ? '' : 's' ?> in <?= htmlspecialchars(adobe_commerce_environment()) ?>
+            · page <?= (int) $listResult['page'] ?> of <?= $totalPages ?>
+            · showing <?= count($listResult['rows']) ?>
+            <?php if ($statusFilter !== ''): ?>
+            · status filter <?= htmlspecialchars($statusFilter) ?>
+            <?php endif; ?>
+            · <?= htmlspecialchars(adobe_commerce_base_url()) ?>
+          </p>
         </div>
       </div>
 
@@ -94,7 +155,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                 $orderSortColumns,
                 $reportListSortPath,
                 $listFilters,
-                [],
+                ['status'],
                 ['total', 'items'],
                 'date',
                 'desc',
@@ -123,6 +184,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           </tbody>
         </table>
       </div>
+
+      <?php if ($totalPages > 1): ?>
+      <div class="module-actions">
+        <?php if ($listResult['page'] > 1): ?>
+        <a class="btn-secondary" href="<?= htmlspecialchars($reportListSortPath . $paginationQuery($listResult['page'] - 1)) ?>">Previous page</a>
+        <?php endif; ?>
+        <?php if ($listResult['page'] < $totalPages): ?>
+        <a class="btn-secondary" href="<?= htmlspecialchars($reportListSortPath . $paginationQuery($listResult['page'] + 1)) ?>">Next page</a>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
       <?php endif; ?>
       <?php endif; ?>
     </div>

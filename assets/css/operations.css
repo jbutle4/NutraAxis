@@ -1173,6 +1173,25 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-bottom: 16px;
 }
 
+.jazz-order-lines {
+  margin-top: 24px;
+}
+
+.jazz-order-lines-table tbody td {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.jazz-order-lines-table .jazz-order-line-product {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.jazz-order-lines-table .jazz-order-line-sku {
+  font-family: ui-monospace, monospace;
+  font-size: 0.88rem;
+}
+
 .supplier-po-report {
   margin-top: 28px;
 }

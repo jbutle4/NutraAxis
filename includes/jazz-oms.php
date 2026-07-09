@@ -95,6 +95,11 @@ function jazz_oms_config_error(): ?string
         : 'Jazz OMS is not configured. Set JAZZ_DOMAIN_PROD, JAZZ_USERNAME_PROD, JAZZ_PASSWORD_PROD, and JAZZ_TENANT_CODE in Azure application settings.';
 }
 
+function jazz_oms_data_source_label(): string
+{
+    return data_profile_is_uat() ? 'UAT' : 'Production';
+}
+
 function jazz_oms_is_cloudflare_block(?string $responseBody): bool
 {
     if ($responseBody === null || $responseBody === '') {
@@ -803,7 +808,43 @@ function jazz_oms_field_label(string $key): string
 
 function jazz_oms_order_customer_label(array $row): string
 {
-    $contact = jazz_oms_order_contact($row);
+    static $cache = [];
+
+    $cacheKey = trim((string) ($row['order_number'] ?? ''));
+    if ($cacheKey === '') {
+        $cacheKey = md5(json_encode($row) ?: '');
+    }
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    foreach (['customer_name', 'customer_full_name', 'name'] as $key) {
+        $value = trim((string) ($row[$key] ?? ''));
+        if ($value !== '') {
+            return $cache[$cacheKey] = $value;
+        }
+    }
+
+    $contacts = jazz_oms_order_resolve_contacts($row);
+    $contact = $contacts['customer'];
+    $name = trim((string) ($contact['name'] ?? ''));
+    if ($name !== '') {
+        return $cache[$cacheKey] = $name;
+    }
+
+    foreach (['company', 'email', 'customer_number'] as $key) {
+        $value = trim((string) ($contact[$key] ?? ''));
+        if ($value !== '') {
+            return $cache[$cacheKey] = $value;
+        }
+    }
+
+    $fallback = trim((string) ($row['customer_number'] ?? ''));
+    return $cache[$cacheKey] = ($fallback !== '' ? $fallback : '—');
+}
+
+function jazz_oms_order_contact_label(array $contact): string
+{
     $name = trim((string) ($contact['name'] ?? ''));
     if ($name !== '') {
         return $name;
@@ -816,8 +857,34 @@ function jazz_oms_order_customer_label(array $row): string
         }
     }
 
-    $fallback = trim((string) ($row['customer_number'] ?? ''));
-    return $fallback !== '' ? $fallback : '—';
+    return '';
+}
+
+function jazz_oms_enrich_order_rows_customer_names(array $rows): array
+{
+    foreach ($rows as $index => $row) {
+        if (!is_array($row) || trim((string) ($row['customer_name'] ?? '')) !== '') {
+            continue;
+        }
+
+        $orderNumber = trim((string) ($row['order_number'] ?? ''));
+        if ($orderNumber === '') {
+            continue;
+        }
+
+        $detailResult = jazz_oms_get_order($orderNumber);
+        if (!$detailResult['ok'] || !is_array($detailResult['row'] ?? null)) {
+            continue;
+        }
+
+        $contacts = jazz_oms_order_resolve_contacts($detailResult['row']);
+        $customerName = jazz_oms_order_contact_label($contacts['customer']);
+        if ($customerName !== '') {
+            $rows[$index]['customer_name'] = $customerName;
+        }
+    }
+
+    return $rows;
 }
 
 /**
@@ -1005,9 +1072,13 @@ function jazz_oms_order_party_contact(array $row, string $party): array
         $partyData['last_name'] ?? $partyData['lastname']
         ?? $address['last_name'] ?? $address['lastname'] ?? ''
     ));
+    $name = trim($firstName . ' ' . $lastName);
+    if ($name === '') {
+        $name = trim((string) ($partyData['name'] ?? $address['name'] ?? ''));
+    }
 
     return [
-        'name'             => trim($firstName . ' ' . $lastName),
+        'name'             => $name,
         'first_name'       => $firstName,
         'last_name'        => $lastName,
         'company'          => trim((string) ($partyData['company'] ?? $address['company'] ?? '')),
@@ -1078,6 +1149,172 @@ function jazz_oms_order_line_items(array $row): array
     return $items;
 }
 
+function jazz_oms_order_line_name(array $line): string
+{
+    foreach (['product_name', 'name'] as $key) {
+        $value = trim((string) ($line[$key] ?? ''));
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return '';
+}
+
+function jazz_oms_order_line_description(array $line): string
+{
+    foreach (['description', 'size_description', 'size_desc', 'item_description'] as $key) {
+        $value = trim((string) ($line[$key] ?? ''));
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * @param list<string> $skuCodes
+ * @return array<string, string> lower-case SKU => ProductName
+ */
+function jazz_oms_sku_master_product_names(array $skuCodes): array
+{
+    $normalized = [];
+    foreach ($skuCodes as $sku) {
+        $sku = trim($sku);
+        if ($sku !== '') {
+            $normalized[strtolower($sku)] = $sku;
+        }
+    }
+
+    if ($normalized === []) {
+        return [];
+    }
+
+    require_once __DIR__ . '/database.php';
+    $pdo = db();
+    $placeholders = implode(',', array_fill(0, count($normalized), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT SKUCode, ProductName FROM dbo.SKUMaster WHERE LOWER(SKUCode) IN ({$placeholders})"
+    );
+    $stmt->execute(array_keys($normalized));
+
+    $map = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $skuKey = strtolower(trim((string) ($row['SKUCode'] ?? '')));
+        $name = trim((string) ($row['ProductName'] ?? ''));
+        if ($skuKey !== '' && $name !== '') {
+            $map[$skuKey] = $name;
+        }
+    }
+
+    return $map;
+}
+
+/**
+ * @return ?array<string, array{name: string, description: string}>
+ */
+function jazz_oms_order_accs_items_by_sku(array $row): ?array
+{
+    require_once __DIR__ . '/adobe-commerce.php';
+    require_once __DIR__ . '/daily-sales-summary.php';
+
+    if (adobe_commerce_config_error() !== null) {
+        return null;
+    }
+
+    foreach (jazz_oms_order_accs_lookup_numbers($row) as $candidate) {
+        $result = adobe_commerce_fetch_order_by_number($candidate);
+        if (!$result['ok'] || !is_array($result['order'] ?? null)) {
+            continue;
+        }
+
+        $items = [];
+        foreach ($result['order']['items'] ?? [] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $sku = trim((string) ($item['sku'] ?? ''));
+            if ($sku === '') {
+                continue;
+            }
+
+            $skuKey = strtolower($sku);
+            $items[$skuKey] = [
+                'name'        => trim((string) ($item['name'] ?? '')),
+                'description' => daily_sales_summary_item_description($item),
+            ];
+        }
+
+        return $items;
+    }
+
+    return null;
+}
+
+/**
+ * @param list<array<string, mixed>> $lineItems
+ * @return array{name_by_sku: array<string, string>, description_by_sku: array<string, string>}
+ */
+function jazz_oms_order_line_product_lookups(array $row, array $lineItems): array
+{
+    $skuCodes = [];
+    foreach ($lineItems as $line) {
+        $sku = trim((string) ($line['sku'] ?? $line['sku_code'] ?? ''));
+        if ($sku !== '') {
+            $skuCodes[] = $sku;
+        }
+    }
+
+    $nameBySku = jazz_oms_sku_master_product_names($skuCodes);
+    $descriptionBySku = [];
+
+    $accsItems = jazz_oms_order_accs_items_by_sku($row);
+    if ($accsItems !== null) {
+        foreach ($accsItems as $skuKey => $item) {
+            if (($nameBySku[$skuKey] ?? '') === '' && ($item['name'] ?? '') !== '') {
+                $nameBySku[$skuKey] = $item['name'];
+            }
+            if (($item['description'] ?? '') !== '') {
+                $descriptionBySku[$skuKey] = $item['description'];
+            }
+        }
+    }
+
+    return [
+        'name_by_sku'        => $nameBySku,
+        'description_by_sku' => $descriptionBySku,
+    ];
+}
+
+/**
+ * @param array{name_by_sku: array<string, string>, description_by_sku: array<string, string>} $lookups
+ */
+function jazz_oms_order_line_product_display(array $line, array $lookups): string
+{
+    $name = jazz_oms_order_line_name($line);
+    if ($name !== '') {
+        return $name;
+    }
+
+    $skuKey = strtolower(trim((string) ($line['sku'] ?? $line['sku_code'] ?? '')));
+    if ($skuKey !== '' && ($lookups['name_by_sku'][$skuKey] ?? '') !== '') {
+        return $lookups['name_by_sku'][$skuKey];
+    }
+
+    $description = jazz_oms_order_line_description($line);
+    if ($description !== '') {
+        return $description;
+    }
+
+    if ($skuKey !== '' && ($lookups['description_by_sku'][$skuKey] ?? '') !== '') {
+        return $lookups['description_by_sku'][$skuKey];
+    }
+
+    return '';
+}
+
 function jazz_oms_order_item_qty(array $row): int
 {
     foreach (['qty_ordered', 'quantity_ordered', 'ordered', 'total_qty_ordered', 'total_ordered'] as $key) {
@@ -1101,4 +1338,13 @@ function jazz_oms_format_quantity($value): string
     }
 
     return number_format((float) $value, 0);
+}
+
+function jazz_oms_format_money($value): string
+{
+    if ($value === null || $value === '') {
+        return '—';
+    }
+
+    return '$' . number_format((float) $value, 2);
 }
