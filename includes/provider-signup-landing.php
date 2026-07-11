@@ -317,7 +317,7 @@ function provider_signup_render_apply_page_open(): void
         <div class="hero-text">
           <div class="section-label">For Practitioners</div>
           <h1>Complete your <span>Provider Application</span></h1>
-          <p>Save your progress at any time and submit once your company, compliance, and banking details are complete.</p>
+          <p>Save your progress at any time. Operations will review your information and approve your application before you activate your Clinic Store.</p>
         </div>
         <div class="hero-visual">
           <?php provider_signup_render_quality_card(); ?>
@@ -367,7 +367,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
               </label>
               <button class="btn-cta" type="submit">Start application</button>
             </form>
-            <p class="apply-note">Your application stays in draft until you submit it for operations review.</p>
+            <p class="apply-note">Your application stays in draft until operations approves it. You will then activate your Clinic Store.</p>
           </div>
           <p class="apply-back-link"><a href="/provider-signup/">← Back to For Providers</a></p>
         </div>

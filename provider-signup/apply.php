@@ -37,7 +37,9 @@ if (($_GET['notice'] ?? '') === 'started') {
 } elseif (($_GET['notice'] ?? '') === 'draft_saved') {
     $notice = 'Draft saved successfully.';
 } elseif (($_GET['notice'] ?? '') === 'submitted') {
-    $notice = 'Application submitted for operations review.';
+    $notice = 'Your Clinic Store activation request has been received.';
+} elseif (($_GET['notice'] ?? '') === 'activated') {
+    $notice = 'Your Clinic Store has been activated.';
 } elseif (($_GET['notice'] ?? '') === 'certificate_uploaded') {
     $notice = 'Reseller certificate uploaded successfully.';
 }
@@ -56,9 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $form = provider_signup_form_from_post($_POST);
 
         if ($action === 'submit_application') {
-            $result = provider_signup_submit($token, $form);
+            $submitForm = provider_signup_provider_can_submit($application)
+                ? provider_signup_form_from_row($application)
+                : provider_signup_form_from_post($_POST);
+            $result = provider_signup_submit($token, $submitForm);
             if ($result['ok']) {
-                $query = 'notice=submitted';
+                $query = provider_signup_provider_can_submit($application) ? 'notice=activated' : 'notice=submitted';
                 if (!empty($result['warn'])) {
                     $query .= '&warn=' . rawurlencode((string) $result['warn']);
                 }
@@ -95,6 +100,7 @@ require dirname(__DIR__) . '/includes/marketing-header.php';
     <?php provider_signup_render_apply_page_open(); ?>
     <?php
     $editable = provider_signup_provider_can_edit($application);
+    $canSubmit = provider_signup_provider_can_submit($application);
     $attachments = provider_signup_list_attachments((int) $application['ApplicationID']);
     $checklist = provider_signup_submit_checklist($form, (int) $application['ApplicationID']);
     require dirname(__DIR__) . '/includes/provider-signup-form.php';

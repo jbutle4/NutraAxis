@@ -204,6 +204,20 @@ function provider_signup_provider_can_edit(array $application): bool
     return in_array((string) ($application['Status'] ?? ''), PROVIDER_SIGNUP_PROVIDER_EDITABLE_STATUSES, true);
 }
 
+function provider_signup_ops_can_approve(array $application): bool
+{
+    return in_array((string) ($application['Status'] ?? ''), [
+        PROVIDER_SIGNUP_STATUS_DRAFT,
+        PROVIDER_SIGNUP_STATUS_RETURNED,
+        PROVIDER_SIGNUP_STATUS_SUBMITTED,
+    ], true);
+}
+
+function provider_signup_provider_can_submit(array $application): bool
+{
+    return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED;
+}
+
 function provider_signup_has_reseller_certificate(int $applicationId): bool
 {
     $pdo = db();
@@ -383,8 +397,8 @@ function provider_signup_submit(string $accessToken, array $form): array
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    if (!provider_signup_provider_can_edit($application)) {
-        return ['ok' => false, 'error' => 'This application has already been submitted.'];
+    if (!provider_signup_provider_can_submit($application)) {
+        return ['ok' => false, 'error' => 'Operations must approve your application before you can activate your Clinic Store.'];
     }
 
     $applicationId = (int) $application['ApplicationID'];
@@ -392,7 +406,7 @@ function provider_signup_submit(string $accessToken, array $form): array
     if (!$checklist['complete']) {
         return [
             'ok'    => false,
-            'error' => 'Complete all required fields before submitting: ' . implode(', ', $checklist['missing']) . '.',
+            'error' => 'Complete all required fields before activating your store: ' . implode(', ', $checklist['missing']) . '.',
         ];
     }
 
@@ -401,48 +415,32 @@ function provider_signup_submit(string $accessToken, array $form): array
         return $persist;
     }
 
-    $npiResult = provider_signup_npi_validate((string) $form['npi_number']);
-    $bankResult = provider_signup_banking_validate_format($form, $applicationId);
+    $provision = provider_signup_provision($applicationId);
+    if (!$provision['ok']) {
+        return ['ok' => false, 'error' => $provision['error'] ?? 'Unable to create your Clinic Store.'];
+    }
 
     try {
         $pdo = db();
-        $stmt = $pdo->prepare(<<<SQL
+        $pdo->prepare(<<<SQL
             UPDATE dbo.ProviderSignupApplication
             SET Status = :status,
                 SubmittedAt = SYSUTCDATETIME(),
                 LastSavedAt = SYSUTCDATETIME(),
-                NpiValidatedAt = CASE WHEN :npi_ok = 1 THEN SYSUTCDATETIME() ELSE NULL END,
-                NpiValidationStatus = :npi_status,
-                NpiValidationSummary = :npi_summary,
-                BankingValidationStatus = :bank_status,
-                BankingValidationSummary = :bank_summary
+                ProvisionedAt = SYSUTCDATETIME()
             WHERE ApplicationID = :id
-        SQL);
-        $stmt->execute([
-            'status'       => PROVIDER_SIGNUP_STATUS_SUBMITTED,
-            'npi_ok'       => $npiResult['ok'] ? 1 : 0,
-            'npi_status'   => $npiResult['status'],
-            'npi_summary'  => $npiResult['summary'],
-            'bank_status'  => $bankResult['status'],
-            'bank_summary' => $bankResult['summary'],
-            'id'           => $applicationId,
+        SQL)->execute([
+            'status' => PROVIDER_SIGNUP_STATUS_PROVISIONED,
+            'id'     => $applicationId,
         ]);
     } catch (Throwable) {
-        return ['ok' => false, 'error' => 'Unable to submit the application.'];
+        return ['ok' => false, 'error' => 'Unable to finalize your application.'];
     }
 
-    provider_signup_add_review_log($applicationId, null, 'Submitted', 'Application submitted by provider.');
+    provider_signup_add_review_log($applicationId, null, 'Activated', 'Provider activated Clinic Store after operations approval.');
     $updated = provider_signup_get($applicationId);
     if ($updated !== null) {
-        provider_signup_mail_submitted($updated);
-    }
-
-    if (!$npiResult['ok']) {
-        return [
-            'ok'    => true,
-            'error' => null,
-            'warn'  => 'Application submitted, but NPI validation did not pass: ' . ($npiResult['summary'] ?? 'Unknown issue') . '.',
-        ];
+        provider_signup_mail_provisioned($updated);
     }
 
     return ['ok' => true, 'error' => null];
@@ -831,23 +829,60 @@ function provider_signup_ops_approve(int $applicationId, string $comments = ''):
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    if (!in_array((string) ($application['Status'] ?? ''), [PROVIDER_SIGNUP_STATUS_SUBMITTED, PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION, PROVIDER_SIGNUP_STATUS_RETURNED], true)) {
-        return ['ok' => false, 'error' => 'Only submitted applications can be approved.'];
+    if (!provider_signup_ops_can_approve($application)) {
+        return ['ok' => false, 'error' => 'This application cannot be approved in its current status.'];
     }
 
-    $pdo = db();
-    $pdo->prepare('UPDATE dbo.ProviderSignupApplication SET Status = :status WHERE ApplicationID = :id')
-        ->execute(['status' => PROVIDER_SIGNUP_STATUS_APPROVED, 'id' => $applicationId]);
+    $form = provider_signup_form_from_row($application);
+    $checklist = provider_signup_submit_checklist($form, $applicationId);
+    if (!$checklist['complete']) {
+        return [
+            'ok'    => false,
+            'error' => 'Complete application data is required before approval: ' . implode(', ', $checklist['missing']) . '.',
+        ];
+    }
+
+    $npiResult = provider_signup_npi_validate((string) ($form['npi_number'] ?? ''));
+    $bankResult = provider_signup_banking_validate_format($form, $applicationId);
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET Status = :status,
+                LastSavedAt = SYSUTCDATETIME(),
+                NpiValidatedAt = CASE WHEN :npi_ok = 1 THEN SYSUTCDATETIME() ELSE NULL END,
+                NpiValidationStatus = :npi_status,
+                NpiValidationSummary = :npi_summary,
+                BankingValidationStatus = :bank_status,
+                BankingValidationSummary = :bank_summary
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'status'       => PROVIDER_SIGNUP_STATUS_APPROVED,
+            'npi_ok'       => $npiResult['ok'] ? 1 : 0,
+            'npi_status'   => $npiResult['status'],
+            'npi_summary'  => $npiResult['summary'],
+            'bank_status'  => $bankResult['status'],
+            'bank_summary' => $bankResult['summary'],
+            'id'           => $applicationId,
+        ]);
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'Unable to approve the application.'];
+    }
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
     provider_signup_add_review_log($applicationId, $reviewerId, 'Approved', trim($comments));
 
-    $provision = provider_signup_provision($applicationId);
-    if (!$provision['ok']) {
+    $updated = provider_signup_get($applicationId);
+    if ($updated !== null) {
+        provider_signup_mail_approved($updated);
+    }
+
+    if (!$npiResult['ok']) {
         return [
             'ok'    => true,
             'error' => null,
-            'warn'  => $provision['error'] ?? 'Application approved, but ACCS provisioning is not complete yet.',
+            'warn'  => 'Application approved, but NPI validation did not pass: ' . ($npiResult['summary'] ?? 'Unknown issue') . '.',
         ];
     }
 

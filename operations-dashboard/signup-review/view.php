@@ -20,6 +20,7 @@ if ($application === null) {
 $activeSlug = 'signup-review';
 $error = null;
 $canUpdate = provider_signup_can_update();
+$canApprove = provider_signup_ops_can_approve($application);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
     $action = (string) ($_POST['action'] ?? '');
@@ -103,7 +104,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif (($_GET['notice'] ?? '') === 'returned'): ?>
       <div class="admin-notice is-success" role="status">Application returned to provider.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'approved'): ?>
-      <div class="admin-notice is-success" role="status">Application approved.</div>
+      <div class="admin-notice is-success" role="status">Application approved. The provider can now activate their Clinic Store.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'rejected'): ?>
       <div class="admin-notice is-success" role="status">Application rejected.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'npi_validated'): ?>
@@ -113,12 +114,16 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
       <?php endif; ?>
 
+      <?php if ($canApprove && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_DRAFT): ?>
+      <div class="admin-notice" role="status">This application is in <strong>Draft</strong>. Validate the data and documents, then approve to enable the provider&apos;s final Clinic Store activation.</div>
+      <?php endif; ?>
+
       <div class="detail-grid">
         <section class="detail-card">
           <h2>Status</h2>
           <dl>
             <div><dt>Status</dt><dd><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $application['Status'])) ?>"><?= htmlspecialchars((string) $application['Status']) ?></span></dd></div>
-            <div><dt>Submitted</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></dd></div>
+            <div><dt>Activated</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></dd></div>
             <div><dt>Last saved</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></dd></div>
             <div><dt>NPI validation</dt><dd><?= htmlspecialchars((string) ($application['NpiValidationStatus'] ?? '—')) ?><?= !empty($application['NpiValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['NpiValidationSummary']) : '' ?></dd></div>
             <div><dt>Banking validation</dt><dd><?= htmlspecialchars((string) ($application['BankingValidationStatus'] ?? '—')) ?><?= !empty($application['BankingValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['BankingValidationSummary']) : '' ?></dd></div>
@@ -196,7 +201,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <button class="btn-secondary" type="submit" name="action" value="validate_npi">Re-run NPI validation</button>
           <button class="btn-secondary" type="submit" name="action" value="return">Return to provider</button>
           <button class="btn-secondary" type="submit" name="action" value="reject">Reject</button>
-          <button class="btn-primary" type="submit" name="action" value="approve">Approve</button>
+          <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve for activation</button>
         </div>
       </form>
       <?php endif; ?>

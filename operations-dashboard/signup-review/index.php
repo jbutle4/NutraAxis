@@ -14,7 +14,7 @@ $listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
 ] + table_sort_state(PROVIDER_SIGNUP_LIST_SORT_COLUMNS, 'submitted', 'desc', $_GET);
 $applications = provider_signup_list_applications($listFilters);
-$pendingCount = provider_signup_count_by_status(PROVIDER_SIGNUP_STATUS_SUBMITTED);
+$pendingCount = provider_signup_count_by_status(PROVIDER_SIGNUP_STATUS_DRAFT);
 $notice = $_GET['notice'] ?? null;
 
 $pageTitle = 'Provider Signup Management | NutraAxis Operations';
@@ -31,7 +31,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           'back_label' => 'Back to Operations Home',
           'category'   => 'Operations',
           'title'      => 'Provider Signup Management',
-          'lead'       => 'Review provider applications, validate NPI and banking data, and approve ACCS provisioning.',
+          'lead'       => 'Review draft provider applications, validate NPI and banking data, approve for Clinic Store activation.',
           'permission' => permission_label(provider_signup_permission_value()),
       ]);
       ?>
@@ -55,10 +55,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($pendingCount > 0): ?>
       <div class="status-banner status-banner-approval">
         <div>
-          <strong><?= $pendingCount === 1 ? '1 application is' : $pendingCount . ' applications are' ?> waiting for review</strong>
-          <p>Submitted provider applications need operations review and validation.</p>
+          <strong><?= $pendingCount === 1 ? '1 draft application is' : $pendingCount . ' draft applications are' ?> awaiting review</strong>
+          <p>Provider applications in draft need operations validation and approval.</p>
         </div>
-        <a class="btn-primary" href="/operations-dashboard/signup-review/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_SUBMITTED) ?>">Review Submitted</a>
+        <a class="btn-primary" href="/operations-dashboard/signup-review/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_DRAFT) ?>">Review Drafts</a>
       </div>
       <?php endif; ?>
 

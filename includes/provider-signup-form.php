@@ -9,6 +9,7 @@
 /** @var ?string $warn */
 
 $editable = $editable ?? provider_signup_provider_can_edit($application);
+$canSubmit = $canSubmit ?? provider_signup_provider_can_submit($application);
 $attachments = $attachments ?? provider_signup_list_attachments((int) $application['ApplicationID']);
 $checklist = $checklist ?? provider_signup_submit_checklist($form, (int) $application['ApplicationID']);
 $token = (string) ($application['AccessToken'] ?? '');
@@ -30,9 +31,21 @@ $token = (string) ($application['AccessToken'] ?? '');
     <span><strong>Last saved:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></span>
   </div>
 
-  <?php if (!$editable): ?>
+  <?php if (!$editable && !$canSubmit): ?>
   <div class="signup-alert signup-alert--info" role="status">
-    This application has been submitted and is under review. Contact operations if you need changes.
+    <?php if ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
+    This application is approved and awaiting final activation.
+    <?php elseif ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
+    Your Clinic Store has been activated. Contact operations if you need changes.
+    <?php else: ?>
+    This application is under operations review. You can save updates while it is in draft or returned status.
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <?php if ($canSubmit): ?>
+  <div class="signup-alert signup-alert--success" role="status">
+    Your application has been approved. Submit below to activate your Clinic Store.
   </div>
   <?php endif; ?>
 
@@ -131,16 +144,19 @@ $token = (string) ($application['AccessToken'] ?? '');
     <?php if ($editable): ?>
     <div class="signup-form__actions">
       <button class="btn-secondary" type="submit" name="action" value="save_draft">Save draft</button>
+    </div>
+    <?php elseif ($canSubmit): ?>
+    <div class="signup-form__actions">
       <button
         class="btn-cta"
         type="submit"
         name="action"
         value="submit_application"
         <?= $checklist['complete'] ? '' : 'disabled' ?>
-      >Submit application</button>
+      >Activate Clinic Store</button>
     </div>
     <?php if (!$checklist['complete']): ?>
-    <p class="signup-checklist">Still needed before submit: <?= htmlspecialchars(implode(', ', $checklist['missing'])) ?></p>
+    <p class="signup-checklist">Still needed before activation: <?= htmlspecialchars(implode(', ', $checklist['missing'])) ?></p>
     <?php endif; ?>
     <?php endif; ?>
   </form>

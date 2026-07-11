@@ -185,7 +185,7 @@ function provider_signup_mail_returned(array $application, string $comments): vo
         'Your NutraAxis provider application was sent back for more information.',
         '',
         $comments !== '' ? "Reviewer notes:\n" . $comments . "\n" : '',
-        'Please update your application and submit again:',
+        'Please update your application and save your changes:',
         $applyUrl,
         '',
         '— NutraAxis Operations',
@@ -194,11 +194,42 @@ function provider_signup_mail_returned(array $application, string $comments): vo
     if ($comments !== '') {
         $html .= '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>';
     }
-    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Update and resubmit your application</a></p>';
+    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Update your application</a></p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
     provider_signup_mail_ops(
         'Provider application returned — #' . (int) ($application['ApplicationID'] ?? 0),
+        $plain,
+        $html
+    );
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_mail_approved(array $application): void
+{
+    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
+    $company = trim((string) ($application['CompanyName'] ?? 'your practice'));
+    $subject = 'Your NutraAxis provider application is approved';
+
+    $plain = implode("\n", [
+        'Your NutraAxis provider application for ' . $company . ' has been approved by our operations team.',
+        '',
+        'Submit your application to activate your Clinic Store:',
+        $applyUrl,
+        '',
+        '— NutraAxis',
+    ]);
+
+    $html = '<p>Your NutraAxis provider application for <strong>'
+        . htmlspecialchars($company)
+        . '</strong> has been approved by our operations team.</p>'
+        . '<p><a href="' . htmlspecialchars($applyUrl) . '">Submit to activate your Clinic Store</a></p>';
+
+    provider_signup_mail_provider($application, $subject, $plain, $html);
+    provider_signup_mail_ops(
+        'Provider application approved — #' . (int) ($application['ApplicationID'] ?? 0),
         $plain,
         $html
     );
