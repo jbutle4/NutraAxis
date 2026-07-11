@@ -8,7 +8,7 @@ require dirname(__DIR__, 2) . '/includes/provider-signup.php';
 
 provider_signup_require_read();
 
-$activeSlug = 'provider-enrollment';
+$activeSlug = 'signup-review';
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $listFilters = [
     'status' => $statusFilter !== '' ? $statusFilter : null,
@@ -58,11 +58,11 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <strong><?= $pendingCount === 1 ? '1 application is' : $pendingCount . ' applications are' ?> waiting for review</strong>
           <p>Submitted provider applications need operations review and validation.</p>
         </div>
-        <a class="btn-primary" href="/operations-dashboard/provider-enrollment/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_SUBMITTED) ?>">Review Submitted</a>
+        <a class="btn-primary" href="/operations-dashboard/signup-review/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_SUBMITTED) ?>">Review Submitted</a>
       </div>
       <?php endif; ?>
 
-      <form class="po-filter page-list-filters" method="get" action="/operations-dashboard/provider-enrollment/">
+      <form class="po-filter page-list-filters" method="get" action="/operations-dashboard/signup-review/">
         <?php table_sort_hidden_inputs($listFilters, 'submitted', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
@@ -79,7 +79,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <?php
             table_sort_render_head_row(
                 PROVIDER_SIGNUP_LIST_SORT_COLUMNS,
-                '/operations-dashboard/provider-enrollment',
+                '/operations-dashboard/signup-review',
                 $listFilters,
                 ['status'],
                 [],
@@ -103,7 +103,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><?= htmlspecialchars((string) ($row['ProviderEmail'] ?? '')) ?></td>
               <td><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $row['Status'])) ?>"><?= htmlspecialchars((string) $row['Status']) ?></span></td>
               <td><?= htmlspecialchars(provider_signup_format_datetime($row['SubmittedAt'] ?? null)) ?></td>
-              <td><a href="/operations-dashboard/provider-enrollment/view.php?id=<?= (int) $row['ApplicationID'] ?>">View</a></td>
+              <td><a href="/operations-dashboard/signup-review/view.php?id=<?= (int) $row['ApplicationID'] ?>">View</a></td>
             </tr>
             <?php endforeach; ?>
             <?php endif; ?>
