@@ -21,6 +21,14 @@ const PROVIDER_SIGNUP_PROVIDER_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_RETURNED,
 ];
 
+const PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES = [
+    PROVIDER_SIGNUP_STATUS_DRAFT,
+    PROVIDER_SIGNUP_STATUS_RETURNED,
+    PROVIDER_SIGNUP_STATUS_SUBMITTED,
+    PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
+    PROVIDER_SIGNUP_STATUS_APPROVED,
+];
+
 const PROVIDER_SIGNUP_STATUSES = [
     PROVIDER_SIGNUP_STATUS_DRAFT,
     PROVIDER_SIGNUP_STATUS_SUBMITTED,
@@ -211,6 +219,11 @@ function provider_signup_ops_can_approve(array $application): bool
         PROVIDER_SIGNUP_STATUS_RETURNED,
         PROVIDER_SIGNUP_STATUS_SUBMITTED,
     ], true);
+}
+
+function provider_signup_ops_can_edit(array $application): bool
+{
+    return in_array((string) ($application['Status'] ?? ''), PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES, true);
 }
 
 function provider_signup_provider_can_submit(array $application): bool
@@ -714,6 +727,35 @@ function provider_signup_add_review_log(
         'action'          => $action,
         'comments'        => provider_signup_nullable_string((string) ($comments ?? '')),
     ]);
+}
+
+function provider_signup_ops_update(int $applicationId, array $form, string $editNote = ''): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_ops_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer be edited.'];
+    }
+
+    $result = provider_signup_persist_form($applicationId, $form, false);
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $note = trim($editNote);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId,
+        'Updated',
+        $note !== '' ? $note : 'Application data updated by operations reviewer.'
+    );
+
+    return ['ok' => true, 'error' => null];
 }
 
 function provider_signup_ops_comment(int $applicationId, string $comments): array

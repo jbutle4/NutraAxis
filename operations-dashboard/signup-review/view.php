@@ -20,7 +20,9 @@ if ($application === null) {
 $activeSlug = 'signup-review';
 $error = null;
 $canUpdate = provider_signup_can_update();
+$canEdit = provider_signup_ops_can_edit($application);
 $canApprove = provider_signup_ops_can_approve($application);
+$approvalChecklist = provider_signup_submit_checklist(provider_signup_form_from_row($application), $applicationId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
     $action = (string) ($_POST['action'] ?? '');
@@ -109,6 +111,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Application rejected.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'npi_validated'): ?>
       <div class="admin-notice is-success" role="status">NPI validation refreshed.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'updated'): ?>
+      <div class="admin-notice is-success" role="status">Application data saved.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
@@ -116,6 +120,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($canApprove && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_DRAFT): ?>
       <div class="admin-notice" role="status">This application is in <strong>Draft</strong>. Validate the data and documents, then approve to enable the provider&apos;s final Clinic Store activation.</div>
+      <?php endif; ?>
+
+      <?php if ($canUpdate && $canEdit && !$approvalChecklist['complete']): ?>
+      <div class="admin-notice is-error" role="alert">
+        Complete application data is required before approval: <?= htmlspecialchars(implode(', ', $approvalChecklist['missing'])) ?>.
+        <a href="/operations-dashboard/signup-review/edit.php?id=<?= $applicationId ?>">Edit application</a>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($canUpdate && $canEdit): ?>
+      <div class="module-actions" style="margin-bottom: 1.5rem;">
+        <a class="btn-secondary" href="/operations-dashboard/signup-review/edit.php?id=<?= $applicationId ?>">Edit application</a>
+      </div>
       <?php endif; ?>
 
       <div class="detail-grid">
