@@ -1521,6 +1521,15 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   font-weight: 600;
 }
 
+.detail-card .detail-list-inline > div {
+  grid-template-columns: minmax(9.5rem, 11.5rem) minmax(0, 1fr);
+}
+
+.detail-card .detail-list-inline dd {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
 .detail-grid-order-contacts {
   align-items: start;
 }

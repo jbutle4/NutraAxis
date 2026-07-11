@@ -183,7 +183,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="detail-grid">
         <section class="detail-card">
           <h2>Status</h2>
-          <dl>
+          <dl class="detail-list detail-list-inline">
             <div><dt>Status</dt><dd><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $application['Status'])) ?>"><?= htmlspecialchars((string) $application['Status']) ?></span></dd></div>
             <div><dt>Activated</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></dd></div>
             <div><dt>Last saved</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></dd></div>
@@ -197,7 +197,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
         <section class="detail-card">
           <h2>Company</h2>
-          <dl>
+          <dl class="detail-list detail-list-inline">
             <div><dt>Practice name</dt><dd><?= htmlspecialchars((string) ($application['CompanyName'] ?? '—')) ?></dd></div>
             <div><dt>Legal name</dt><dd><?= htmlspecialchars((string) ($application['CompanyLegalName'] ?? '—')) ?></dd></div>
             <div><dt>Email</dt><dd><?= htmlspecialchars((string) ($application['CompanyEmail'] ?? '—')) ?></dd></div>
@@ -213,7 +213,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
         <section class="detail-card">
           <h2>Admin user</h2>
-          <dl>
+          <dl class="detail-list detail-list-inline">
             <div><dt>Name</dt><dd><?= htmlspecialchars(trim((string) ($application['AdminFirstName'] ?? '') . ' ' . (string) ($application['AdminLastName'] ?? ''))) ?></dd></div>
             <div><dt>Email</dt><dd><?= htmlspecialchars((string) ($application['AdminEmail'] ?? '—')) ?></dd></div>
             <div><dt>Phone</dt><dd><?= htmlspecialchars((string) ($application['AdminPhone'] ?? '—')) ?></dd></div>
@@ -222,7 +222,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
         <section class="detail-card">
           <h2>Compliance &amp; banking</h2>
-          <dl>
+          <dl class="detail-list detail-list-inline">
             <div><dt>NPI</dt><dd><?= htmlspecialchars((string) ($application['NpiNumber'] ?? '—')) ?></dd></div>
             <div><dt>Tax ID type</dt><dd><?= htmlspecialchars((string) ($application['TaxIdType'] ?? '—')) ?></dd></div>
             <div><dt>Tax ID</dt><dd><?= htmlspecialchars(provider_signup_mask_sensitive($taxId)) ?></dd></div>
@@ -237,7 +237,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <section class="detail-card detail-card--wide">
           <h2>NPI registry snapshot</h2>
           <p class="form-hint">Fetched <?= htmlspecialchars(provider_signup_format_datetime($npiSnapshot['FetchedAt'] ?? null)) ?> from CMS NPPES.</p>
-          <dl>
+          <dl class="detail-list detail-list-inline">
             <div><dt>Registry status</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['RegistryStatus'] ?? '—')) ?></dd></div>
             <div><dt>Enumeration type</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['EnumerationType'] ?? '—')) ?></dd></div>
             <div><dt>Provider name</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['ProviderName'] ?? '—')) ?></dd></div>
