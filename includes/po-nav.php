@@ -8,7 +8,7 @@ if (po_can_read_approval_queue()) {
     $pendingApprovalCount = po_count_pending_approvals();
 }
 $isApproverPrimary = po_can_read_approval_queue() && !po_can_create();
-$approvalsHref = '/approvals/?type=PO&status=pending';
+$approvalsHref = '/po-management/approvals.php';
 ?>
 <nav class="admin-nav" aria-label="PO Management">
   <?php if ($isApproverPrimary || po_can_read_approval_queue()): ?>

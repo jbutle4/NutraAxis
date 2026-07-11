@@ -1,0 +1,43 @@
+---
+description: NutraAxis PHP portal — git-first deploy to Azure (no ad hoc FTP)
+alwaysApply: true
+---
+
+# Portal deploy discipline (nutraaxis → nutraaxisweb)
+
+All portal work lives in this repo (`nutraaxis`). Azure target: `nutraaxisweb.azurewebsites.net`.
+
+## Source of truth
+
+- **Git `main` (or a feature branch → PR → merge) is the source of truth.** Live Azure must match a known commit, not a mix of FTP patches from different chats.
+- **One portal workstream at a time.** Do not FTP portal files from parallel sessions without committing and reconciling first.
+- **Never commit** `.tmp/`, `functions/` (local artifacts), or secrets (`.env`, credentials).
+
+## Deploy workflow
+
+1. Finish changes locally; run `php -l` on touched PHP files when practical.
+2. **Commit and push** before deploying.
+3. Deploy only from the committed tree:
+   ```bash
+   node scripts/ftp-upload-files.js path/to/changed/files...
+   ```
+   Prefer uploading **all files changed in the commit**, not a single file in isolation.
+4. **SQL migrations:** if the change needs schema updates, run the matching file under `sql/` on Azure **before or with** the code deploy (`node scripts/run-sql-file.js sql/NNN_....sql` when DB firewall allows, or equivalent on Azure).
+5. **Smoke test** after every deploy (logged in when possible):
+   - `/` (home)
+   - `/product-catalog/`
+   - `/po-management/view.php?id=18` (or any known PO)
+   - The feature URL you changed
+
+## Do not
+
+- FTP overwrites without a matching git commit.
+- Deploy code that depends on a migration without applying the migration.
+- Split the same feature across uncommitted FTP uploads in different Cursor sessions.
+- Edit portal PHP in `nutraaxis_azure` unless the task is explicitly Azure Functions — portal code belongs here.
+
+## When fixing production
+
+1. Reproduce / diagnose on live (or Kudu) if needed.
+2. Fix in this repo, commit, deploy the fix files, verify smoke URLs.
+3. Remove any temporary diagnostic scripts from Azure immediately.
