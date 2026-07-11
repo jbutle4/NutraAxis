@@ -25,6 +25,73 @@ function provider_signup_landing_apply_url(): string
     return '/provider-signup/application.php';
 }
 
+function provider_signup_render_quality_card(): void
+{
+    ?>
+        <div class="quality-card">
+          <div class="qc-header">
+            <div class="qc-header-icon">
+              <svg aria-hidden="true" focusable="false" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <div class="qc-header-text">
+              <strong>Clinic Store</strong>
+              <span>Your Practice Name Here</span>
+            </div>
+            <div class="qc-verified-pill">Active</div>
+          </div>
+          <div class="qc-body">
+            <div class="qc-row">
+              <div class="qc-dot">
+                <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="qc-row-text">
+                <strong>Co-Branded Storefront</strong>
+                <span>A private ordering page for your patients only</span>
+              </div>
+              <span class="qc-pass">Live</span>
+            </div>
+            <div class="qc-row">
+              <div class="qc-dot">
+                <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="qc-row-text">
+                <strong>Provider-Set Pricing</strong>
+                <span>You control the retail price on every product</span>
+              </div>
+              <span class="qc-pass">Your Control</span>
+            </div>
+            <div class="qc-row">
+              <div class="qc-dot">
+                <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="qc-row-text">
+                <strong>Zero Inventory</strong>
+                <span>No stock to purchase, store, or manage</span>
+              </div>
+              <span class="qc-pass">$0 Held</span>
+            </div>
+            <div class="qc-row">
+              <div class="qc-dot">
+                <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="qc-row-text">
+                <strong>Fulfillment Handled</strong>
+                <span>Every order picked, packed, and shipped for you</span>
+              </div>
+              <span class="qc-pass">Managed</span>
+            </div>
+          </div>
+          <div class="qc-footer">
+            <span class="qc-footer-label">Built On:</span>
+            <span class="qc-tag">Evidence-Informed Formulas</span>
+            <span class="qc-tag">LOT-Tested Quality</span>
+          </div>
+        </div>
+    <?php
+}
+
 function provider_signup_render_landing_page(): void
 {
     $heroImage = provider_signup_landing_hero_image_url();
@@ -45,67 +112,7 @@ function provider_signup_render_landing_page(): void
           </div>
         </div>
         <div class="hero-visual">
-          <div class="quality-card">
-            <div class="qc-header">
-              <div class="qc-header-icon">
-                <svg aria-hidden="true" focusable="false" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
-              </div>
-              <div class="qc-header-text">
-                <strong>Clinic Store</strong>
-                <span>Your Practice Name Here</span>
-              </div>
-              <div class="qc-verified-pill">Active</div>
-            </div>
-            <div class="qc-body">
-              <div class="qc-row">
-                <div class="qc-dot">
-                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div class="qc-row-text">
-                  <strong>Co-Branded Storefront</strong>
-                  <span>A private ordering page for your patients only</span>
-                </div>
-                <span class="qc-pass">Live</span>
-              </div>
-              <div class="qc-row">
-                <div class="qc-dot">
-                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div class="qc-row-text">
-                  <strong>Provider-Set Pricing</strong>
-                  <span>You control the retail price on every product</span>
-                </div>
-                <span class="qc-pass">Your Control</span>
-              </div>
-              <div class="qc-row">
-                <div class="qc-dot">
-                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div class="qc-row-text">
-                  <strong>Zero Inventory</strong>
-                  <span>No stock to purchase, store, or manage</span>
-                </div>
-                <span class="qc-pass">$0 Held</span>
-              </div>
-              <div class="qc-row">
-                <div class="qc-dot">
-                  <svg aria-hidden="true" focusable="false" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div class="qc-row-text">
-                  <strong>Fulfillment Handled</strong>
-                  <span>Every order picked, packed, and shipped for you</span>
-                </div>
-                <span class="qc-pass">Managed</span>
-              </div>
-            </div>
-            <div class="qc-footer">
-              <span class="qc-footer-label">Built On:</span>
-              <span class="qc-tag">Evidence-Informed Formulas</span>
-              <span class="qc-tag">LOT-Tested Quality</span>
-            </div>
-          </div>
+          <?php provider_signup_render_quality_card(); ?>
         </div>
       </div>
     </div>
@@ -301,29 +308,67 @@ function provider_signup_render_landing_page(): void
 
 function provider_signup_render_application_start_page(string $startError = ''): void
 {
+    $heroImage = provider_signup_landing_hero_image_url();
     ?>
 <div class="na-providers">
-  <section class="apply-section apply-section--standalone">
+  <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <div class="section-label">For Practitioners</div>
+          <h1>Apply for <span>Provider Access</span></h1>
+          <p>Start your co-branded Clinic Store application in minutes. We will email you a secure link to save progress and return whenever you are ready to submit.</p>
+          <div class="apply-form-card">
+            <p class="apply-form-card__lead">Enter your provider email to begin a draft application. Already started? Use the link from your confirmation email.</p>
+            <?php if ($startError !== ''): ?>
+            <div class="apply-alert" role="alert"><?= htmlspecialchars($startError) ?></div>
+            <?php endif; ?>
+            <form class="apply-form" method="post" action="/provider-signup/start.php">
+              <label>Provider email address
+                <input type="email" name="provider_email" required autocomplete="email" placeholder="you@yourpractice.com" />
+              </label>
+              <button class="btn-cta" type="submit">Start application</button>
+            </form>
+            <p class="apply-note">Your application stays in draft until you submit it for operations review.</p>
+          </div>
+          <p class="apply-back-link"><a href="/provider-signup/">← Back to For Providers</a></p>
+        </div>
+        <div class="hero-visual">
+          <?php provider_signup_render_quality_card(); ?>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="clinic-process apply-process">
     <div class="container">
       <div class="section-header">
-        <div class="section-label">Provider Application</div>
-        <h2 class="section-heading">Apply for Provider Access</h2>
-        <p class="section-sub">Enter your email to begin a draft application. Save progress at any time and submit once all required company, compliance, and banking information is complete.</p>
+        <div class="section-label">What Happens Next</div>
+        <h2 class="section-heading">Three Steps to Your Clinic Store</h2>
       </div>
-      <div class="apply-card">
-        <p>We will email you a secure link to continue your application. Already started? Use the link from your confirmation email.</p>
-        <?php if ($startError !== ''): ?>
-        <div class="apply-alert" role="alert"><?= htmlspecialchars($startError) ?></div>
-        <?php endif; ?>
-        <form class="apply-form" method="post" action="/provider-signup/start.php">
-          <label>Provider email address
-            <input type="email" name="provider_email" required autocomplete="email" placeholder="you@yourpractice.com" />
-          </label>
-          <button class="btn-cta" type="submit">Start application</button>
-        </form>
-        <p class="apply-note">Your application stays in draft until you submit it for operations review.</p>
-        <p class="apply-note"><a href="/provider-signup/">← Back to For Providers</a></p>
+      <div class="process-track process-track--compact">
+        <div class="process-step">
+          <div class="process-num filled">1</div>
+          <h3>Start Your Application</h3>
+          <p>Save a draft with your practice, compliance, and banking details.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num">2</div>
+          <h3>Operations Review</h3>
+          <p>Our team validates NPI, tax, and reseller documentation.</p>
+        </div>
+        <div class="process-step">
+          <div class="process-num filled">3</div>
+          <h3>Launch Your Store</h3>
+          <p>Get your co-branded Clinic Store with provider-set pricing.</p>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <section class="disclaimer">
+    <div class="container">
+      <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Provider participation is subject to application review and program terms.</p>
     </div>
   </section>
 </div>

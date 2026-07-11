@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/marketing-site.php';
+require dirname(__DIR__) . '/includes/provider-signup-landing.php';
 require dirname(__DIR__) . '/includes/provider-signup.php';
 
 $token = trim((string) ($_GET['token'] ?? $_POST['access_token'] ?? ''));
@@ -78,19 +79,27 @@ if (!empty($_GET['warn'])) {
 $pageTitle = 'Provider Application | NutraAxis';
 $pageDescription = 'Complete your NutraAxis provider signup application.';
 $bodyClass = 'marketing-site appear';
-$extraCss = '/assets/css/provider-signup.css?v=' . marketing_site_css_version();
 
 require dirname(__DIR__) . '/includes/marketing-head.php';
-echo '<link rel="stylesheet" href="' . htmlspecialchars($extraCss) . '" />' . "\n";
+echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
+    . htmlspecialchars(provider_signup_landing_css_version()) . '" />' . "\n";
+echo '<link rel="stylesheet" href="/assets/css/provider-signup.css?v='
+    . htmlspecialchars(marketing_site_css_version()) . '" />' . "\n";
 require dirname(__DIR__) . '/includes/marketing-header.php';
 ?>
-  <main class="marketing-main">
+  <main>
+    <div class="na-providers">
+      <section class="apply-section apply-section--form">
+        <div class="container">
     <?php
     $editable = provider_signup_provider_can_edit($application);
     $attachments = provider_signup_list_attachments((int) $application['ApplicationID']);
     $checklist = provider_signup_submit_checklist($form, (int) $application['ApplicationID']);
     require dirname(__DIR__) . '/includes/provider-signup-form.php';
     ?>
+        </div>
+      </section>
+    </div>
   </main>
 <?php
 require dirname(__DIR__) . '/includes/marketing-footer.php';

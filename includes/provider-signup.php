@@ -335,19 +335,34 @@ function provider_signup_create_application(string $providerEmail): array
             'email'  => $providerEmail,
         ]);
 
-        $id = db_fetch_inserted_int($stmt, 'inserted_id');
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $id = is_array($row) && isset($row['inserted_id'])
+            ? (int) $row['inserted_id']
+            : db_fetch_inserted_int($stmt, 'inserted_id');
+
         $application = provider_signup_get($id);
         if ($application === null) {
             return ['ok' => false, 'error' => 'Unable to load the new application.', 'application' => null];
         }
-
-        provider_signup_add_review_log($id, null, 'Comment', 'Application started by provider.');
-        provider_signup_mail_application_started($application);
-
-        return ['ok' => true, 'error' => null, 'application' => $application];
     } catch (Throwable $e) {
+        error_log('provider_signup_create_application: ' . $e->getMessage());
+
         return ['ok' => false, 'error' => 'Unable to create provider application.', 'application' => null];
     }
+
+    try {
+        provider_signup_add_review_log($id, null, 'Comment', 'Application started by provider.');
+    } catch (Throwable $e) {
+        error_log('provider_signup_create_application review log: ' . $e->getMessage());
+    }
+
+    try {
+        provider_signup_mail_application_started($application);
+    } catch (Throwable $e) {
+        error_log('provider_signup_create_application mail: ' . $e->getMessage());
+    }
+
+    return ['ok' => true, 'error' => null, 'application' => $application];
 }
 
 function provider_signup_save_draft(string $accessToken, array $form): array

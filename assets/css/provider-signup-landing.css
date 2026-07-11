@@ -691,6 +691,116 @@ body.marketing-site .na-providers ul {
   min-height: 50vh;
 }
 
+.na-providers .apply-hero {
+  padding-bottom: 72px;
+}
+
+.na-providers .apply-hero .hero-text h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--navy);
+  margin-bottom: 16px;
+}
+
+.na-providers .apply-hero .hero-text h1 span {
+  color: var(--teal);
+}
+
+.na-providers .apply-hero .hero-text > p {
+  max-width: 560px;
+  margin-bottom: 28px;
+  color: var(--text);
+}
+
+.na-providers .apply-form-card {
+  max-width: 560px;
+  background: rgb(255 255 255 / 94%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 28px 24px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+.na-providers .apply-form-card__lead {
+  color: var(--text);
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.na-providers .apply-back-link {
+  margin-top: 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+}
+
+.na-providers .apply-back-link a:hover {
+  color: var(--teal);
+}
+
+.na-providers .apply-process {
+  padding-top: 56px;
+}
+
+.na-providers .process-track--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.na-providers .apply-section--form {
+  padding: 72px 0 96px;
+  background: var(--bg-light);
+}
+
+.na-providers .marketing-signup-form-section {
+  background: transparent;
+  padding: 0;
+}
+
+.na-providers .marketing-signup-form-section__inner {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.na-providers .marketing-signup-stub__eyebrow {
+  display: inline-block;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 50px;
+  margin-bottom: 12px;
+}
+
+.na-providers .marketing-signup-stub__title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--navy);
+}
+
+.na-providers .marketing-signup-stub__lead {
+  color: var(--text);
+}
+
+.na-providers .marketing-signup-fieldset {
+  background: var(--white);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.na-providers .marketing-signup-fieldset legend {
+  color: var(--teal-dark);
+}
+
+.na-providers .marketing-signup-grid label {
+  color: var(--teal-dark);
+}
+
 .na-providers .apply-card {
   max-width: 720px;
   margin: 0 auto;
@@ -844,6 +954,10 @@ body.marketing-site .na-providers ul {
 
   .na-providers .apply-card {
     padding: 28px 22px;
+  }
+
+  .na-providers .process-track--compact {
+    grid-template-columns: 1fr;
   }
 }
 
