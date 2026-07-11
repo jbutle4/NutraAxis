@@ -48,7 +48,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'jazz-asns-uat'          => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
-    'provider-signup-management' => 'ProviderAccountReview',
+    'provider-signup-mgmt' => 'ProviderAccountReview',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
