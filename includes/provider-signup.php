@@ -5,6 +5,7 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/provider-signup-crypto.php';
 require_once __DIR__ . '/provider-signup-npi.php';
 require_once __DIR__ . '/provider-signup-mail.php';
+require_once __DIR__ . '/provider-signup-npi-snapshot.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
 
@@ -829,6 +830,14 @@ function provider_signup_ops_reject(int $applicationId, string $comments): array
     return ['ok' => true, 'error' => null];
 }
 
+function provider_signup_npi_validate_for_application(int $applicationId, string $npiNumber, array $application): array
+{
+    $result = provider_signup_npi_validate($npiNumber);
+    $result['snapshot_id'] = provider_signup_npi_save_snapshot($applicationId, $npiNumber, $result, $application);
+
+    return $result;
+}
+
 function provider_signup_ops_validate_npi(int $applicationId): array
 {
     provider_signup_require_update();
@@ -837,7 +846,11 @@ function provider_signup_ops_validate_npi(int $applicationId): array
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    $result = provider_signup_npi_validate((string) ($application['NpiNumber'] ?? ''));
+    $result = provider_signup_npi_validate_for_application(
+        $applicationId,
+        (string) ($application['NpiNumber'] ?? ''),
+        $application
+    );
     $pdo = db();
     $pdo->prepare(<<<SQL
         UPDATE dbo.ProviderSignupApplication
@@ -884,7 +897,11 @@ function provider_signup_ops_approve(int $applicationId, string $comments = ''):
         ];
     }
 
-    $npiResult = provider_signup_npi_validate((string) ($form['npi_number'] ?? ''));
+    $npiResult = provider_signup_npi_validate_for_application(
+        $applicationId,
+        (string) ($form['npi_number'] ?? ''),
+        $application
+    );
     $bankResult = provider_signup_banking_validate_format($form, $applicationId);
 
     try {

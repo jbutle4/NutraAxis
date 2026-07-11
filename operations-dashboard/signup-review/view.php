@@ -74,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
 
 $attachments = provider_signup_list_attachments($applicationId);
 $reviewLog = provider_signup_list_review_log($applicationId);
+$npiSnapshotBundle = provider_signup_npi_get_snapshot_bundle(
+    isset($application['LatestNpiSnapshotID']) ? (int) $application['LatestNpiSnapshotID'] : null
+);
 $taxId = provider_signup_decrypt($application['TaxIdEncrypted'] ?? null);
 $accountNumber = provider_signup_decrypt($application['AchAccountNumberEncrypted'] ?? null);
 
@@ -186,6 +189,81 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>ACH account type</dt><dd><?= htmlspecialchars((string) ($application['AchAccountType'] ?? '—')) ?></dd></div>
           </dl>
         </section>
+
+        <?php if ($npiSnapshotBundle !== null): ?>
+        <?php $npiSnapshot = $npiSnapshotBundle['snapshot']; ?>
+        <section class="detail-card detail-card--wide">
+          <h2>NPI registry snapshot</h2>
+          <p class="form-hint">Fetched <?= htmlspecialchars(provider_signup_format_datetime($npiSnapshot['FetchedAt'] ?? null)) ?> from CMS NPPES.</p>
+          <dl>
+            <div><dt>Registry status</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['RegistryStatus'] ?? '—')) ?></dd></div>
+            <div><dt>Enumeration type</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['EnumerationType'] ?? '—')) ?></dd></div>
+            <div><dt>Provider name</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['ProviderName'] ?? '—')) ?></dd></div>
+            <?php if (!empty($npiSnapshot['OrganizationName'])): ?>
+            <div><dt>Organization</dt><dd><?= htmlspecialchars((string) $npiSnapshot['OrganizationName']) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($npiSnapshot['AuthorizedOfficialFirstName']) || !empty($npiSnapshot['AuthorizedOfficialLastName'])): ?>
+            <div><dt>Authorized official</dt><dd><?= htmlspecialchars(trim((string) ($npiSnapshot['AuthorizedOfficialFirstName'] ?? '') . ' ' . (string) ($npiSnapshot['AuthorizedOfficialLastName'] ?? ''))) ?><?= !empty($npiSnapshot['AuthorizedOfficialTitle']) ? ' · ' . htmlspecialchars((string) $npiSnapshot['AuthorizedOfficialTitle']) : '' ?></dd></div>
+            <?php endif; ?>
+            <div><dt>Name match</dt><dd><span class="<?= htmlspecialchars(provider_signup_npi_match_badge_class((string) ($npiSnapshot['NameMatchStatus'] ?? ''))) ?>"><?= htmlspecialchars((string) ($npiSnapshot['NameMatchStatus'] ?? '—')) ?></span></dd></div>
+            <div><dt>Address match</dt><dd><span class="<?= htmlspecialchars(provider_signup_npi_match_badge_class((string) ($npiSnapshot['AddressMatchStatus'] ?? ''))) ?>"><?= htmlspecialchars((string) ($npiSnapshot['AddressMatchStatus'] ?? '—')) ?></span></dd></div>
+            <div><dt>License match</dt><dd><span class="<?= htmlspecialchars(provider_signup_npi_match_badge_class((string) ($npiSnapshot['LicenseMatchStatus'] ?? ''))) ?>"><?= htmlspecialchars((string) ($npiSnapshot['LicenseMatchStatus'] ?? '—')) ?></span></dd></div>
+            <div><dt>Comparison</dt><dd><?= htmlspecialchars((string) ($npiSnapshot['ComparisonSummary'] ?? '—')) ?></dd></div>
+          </dl>
+
+          <?php if ($npiSnapshotBundle['addresses'] !== []): ?>
+          <h3 class="admin-form-subhead">Registry addresses</h3>
+          <div class="detail-grid detail-grid-stacked">
+            <?php foreach ($npiSnapshotBundle['addresses'] as $address): ?>
+            <div class="detail-list">
+              <div><strong><?= htmlspecialchars((string) ($address['AddressPurpose'] ?? 'Address')) ?></strong></div>
+              <div><?= htmlspecialchars(trim(implode(', ', array_filter([
+                  (string) ($address['Address1'] ?? ''),
+                  (string) ($address['Address2'] ?? ''),
+                  (string) ($address['City'] ?? ''),
+                  (string) ($address['StateCode'] ?? ''),
+                  (string) ($address['PostalCode'] ?? ''),
+              ])))) ?></div>
+              <?php if (!empty($address['TelephoneNumber'])): ?>
+              <div>Phone: <?= htmlspecialchars((string) $address['TelephoneNumber']) ?></div>
+              <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <?php endif; ?>
+
+          <?php if ($npiSnapshotBundle['taxonomies'] !== []): ?>
+          <h3 class="admin-form-subhead">Taxonomy &amp; license</h3>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Primary</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>License</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($npiSnapshotBundle['taxonomies'] as $taxonomy): ?>
+              <tr>
+                <td><?= !empty($taxonomy['IsPrimary']) ? 'Yes' : 'No' ?></td>
+                <td><?= htmlspecialchars((string) ($taxonomy['TaxonomyCode'] ?? '—')) ?></td>
+                <td><?= htmlspecialchars((string) ($taxonomy['TaxonomyDescription'] ?? '—')) ?></td>
+                <td><?= htmlspecialchars((string) ($taxonomy['LicenseNumber'] ?? '—')) ?></td>
+                <td><?= htmlspecialchars((string) ($taxonomy['LicenseStateCode'] ?? '—')) ?></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <?php endif; ?>
+        </section>
+        <?php elseif ($canUpdate): ?>
+        <section class="detail-card">
+          <h2>NPI registry snapshot</h2>
+          <p>No NPPES registry data stored yet. Use <strong>Re-run NPI validation</strong> after the application has a valid 10-digit NPI.</p>
+        </section>
+        <?php endif; ?>
 
         <section class="detail-card">
           <h2>Documents</h2>
