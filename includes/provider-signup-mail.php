@@ -207,6 +207,36 @@ function provider_signup_mail_returned(array $application, string $comments): vo
 /**
  * @param array<string, mixed> $application
  */
+function provider_signup_mail_reopened(array $application, string $comments): void
+{
+    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
+    $subject = 'Your NutraAxis provider application was reopened';
+    $plain = implode("\n", [
+        'Your NutraAxis provider application has been reopened so you can make updates.',
+        '',
+        $comments !== '' ? "Reviewer notes:\n" . $comments . "\n" : '',
+        'Continue your application here:',
+        $applyUrl,
+        '',
+        '— NutraAxis Operations',
+    ]);
+    $html = '<p>Your NutraAxis provider application has been reopened so you can make updates.</p>';
+    if ($comments !== '') {
+        $html .= '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>';
+    }
+    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Continue your application</a></p>';
+
+    provider_signup_mail_provider($application, $subject, $plain, $html);
+    provider_signup_mail_ops(
+        'Provider application reopened — #' . (int) ($application['ApplicationID'] ?? 0),
+        $plain,
+        $html
+    );
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
 function provider_signup_mail_approved(array $application): void
 {
     $company = trim((string) ($application['CompanyName'] ?? 'your practice'));

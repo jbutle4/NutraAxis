@@ -39,7 +39,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($notice === 'commented'): ?>
       <div class="admin-notice is-success" role="status">Comment added and provider notified.</div>
       <?php elseif ($notice === 'returned'): ?>
-      <div class="admin-notice is-success" role="status">Application returned to provider for updates.</div>
+      <div class="admin-notice is-success" role="status">Application sent back to provider for edits.</div>
+      <?php elseif ($notice === 'reopened'): ?>
+      <div class="admin-notice is-success" role="status">Application reopened as draft.</div>
       <?php elseif ($notice === 'approved'): ?>
       <div class="admin-notice is-success" role="status">Application approved. Open it to create the ACCS company.</div>
       <?php elseif ($notice === 'provisioned'): ?>

@@ -30,6 +30,18 @@ const PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_APPROVED,
 ];
 
+const PROVIDER_SIGNUP_OPS_REVERT_SOURCE_STATUSES = [
+    PROVIDER_SIGNUP_STATUS_SUBMITTED,
+    PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
+    PROVIDER_SIGNUP_STATUS_APPROVED,
+    PROVIDER_SIGNUP_STATUS_REJECTED,
+];
+
+const PROVIDER_SIGNUP_OPS_REVERT_TARGET_STATUSES = [
+    PROVIDER_SIGNUP_STATUS_DRAFT,
+    PROVIDER_SIGNUP_STATUS_RETURNED,
+];
+
 const PROVIDER_SIGNUP_STATUSES = [
     PROVIDER_SIGNUP_STATUS_DRAFT,
     PROVIDER_SIGNUP_STATUS_SUBMITTED,
@@ -235,6 +247,11 @@ function provider_signup_provider_can_submit(array $application): bool
 function provider_signup_ops_can_provision(array $application): bool
 {
     return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED;
+}
+
+function provider_signup_ops_can_revert(array $application): bool
+{
+    return in_array((string) ($application['Status'] ?? ''), PROVIDER_SIGNUP_OPS_REVERT_SOURCE_STATUSES, true);
 }
 
 function provider_signup_has_reseller_certificate(int $applicationId): bool
@@ -837,35 +854,79 @@ function provider_signup_ops_comment(int $applicationId, string $comments): arra
 
 function provider_signup_ops_return(int $applicationId, string $comments): array
 {
+    return provider_signup_ops_revert_status($applicationId, PROVIDER_SIGNUP_STATUS_RETURNED, $comments);
+}
+
+function provider_signup_ops_revert_status(int $applicationId, string $targetStatus, string $comments): array
+{
     provider_signup_require_update();
     $application = provider_signup_get($applicationId);
     if ($application === null) {
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
+    if (!provider_signup_ops_can_revert($application)) {
+        return ['ok' => false, 'error' => 'This application status cannot be changed back to the provider.'];
+    }
+
+    if (!in_array($targetStatus, PROVIDER_SIGNUP_OPS_REVERT_TARGET_STATUSES, true)) {
+        return ['ok' => false, 'error' => 'Invalid target status.'];
+    }
+
     $comments = trim($comments);
-    if ($comments === '') {
+    if ($targetStatus === PROVIDER_SIGNUP_STATUS_RETURNED && $comments === '') {
         return ['ok' => false, 'error' => 'Please explain what the provider needs to update.'];
     }
 
-    $pdo = db();
-    $pdo->prepare(<<<SQL
-        UPDATE dbo.ProviderSignupApplication
-        SET Status = :status, LastSavedAt = SYSUTCDATETIME()
-        WHERE ApplicationID = :id
-    SQL)->execute([
-        'status' => PROVIDER_SIGNUP_STATUS_RETURNED,
-        'id'     => $applicationId,
-    ]);
+    $currentStatus = (string) ($application['Status'] ?? '');
+    $clearApprovalState = in_array($currentStatus, [
+        PROVIDER_SIGNUP_STATUS_APPROVED,
+        PROVIDER_SIGNUP_STATUS_SUBMITTED,
+        PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
+    ], true);
 
-    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
-    provider_signup_add_review_log($applicationId, $reviewerId, 'Returned', $comments);
-    $updated = provider_signup_get($applicationId);
-    if ($updated !== null) {
-        provider_signup_mail_returned($updated, $comments);
+    try {
+        $pdo = db();
+        if ($clearApprovalState) {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET Status = ?,
+                    LastSavedAt = SYSUTCDATETIME(),
+                    LastProvisionError = NULL
+                WHERE ApplicationID = ?
+            SQL)->execute([$targetStatus, $applicationId]);
+        } else {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET Status = ?,
+                    LastSavedAt = SYSUTCDATETIME()
+                WHERE ApplicationID = ?
+            SQL)->execute([$targetStatus, $applicationId]);
+        }
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'Unable to update application status.'];
     }
 
-    return ['ok' => true, 'error' => null];
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $logAction = $targetStatus === PROVIDER_SIGNUP_STATUS_RETURNED ? 'Returned' : 'Reopened';
+    $logComments = $comments !== ''
+        ? $comments
+        : ($targetStatus === PROVIDER_SIGNUP_STATUS_DRAFT
+            ? 'Application reopened as draft for provider edits.'
+            : 'Application returned to provider.');
+
+    provider_signup_add_review_log($applicationId, $reviewerId, $logAction, $logComments);
+
+    $updated = provider_signup_get($applicationId);
+    if ($updated !== null) {
+        if ($targetStatus === PROVIDER_SIGNUP_STATUS_RETURNED) {
+            provider_signup_mail_returned($updated, $comments);
+        } else {
+            provider_signup_mail_reopened($updated, $comments);
+        }
+    }
+
+    return ['ok' => true, 'error' => null, 'target_status' => $targetStatus];
 }
 
 function provider_signup_ops_reject(int $applicationId, string $comments): array

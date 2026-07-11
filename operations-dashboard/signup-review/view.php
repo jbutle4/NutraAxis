@@ -23,6 +23,8 @@ $canUpdate = provider_signup_can_update();
 $canEdit = provider_signup_ops_can_edit($application);
 $canApprove = provider_signup_ops_can_approve($application);
 $canProvision = provider_signup_ops_can_provision($application);
+$canRevert = provider_signup_ops_can_revert($application);
+$providerCanEdit = provider_signup_provider_can_edit($application);
 $approvalChecklist = provider_signup_submit_checklist(provider_signup_form_from_row($application), $applicationId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
@@ -40,6 +42,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
             $result = provider_signup_ops_return($applicationId, $comments);
             $suffix = $result['ok'] ? 'notice=returned' : 'error=' . rawurlencode($result['error'] ?? 'Unable to return application.');
             header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            exit;
+        case 'revert_status':
+            $targetStatus = trim((string) ($_POST['target_status'] ?? ''));
+            $result = provider_signup_ops_revert_status($applicationId, $targetStatus, $comments);
+            if ($result['ok']) {
+                $suffix = ($result['target_status'] ?? '') === PROVIDER_SIGNUP_STATUS_DRAFT
+                    ? 'notice=reopened'
+                    : 'notice=returned';
+                header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            } else {
+                header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to change application status.'), true, 302);
+            }
             exit;
         case 'reject':
             $result = provider_signup_ops_reject($applicationId, $comments);
@@ -117,7 +131,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if (($_GET['notice'] ?? '') === 'commented'): ?>
       <div class="admin-notice is-success" role="status">Comment saved and provider notified.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'returned'): ?>
-      <div class="admin-notice is-success" role="status">Application returned to provider.</div>
+      <div class="admin-notice is-success" role="status">Application returned to provider for edits. They were emailed with your notes.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'reopened'): ?>
+      <div class="admin-notice is-success" role="status">Application reopened as draft. The provider was emailed and can edit again.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'approved'): ?>
       <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create ACCS company</strong> when you are ready to provision the Clinic Store.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'provisioned'): ?>
@@ -141,6 +157,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($canProvision): ?>
       <div class="admin-notice" role="status">This application is <strong>Approved</strong> and ready for ACCS company creation.</div>
+      <?php endif; ?>
+
+      <?php if ($providerCanEdit): ?>
+      <div class="admin-notice" role="status">The provider can currently edit this application online.</div>
       <?php endif; ?>
 
       <?php if (!empty($application['LastProvisionError']) && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
@@ -316,11 +336,28 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <div class="module-actions">
           <button class="btn-secondary" type="submit" name="action" value="comment">Add comment</button>
           <button class="btn-secondary" type="submit" name="action" value="validate_npi">Re-run NPI validation</button>
-          <button class="btn-secondary" type="submit" name="action" value="return">Return to provider</button>
+          <button class="btn-secondary" type="submit" name="action" value="return" <?= $canRevert ? '' : 'disabled title="Only submitted, approved, or rejected applications can be sent back to the provider"' ?>>Return to provider</button>
           <button class="btn-secondary" type="submit" name="action" value="reject">Reject</button>
           <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve application</button>
           <button class="btn-primary" type="submit" name="action" value="provision" <?= $canProvision ? '' : 'disabled title="Approve the application before creating the ACCS company"' ?>>Create ACCS company</button>
         </div>
+
+        <?php if ($canRevert): ?>
+        <h2 class="admin-form-subhead">Send back to provider for edits</h2>
+        <p class="form-hint">Use this to undo approval or reopen a rejected application. The provider will be able to edit online again.</p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="target_status">New status</label>
+            <select class="form-input" id="target_status" name="target_status">
+              <option value="<?= htmlspecialchars(PROVIDER_SIGNUP_STATUS_RETURNED) ?>">Returned — provider must address your notes</option>
+              <option value="<?= htmlspecialchars(PROVIDER_SIGNUP_STATUS_DRAFT) ?>">Draft — provider can edit again</option>
+            </select>
+          </div>
+        </div>
+        <div class="module-actions">
+          <button class="btn-secondary" type="submit" name="action" value="revert_status">Apply status change</button>
+        </div>
+        <?php endif; ?>
       </form>
       <?php endif; ?>
 
