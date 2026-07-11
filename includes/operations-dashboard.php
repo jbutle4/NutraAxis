@@ -62,10 +62,10 @@ function operations_dashboard_sections(): array
                 [
                     'title'    => 'Provider Signup Management',
                     'desc'     => 'Review provider onboarding applications, validate NPI and banking, and approve ACCS provisioning.',
-                    'href'     => '/provider-applications/',
+                    'href'     => '/provider-enrollment/',
                     'icon'     => 'clipboard',
                     'internal' => true,
-                    'module'   => 'provider-applications',
+                    'module'   => 'provider-enrollment',
                 ],
                 [
                     'title'    => 'IT Product Backlog',
