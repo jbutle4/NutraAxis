@@ -5,8 +5,10 @@
 
 $hasStoredTaxId = trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '';
 $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '';
+$opsFormAction = $opsFormAction ?? '/operations-dashboard/signup-review/application-form.php?id=' . (int) ($application['ApplicationID'] ?? 0);
+$opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/view.php?id=' . (int) ($application['ApplicationID'] ?? 0);
 ?>
-<form class="admin-form" method="post" action="/operations-dashboard/signup-review/edit.php?id=<?= (int) ($application['ApplicationID'] ?? 0) ?>" novalidate>
+<form class="admin-form" method="post" action="<?= htmlspecialchars($opsFormAction) ?>" novalidate>
   <?php if (!empty($error)): ?>
   <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
   <?php endif; ?>
@@ -49,6 +51,16 @@ $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? 
     <div class="form-group">
       <label for="postal_code">Postal code *</label>
       <input class="form-input" type="text" id="postal_code" name="postal_code" value="<?= htmlspecialchars($form['postal_code']) ?>" required />
+    </div>
+    <div class="form-group form-grid-full">
+      <label for="clinic_type">Clinic type *</label>
+      <select class="form-input" id="clinic_type" name="clinic_type" required>
+        <option value="">Select clinic type</option>
+        <?php foreach (PROVIDER_SIGNUP_CLINIC_TYPES as $clinicType): ?>
+        <option value="<?= htmlspecialchars($clinicType) ?>" <?= $form['clinic_type'] === $clinicType ? 'selected' : '' ?>><?= htmlspecialchars($clinicType) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <p class="form-hint">Required for ACCS company creation (maps to the clinic-type company attribute).</p>
     </div>
   </div>
 
@@ -120,7 +132,7 @@ $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? 
   </div>
 
   <div class="module-actions">
-    <a class="btn-secondary" href="/operations-dashboard/signup-review/view.php?id=<?= (int) ($application['ApplicationID'] ?? 0) ?>">Cancel</a>
+    <a class="btn-secondary" href="<?= htmlspecialchars($opsFormCancelHref) ?>">Cancel</a>
     <button class="btn-primary" type="submit" name="action" value="save">Save changes</button>
   </div>
 </form>

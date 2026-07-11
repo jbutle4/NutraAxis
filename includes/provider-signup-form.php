@@ -80,6 +80,14 @@ $token = (string) ($application['AccessToken'] ?? '');
         <label>Postal code *
           <input type="text" name="postal_code" value="<?= htmlspecialchars($form['postal_code']) ?>" required />
         </label>
+        <label>Clinic type *
+          <select name="clinic_type" required>
+            <option value="">Select clinic type</option>
+            <?php foreach (PROVIDER_SIGNUP_CLINIC_TYPES as $clinicType): ?>
+            <option value="<?= htmlspecialchars($clinicType) ?>" <?= $form['clinic_type'] === $clinicType ? 'selected' : '' ?>><?= htmlspecialchars($clinicType) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
       </div>
     </fieldset>
 

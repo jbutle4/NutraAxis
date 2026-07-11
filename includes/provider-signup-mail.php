@@ -227,32 +227,54 @@ function provider_signup_mail_reopened(array $application, string $comments): vo
 /**
  * @param array<string, mixed> $application
  */
-function provider_signup_mail_provisioned(array $application): void
+function provider_signup_mail_provisioned(array $application, ?string $temporaryPassword = null): void
 {
     $loginUrl = provider_signup_accs_login_url();
     $clinicId = trim((string) ($application['AccsClinicId'] ?? ''));
     $signInEmail = (string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? '');
     $subject = 'Your NutraAxis Clinic Store is ready';
+    $temporaryPassword = trim((string) $temporaryPassword);
 
-    $plain = implode("\n", [
+    $plainLines = [
         'Your NutraAxis provider account has been created and your Clinic Store is ready.',
         '',
         'Sign in at: ' . $loginUrl,
         'Sign in email: ' . $signInEmail,
-        $clinicId !== '' ? 'Clinic ID: ' . $clinicId : '',
-        '',
-        'Use the credentials sent separately or your assigned password to sign in.',
-        '',
-        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
-        '',
-        '— NutraAxis',
-    ]);
+    ];
+
+    if ($clinicId !== '') {
+        $plainLines[] = 'Clinic ID: ' . $clinicId;
+    }
+
+    $plainLines[] = '';
+
+    if ($temporaryPassword !== '') {
+        $plainLines[] = 'Temporary password: ' . $temporaryPassword;
+        $plainLines[] = 'Change this password after your first sign-in.';
+    } else {
+        $plainLines[] = 'Use your existing NutraAxis Labs password, or reset it from the sign-in page if needed.';
+    }
+
+    $plainLines[] = '';
+    $plainLines[] = 'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.';
+    $plainLines[] = '';
+    $plainLines[] = '— NutraAxis';
+
+    $plain = implode("\n", $plainLines);
 
     $html = '<p>Your NutraAxis provider account has been created and your Clinic Store is ready.</p>'
         . '<p><a href="' . htmlspecialchars($loginUrl) . '">Sign in to NutraAxis Labs</a><br>'
         . '<strong>Sign in email:</strong> ' . htmlspecialchars($signInEmail) . '<br>'
-        . '<strong>Clinic ID:</strong> ' . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>'
-        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url('Clinic Store login help')) . '">'
+        . '<strong>Clinic ID:</strong> ' . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>';
+
+    if ($temporaryPassword !== '') {
+        $html .= '<p><strong>Temporary password:</strong> ' . htmlspecialchars($temporaryPassword)
+            . '<br>Change this password after your first sign-in.</p>';
+    } else {
+        $html .= '<p>Use your existing NutraAxis Labs password, or reset it from the sign-in page if needed.</p>';
+    }
+
+    $html .= '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url('Clinic Store login help')) . '">'
         . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);

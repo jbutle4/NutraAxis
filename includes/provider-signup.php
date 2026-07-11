@@ -6,6 +6,7 @@ require_once __DIR__ . '/provider-signup-crypto.php';
 require_once __DIR__ . '/provider-signup-npi.php';
 require_once __DIR__ . '/provider-signup-mail.php';
 require_once __DIR__ . '/provider-signup-npi-snapshot.php';
+require_once __DIR__ . '/provider-signup-accs.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
 
@@ -55,6 +56,32 @@ const PROVIDER_SIGNUP_STATUSES = [
 const PROVIDER_SIGNUP_TAX_ID_TYPES = ['SSN', 'EIN'];
 const PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES = ['Checking', 'Savings'];
 const PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+
+const PROVIDER_SIGNUP_CLINIC_TYPES = [
+    'Medical Weight Management / Obesity Medicine',
+    'Endocrinology / Metabolic Health',
+    'Functional Medicine',
+    'Integrative Medicine',
+    'Anti-Aging / Longevity Medicine',
+    'Regenerative Medicine',
+    'Hormone Replacement Therapy (HRT) Clinic',
+    'Menopause / Women\'s Health',
+    'Obstetrics & Gynecology (OB/GYN)',
+    'Urology / Men\'s Health',
+    'Concierge Medicine',
+    'Direct Primary Care',
+    'Cash-Pay Medical Practice',
+    'Primary Care / Family Medicine',
+    'Internal Medicine',
+    'GLP-1 / Medical Weight-Loss Clinic',
+    'Wellness Clinic',
+    'Medical Spa / Med Spa',
+    'Sleep Medicine',
+    'Stress Management / Behavioral Wellness',
+    'Gastroenterology',
+    'Digestive / Gut Health Clinic',
+    'Other',
+];
 
 const PROVIDER_SIGNUP_LIST_SORT_COLUMNS = [
     'id'        => 'ID',
@@ -124,6 +151,11 @@ function provider_signup_generate_token(): string
     return bin2hex(random_bytes(32));
 }
 
+function provider_signup_is_valid_clinic_type(string $clinicType): bool
+{
+    return in_array(trim($clinicType), PROVIDER_SIGNUP_CLINIC_TYPES, true);
+}
+
 function provider_signup_default_form(): array
 {
     return [
@@ -136,6 +168,7 @@ function provider_signup_default_form(): array
         'city'                => '',
         'state_code'          => '',
         'postal_code'         => '',
+        'clinic_type'         => '',
         'admin_first_name'    => '',
         'admin_last_name'     => '',
         'admin_email'         => '',
@@ -173,6 +206,7 @@ function provider_signup_form_from_row(array $row): array
         'city'                => (string) ($row['City'] ?? ''),
         'state_code'          => (string) ($row['StateCode'] ?? ''),
         'postal_code'         => (string) ($row['PostalCode'] ?? ''),
+        'clinic_type'         => (string) ($row['ClinicType'] ?? ''),
         'admin_first_name'    => (string) ($row['AdminFirstName'] ?? ''),
         'admin_last_name'     => (string) ($row['AdminLastName'] ?? ''),
         'admin_email'         => (string) ($row['AdminEmail'] ?? ''),
@@ -281,6 +315,7 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         'city'               => 'City',
         'state_code'         => 'State',
         'postal_code'        => 'Postal code',
+        'clinic_type'        => 'Clinic type',
         'admin_first_name'   => 'Admin first name',
         'admin_last_name'    => 'Admin last name',
         'admin_email'        => 'Admin email',
@@ -293,6 +328,10 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         if (trim((string) ($form[$field] ?? '')) === '') {
             $missing[] = $label;
         }
+    }
+
+    if (!provider_signup_is_valid_clinic_type((string) ($form['clinic_type'] ?? ''))) {
+        $missing[] = 'Clinic type';
     }
 
     if (!in_array((string) ($form['tax_id_type'] ?? ''), PROVIDER_SIGNUP_TAX_ID_TYPES, true)) {
@@ -506,7 +545,10 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
     provider_signup_add_review_log($applicationId, $reviewerUserId, 'Provisioned', $logComments);
     $updated = provider_signup_get($applicationId);
     if ($updated !== null) {
-        provider_signup_mail_provisioned($updated);
+        provider_signup_mail_provisioned(
+            $updated,
+            isset($provision['temporary_password']) ? (string) $provision['temporary_password'] : null
+        );
     }
 
     return ['ok' => true, 'error' => null];
@@ -561,6 +603,7 @@ function provider_signup_persist_form(int $applicationId, array $form, bool $sub
                 City = :city,
                 StateCode = :state_code,
                 PostalCode = :postal_code,
+                ClinicType = :clinic_type,
                 AdminFirstName = :admin_first_name,
                 AdminLastName = :admin_last_name,
                 AdminEmail = :admin_email,
@@ -583,6 +626,8 @@ function provider_signup_persist_form(int $applicationId, array $form, bool $sub
             'city'                => provider_signup_nullable_string($form['city'] ?? ''),
             'state_code'          => provider_signup_nullable_string($form['state_code'] ?? ''),
             'postal_code'         => provider_signup_nullable_string($form['postal_code'] ?? ''),
+            'clinic_type'         => provider_signup_is_valid_clinic_type((string) ($form['clinic_type'] ?? ''))
+                ? trim((string) $form['clinic_type']) : null,
             'admin_first_name'    => provider_signup_nullable_string($form['admin_first_name'] ?? ''),
             'admin_last_name'     => provider_signup_nullable_string($form['admin_last_name'] ?? ''),
             'admin_email'         => provider_signup_nullable_string($form['admin_email'] ?? ''),
@@ -1067,12 +1112,24 @@ function provider_signup_provision(int $applicationId): array
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
+    $result = provider_signup_accs_provision($application);
+    if (!$result['ok']) {
+        return [
+            'ok'          => false,
+            'error'       => $result['error'] ?? 'ACCS provisioning failed.',
+            'company_id'  => null,
+            'customer_id' => null,
+            'clinic_id'   => null,
+        ];
+    }
+
     return [
-        'ok'          => false,
-        'error'       => 'ACCS provisioning (company + company admin) is not wired yet.',
-        'company_id'  => null,
-        'customer_id' => null,
-        'clinic_id'   => null,
+        'ok'                 => true,
+        'error'              => null,
+        'company_id'         => $result['company_id'] ?? null,
+        'customer_id'        => $result['customer_id'] ?? null,
+        'clinic_id'          => $result['clinic_id'] ?? null,
+        'temporary_password' => $result['temporary_password'] ?? null,
     ];
 }
 

@@ -14,8 +14,6 @@
   --teal-dark: #2a6b65;
   --teal-light: #5aaca7;
   --teal-pale: #e8f5f4;
-  --salmon-dark: #8f4225;
-  --salmon: #b35632;
   --text: #1a2e2d;
   --text-muted: #5a7170;
   --border: #d6ecea;
@@ -96,7 +94,7 @@ body.marketing-site .na-providers ul {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--salmon);
+  background: var(--teal);
   color: var(--white);
   font-size: 0.88rem;
   font-weight: 600;
@@ -109,7 +107,7 @@ body.marketing-site .na-providers ul {
 }
 
 .na-providers .btn-cta:hover {
-  background: var(--salmon-dark);
+  background: var(--teal-dark);
   transform: translateY(-1px);
 }
 

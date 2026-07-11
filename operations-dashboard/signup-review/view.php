@@ -2,6 +2,9 @@
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/provider-signup.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 provider_signup_require_read();
 
 $applicationId = (int) ($_GET['id'] ?? 0);
@@ -170,13 +173,13 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($canUpdate && $canEdit && !$approvalChecklist['complete']): ?>
       <div class="admin-notice is-error" role="alert">
         Complete application data is required before approval: <?= htmlspecialchars(implode(', ', $approvalChecklist['missing'])) ?>.
-        <a href="/operations-dashboard/signup-review/edit.php?id=<?= $applicationId ?>">Edit application</a>
+        <a href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
       </div>
       <?php endif; ?>
 
       <?php if ($canUpdate && $canEdit): ?>
       <div class="module-actions" style="margin-bottom: 1.5rem;">
-        <a class="btn-secondary" href="/operations-dashboard/signup-review/edit.php?id=<?= $applicationId ?>">Edit application</a>
+        <a class="btn-secondary" href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
       </div>
       <?php endif; ?>
 
@@ -202,6 +205,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>Legal name</dt><dd><?= htmlspecialchars((string) ($application['CompanyLegalName'] ?? '—')) ?></dd></div>
             <div><dt>Email</dt><dd><?= htmlspecialchars((string) ($application['CompanyEmail'] ?? '—')) ?></dd></div>
             <div><dt>Phone</dt><dd><?= htmlspecialchars((string) ($application['CompanyPhone'] ?? '—')) ?></dd></div>
+            <div><dt>Clinic type</dt><dd><?= htmlspecialchars((string) ($application['ClinicType'] ?? '—')) ?></dd></div>
             <div><dt>Address</dt><dd><?= htmlspecialchars(trim(implode(', ', array_filter([
                 (string) ($application['StreetAddress'] ?? ''),
                 (string) ($application['City'] ?? ''),
