@@ -33,6 +33,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'jazz-asns'              => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
+    'signup-review'          => 'ProviderAccountReview',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -73,6 +74,7 @@ function auth_permissions_from_role_row(array $row): array
         'POApproval'           => $row['POApproval'],
         'TEManagement'         => $row['TEManagement'] ?? null,
         'TEApproval'           => $row['TEApproval'] ?? null,
+        'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
     ];
 }
 
@@ -104,7 +106,8 @@ function auth_refresh_permissions(): void
                 RoleAdmin,
                 POApproval,
                 TEManagement,
-                TEApproval
+                TEApproval,
+                ProviderAccountReview
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -245,13 +248,13 @@ function auth_can_read_leaf_module(string $slug): bool
 
 function auth_can_read_module(string $slug): bool
 {
-    if ($slug === 'inventory-management') {
-        if (!function_exists('app_inventory_submodule_slugs')) {
+    if (function_exists('app_hub_slugs') && in_array($slug, app_hub_slugs(), true)) {
+        if (!function_exists('app_hub_submodules')) {
             return false;
         }
 
-        foreach (app_inventory_submodule_slugs() as $child) {
-            if (auth_can_read_leaf_module($child)) {
+        foreach (app_hub_submodules($slug) as $child) {
+            if (auth_can_read_leaf_module((string) ($child['slug'] ?? ''))) {
                 return true;
             }
         }
@@ -276,7 +279,7 @@ function auth_can_read_module(string $slug): bool
     return auth_can_read_leaf_module($slug);
 }
 
-function auth_filter_inventory_submodules(array $submodules): array
+function auth_filter_hub_submodules(array $submodules): array
 {
     if (!auth_is_logged_in()) {
         return $submodules;
@@ -284,8 +287,14 @@ function auth_filter_inventory_submodules(array $submodules): array
 
     return array_values(array_filter(
         $submodules,
-        fn(array $item): bool => auth_can_read_leaf_module($item['slug'])
+        fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+            && auth_can_read_leaf_module((string) ($item['slug'] ?? ''))
     ));
+}
+
+function auth_filter_inventory_submodules(array $submodules): array
+{
+    return auth_filter_hub_submodules($submodules);
 }
 
 function auth_filter_sales_submodules(array $submodules): array
@@ -300,21 +309,35 @@ function auth_filter_sales_submodules(array $submodules): array
     ));
 }
 
-function auth_inventory_nav_active(?string $activeSlug): bool
+function auth_hub_nav_active(string $hubSlug, ?string $activeSlug): bool
 {
     if ($activeSlug === null || $activeSlug === '') {
         return false;
     }
 
-    if ($activeSlug === 'inventory-management') {
+    if ($activeSlug === $hubSlug) {
         return true;
     }
 
-    if (!function_exists('app_inventory_submodule_slugs')) {
+    if (!function_exists('app_hub_submodules')) {
         return false;
     }
 
-    return in_array($activeSlug, app_inventory_submodule_slugs(), true);
+    foreach (app_hub_submodules($hubSlug) as $child) {
+        if (($child['slug'] ?? '') === $activeSlug) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function auth_inventory_nav_active(?string $activeSlug): bool
+{
+    return auth_hub_nav_active('inventory-management', $activeSlug)
+        || auth_hub_nav_active('product-master', $activeSlug)
+        || auth_hub_nav_active('procurement', $activeSlug)
+        || auth_hub_nav_active('inbound-receiving', $activeSlug);
 }
 
 function auth_sales_nav_active(?string $activeSlug): bool

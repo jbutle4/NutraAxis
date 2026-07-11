@@ -188,7 +188,7 @@ function adobe_commerce_get_token(): array
     return ['ok' => true, 'error' => null, 'token' => $token];
 }
 
-function adobe_commerce_api_request(string $method, string $path, ?array $query = null): array
+function adobe_commerce_api_request(string $method, string $path, ?array $query = null, ?array $body = null): array
 {
     $tokenResult = adobe_commerce_get_token();
     if (!$tokenResult['ok']) {
@@ -206,7 +206,7 @@ function adobe_commerce_api_request(string $method, string $path, ?array $query 
     }
 
     $ch = curl_init($url);
-    curl_setopt_array($ch, [
+    $curlOptions = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST  => $method,
         CURLOPT_HTTPHEADER     => [
@@ -216,7 +216,13 @@ function adobe_commerce_api_request(string $method, string $path, ?array $query 
             'Accept: application/json',
         ],
         CURLOPT_TIMEOUT        => 30,
-    ]);
+    ];
+
+    if ($body !== null) {
+        $curlOptions[CURLOPT_POSTFIELDS] = json_encode($body, JSON_THROW_ON_ERROR);
+    }
+
+    curl_setopt_array($ch, $curlOptions);
 
     $responseBody = curl_exec($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);

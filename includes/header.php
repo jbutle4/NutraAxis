@@ -1,3 +1,4 @@
+  <div class="site-top-chrome">
   <header class="site-header">
     <div class="container<?= !empty($pageContainerClass) ? ' ' . htmlspecialchars((string) $pageContainerClass) : '' ?>">
       <div class="header-left">
@@ -6,6 +7,23 @@
         </a>
         <span class="header-dashboard-title">Operations Portal</span>
       </div>
+
+      <?php if (auth_is_logged_in()): ?>
+      <div class="portal-search" data-portal-search>
+        <label class="visually-hidden" for="portal-search-input">Search portal links</label>
+        <input
+          class="portal-search-input"
+          type="search"
+          id="portal-search-input"
+          placeholder="Search portal links..."
+          autocomplete="off"
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-controls="portal-search-results"
+        />
+        <div class="portal-search-results" id="portal-search-results" role="listbox" hidden></div>
+      </div>
+      <?php endif; ?>
 
       <div class="header-right">
         <?php if (auth_is_logged_in()): ?>
@@ -32,6 +50,15 @@
       </div>
     </div>
   </header>
+<?php if (function_exists('data_profile_is_uat') && data_profile_is_uat()): ?>
+  <div class="uat-environment-banner-wrap">
+    <div class="container">
+      <?php require __DIR__ . '/uat-banner.php'; ?>
+    </div>
+  </div>
+<?php endif; ?>
+  </div>
+  <div class="site-top-chrome-spacer" aria-hidden="true"></div>
 
   <div class="nav-overlay" id="nav-overlay" hidden></div>
 
@@ -47,42 +74,46 @@
 
     <div class="nav-section-label">Applications</div>
     <ul class="nav-list">
-      <?php foreach (auth_filter_modules(app_functions()) as $item): ?>
       <?php
-        $navHref = auth_is_logged_in()
-            ? $item['href']
-            : auth_login_url($item['href']);
-        $isInventoryParent = $item['slug'] === 'inventory-management';
-        $isSalesParent = $item['slug'] === 'sales-reporting';
-        $parentActive = $isInventoryParent
-            ? auth_inventory_nav_active($activeSlug ?? '')
-            : ($isSalesParent
-                ? auth_sales_nav_active($activeSlug ?? '')
-                : ($activeSlug ?? '') === $item['slug']);
-        $inventoryChildren = $isInventoryParent ? auth_filter_inventory_submodules(app_inventory_submodules()) : [];
-        $salesChildren = $isSalesParent ? auth_filter_sales_submodules(app_sales_submodules()) : [];
-        $navChildren = $inventoryChildren !== [] ? $inventoryChildren : $salesChildren;
+        require_once __DIR__ . '/nav.php';
+        foreach (auth_filter_modules(app_functions()) as $item):
+            $navHref = auth_is_logged_in()
+                ? $item['href']
+                : auth_login_url($item['href']);
+            $parentSlug = (string) ($item['slug'] ?? '');
+            $parentActive = nav_parent_is_active($parentSlug, $activeSlug ?? null);
+            $navChildren = nav_children_for_parent($parentSlug);
+            $hasChildren = $navChildren !== [];
+            $groupId = 'nav-group-' . preg_replace('/[^a-z0-9-]+/', '-', strtolower($parentSlug));
+            $isExpanded = $hasChildren && nav_group_is_expanded($parentSlug, $activeSlug ?? null);
       ?>
-      <li>
+      <li class="nav-group<?= $hasChildren ? ' has-children' : '' ?><?= $isExpanded ? ' is-expanded' : '' ?><?= $parentActive ? ' is-active' : '' ?>">
+        <?php if ($hasChildren): ?>
+        <div class="nav-parent-row">
+          <a href="<?= htmlspecialchars($navHref) ?>" class="nav-parent-link<?= $parentActive ? ' is-active' : '' ?>">
+            <span class="nav-icon"><?= icon_svg($item['icon'], 16) ?></span>
+            <?= htmlspecialchars($item['title']) ?>
+          </a>
+          <button
+            type="button"
+            class="nav-parent-toggle"
+            aria-expanded="<?= $isExpanded ? 'true' : 'false' ?>"
+            aria-controls="<?= htmlspecialchars($groupId) ?>"
+            aria-label="<?= $isExpanded ? 'Collapse' : 'Expand' ?> <?= htmlspecialchars($item['title']) ?>"
+          >
+            <svg class="nav-parent-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
+        <ul class="nav-sublist" id="<?= htmlspecialchars($groupId) ?>">
+          <?php nav_render_submenu_items($navChildren, $parentSlug, $activeSlug ?? null); ?>
+        </ul>
+        <?php else: ?>
         <a href="<?= htmlspecialchars($navHref) ?>" class="<?= $parentActive ? 'is-active' : '' ?>">
           <span class="nav-icon"><?= icon_svg($item['icon'], 16) ?></span>
           <?= htmlspecialchars($item['title']) ?>
         </a>
-        <?php if ($navChildren !== []): ?>
-        <ul class="nav-sublist">
-          <?php foreach ($navChildren as $child): ?>
-          <?php
-            $childHref = auth_is_logged_in()
-                ? $child['href']
-                : auth_login_url($child['href']);
-          ?>
-          <li>
-            <a href="<?= htmlspecialchars($childHref) ?>" class="<?= ($activeSlug ?? '') === $child['slug'] ? 'is-active' : '' ?>">
-              <?= htmlspecialchars($child['title']) ?>
-            </a>
-          </li>
-          <?php endforeach; ?>
-        </ul>
         <?php endif; ?>
       </li>
       <?php endforeach; ?>
