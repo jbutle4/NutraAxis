@@ -1,7 +1,7 @@
 <?php
 /**
  * Public marketing landing — matches nutraaxislabs.com/for-providers.
- * Internal ops review lives at /provider-enrollment/ (Operations Portal).
+ * Internal ops review lives at /operations-dashboard/provider-enrollment/ (Operations Portal).
  */
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup-landing.php';

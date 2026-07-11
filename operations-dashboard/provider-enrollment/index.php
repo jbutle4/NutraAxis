@@ -3,8 +3,8 @@
  * Internal operations queue for provider onboarding review.
  * Public provider pages are under /provider-signup/ (marketing UI).
  */
-require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/provider-signup.php';
+require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/provider-signup.php';
 
 provider_signup_require_read();
 
@@ -20,8 +20,8 @@ $notice = $_GET['notice'] ?? null;
 $pageTitle = 'Provider Signup Management | NutraAxis Operations';
 $pageDescription = 'Review and approve NutraAxis provider signup applications.';
 
-require dirname(__DIR__) . '/includes/head.php';
-require dirname(__DIR__) . '/includes/header.php';
+require dirname(__DIR__, 2) . '/includes/head.php';
+require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
@@ -58,11 +58,11 @@ require dirname(__DIR__) . '/includes/header.php';
           <strong><?= $pendingCount === 1 ? '1 application is' : $pendingCount . ' applications are' ?> waiting for review</strong>
           <p>Submitted provider applications need operations review and validation.</p>
         </div>
-        <a class="btn-primary" href="/provider-enrollment/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_SUBMITTED) ?>">Review Submitted</a>
+        <a class="btn-primary" href="/operations-dashboard/provider-enrollment/?status=<?= rawurlencode(PROVIDER_SIGNUP_STATUS_SUBMITTED) ?>">Review Submitted</a>
       </div>
       <?php endif; ?>
 
-      <form class="po-filter page-list-filters" method="get" action="/provider-enrollment/">
+      <form class="po-filter page-list-filters" method="get" action="/operations-dashboard/provider-enrollment/">
         <?php table_sort_hidden_inputs($listFilters, 'submitted', 'desc'); ?>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
@@ -79,7 +79,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php
             table_sort_render_head_row(
                 PROVIDER_SIGNUP_LIST_SORT_COLUMNS,
-                '/provider-enrollment',
+                '/operations-dashboard/provider-enrollment',
                 $listFilters,
                 ['status'],
                 [],
@@ -103,7 +103,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars((string) ($row['ProviderEmail'] ?? '')) ?></td>
               <td><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $row['Status'])) ?>"><?= htmlspecialchars((string) $row['Status']) ?></span></td>
               <td><?= htmlspecialchars(provider_signup_format_datetime($row['SubmittedAt'] ?? null)) ?></td>
-              <td><a href="/provider-enrollment/view.php?id=<?= (int) $row['ApplicationID'] ?>">View</a></td>
+              <td><a href="/operations-dashboard/provider-enrollment/view.php?id=<?= (int) $row['ApplicationID'] ?>">View</a></td>
             </tr>
             <?php endforeach; ?>
             <?php endif; ?>
@@ -113,4 +113,4 @@ require dirname(__DIR__) . '/includes/header.php';
     </div>
   </main>
 <?php
-require dirname(__DIR__) . '/includes/footer.php';
+require dirname(__DIR__, 2) . '/includes/footer.php';

@@ -1,6 +1,6 @@
 <?php
-require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/provider-signup.php';
+require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/provider-signup.php';
 
 provider_signup_require_read();
 
@@ -10,10 +10,10 @@ $application = provider_signup_get($applicationId);
 if ($application === null) {
     http_response_code(404);
     $pageTitle = 'Application Not Found | NutraAxis Operations';
-    require dirname(__DIR__) . '/includes/head.php';
-    require dirname(__DIR__) . '/includes/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Application not found</h1><div class="module-actions"><a class="btn-secondary" href="/provider-enrollment/">Back to queue</a></div></div></div></main>';
-    require dirname(__DIR__) . '/includes/footer.php';
+    require dirname(__DIR__, 2) . '/includes/head.php';
+    require dirname(__DIR__, 2) . '/includes/header.php';
+    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Application not found</h1><div class="module-actions"><a class="btn-secondary" href="/operations-dashboard/provider-enrollment/">Back to queue</a></div></div></div></main>';
+    require dirname(__DIR__, 2) . '/includes/footer.php';
     exit;
 }
 
@@ -24,7 +24,7 @@ $canUpdate = provider_signup_can_update();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
     $action = (string) ($_POST['action'] ?? '');
     $comments = trim((string) ($_POST['comments'] ?? ''));
-    $redirect = '/provider-enrollment/view.php?id=' . $applicationId;
+    $redirect = '/operations-dashboard/provider-enrollment/view.php?id=' . $applicationId;
 
     switch ($action) {
         case 'comment':
@@ -77,14 +77,14 @@ $accountNumber = provider_signup_decrypt($application['AchAccountNumberEncrypted
 $pageTitle = 'Provider Application #' . $applicationId . ' | NutraAxis Operations';
 $pageDescription = 'Review provider signup application details.';
 
-require dirname(__DIR__) . '/includes/head.php';
-require dirname(__DIR__) . '/includes/header.php';
+require dirname(__DIR__, 2) . '/includes/head.php';
+require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/provider-enrollment/',
+          'back_href'  => '/operations-dashboard/provider-enrollment/',
           'back_label' => 'Back to Provider Signup Queue',
           'category'   => 'Operations',
           'title'      => 'Application #' . $applicationId,
@@ -173,7 +173,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <ul>
             <?php foreach ($attachments as $attachment): ?>
             <li>
-              <a href="/provider-enrollment/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
+              <a href="/operations-dashboard/provider-enrollment/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
                 <?= htmlspecialchars((string) $attachment['FileName']) ?>
               </a>
               (<?= htmlspecialchars(provider_signup_format_datetime($attachment['UploadDate'] ?? null)) ?>)
@@ -185,7 +185,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <?php if ($canUpdate): ?>
-      <form class="admin-form" method="post" action="/provider-enrollment/view.php?id=<?= $applicationId ?>">
+      <form class="admin-form" method="post" action="/operations-dashboard/provider-enrollment/view.php?id=<?= $applicationId ?>">
         <h2 class="admin-form-subhead">Reviewer actions</h2>
         <div class="form-group">
           <label for="comments">Comments / return notes</label>
@@ -231,4 +231,4 @@ require dirname(__DIR__) . '/includes/header.php';
     </div>
   </main>
 <?php
-require dirname(__DIR__) . '/includes/footer.php';
+require dirname(__DIR__, 2) . '/includes/footer.php';

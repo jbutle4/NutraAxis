@@ -1,6 +1,6 @@
 <?php
-require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/provider-signup.php';
+require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/provider-signup.php';
 
 provider_signup_require_read();
 
