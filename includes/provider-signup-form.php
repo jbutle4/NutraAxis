@@ -155,27 +155,25 @@ $token = (string) ($application['AccessToken'] ?? '');
   <form
     class="signup-upload"
     method="post"
-    action="/provider-signup/apply.php?token=<?= rawurlencode($token) ?>"
+    action="/provider-signup/upload-certificate.php?token=<?= rawurlencode($token) ?>"
     enctype="multipart/form-data"
     <?= $editable ? '' : 'hidden' ?>
   >
     <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
-    <?php
-    $uploadFieldId = 'reseller_certificate';
-    $uploadFieldName = 'reseller_certificate';
-    $uploadLabel = 'State reseller certificate (PDF or image) *';
-    $uploadTitle = 'Drop, paste, or choose certificate';
-    $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
-    $uploadAccept = '.pdf,image/*,application/pdf';
-    $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
-    $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
-    $uploadSuccessMessage = 'Certificate selected';
-    $uploadOnSelectHint = 'Click Upload certificate to send %s.';
-    $uploadGridClass = 'signup-upload__field';
-    require dirname(__DIR__) . '/includes/file-upload-dropzone-field.php';
-    ?>
+    <div class="signup-upload__field">
+      <label for="reseller_certificate">State reseller certificate (PDF or image) *</label>
+      <input
+        class="signup-file-input"
+        type="file"
+        id="reseller_certificate"
+        name="reseller_certificate"
+        accept=".pdf,image/*,application/pdf"
+        required
+      />
+      <p class="signup-upload__hint">Choose a PDF or image up to 15 MB, then click Upload certificate.</p>
+    </div>
     <div class="signup-upload__actions">
-      <button class="btn-secondary" type="submit" name="action" value="upload_certificate">Upload certificate</button>
+      <button class="btn-secondary" type="submit">Upload certificate</button>
     </div>
   </form>
 

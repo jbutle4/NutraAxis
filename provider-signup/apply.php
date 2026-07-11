@@ -29,7 +29,7 @@ if ($application === null) {
 }
 
 $form = provider_signup_form_from_row($application);
-$error = null;
+$error = isset($_GET['upload_error']) ? trim((string) $_GET['upload_error']) : null;
 $notice = null;
 $warn = null;
 
@@ -48,38 +48,29 @@ if (($_GET['notice'] ?? '') === 'started') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? 'save_draft');
 
-    if ($action === 'upload_certificate') {
-        $upload = provider_signup_save_attachment($token, $_FILES['reseller_certificate'] ?? []);
-        if ($upload['ok']) {
-            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=certificate_uploaded', true, 302);
+    $form = provider_signup_form_from_post($_POST);
+
+    if ($action === 'submit_application') {
+        $submitForm = provider_signup_provider_can_submit($application)
+            ? provider_signup_form_from_row($application)
+            : provider_signup_form_from_post($_POST);
+        $result = provider_signup_submit($token, $submitForm);
+        if ($result['ok']) {
+            $query = provider_signup_provider_can_submit($application) ? 'notice=activated' : 'notice=submitted';
+            if (!empty($result['warn'])) {
+                $query .= '&warn=' . rawurlencode((string) $result['warn']);
+            }
+            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&' . $query, true, 302);
             exit;
         }
-        $error = $upload['error'];
+        $error = $result['error'];
     } else {
-        $form = provider_signup_form_from_post($_POST);
-
-        if ($action === 'submit_application') {
-            $submitForm = provider_signup_provider_can_submit($application)
-                ? provider_signup_form_from_row($application)
-                : provider_signup_form_from_post($_POST);
-            $result = provider_signup_submit($token, $submitForm);
-            if ($result['ok']) {
-                $query = provider_signup_provider_can_submit($application) ? 'notice=activated' : 'notice=submitted';
-                if (!empty($result['warn'])) {
-                    $query .= '&warn=' . rawurlencode((string) $result['warn']);
-                }
-                header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&' . $query, true, 302);
-                exit;
-            }
-            $error = $result['error'];
-        } else {
-            $result = provider_signup_save_draft($token, $form);
-            if ($result['ok']) {
-                header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=draft_saved', true, 302);
-                exit;
-            }
-            $error = $result['error'];
+        $result = provider_signup_save_draft($token, $form);
+        if ($result['ok']) {
+            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=draft_saved', true, 302);
+            exit;
         }
+        $error = $result['error'];
     }
 
     $application = provider_signup_get_by_token($token) ?? $application;
