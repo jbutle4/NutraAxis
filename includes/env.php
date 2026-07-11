@@ -76,6 +76,8 @@ function env(string $key, ?string $default = null): ?string
             'PROCESS_ALERT_EMAIL',
             'PROVIDER_SIGNUP_ENCRYPTION_KEY',
             'PROVIDER_SIGNUP_OPS_EMAIL',
+            'PROVIDER_ACCS_LOGIN_URL',
+            'NUTRAAXIS_STORE_URL',
         ];
 
         require_once __DIR__ . '/adobe-commerce-settings.php';

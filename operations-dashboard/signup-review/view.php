@@ -135,7 +135,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif (($_GET['notice'] ?? '') === 'reopened'): ?>
       <div class="admin-notice is-success" role="status">Application reopened as draft. The provider was emailed and can edit again.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'approved'): ?>
-      <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create ACCS company</strong> when you are ready to provision the Clinic Store.</div>
+      <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create ACCS company</strong> when you are ready to provision the Clinic Store. The provider is not emailed until provisioning completes.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'provisioned'): ?>
       <div class="admin-notice is-success" role="status">ACCS company creation completed. The provider has been notified by email.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'already_provisioned'): ?>

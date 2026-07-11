@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/marketing-site.php';
+require_once __DIR__ . '/provider-signup-mail.php';
 
 function provider_signup_landing_css_version(): string
 {
@@ -23,6 +24,16 @@ function provider_signup_landing_hero_image_url(): string
 function provider_signup_landing_apply_url(): string
 {
     return '/provider-signup/application.php';
+}
+
+function provider_signup_render_support_link(string $wrapperClass = 'provider-support-link'): void
+{
+    ?>
+    <p class="<?= htmlspecialchars($wrapperClass) ?>">
+      Need help with your application?
+      <a href="<?= htmlspecialchars(provider_signup_support_mailto_url()) ?>">Email <?= htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) ?></a>
+    </p>
+    <?php
 }
 
 function provider_signup_render_quality_card(): void
@@ -299,6 +310,7 @@ function provider_signup_render_landing_page(): void
 
   <section class="disclaimer">
     <div class="container">
+      <?php provider_signup_render_support_link('provider-support-link provider-support-link--landing'); ?>
       <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. All product claims, ingredients, and labeling are subject to applicable DSHEA and FTC guidelines. Provider participation is subject to application review and program terms.</p>
     </div>
   </section>
@@ -333,10 +345,12 @@ function provider_signup_render_apply_page_open(): void
 function provider_signup_render_apply_page_close(): void
 {
     ?>
+    <?php provider_signup_render_support_link('provider-support-link provider-support-link--form'); ?>
     </div>
   </section>
   <section class="disclaimer">
     <div class="container">
+      <?php provider_signup_render_support_link('provider-support-link provider-support-link--apply'); ?>
       <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Provider participation is subject to application review and program terms.</p>
     </div>
   </section>
@@ -369,6 +383,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
             </form>
             <p class="apply-note">Your application stays in draft until operations approves it. We will email you when your Clinic Store is ready.</p>
           </div>
+          <?php provider_signup_render_support_link('provider-support-link provider-support-link--start'); ?>
           <p class="apply-back-link"><a href="/provider-signup/">← Back to For Providers</a></p>
         </div>
         <div class="hero-visual">
@@ -406,6 +421,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
 
   <section class="disclaimer">
     <div class="container">
+      <?php provider_signup_render_support_link('provider-support-link provider-support-link--start-footer'); ?>
       <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Provider participation is subject to application review and program terms.</p>
     </div>
   </section>

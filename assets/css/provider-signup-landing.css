@@ -1037,6 +1037,27 @@ body.marketing-site .na-providers ul {
   color: var(--teal);
 }
 
+.na-providers .provider-support-link {
+  margin-top: 20px;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.na-providers .provider-support-link a {
+  font-weight: 600;
+  color: var(--teal-dark);
+}
+
+.na-providers .provider-support-link a:hover {
+  color: var(--teal);
+}
+
+.na-providers .provider-support-link--landing,
+.na-providers .provider-support-link--apply,
+.na-providers .provider-support-link--start-footer {
+  margin-bottom: 16px;
+}
+
 .na-providers .signup-not-found {
   max-width: 640px;
   margin: 0 auto;

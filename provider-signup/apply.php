@@ -20,6 +20,7 @@ if ($application === null) {
     echo '<div class="section-label">Provider Application</div>';
     echo '<h2 class="section-heading">Application link not found</h2>';
     echo '<p class="section-sub">Start a new application from the <a href="/provider-signup/">For Providers</a> page.</p>';
+    provider_signup_render_support_link('provider-support-link provider-support-link--not-found');
     echo '</div>';
     provider_signup_render_apply_page_close();
     echo '</main>';

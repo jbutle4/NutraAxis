@@ -1049,11 +1049,6 @@ function provider_signup_ops_approve(int $applicationId, string $comments = ''):
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
     provider_signup_add_review_log($applicationId, $reviewerId, 'Approved', trim($comments));
 
-    $updated = provider_signup_get($applicationId);
-    if ($updated !== null) {
-        provider_signup_mail_approved($updated);
-    }
-
     if (!$npiResult['ok']) {
         return [
             'ok'    => true,

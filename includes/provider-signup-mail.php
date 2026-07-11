@@ -3,6 +3,9 @@
 require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/env.php';
 
+const PROVIDER_SIGNUP_SUPPORT_EMAIL = 'sales@nutraaxislabs.com';
+const PROVIDER_SIGNUP_OPS_SILENT_EMAIL = 'NutraAxis@nfcllc.com';
+
 function provider_signup_mail_base_url(): string
 {
     $configured = rtrim(trim((string) env('SITE_URL', '')), '/');
@@ -21,7 +24,25 @@ function provider_signup_apply_url(string $accessToken): string
     return provider_signup_mail_base_url() . '/provider-signup/apply.php?token=' . rawurlencode($accessToken);
 }
 
-function provider_signup_ops_recipients(): array
+function provider_signup_accs_login_url(): string
+{
+    $configured = rtrim(trim((string) env('PROVIDER_ACCS_LOGIN_URL', '')), '/');
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    return rtrim(trim((string) env('NUTRAAXIS_STORE_URL', 'https://www.nutraaxislabs.com')), '/');
+}
+
+function provider_signup_support_mailto_url(string $subject = 'Provider application help'): string
+{
+    return 'mailto:' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '?subject=' . rawurlencode($subject);
+}
+
+/**
+ * @return array<string, string>
+ */
+function provider_signup_ops_silent_recipients(): array
 {
     $configured = trim((string) env('PROVIDER_SIGNUP_OPS_EMAIL', ''));
     if ($configured !== '') {
@@ -39,12 +60,7 @@ function provider_signup_ops_recipients(): array
         }
     }
 
-    $fallback = trim((string) env('PO_TEAM_EMAIL', ''));
-    if ($fallback !== '' && filter_var($fallback, FILTER_VALIDATE_EMAIL)) {
-        return [$fallback => $fallback];
-    }
-
-    return [];
+    return [strtolower(PROVIDER_SIGNUP_OPS_SILENT_EMAIL) => 'NutraAxis'];
 }
 
 /**
@@ -60,9 +76,9 @@ function provider_signup_mail_provider(array $application, string $subject, stri
     mail_send_html_result($email, $subject, $htmlBody, $plainBody);
 }
 
-function provider_signup_mail_ops(string $subject, string $plainBody, string $htmlBody): void
+function provider_signup_mail_ops_silent(string $subject, string $plainBody, string $htmlBody): void
 {
-    $recipients = provider_signup_ops_recipients();
+    $recipients = provider_signup_ops_silent_recipients();
     if ($recipients === []) {
         return;
     }
@@ -88,6 +104,8 @@ function provider_signup_mail_application_started(array $application): void
         '',
         'You can return to this link any time while your application is in draft or returned status.',
         '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
         '— NutraAxis',
     ]);
 
@@ -95,55 +113,30 @@ function provider_signup_mail_application_started(array $application): void
         . htmlspecialchars($label)
         . '</strong>.</p>'
         . '<p><a href="' . htmlspecialchars($applyUrl) . '">Continue your application</a></p>'
-        . '<p>You can return to this link any time while your application is in draft or returned status.</p>';
+        . '<p>You can return to this link any time while your application is in draft or returned status.</p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
-}
 
-/**
- * @param array<string, mixed> $application
- */
-function provider_signup_mail_submitted(array $application): void
-{
     $id = (int) ($application['ApplicationID'] ?? 0);
-    $company = trim((string) ($application['CompanyName'] ?? 'Provider application'));
-    $subject = 'NutraAxis provider application submitted';
-
-    $plainProvider = implode("\n", [
-        'Your NutraAxis provider application has been submitted for review.',
-        '',
-        'Application ID: ' . $id,
-        'Practice: ' . $company,
-        '',
-        'Our operations team will review your information and contact you if anything else is needed.',
-        '',
-        '— NutraAxis',
-    ]);
-
-    $htmlProvider = '<p>Your NutraAxis provider application has been submitted for review.</p>'
-        . '<p><strong>Application ID:</strong> ' . htmlspecialchars((string) $id) . '<br>'
-        . '<strong>Practice:</strong> ' . htmlspecialchars($company) . '</p>'
-        . '<p>Our operations team will review your information and contact you if anything else is needed.</p>';
-
-    provider_signup_mail_provider($application, $subject, $plainProvider, $htmlProvider);
-
     $mgmtUrl = provider_signup_mail_base_url() . '/operations-dashboard/signup-review/view.php?id=' . $id;
     $plainOps = implode("\n", [
-        'A provider application was submitted.',
+        'A new provider application was started.',
         '',
         'Application ID: ' . $id,
-        'Practice: ' . $company,
         'Provider email: ' . (string) ($application['ProviderEmail'] ?? ''),
+        'Practice: ' . ($company !== '' ? $company : '(not entered yet)'),
         '',
         'Review: ' . $mgmtUrl,
     ]);
-    $htmlOps = '<p>A provider application was submitted.</p>'
+    $htmlOps = '<p>A new provider application was started.</p>'
         . '<p><strong>Application ID:</strong> ' . htmlspecialchars((string) $id) . '<br>'
-        . '<strong>Practice:</strong> ' . htmlspecialchars($company) . '<br>'
-        . '<strong>Provider email:</strong> ' . htmlspecialchars((string) ($application['ProviderEmail'] ?? '')) . '</p>'
+        . '<strong>Provider email:</strong> ' . htmlspecialchars((string) ($application['ProviderEmail'] ?? '')) . '<br>'
+        . '<strong>Practice:</strong> ' . htmlspecialchars($company !== '' ? $company : '(not entered yet)') . '</p>'
         . '<p><a href="' . htmlspecialchars($mgmtUrl) . '">Review application</a></p>';
 
-    provider_signup_mail_ops('Provider application submitted — ' . $company, $plainOps, $htmlOps);
+    provider_signup_mail_ops_silent('New provider application started — #' . $id, $plainOps, $htmlOps);
 }
 
 /**
@@ -160,18 +153,17 @@ function provider_signup_mail_commented(array $application, string $comments): v
         '',
         'View your application: ' . $applyUrl,
         '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
         '— NutraAxis Operations',
     ]);
     $html = '<p>An operations reviewer left a comment on your NutraAxis provider application:</p>'
         . '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>'
-        . '<p><a href="' . htmlspecialchars($applyUrl) . '">View your application</a></p>';
+        . '<p><a href="' . htmlspecialchars($applyUrl) . '">View your application</a></p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
-    provider_signup_mail_ops(
-        'Provider application comment — #' . (int) ($application['ApplicationID'] ?? 0),
-        $plain,
-        $html
-    );
 }
 
 /**
@@ -188,20 +180,19 @@ function provider_signup_mail_returned(array $application, string $comments): vo
         'Please update your application and save your changes:',
         $applyUrl,
         '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
         '— NutraAxis Operations',
     ]);
     $html = '<p>Your NutraAxis provider application was sent back for more information.</p>';
     if ($comments !== '') {
         $html .= '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>';
     }
-    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Update your application</a></p>';
+    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Update your application</a></p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
-    provider_signup_mail_ops(
-        'Provider application returned — #' . (int) ($application['ApplicationID'] ?? 0),
-        $plain,
-        $html
-    );
 }
 
 /**
@@ -218,49 +209,19 @@ function provider_signup_mail_reopened(array $application, string $comments): vo
         'Continue your application here:',
         $applyUrl,
         '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
         '— NutraAxis Operations',
     ]);
     $html = '<p>Your NutraAxis provider application has been reopened so you can make updates.</p>';
     if ($comments !== '') {
         $html .= '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>';
     }
-    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Continue your application</a></p>';
+    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Continue your application</a></p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
-    provider_signup_mail_ops(
-        'Provider application reopened — #' . (int) ($application['ApplicationID'] ?? 0),
-        $plain,
-        $html
-    );
-}
-
-/**
- * @param array<string, mixed> $application
- */
-function provider_signup_mail_approved(array $application): void
-{
-    $company = trim((string) ($application['CompanyName'] ?? 'your practice'));
-    $subject = 'Your NutraAxis provider application is approved';
-
-    $plain = implode("\n", [
-        'Your NutraAxis provider application for ' . $company . ' has been approved by our operations team.',
-        '',
-        'We are creating your Clinic Store in ACCS now. You will receive another email when your provider account is ready to use.',
-        '',
-        '— NutraAxis',
-    ]);
-
-    $html = '<p>Your NutraAxis provider application for <strong>'
-        . htmlspecialchars($company)
-        . '</strong> has been approved by our operations team.</p>'
-        . '<p>We are creating your Clinic Store in ACCS now. You will receive another email when your provider account is ready to use.</p>';
-
-    provider_signup_mail_provider($application, $subject, $plain, $html);
-    provider_signup_mail_ops(
-        'Provider application approved — #' . (int) ($application['ApplicationID'] ?? 0),
-        $plain,
-        $html
-    );
 }
 
 /**
@@ -268,31 +229,31 @@ function provider_signup_mail_approved(array $application): void
  */
 function provider_signup_mail_provisioned(array $application): void
 {
-    $storeUrl = rtrim(trim((string) env('NUTRAAXIS_STORE_URL', 'https://www.nutraaxislabs.com/')), '/') . '/';
+    $loginUrl = provider_signup_accs_login_url();
     $clinicId = trim((string) ($application['AccsClinicId'] ?? ''));
-    $subject = 'Your NutraAxis provider account is ready';
+    $signInEmail = (string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? '');
+    $subject = 'Your NutraAxis Clinic Store is ready';
 
     $plain = implode("\n", [
-        'Your NutraAxis provider account has been approved and created.',
+        'Your NutraAxis provider account has been created and your Clinic Store is ready.',
         '',
-        'Store: ' . $storeUrl,
-        'Sign in email: ' . (string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? ''),
-        $clinicId !== '' ? 'Clinic ID: ' . $clinicId : 'Clinic ID: (pending)',
+        'Sign in at: ' . $loginUrl,
+        'Sign in email: ' . $signInEmail,
+        $clinicId !== '' ? 'Clinic ID: ' . $clinicId : '',
         '',
         'Use the credentials sent separately or your assigned password to sign in.',
+        '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
         '',
         '— NutraAxis',
     ]);
 
-    $html = '<p>Your NutraAxis provider account has been approved and created.</p>'
-        . '<p><strong>Store:</strong> <a href="' . htmlspecialchars($storeUrl) . '">' . htmlspecialchars($storeUrl) . '</a><br>'
-        . '<strong>Sign in email:</strong> ' . htmlspecialchars((string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? '')) . '<br>'
-        . '<strong>Clinic ID:</strong> ' . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>';
+    $html = '<p>Your NutraAxis provider account has been created and your Clinic Store is ready.</p>'
+        . '<p><a href="' . htmlspecialchars($loginUrl) . '">Sign in to NutraAxis Labs</a><br>'
+        . '<strong>Sign in email:</strong> ' . htmlspecialchars($signInEmail) . '<br>'
+        . '<strong>Clinic ID:</strong> ' . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url('Clinic Store login help')) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
-    provider_signup_mail_ops(
-        'Provider account provisioned — #' . (int) ($application['ApplicationID'] ?? 0),
-        $plain,
-        $html
-    );
 }
