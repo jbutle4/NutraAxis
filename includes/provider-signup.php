@@ -194,6 +194,112 @@ function provider_signup_form_from_post(array $post): array
     return $form;
 }
 
+function provider_signup_read_request_payload(): array
+{
+    $payload = $_POST;
+    $contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? '');
+    if (!str_contains($contentType, 'application/json')) {
+        return $payload;
+    }
+
+    $raw = file_get_contents('php://input');
+    if (!is_string($raw) || $raw === '') {
+        return $payload;
+    }
+
+    try {
+        $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable) {
+        return $payload;
+    }
+
+    if (!is_array($decoded)) {
+        return $payload;
+    }
+
+    return array_merge($payload, $decoded);
+}
+
+function provider_signup_form_from_post_merge(array $post, array $application): array
+{
+    $form = provider_signup_form_from_row($application);
+    foreach (array_keys(provider_signup_default_form()) as $key) {
+        if (!array_key_exists($key, $post)) {
+            continue;
+        }
+
+        $value = trim((string) $post[$key]);
+        if ($value === '' && !in_array($key, ['tax_id', 'ach_account_number'], true)) {
+            continue;
+        }
+
+        $form[$key] = $value;
+    }
+
+    return $form;
+}
+
+/**
+ * @return array{
+ *   ok: bool,
+ *   error?: string,
+ *   content?: string,
+ *   name?: string,
+ *   type?: string,
+ *   size?: int
+ * }
+ */
+function provider_signup_parse_reseller_doc_upload(array $post, array $files): array
+{
+    $uploaded = $files['reseller_doc'] ?? null;
+    if (is_array($uploaded) && ($uploaded['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if (($uploaded['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'error' => 'File upload failed.'];
+        }
+
+        $content = file_get_contents((string) ($uploaded['tmp_name'] ?? ''));
+        if ($content === false) {
+            return ['ok' => false, 'error' => 'Unable to read uploaded file.'];
+        }
+
+        return [
+            'ok'      => true,
+            'content' => $content,
+            'name'    => (string) ($uploaded['name'] ?? 'reseller-certificate.pdf'),
+            'type'    => trim((string) ($uploaded['type'] ?? 'application/octet-stream')) ?: 'application/octet-stream',
+            'size'    => (int) ($uploaded['size'] ?? strlen($content)),
+        ];
+    }
+
+    $encoded = trim((string) ($post['attachment_payload'] ?? $post['reseller_doc_b64'] ?? ''));
+    if ($encoded === '') {
+        return ['ok' => false, 'error' => 'No file uploaded.'];
+    }
+
+    if (str_contains($encoded, ',')) {
+        $encoded = substr($encoded, (int) strrpos($encoded, ',') + 1);
+    }
+
+    $content = base64_decode($encoded, true);
+    if ($content === false) {
+        return ['ok' => false, 'error' => 'Unable to read certificate data.'];
+    }
+
+    if (strlen($content) > PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES) {
+        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.'];
+    }
+
+    $fileName = trim((string) ($post['attachment_name'] ?? $post['reseller_doc_name'] ?? 'reseller-certificate.pdf'));
+
+    return [
+        'ok'      => true,
+        'content' => $content,
+        'name'    => $fileName !== '' ? $fileName : 'reseller-certificate.pdf',
+        'type'    => trim((string) ($post['attachment_type'] ?? $post['reseller_doc_type'] ?? 'application/pdf')) ?: 'application/pdf',
+        'size'    => strlen($content),
+    ];
+}
+
 function provider_signup_form_from_row(array $row): array
 {
     return [
@@ -690,6 +796,38 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
         $contentType = 'application/octet-stream';
     }
 
+    return provider_signup_save_attachment_bytes(
+        $accessToken,
+        $content,
+        $fileName,
+        $contentType,
+        (int) ($file['size'] ?? strlen($content))
+    );
+}
+
+/**
+ * @return array{ok: bool, error: ?string, id?: int}
+ */
+function provider_signup_save_attachment_bytes(
+    string $accessToken,
+    string $content,
+    string $fileName,
+    string $contentType,
+    int $fileSize
+): array {
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_provider_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer be edited online.'];
+    }
+
+    if ($fileSize > PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES) {
+        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.'];
+    }
+
     $applicationId = (int) $application['ApplicationID'];
 
     try {
@@ -708,7 +846,7 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
         $stmt->bindValue(':application_id', $applicationId, PDO::PARAM_INT);
         $stmt->bindValue(':name', $fileName);
         $stmt->bindValue(':type', $contentType);
-        $stmt->bindValue(':size', (int) ($file['size'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':size', $fileSize, PDO::PARAM_INT);
         $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->execute();
 

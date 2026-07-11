@@ -73,6 +73,20 @@ $zoneId = $uploadFieldId . '-dropzone';
     var defaultTitle = pasteZone.querySelector('.enh-log-paste-zone-title').textContent;
     var defaultHint = pasteZone.querySelector('.enh-log-paste-zone-hint').textContent;
     var dragDepth = 0;
+    var selectedFile = null;
+
+    function publishSelectedFile(file) {
+      selectedFile = file || null;
+      formWrap.__dropzoneSelectedFile = selectedFile;
+      try {
+        formWrap.dispatchEvent(new CustomEvent('dropzone-file-selected', {
+          bubbles: true,
+          detail: { inputId: inputId, file: selectedFile },
+        }));
+      } catch (_) {
+        /* CustomEvent unsupported */
+      }
+    }
 
     function fileExtension(name) {
       var match = (name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -122,6 +136,7 @@ $zoneId = $uploadFieldId . '-dropzone';
       var dt = new DataTransfer();
       dt.items.add(file);
       fileInput.files = dt.files;
+      publishSelectedFile(file);
 
       if (fileName) {
         fileName.hidden = false;
@@ -179,6 +194,16 @@ $zoneId = $uploadFieldId . '-dropzone';
       }
     }
 
+    if (!window.__fileDropzonePageGuard) {
+      window.__fileDropzonePageGuard = true;
+      window.addEventListener('dragover', function (event) {
+        event.preventDefault();
+      });
+      window.addEventListener('drop', function (event) {
+        event.preventDefault();
+      });
+    }
+
     [formWrap, pasteZone].forEach(function (target) {
       target.addEventListener('dragenter', markDragEnter);
       target.addEventListener('dragover', allowDrag);
@@ -220,7 +245,11 @@ $zoneId = $uploadFieldId . '-dropzone';
     fileInput.addEventListener('change', function () {
       if (fileInput.files && fileInput.files[0]) {
         assignFile(fileInput.files[0]);
+      } else {
+        publishSelectedFile(null);
       }
     });
+
+    publishSelectedFile(null);
   })();
   </script>

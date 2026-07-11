@@ -45,7 +45,7 @@ $token = (string) ($application['AccessToken'] ?? '');
   </div>
   <?php endif; ?>
 
-  <form class="signup-form" method="post" action="/provider-signup/apply.php?token=<?= rawurlencode($token) ?>" novalidate>
+  <form class="signup-form" method="post" action="/provider-signup/apply.php?token=<?= rawurlencode($token) ?>" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
 
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
@@ -146,37 +146,173 @@ $token = (string) ($application['AccessToken'] ?? '');
     </fieldset>
 
     <?php if ($editable): ?>
+    <div class="signup-upload">
+      <?php
+      $uploadFieldId = 'reseller_doc';
+      $uploadFieldName = 'reseller_doc';
+      $uploadLabel = 'State reseller certificate (PDF or image) *';
+      $uploadTitle = 'Drop, paste, or choose certificate';
+      $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
+      $uploadAccept = '.pdf,image/*,application/pdf';
+      $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
+      $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
+      $uploadSuccessMessage = 'Certificate selected';
+      $uploadOnSelectHint = 'Click Upload certificate to save your progress and send %s.';
+      $uploadGridClass = 'signup-upload__field';
+      require dirname(__DIR__) . '/includes/file-upload-dropzone-field.php';
+      ?>
+      <div class="signup-upload__actions">
+        <button
+          class="btn-secondary"
+          type="button"
+          id="reseller-doc-upload-btn"
+          data-upload-url="/provider-signup/save-reseller-doc.php?token=<?= rawurlencode($token) ?>"
+        >Upload certificate</button>
+      </div>
+    </div>
+
     <div class="signup-form__actions">
       <button class="btn-secondary" type="submit" name="action" value="save_draft">Save draft</button>
     </div>
-    <?php endif; ?>
-  </form>
+    <script>
+    (function () {
+      var form = document.querySelector('.signup-form');
+      var uploadBtn = document.getElementById('reseller-doc-upload-btn');
+      var dropzoneWrap = document.getElementById('reseller_doc-dropzone-form');
+      var pasteZone = document.getElementById('reseller_doc-dropzone');
+      var fileInput = document.getElementById('reseller_doc');
+      if (!form || !uploadBtn || !dropzoneWrap || !pasteZone || !fileInput) return;
 
-  <form
-    class="signup-upload"
-    method="post"
-    action="/provider-signup/apply.php?token=<?= rawurlencode($token) ?>"
-    enctype="multipart/form-data"
-    <?= $editable ? '' : 'hidden' ?>
-  >
-    <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
-    <?php
-    $uploadFieldId = 'reseller_certificate';
-    $uploadFieldName = 'reseller_certificate';
-    $uploadLabel = 'State reseller certificate (PDF or image) *';
-    $uploadTitle = 'Drop, paste, or choose certificate';
-    $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
-    $uploadAccept = '.pdf,image/*,application/pdf';
-    $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
-    $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
-    $uploadSuccessMessage = 'Certificate selected';
-    $uploadOnSelectHint = 'Click Upload certificate to send %s.';
-    $uploadGridClass = 'signup-upload__field';
-    require dirname(__DIR__) . '/includes/file-upload-dropzone-field.php';
-    ?>
-    <div class="signup-upload__actions">
-      <button class="btn-secondary" type="submit" name="action" value="upload_certificate">Upload certificate</button>
-    </div>
+      var selectedFile = null;
+      dropzoneWrap.addEventListener('dropzone-file-selected', function (event) {
+        selectedFile = event.detail && event.detail.file ? event.detail.file : null;
+      });
+
+      function showUploadError(message) {
+        var existing = form.querySelector('.signup-upload-error');
+        if (existing) {
+          existing.textContent = message;
+          return;
+        }
+        var alert = document.createElement('div');
+        alert.className = 'signup-alert signup-alert--error signup-upload-error';
+        alert.setAttribute('role', 'alert');
+        alert.textContent = message;
+        var uploadSection = form.querySelector('.signup-upload');
+        if (uploadSection) {
+          uploadSection.parentNode.insertBefore(alert, uploadSection);
+        }
+      }
+
+      function clearUploadError() {
+        var existing = form.querySelector('.signup-upload-error');
+        if (existing) {
+          existing.remove();
+        }
+      }
+
+      function setUploading(isUploading) {
+        uploadBtn.disabled = isUploading;
+        uploadBtn.textContent = isUploading ? 'Uploading…' : 'Upload certificate';
+        pasteZone.classList.toggle('is-uploading', isUploading);
+      }
+
+      function collectFormPayload() {
+        var payload = {};
+        Array.prototype.forEach.call(form.elements, function (element) {
+          if (!element.name || element.disabled) {
+            return;
+          }
+          if (element.type === 'file' || element.type === 'submit' || element.type === 'button') {
+            return;
+          }
+          if (element.type === 'checkbox') {
+            if (element.checked) {
+              payload[element.name] = element.value;
+            }
+            return;
+          }
+          if (element.type === 'radio') {
+            if (element.checked) {
+              payload[element.name] = element.value;
+            }
+            return;
+          }
+          if (element.tagName === 'SELECT' || element.type === 'textarea' || element.type === 'password' || element.type === 'hidden' || element.type === 'email' || element.type === 'tel' || element.type === 'text') {
+            payload[element.name] = element.value;
+          }
+        });
+        return payload;
+      }
+
+      function uploadCertificate(file) {
+        clearUploadError();
+        setUploading(true);
+
+        var reader = new FileReader();
+        reader.onload = function () {
+          var payload = collectFormPayload();
+          var encoded = String(reader.result || '');
+          if (encoded.indexOf(',') !== -1) {
+            encoded = encoded.split(',')[1];
+          }
+          if (!encoded) {
+            setUploading(false);
+            showUploadError('Unable to read the selected certificate file.');
+            return;
+          }
+
+          payload.attachment_payload = encoded;
+          payload.attachment_name = file.name || 'reseller-certificate.pdf';
+          payload.attachment_type = file.type || 'application/pdf';
+
+          fetch(uploadBtn.getAttribute('data-upload-url') || '', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          })
+            .then(function (response) {
+              return response.json().then(function (body) {
+                return { response: response, payload: body };
+              });
+            })
+            .then(function (result) {
+              if (result.payload && result.payload.ok && result.payload.redirect) {
+                window.location.href = result.payload.redirect;
+                return;
+              }
+              throw new Error((result.payload && result.payload.error) || 'Unable to upload certificate.');
+            })
+            .catch(function (error) {
+              setUploading(false);
+              showUploadError(error && error.message ? error.message : 'Unable to upload certificate.');
+            });
+        };
+        reader.onerror = function () {
+          setUploading(false);
+          showUploadError('Unable to read the selected certificate file.');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      uploadBtn.addEventListener('click', function () {
+        var file = selectedFile || dropzoneWrap.__dropzoneSelectedFile
+          || (fileInput.files && fileInput.files[0] ? fileInput.files[0] : null);
+        if (!file) {
+          showUploadError('Choose or drop a certificate file before uploading.');
+          return;
+        }
+
+        uploadCertificate(file);
+      });
+    })();
+    </script>
+    <?php endif; ?>
   </form>
 
   <?php if ($attachments !== []): ?>

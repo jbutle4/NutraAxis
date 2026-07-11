@@ -41,24 +41,46 @@ if (($_GET['notice'] ?? '') === 'started') {
     $notice = 'Your Clinic Store activation request has been received.';
 } elseif (($_GET['notice'] ?? '') === 'activated') {
     $notice = 'Your Clinic Store has been activated.';
-} elseif (($_GET['notice'] ?? '') === 'certificate_uploaded') {
-    $notice = 'Reseller certificate uploaded successfully.';
+} elseif (($_GET['notice'] ?? '') === 'certificate_uploaded' || ($_GET['notice'] ?? '') === 'reseller_doc_saved') {
+    $notice = 'Draft saved and reseller certificate uploaded successfully.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? 'save_draft');
 
-    if ($action === 'upload_certificate') {
-        $upload = provider_signup_save_attachment($token, $_FILES['reseller_certificate'] ?? []);
-        if ($upload['ok']) {
-            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=certificate_uploaded', true, 302);
-            exit;
-        }
-        $error = $upload['error'];
-    } else {
-        $form = provider_signup_form_from_post($_POST);
+    $form = provider_signup_form_from_post($_POST);
 
-        if ($action === 'submit_application') {
+    if ($action !== 'save_draft' && $action !== 'submit_application') {
+        // Legacy action name; prefer save-reseller-doc.php (Azure WAF may strip upload_* POST actions).
+        if ($action === 'upload_certificate') {
+            $parsedFile = provider_signup_parse_reseller_doc_upload($_POST, $_FILES);
+            if (!($parsedFile['ok'] ?? false)) {
+                $error = (string) ($parsedFile['error'] ?? 'No file uploaded.');
+            } else {
+                $form = provider_signup_form_from_post_merge($_POST, $application);
+                $draft = provider_signup_save_draft($token, $form);
+                if (!$draft['ok']) {
+                    $error = $draft['error'];
+                } else {
+                    $upload = provider_signup_save_attachment_bytes(
+                        $token,
+                        (string) $parsedFile['content'],
+                        (string) $parsedFile['name'],
+                        (string) $parsedFile['type'],
+                        (int) $parsedFile['size']
+                    );
+                    if ($upload['ok']) {
+                        header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=reseller_doc_saved', true, 302);
+                        exit;
+                    }
+                    $error = $upload['error'];
+                    $application = provider_signup_get_by_token($token) ?? $application;
+                    $form = provider_signup_form_from_row($application);
+                }
+            }
+        }
+    } elseif ($action === 'submit_application') {
+
             $submitForm = provider_signup_provider_can_submit($application)
                 ? provider_signup_form_from_row($application)
                 : provider_signup_form_from_post($_POST);
@@ -72,14 +94,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             $error = $result['error'];
-        } else {
-            $result = provider_signup_save_draft($token, $form);
-            if ($result['ok']) {
-                header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=draft_saved', true, 302);
-                exit;
-            }
-            $error = $result['error'];
+    } else {
+        $result = provider_signup_save_draft($token, $form);
+        if ($result['ok']) {
+            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=draft_saved', true, 302);
+            exit;
         }
+        $error = $result['error'];
     }
 
     $application = provider_signup_get_by_token($token) ?? $application;
