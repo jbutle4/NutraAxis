@@ -11,11 +11,15 @@ if ($application === null) {
     http_response_code(404);
     $pageTitle = 'Application Not Found | NutraAxis';
     require dirname(__DIR__) . '/includes/marketing-head.php';
+    echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
+        . htmlspecialchars(provider_signup_landing_css_version()) . '" />' . "\n";
     require dirname(__DIR__) . '/includes/marketing-header.php';
-    echo '<main class="marketing-main"><section class="marketing-signup-stub"><div class="marketing-signup-stub__inner">';
-    echo '<h2 class="marketing-signup-stub__title">Application link not found</h2>';
-    echo '<p class="marketing-signup-stub__lead">Start a new application from the <a href="/provider-signup/">provider signup page</a>.</p>';
-    echo '</div></section></main>';
+    echo '<main><div class="na-providers"><section class="apply-section apply-section--form"><div class="container">';
+    echo '<div class="signup-not-found">';
+    echo '<div class="section-label">Provider Application</div>';
+    echo '<h2 class="section-heading">Application link not found</h2>';
+    echo '<p class="section-sub">Start a new application from the <a href="/provider-signup/">For Providers</a> page.</p>';
+    echo '</div></div></section></div></main>';
     require dirname(__DIR__) . '/includes/marketing-footer.php';
     exit;
 }
@@ -83,8 +87,6 @@ $bodyClass = 'marketing-site appear';
 require dirname(__DIR__) . '/includes/marketing-head.php';
 echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
     . htmlspecialchars(provider_signup_landing_css_version()) . '" />' . "\n";
-echo '<link rel="stylesheet" href="/assets/css/provider-signup.css?v='
-    . htmlspecialchars(marketing_site_css_version()) . '" />' . "\n";
 require dirname(__DIR__) . '/includes/marketing-header.php';
 ?>
   <main>
