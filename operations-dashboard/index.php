@@ -1,13 +1,108 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/links.php';
+require dirname(__DIR__) . '/includes/hub-cards.php';
+require dirname(__DIR__) . '/includes/accs-test-order-client.php';
 
 auth_require_module_read('operations-dashboard');
+
+$accsTestOrderNotice = null;
+$accsTestOrderError = null;
+
+function operations_dashboard_normalize_link(array $link): array
+{
+    if (!isset($link['tier'])) {
+        if (!empty($link['internal'])) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#zendesk\.com#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|sandbox\.qbo\.intuit\.com|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
+            $link['tier'] = ENVIRONMENT_TIER_UAT;
+        } elseif (str_starts_with((string) ($link['href'] ?? ''), 'http')) {
+            $link['tier'] = ENVIRONMENT_TIER_EXTERNAL;
+        } else {
+            $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
+        }
+    }
+
+    $link['external'] = empty($link['internal']) && str_starts_with((string) ($link['href'] ?? ''), 'http');
+
+    return $link;
+}
+
+function operations_dashboard_render_section_links(array $links, array $actionCards = []): void
+{
+    $filtered = [];
+    foreach ($links as $link) {
+        if (!empty($link['module']) && !auth_can_read_leaf_module((string) $link['module'])) {
+            continue;
+        }
+        $filtered[] = operations_dashboard_normalize_link($link);
+    }
+
+    $sections = hub_cards_partition_uat($filtered);
+    $actionSections = hub_cards_partition_uat($actionCards);
+
+    if ($sections['production'] !== []) {
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['production'], false);
+        echo '</div>';
+    }
+
+    if ($sections['uat'] !== [] || $actionSections['uat'] !== []) {
+        echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
+        echo '<div class="functions operations-dashboard-links">';
+        hub_render_function_card_grid($sections['uat'], false);
+        operations_dashboard_render_action_cards($actionSections['uat']);
+        echo '</div>';
+    }
+
+    if ($actionSections['production'] !== []) {
+        echo '<div class="functions operations-dashboard-links">';
+        operations_dashboard_render_action_cards($actionSections['production']);
+        echo '</div>';
+    }
+}
+
+function operations_dashboard_render_action_cards(array $cards): void
+{
+    foreach ($cards as $card) {
+        if (($card['action'] ?? '') !== 'accs_test_orders') {
+            continue;
+        }
+
+        $tierClass = hub_card_tier_class($card);
+        echo '<div class="function-card operations-dashboard-action-card ' . htmlspecialchars($tierClass) . '">';
+
+        if (!empty($card['icon']) && function_exists('icon_svg')) {
+            echo '<div class="function-icon">' . icon_svg((string) $card['icon']) . '</div>';
+        }
+
+        echo '<h3>' . htmlspecialchars((string) ($card['title'] ?? '')) . '</h3>';
+        echo '<p>' . htmlspecialchars((string) ($card['desc'] ?? '')) . '</p>';
+        echo '<p class="operations-dashboard-action-note">Runs in the background — you can keep using the portal while orders are created.</p>';
+        echo '<form id="accs-test-orders-form" method="post" action="/operations-dashboard/accs-test-orders-run.php" class="operations-dashboard-action-form">';
+        echo '<input type="hidden" name="dashboard_action" value="accs_test_orders" />';
+        echo '<button type="submit" class="btn-primary" id="accs-test-orders-submit">Create 5 test orders</button>';
+        echo '</form>';
+        echo '</div>';
+    }
+}
 
 $activeSlug = 'operations-dashboard';
 $canManageLinks = links_can_read();
 $linkListFilters = ['status' => 'active'] + table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $_GET);
 $indexLinks = $canManageLinks ? links_list($linkListFilters) : [];
+
+$dashboardActionCards = [
+    [
+        'title'  => 'ACCS Test Order Creation',
+        'desc'   => 'Create 5 ACCS Stage test orders (4 random catalog SKUs each) using the same customer, address, and payment as order 000000094.',
+        'icon'   => 'chart',
+        'tier'   => ENVIRONMENT_TIER_UAT,
+        'action' => 'accs_test_orders',
+    ],
+];
 
 $dashboardSections = [
     [
@@ -43,6 +138,7 @@ $dashboardSections = [
                 'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                 'href'  => 'https://qbo.intuit.com/app/my-accountant',
                 'icon'  => 'accounting',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
             ],
             [
                 'title' => 'Lucid Chart',
@@ -64,16 +160,8 @@ $dashboardSections = [
                 'internal' => true,
             ],
             [
-                'title'    => 'Provider Signup Management',
-                'desc'     => 'Review provider onboarding applications, validate NPI and banking, and approve ACCS provisioning.',
-                'href'     => '/operations-dashboard/signup-review/',
-                'icon'     => 'clipboard',
-                'internal' => true,
-                'module'   => 'signup-review',
-            ],
-            [
-                'title'    => 'Enhancement Log',
-                'desc'     => 'Track portal enhancement requests, status, due dates, and implementation notes.',
+                'title'    => 'IT Product Backlog',
+                'desc'     => 'Track IT product backlog items, status, due dates, and implementation notes.',
                 'href'     => '/enhancement-log/',
                 'icon'     => 'clipboard',
                 'internal' => true,
@@ -129,40 +217,102 @@ $dashboardSections = [
                 'icon'  => 'accounting',
             ],
             [
-                'title' => 'ACCS Admin',
-                'desc'  => 'Adobe Commerce as a Cloud Service admin for the stage tenant.',
-                'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
+                'title' => 'Intuit Developer',
+                'desc'  => 'Intuit Developer dashboard — manage QuickBooks API apps, credentials, and OAuth settings.',
+                'href'  => 'https://developer.intuit.com/dashboard?id=9341457225981893&tab=apps',
+                'icon'  => 'accounting',
+            ],
+            [
+                'title' => 'Adobe Admin Console',
+                'desc'  => 'Adobe organization admin console for NutraAxis production users, products, and licenses.',
+                'href'  => 'https://adminconsole.adobe.com/E73F22FB6913B1350A495C34@AdobeOrg/overview',
                 'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
             ],
             [
-                'title' => 'ACCS Authoring',
-                'desc'  => 'Document Authoring for NutraSync EDS staging content.',
-                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds-staging',
-                'icon'  => 'document',
-            ],
-            [
-                'title' => 'ACCS Asset Management',
-                'desc'  => 'Adobe Experience Manager DAM for NutraSync digital assets.',
-                'href'  => 'https://author-p180942-e1905796.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
-                'icon'  => 'catalog',
-            ],
-            [
-                'title' => 'ACCS Staging',
-                'desc'  => 'NutraAxis staging storefront on Adobe Edge Delivery Services.',
-                'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
-                'icon'  => 'chart',
-            ],
-            [
-                'title' => 'ACCS Admin Prod',
+                'title' => 'ACCS Admin',
                 'desc'  => 'Adobe Commerce as a Cloud Service admin for the production tenant.',
                 'href'  => 'https://na1.admin.commerce.adobe.com/VLuKe3eeTwf1D5oxmLBfcr',
                 'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'Prod DA',
+                'desc'  => 'Document Authoring for NutraSync EDS production content.',
+                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds',
+                'icon'  => 'document',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'Prod DAM',
+                'desc'  => 'Adobe Experience Manager DAM for NutraSync production digital assets.',
+                'href'  => 'https://author-p180942-e1905687.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
+                'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'Jazz OMS',
+                'desc'  => 'Cart.com Jazz Commerce order management — login as NutraSync_API_PROD.',
+                'href'  => 'https://fbflurry.jazz-oms.com/account/login?next=/',
+                'icon'  => 'inventory',
+                'tier'  => ENVIRONMENT_TIER_PRODUCTION,
+            ],
+            [
+                'title' => 'ACCS Admin',
+                'desc'  => 'UAT System — Adobe Commerce as a Cloud Service admin for the stage tenant.',
+                'href'  => 'https://na1-sandbox.admin.commerce.adobe.com/UAEyTrirS4qBMAWYZa4uic',
+                'icon'  => 'dashboard',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Authoring',
+                'desc'  => 'UAT System — Document Authoring for NutraSync EDS staging content.',
+                'href'  => 'https://da.live/#/capocommerce/nutrasync-eds-staging',
+                'icon'  => 'document',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Asset Management',
+                'desc'  => 'UAT System — Adobe Experience Manager DAM for NutraSync staging digital assets.',
+                'href'  => 'https://author-p180942-e1905796.adobeaemcloud.com/ui#/aem/assets.html/content/dam',
+                'icon'  => 'catalog',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'ACCS Staging',
+                'desc'  => 'UAT System — NutraAxis staging storefront on Adobe Edge Delivery Services.',
+                'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
+                'icon'  => 'chart',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'Jazz OMS',
+                'desc'  => 'UAT System — Cart.com Jazz Commerce order management — login as NutraSync_API_UAT.',
+                'href'  => 'https://fbflurry-uat01.jazz-oms.com/account/login?next=/',
+                'icon'  => 'inventory',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title' => 'QuickBooks Sandbox',
+                'desc'  => 'UAT System — QuickBooks Online sandbox company for testing accounting integrations.',
+                'href'  => 'https://sandbox.qbo.intuit.com/app/homepage',
+                'icon'  => 'accounting',
+                'tier'  => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'NA Test Site',
-                'desc'  => 'NutraAxis site index — HTML previews, concept pages, and test renders.',
+                'desc'  => 'UAT System — NutraAxis site index, HTML previews, concept pages, and test renders.',
                 'href'  => 'https://nutraaxisweb.azurewebsites.net/nutraaxis_test/',
                 'icon'  => 'links',
+                'tier'  => ENVIRONMENT_TIER_UAT,
+            ],
+            [
+                'title'    => 'Function App ping test',
+                'desc'     => 'Diagnostic tool to call the Azure Function App ping endpoint from the portal and verify connectivity.',
+                'href'     => '/function-test/',
+                'icon'     => 'dashboard',
+                'internal' => true,
+                'tier'     => ENVIRONMENT_TIER_UAT,
             ],
             [
                 'title' => 'NutraSync Wordpress',
@@ -182,61 +332,34 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Operations Home
-      </a>
+      <?php render_list_page_header([
+          'back_href'  => '/',
+          'back_label' => 'Back to Operations Home',
+          'category'   => 'Overview',
+          'title'      => 'Operations Dashboard',
+          'lead'       => 'Shortcuts to planning, documents, accounting, Adobe Commerce, and support tools.',
+          'permission' => auth_module_permission_label('operations-dashboard'),
+      ]); ?>
 
-      <div class="page-hero">
-        <div class="page-hero-head">
-          <div class="module-icon"><?= icon_svg('dashboard', 28) ?></div>
-          <?php if ($canManageLinks): ?>
-          <a class="btn-secondary" href="/links-index/">Manage Links</a>
-          <?php endif; ?>
-        </div>
-        <div class="section-label">Overview</div>
-        <h1>Operations Dashboard</h1>
-        <p class="page-lead">Shortcuts to planning, documents, accounting, Adobe Commerce, and support tools.</p>
-        <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('operations-dashboard')) ?></p>
-      </div>
+      <?php if ($accsTestOrderNotice !== null): ?>
+      <div class="admin-notice is-success" role="status"><?= htmlspecialchars($accsTestOrderNotice) ?></div>
+      <?php elseif ($accsTestOrderError !== null): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($accsTestOrderError) ?></div>
+      <?php endif; ?>
+      <div id="accs-test-orders-banner"></div>
+
+      <?php
+      $listToolbar = $canManageLinks ? '<a class="btn-secondary" href="/links-index/">Manage Links</a>' : null;
+      render_list_page_toolbar($listToolbar);
+      ?>
 
       <?php foreach ($dashboardSections as $section): ?>
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title"><?= htmlspecialchars($section['title']) ?></h2>
-        <div class="functions operations-dashboard-links">
-          <?php foreach ($section['links'] as $link):
-              if (!empty($link['module']) && !auth_can_read_leaf_module((string) $link['module'])) {
-                  continue;
-              }
-              $isInternal = !empty($link['internal']);
-          ?>
-          <a
-            class="function-card"
-            href="<?= htmlspecialchars($link['href']) ?>"
-            <?= $isInternal ? '' : 'target="_blank" rel="noopener noreferrer"' ?>
-          >
-            <div class="function-icon"><?= icon_svg($link['icon']) ?></div>
-            <h3><?= htmlspecialchars($link['title']) ?></h3>
-            <p><?= htmlspecialchars($link['desc']) ?></p>
-            <span class="function-link">
-              <?= $isInternal ? 'Open' : 'Open in new tab' ?>
-              <?php if ($isInternal): ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-              <?php else: ?>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <path d="M15 3h6v6"/>
-                <path d="M10 14L21 3"/>
-              </svg>
-              <?php endif; ?>
-            </span>
-          </a>
-          <?php endforeach; ?>
-        </div>
+        <?php
+        $actionCards = ($section['title'] ?? '') === 'IT and eCommerce' ? $dashboardActionCards : [];
+        operations_dashboard_render_section_links($section['links'], $actionCards);
+        ?>
       </section>
       <?php endforeach; ?>
 
@@ -290,5 +413,63 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
     </div>
   </main>
+  <script>
+  (function () {
+    const form = document.getElementById('accs-test-orders-form');
+    const banner = document.getElementById('accs-test-orders-banner');
+    if (!form || !banner) return;
+
+    const button = document.getElementById('accs-test-orders-submit');
+    const defaultLabel = button ? button.textContent : 'Create 5 test orders';
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Starting…';
+      }
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+          body: new URLSearchParams(new FormData(form)),
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (error) {
+          data = { ok: false, message: 'Could not read the server response.' };
+        }
+
+        const message = data.message || data.error || 'Test order creation could not be started.';
+        const cssClass = data.ok ? 'admin-notice is-success' : 'admin-notice is-error';
+        const role = data.ok ? 'status' : 'alert';
+        banner.innerHTML = '<div class="' + cssClass + '" role="' + role + '">' + escapeHtml(message) + '</div>';
+        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (error) {
+        banner.innerHTML = '<div class="admin-notice is-error" role="alert">Could not reach the server to start test order creation.</div>';
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = defaultLabel;
+        }
+      }
+    });
+  })();
+  </script>
 <?php
 require dirname(__DIR__) . '/includes/footer.php';
