@@ -12,19 +12,19 @@ if ($application === null) {
     $pageTitle = 'Application Not Found | NutraAxis Operations';
     require dirname(__DIR__) . '/includes/head.php';
     require dirname(__DIR__) . '/includes/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Application not found</h1><div class="module-actions"><a class="btn-secondary" href="/provider-signup-mgmt/">Back to queue</a></div></div></div></main>';
+    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Application not found</h1><div class="module-actions"><a class="btn-secondary" href="/provider-applications/">Back to queue</a></div></div></div></main>';
     require dirname(__DIR__) . '/includes/footer.php';
     exit;
 }
 
-$activeSlug = 'provider-signup-mgmt';
+$activeSlug = 'provider-applications';
 $error = null;
 $canUpdate = provider_signup_can_update();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
     $action = (string) ($_POST['action'] ?? '');
     $comments = trim((string) ($_POST['comments'] ?? ''));
-    $redirect = '/provider-signup-mgmt/view.php?id=' . $applicationId;
+    $redirect = '/provider-applications/view.php?id=' . $applicationId;
 
     switch ($action) {
         case 'comment':
@@ -84,7 +84,7 @@ require dirname(__DIR__) . '/includes/header.php';
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/provider-signup-mgmt/',
+          'back_href'  => '/provider-applications/',
           'back_label' => 'Back to Provider Signup Queue',
           'category'   => 'Operations',
           'title'      => 'Application #' . $applicationId,
@@ -173,7 +173,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <ul>
             <?php foreach ($attachments as $attachment): ?>
             <li>
-              <a href="/provider-signup-mgmt/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
+              <a href="/provider-applications/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
                 <?= htmlspecialchars((string) $attachment['FileName']) ?>
               </a>
               (<?= htmlspecialchars(provider_signup_format_datetime($attachment['UploadDate'] ?? null)) ?>)
@@ -185,7 +185,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <?php if ($canUpdate): ?>
-      <form class="admin-form" method="post" action="/provider-signup-mgmt/view.php?id=<?= $applicationId ?>">
+      <form class="admin-form" method="post" action="/provider-applications/view.php?id=<?= $applicationId ?>">
         <h2 class="admin-form-subhead">Reviewer actions</h2>
         <div class="form-group">
           <label for="comments">Comments / return notes</label>

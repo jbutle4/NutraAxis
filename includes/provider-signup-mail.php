@@ -127,7 +127,7 @@ function provider_signup_mail_submitted(array $application): void
 
     provider_signup_mail_provider($application, $subject, $plainProvider, $htmlProvider);
 
-    $mgmtUrl = provider_signup_mail_base_url() . '/provider-signup-mgmt/view.php?id=' . $id;
+    $mgmtUrl = provider_signup_mail_base_url() . '/provider-applications/view.php?id=' . $id;
     $plainOps = implode("\n", [
         'A provider application was submitted.',
         '',
