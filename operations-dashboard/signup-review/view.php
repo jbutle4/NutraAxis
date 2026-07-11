@@ -22,6 +22,7 @@ $error = null;
 $canUpdate = provider_signup_can_update();
 $canEdit = provider_signup_ops_can_edit($application);
 $canApprove = provider_signup_ops_can_approve($application);
+$canProvision = provider_signup_ops_can_provision($application);
 $approvalChecklist = provider_signup_submit_checklist(provider_signup_form_from_row($application), $applicationId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
@@ -63,6 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&' . $suffix, true, 302);
             } else {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to approve application.'), true, 302);
+            }
+            exit;
+        case 'provision':
+            $result = provider_signup_ops_provision($applicationId);
+            if ($result['ok']) {
+                $suffix = !empty($result['already']) ? 'notice=already_provisioned' : 'notice=provisioned';
+                header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            } else {
+                header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to create ACCS company.'), true, 302);
             }
             exit;
         default:
@@ -109,7 +119,11 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif (($_GET['notice'] ?? '') === 'returned'): ?>
       <div class="admin-notice is-success" role="status">Application returned to provider.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'approved'): ?>
-      <div class="admin-notice is-success" role="status">Application approved. The provider can now activate their Clinic Store.</div>
+      <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create ACCS company</strong> when you are ready to provision the Clinic Store.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'provisioned'): ?>
+      <div class="admin-notice is-success" role="status">ACCS company creation completed. The provider has been notified by email.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'already_provisioned'): ?>
+      <div class="admin-notice is-success" role="status">This application was already provisioned.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'rejected'): ?>
       <div class="admin-notice is-success" role="status">Application rejected.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'npi_validated'): ?>
@@ -122,7 +136,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <?php if ($canApprove && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_DRAFT): ?>
-      <div class="admin-notice" role="status">This application is in <strong>Draft</strong>. Validate the data and documents, then approve to enable the provider&apos;s final Clinic Store activation.</div>
+      <div class="admin-notice" role="status">This application is in <strong>Draft</strong>. Validate the data and documents, approve it, then create the ACCS company from this page.</div>
+      <?php endif; ?>
+
+      <?php if ($canProvision): ?>
+      <div class="admin-notice" role="status">This application is <strong>Approved</strong> and ready for ACCS company creation.</div>
+      <?php endif; ?>
+
+      <?php if (!empty($application['LastProvisionError']) && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
+      <div class="admin-notice is-error" role="alert">Last ACCS provisioning attempt failed: <?= htmlspecialchars((string) $application['LastProvisionError']) ?></div>
       <?php endif; ?>
 
       <?php if ($canUpdate && $canEdit && !$approvalChecklist['complete']): ?>
@@ -296,7 +318,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <button class="btn-secondary" type="submit" name="action" value="validate_npi">Re-run NPI validation</button>
           <button class="btn-secondary" type="submit" name="action" value="return">Return to provider</button>
           <button class="btn-secondary" type="submit" name="action" value="reject">Reject</button>
-          <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve for activation</button>
+          <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve application</button>
+          <button class="btn-primary" type="submit" name="action" value="provision" <?= $canProvision ? '' : 'disabled title="Approve the application before creating the ACCS company"' ?>>Create ACCS company</button>
         </div>
       </form>
       <?php endif; ?>

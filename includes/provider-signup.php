@@ -229,6 +229,11 @@ function provider_signup_ops_can_edit(array $application): bool
 
 function provider_signup_provider_can_submit(array $application): bool
 {
+    return false;
+}
+
+function provider_signup_ops_can_provision(array $application): bool
+{
     return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED;
 }
 
@@ -406,58 +411,109 @@ function provider_signup_save_draft(string $accessToken, array $form): array
 
 function provider_signup_submit(string $accessToken, array $form): array
 {
-    $application = provider_signup_get_by_token($accessToken);
+    return [
+        'ok'    => false,
+        'error' => 'Clinic Store creation is handled by the NutraAxis operations team after approval. You will receive email when your account is ready.',
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, company_id?: ?int, customer_id?: ?int, clinic_id?: ?string, already?: bool}
+ */
+function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUserId, string $logComments): array
+{
+    $application = provider_signup_get($applicationId);
     if ($application === null) {
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    if (!provider_signup_provider_can_submit($application)) {
-        return ['ok' => false, 'error' => 'Operations must approve your application before you can activate your Clinic Store.'];
+    if ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+        return ['ok' => true, 'error' => null, 'already' => true];
     }
 
-    $applicationId = (int) $application['ApplicationID'];
-    $checklist = provider_signup_submit_checklist($form, $applicationId);
-    if (!$checklist['complete']) {
-        return [
-            'ok'    => false,
-            'error' => 'Complete all required fields before activating your store: ' . implode(', ', $checklist['missing']) . '.',
-        ];
-    }
-
-    $persist = provider_signup_persist_form($applicationId, $form, true);
-    if (!$persist['ok']) {
-        return $persist;
+    if ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_APPROVED) {
+        return ['ok' => false, 'error' => 'Application must be approved before creating the ACCS company.'];
     }
 
     $provision = provider_signup_provision($applicationId);
     if (!$provision['ok']) {
-        return ['ok' => false, 'error' => $provision['error'] ?? 'Unable to create your Clinic Store.'];
+        try {
+            $pdo = db();
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET LastProvisionError = ?,
+                    LastSavedAt = SYSUTCDATETIME()
+                WHERE ApplicationID = ?
+            SQL)->execute([
+                provider_signup_nullable_string((string) ($provision['error'] ?? 'Provisioning failed.')),
+                $applicationId,
+            ]);
+        } catch (Throwable) {
+            /* keep original provisioning error */
+        }
+
+        provider_signup_add_review_log(
+            $applicationId,
+            $reviewerUserId,
+            'ProvisionFailed',
+            (string) ($provision['error'] ?? 'Provisioning failed.')
+        );
+
+        return $provision;
     }
 
     try {
         $pdo = db();
         $pdo->prepare(<<<SQL
             UPDATE dbo.ProviderSignupApplication
-            SET Status = :status,
-                SubmittedAt = SYSUTCDATETIME(),
+            SET Status = ?,
+                SubmittedAt = COALESCE(SubmittedAt, SYSUTCDATETIME()),
+                ProvisionedAt = SYSUTCDATETIME(),
                 LastSavedAt = SYSUTCDATETIME(),
-                ProvisionedAt = SYSUTCDATETIME()
-            WHERE ApplicationID = :id
+                AccsCompanyId = ?,
+                AccsCustomerId = ?,
+                AccsClinicId = ?,
+                LastProvisionError = NULL
+            WHERE ApplicationID = ?
         SQL)->execute([
-            'status' => PROVIDER_SIGNUP_STATUS_PROVISIONED,
-            'id'     => $applicationId,
+            PROVIDER_SIGNUP_STATUS_PROVISIONED,
+            $provision['company_id'] ?? null,
+            $provision['customer_id'] ?? null,
+            provider_signup_nullable_string((string) ($provision['clinic_id'] ?? '')),
+            $applicationId,
         ]);
     } catch (Throwable) {
-        return ['ok' => false, 'error' => 'Unable to finalize your application.'];
+        return ['ok' => false, 'error' => 'Unable to update application after provisioning.'];
     }
 
-    provider_signup_add_review_log($applicationId, null, 'Activated', 'Provider activated Clinic Store after operations approval.');
+    provider_signup_add_review_log($applicationId, $reviewerUserId, 'Provisioned', $logComments);
     $updated = provider_signup_get($applicationId);
     if ($updated !== null) {
         provider_signup_mail_provisioned($updated);
     }
 
     return ['ok' => true, 'error' => null];
+}
+
+function provider_signup_ops_provision(int $applicationId): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_ops_can_provision($application)) {
+        return ['ok' => false, 'error' => 'This application is not ready for ACCS company creation.'];
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+
+    return provider_signup_finalize_provision(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'ACCS company created by operations reviewer.'
+    );
 }
 
 function provider_signup_persist_form(int $applicationId, array $form, bool $submitting): array
@@ -956,8 +1012,11 @@ function provider_signup_provision(int $applicationId): array
     }
 
     return [
-        'ok'    => false,
-        'error' => 'ACCS provisioning (company + company admin) is not wired yet.',
+        'ok'          => false,
+        'error'       => 'ACCS provisioning (company + company admin) is not wired yet.',
+        'company_id'  => null,
+        'customer_id' => null,
+        'clinic_id'   => null,
     ];
 }
 

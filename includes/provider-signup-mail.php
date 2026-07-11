@@ -209,15 +209,13 @@ function provider_signup_mail_returned(array $application, string $comments): vo
  */
 function provider_signup_mail_approved(array $application): void
 {
-    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
     $company = trim((string) ($application['CompanyName'] ?? 'your practice'));
     $subject = 'Your NutraAxis provider application is approved';
 
     $plain = implode("\n", [
         'Your NutraAxis provider application for ' . $company . ' has been approved by our operations team.',
         '',
-        'Submit your application to activate your Clinic Store:',
-        $applyUrl,
+        'We are creating your Clinic Store in ACCS now. You will receive another email when your provider account is ready to use.',
         '',
         '— NutraAxis',
     ]);
@@ -225,7 +223,7 @@ function provider_signup_mail_approved(array $application): void
     $html = '<p>Your NutraAxis provider application for <strong>'
         . htmlspecialchars($company)
         . '</strong> has been approved by our operations team.</p>'
-        . '<p><a href="' . htmlspecialchars($applyUrl) . '">Submit to activate your Clinic Store</a></p>';
+        . '<p>We are creating your Clinic Store in ACCS now. You will receive another email when your provider account is ready to use.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
     provider_signup_mail_ops(

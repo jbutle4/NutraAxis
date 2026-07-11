@@ -31,21 +31,17 @@ $token = (string) ($application['AccessToken'] ?? '');
     <span><strong>Last saved:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></span>
   </div>
 
-  <?php if (!$editable && !$canSubmit): ?>
+  <?php if (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
   <div class="signup-alert signup-alert--info" role="status">
-    <?php if ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
-    This application is approved and awaiting final activation.
-    <?php elseif ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
-    Your Clinic Store has been activated. Contact operations if you need changes.
-    <?php else: ?>
-    This application is under operations review. You can save updates while it is in draft or returned status.
-    <?php endif; ?>
+    Your application is approved. Our operations team is creating your Clinic Store in ACCS. You will receive email when your account is ready.
   </div>
-  <?php endif; ?>
-
-  <?php if ($canSubmit): ?>
+  <?php elseif (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
   <div class="signup-alert signup-alert--success" role="status">
-    Your application has been approved. Submit below to activate your Clinic Store.
+    Your Clinic Store has been created. Check your email for sign-in details.
+  </div>
+  <?php elseif (!$editable): ?>
+  <div class="signup-alert signup-alert--info" role="status">
+    This application is under operations review. You can save updates while it is in draft or returned status.
   </div>
   <?php endif; ?>
 
@@ -145,19 +141,6 @@ $token = (string) ($application['AccessToken'] ?? '');
     <div class="signup-form__actions">
       <button class="btn-secondary" type="submit" name="action" value="save_draft">Save draft</button>
     </div>
-    <?php elseif ($canSubmit): ?>
-    <div class="signup-form__actions">
-      <button
-        class="btn-cta"
-        type="submit"
-        name="action"
-        value="submit_application"
-        <?= $checklist['complete'] ? '' : 'disabled' ?>
-      >Activate Clinic Store</button>
-    </div>
-    <?php if (!$checklist['complete']): ?>
-    <p class="signup-checklist">Still needed before activation: <?= htmlspecialchars(implode(', ', $checklist['missing'])) ?></p>
-    <?php endif; ?>
     <?php endif; ?>
   </form>
 

@@ -31,7 +31,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           'back_label' => 'Back to Operations Home',
           'category'   => 'Operations',
           'title'      => 'Provider Signup Management',
-          'lead'       => 'Review draft provider applications, validate NPI and banking data, approve for Clinic Store activation.',
+          'lead'       => 'Review draft provider applications, validate NPI and banking data, approve applications, and create ACCS companies.',
           'permission' => permission_label(provider_signup_permission_value()),
       ]);
       ?>
@@ -41,7 +41,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif ($notice === 'returned'): ?>
       <div class="admin-notice is-success" role="status">Application returned to provider for updates.</div>
       <?php elseif ($notice === 'approved'): ?>
-      <div class="admin-notice is-success" role="status">Application approved.</div>
+      <div class="admin-notice is-success" role="status">Application approved. Open it to create the ACCS company.</div>
+      <?php elseif ($notice === 'provisioned'): ?>
+      <div class="admin-notice is-success" role="status">ACCS company created and provider notified.</div>
       <?php elseif ($notice === 'rejected'): ?>
       <div class="admin-notice is-success" role="status">Application rejected.</div>
       <?php elseif ($notice === 'npi_validated'): ?>
