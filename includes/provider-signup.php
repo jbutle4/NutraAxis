@@ -322,25 +322,20 @@ function provider_signup_create_application(string $providerEmail): array
 
     try {
         $pdo = db();
+        $token = provider_signup_generate_token();
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.ProviderSignupApplication (
                 AccessToken, Status, ProviderEmail, AdminEmail, CountryCode
             )
-            OUTPUT INSERTED.ApplicationID AS inserted_id, INSERTED.AccessToken AS inserted_token
             VALUES (:token, :status, :email, :email, N'US')
         SQL);
         $stmt->execute([
-            'token'  => provider_signup_generate_token(),
+            'token'  => $token,
             'status' => PROVIDER_SIGNUP_STATUS_DRAFT,
             'email'  => $providerEmail,
         ]);
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $id = is_array($row) && isset($row['inserted_id'])
-            ? (int) $row['inserted_id']
-            : db_fetch_inserted_int($stmt, 'inserted_id');
-
-        $application = provider_signup_get($id);
+        $application = provider_signup_get_by_token($token);
         if ($application === null) {
             return ['ok' => false, 'error' => 'Unable to load the new application.', 'application' => null];
         }
@@ -351,7 +346,7 @@ function provider_signup_create_application(string $providerEmail): array
     }
 
     try {
-        provider_signup_add_review_log($id, null, 'Comment', 'Application started by provider.');
+        provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', 'Application started by provider.');
     } catch (Throwable $e) {
         error_log('provider_signup_create_application review log: ' . $e->getMessage());
     }
@@ -576,7 +571,6 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
             INSERT INTO dbo.ProviderSignupAttachment (
                 ApplicationID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind
             )
-            OUTPUT INSERTED.AttachmentID AS inserted_id
             VALUES (:application_id, :name, :type, :size, :data, N'ResellerCertificate')
         SQL);
         $stmt->bindValue(':application_id', $applicationId, PDO::PARAM_INT);
@@ -586,7 +580,10 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
         $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->execute();
 
-        return ['ok' => true, 'error' => null, 'id' => db_fetch_inserted_int($stmt, 'inserted_id')];
+        $idRow = $pdo->query('SELECT CAST(SCOPE_IDENTITY() AS INT) AS inserted_id')->fetch(PDO::FETCH_ASSOC);
+        $attachmentId = (int) ($idRow['inserted_id'] ?? 0);
+
+        return ['ok' => true, 'error' => null, 'id' => $attachmentId];
     } catch (Throwable) {
         return ['ok' => false, 'error' => 'Unable to save the reseller certificate.'];
     }
