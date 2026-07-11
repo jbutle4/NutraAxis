@@ -25,6 +25,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'sales-monthly-summary'  => 'SalesReporting',
     'inventory-forecasting'  => 'InventoryForecasting',
     'labeling-operations'    => 'LabelingOperations',
+    'coa-management'         => 'LabelingOperations',
     'operations-dashboard'          => 'OperationsDashboard',
     'system-performance-dashboard'  => 'OperationsDashboard',
     'process-log'                   => 'OperationsDashboard',
@@ -32,6 +33,11 @@ const MODULE_PERMISSION_COLUMNS = [
     'enhancement-log'               => 'OperationsDashboard',
     'legal-agreements'       => 'LegalAgreements',
     'product-catalog'        => 'ProductCatalog',
+    'product-enrichment'     => 'ProductCatalog',
+    'qbo-sku-master'         => 'Accounting',
+    'qbo-inventory'          => 'Accounting',
+    'qbo-purchase-orders'    => 'Accounting',
+    'qbo-suppliers'          => 'Accounting',
     'links-index'            => 'LinksIndex',
     'support'                => 'Support',
     'accounting'             => 'Accounting',
@@ -42,6 +48,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'jazz-asns-uat'          => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
+    'provider-signup-management' => 'ProviderAccountReview',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -85,6 +92,7 @@ function auth_permissions_from_role_row(array $row): array
         'TEProcessing'         => $row['TEProcessing'] ?? null,
         'QBOInsertApproval'    => $row['QBOInsertApproval'] ?? null,
         'PaymentApproval'      => $row['PaymentApproval'] ?? null,
+        'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
     ];
 }
 
@@ -124,7 +132,8 @@ function auth_refresh_permissions(): void
                 TEApproval,
                 TEProcessing,
                 QBOInsertApproval,
-                PaymentApproval
+                PaymentApproval,
+                ProviderAccountReview
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -305,7 +314,8 @@ function auth_filter_hub_submodules(array $submodules): array
 
     return array_values(array_filter(
         $submodules,
-        fn(array $item): bool => auth_can_read_leaf_module((string) ($item['slug'] ?? ''))
+        fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+            && auth_can_read_leaf_module((string) ($item['slug'] ?? ''))
     ));
 }
 
@@ -468,7 +478,8 @@ function auth_filter_modules(array $modules): array
 
     return array_values(array_filter(
         $modules,
-        fn(array $item): bool => auth_can_read_module($item['slug'])
+        fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+            && auth_can_read_module((string) ($item['slug'] ?? ''))
     ));
 }
 

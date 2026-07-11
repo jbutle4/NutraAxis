@@ -65,6 +65,8 @@ function env(string $key, ?string $default = null): ?string
         $runtimeKeys = [
             'DB_HOST', 'DB_SERVER', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD', 'DB_PORT',
             'NUTRA_FUNCTIONS_BASE_URL', 'NUTRA_FUNCTIONS_KEY', 'NUTRA_FUNCTIONS_PROD_KEY',
+            'NUTRA_FUNCTIONS_PROD_BASE_URL',
+            'PACKING_SLIP_PARSE_KEY',
             'AZURE_FUNCTION_APP_URL', 'AZURE_FUNCTION_APP_URL_PRODUCTION', 'AZURE_FUNCTION_APP_KEY',
             'ACCS_TEST_ORDER_CREATION_KEY', 'ACCS_TEST_ORDER_CREATION_SECRET',
             'MAIL_FROM', 'MAIL_FROM_NAME', 'MAIL_REPLY_TO', 'SITE_URL',
@@ -72,7 +74,7 @@ function env(string $key, ?string $default = null): ?string
             'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_ENCRYPTION',
             'ZENDESK_SUBDOMAIN', 'ZENDESK_EMAIL', 'ZENDESK_API_TOKEN',
             'QBO_CLIENT_ID', 'QBO_CLIENT_SECRET', 'QBO_REDIRECT_URI', 'QBO_ENVIRONMENT',
-            'QBO_CLIENT_ID_PROD', 'QBO_CLIENT_SECRET_PROD',
+            'QBO_CLIENT_ID_PROD', 'QBO_CLIENT_SECRET_PROD', 'QBO_DEFAULT_SERVICE_ITEM_SKU',
             'JAZZ_DOMAIN', 'JAZZ_USERNAME', 'JAZZ_PASSWORD', 'JAZZ_TENANT_CODE', 'JAZZ_BASE_URL', 'JAZZ_PAGE_SIZE',
             'JAZZ_DOMAIN_PROD', 'JAZZ_PRODUCTION_DOMAIN',
             'JAZZ_USERNAME_PROD', 'JAZZ_PRODUCTION_USERNAME',
@@ -86,6 +88,8 @@ function env(string $key, ?string $default = null): ?string
             'AZURE_STORAGE_CONTAINER',
             'AZURE_STORAGE_CONNECTION_STRING',
             'FILE_STORAGE_MODE',
+            'PROVIDER_SIGNUP_ENCRYPTION_KEY',
+            'PROVIDER_SIGNUP_OPS_EMAIL',
         ];
 
         require_once __DIR__ . '/adobe-commerce-settings.php';

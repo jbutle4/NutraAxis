@@ -1,13 +1,14 @@
 <?php
 /**
- * Public marketing landing — matches nutraaxislabs.com/for-providers.
- * Internal ops review lives at /provider-signup-management/ (Operations Portal).
+ * Public application start — email capture before tokenized apply form.
  */
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup-landing.php';
 
-$pageTitle = 'For Providers | NutraAxis';
-$pageDescription = 'Launch your co-branded NutraAxis Clinic Store with provider-set pricing, zero inventory, and fulfillment handled for you.';
+$startError = trim((string) ($_GET['error'] ?? ''));
+
+$pageTitle = 'Apply for Provider Access | NutraAxis';
+$pageDescription = 'Start your NutraAxis provider application and launch your co-branded Clinic Store.';
 
 require dirname(__DIR__) . '/includes/marketing-head.php';
 echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
@@ -15,7 +16,7 @@ echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
 require dirname(__DIR__) . '/includes/marketing-header.php';
 ?>
   <main>
-    <?php provider_signup_render_landing_page(); ?>
+    <?php provider_signup_render_application_start_page($startError); ?>
   </main>
 <?php
 require dirname(__DIR__) . '/includes/marketing-footer.php';

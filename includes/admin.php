@@ -22,8 +22,7 @@ const ROLE_PERMISSION_FIELDS = [
     'Support'              => 'Support',
     'Accounting'           => 'Accounting',
     'UserAdmin'            => 'User Administration',
-    'RoleAdmin'            => 'Role Administration',
-];
+    'ProviderAccountReview'  => 'Provider Account Review',
 
 const ADMIN_USERS_LIST_SORT_COLUMNS = [
     'name'       => 'Name',
@@ -531,7 +530,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             INSERT INTO dbo.Role (
                 RoleName, RoleDesc, RoleCreateDate, ModifiedbyUser,
                 POManagement, POApproval, TEManagement, TEApproval, TEProcessing,
-                QBOInsertApproval, PaymentApproval,
+                QBOInsertApproval, PaymentApproval, ProviderAccountReview,
                 InventoryReporting, SalesReporting, InventoryForecasting,
                 LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, Support, Accounting,
                 UserAdmin, RoleAdmin
@@ -540,7 +539,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             VALUES (
                 :name, :desc, SYSUTCDATETIME(), :modified_by,
                 :po, :po_approval, :te_mgmt, :te_approval, :te_processing,
-                :qbo_insert_approval, :payment_approval,
+                :qbo_insert_approval, :payment_approval, :provider_review,
                 :inv_rep, :sales_rep, :inv_forecast,
                 :labeling, :dashboard, :legal, :catalog, :links, :support, :accounting,
                 :user_admin, :role_admin
@@ -557,6 +556,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'te_processing'          => $permissions['TEProcessing'],
             'qbo_insert_approval'    => $permissions['QBOInsertApproval'],
             'payment_approval'       => $permissions['PaymentApproval'],
+            'provider_review'        => $permissions['ProviderAccountReview'],
             'inv_rep'                => $permissions['InventoryReporting'],
             'sales_rep'              => $permissions['SalesReporting'],
             'inv_forecast'           => $permissions['InventoryForecasting'],
@@ -599,6 +599,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             TEProcessing = :te_processing,
             QBOInsertApproval = :qbo_insert_approval,
             PaymentApproval = :payment_approval,
+            ProviderAccountReview = :provider_review,
             InventoryReporting = :inv_rep,
             SalesReporting = :sales_rep,
             InventoryForecasting = :inv_forecast,
@@ -624,6 +625,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'te_processing'       => $permissions['TEProcessing'],
         'qbo_insert_approval' => $permissions['QBOInsertApproval'],
         'payment_approval'    => $permissions['PaymentApproval'],
+        'provider_review'     => $permissions['ProviderAccountReview'],
         'inv_rep'             => $permissions['InventoryReporting'],
         'sales_rep'     => $permissions['SalesReporting'],
         'inv_forecast'  => $permissions['InventoryForecasting'],
