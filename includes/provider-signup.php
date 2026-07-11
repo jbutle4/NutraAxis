@@ -327,12 +327,14 @@ function provider_signup_create_application(string $providerEmail): array
             INSERT INTO dbo.ProviderSignupApplication (
                 AccessToken, Status, ProviderEmail, AdminEmail, CountryCode
             )
-            VALUES (:token, :status, :email, :email, N'US')
+            VALUES (?, ?, ?, ?, ?)
         SQL);
         $stmt->execute([
-            'token'  => $token,
-            'status' => PROVIDER_SIGNUP_STATUS_DRAFT,
-            'email'  => $providerEmail,
+            $token,
+            PROVIDER_SIGNUP_STATUS_DRAFT,
+            $providerEmail,
+            $providerEmail,
+            'US',
         ]);
 
         $application = provider_signup_get_by_token($token);
