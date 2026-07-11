@@ -82,12 +82,20 @@ function provider_signup_can_update(): bool
 
 function provider_signup_require_read(): void
 {
-    auth_require_read(PROVIDER_SIGNUP_PERMISSION_COLUMN);
+    auth_require_login();
+    if (provider_signup_can_read()) {
+        return;
+    }
+    auth_render_access_denied('You do not have permission to view provider signup applications.');
 }
 
 function provider_signup_require_update(): void
 {
-    auth_require_update(PROVIDER_SIGNUP_PERMISSION_COLUMN);
+    provider_signup_require_read();
+    if (provider_signup_can_update()) {
+        return;
+    }
+    auth_render_access_denied('You do not have permission to update provider signup applications.');
 }
 
 function provider_signup_generate_token(): string
