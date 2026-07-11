@@ -64,6 +64,14 @@ $dashboardSections = [
                 'internal' => true,
             ],
             [
+                'title'    => 'Provider Signup Management',
+                'desc'     => 'Review provider onboarding applications, validate NPI and banking, and approve ACCS provisioning.',
+                'href'     => '/operations-dashboard/signup-review/',
+                'icon'     => 'clipboard',
+                'internal' => true,
+                'module'   => 'signup-review',
+            ],
+            [
                 'title'    => 'Enhancement Log',
                 'desc'     => 'Track portal enhancement requests, status, due dates, and implementation notes.',
                 'href'     => '/enhancement-log/',

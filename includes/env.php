@@ -74,6 +74,8 @@ function env(string $key, ?string $default = null): ?string
             'JAZZ_DOMAIN', 'JAZZ_USERNAME', 'JAZZ_PASSWORD', 'JAZZ_TENANT_CODE', 'JAZZ_BASE_URL', 'JAZZ_PAGE_SIZE',
             'CRON_SECRET',
             'PROCESS_ALERT_EMAIL',
+            'PROVIDER_SIGNUP_ENCRYPTION_KEY',
+            'PROVIDER_SIGNUP_OPS_EMAIL',
         ];
 
         require_once __DIR__ . '/adobe-commerce-settings.php';

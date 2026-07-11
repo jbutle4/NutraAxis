@@ -33,6 +33,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'jazz-asns'              => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
+    'signup-review'          => 'ProviderAccountReview',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -73,6 +74,7 @@ function auth_permissions_from_role_row(array $row): array
         'POApproval'           => $row['POApproval'],
         'TEManagement'         => $row['TEManagement'] ?? null,
         'TEApproval'           => $row['TEApproval'] ?? null,
+        'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
     ];
 }
 
@@ -104,7 +106,8 @@ function auth_refresh_permissions(): void
                 RoleAdmin,
                 POApproval,
                 TEManagement,
-                TEApproval
+                TEApproval,
+                ProviderAccountReview
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
