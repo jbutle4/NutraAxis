@@ -27,7 +27,12 @@ const MODULE_PERMISSION_COLUMNS = [
     'links-index'            => 'LinksIndex',
     'support'                => 'Support',
     'accounting'             => 'Accounting',
+    'supplier-invoices'      => 'Accounting',
+    'invoice-payments'       => 'Accounting',
+    'qbo-purchase-orders'    => 'Accounting',
+    'qbo-suppliers'          => 'Accounting',
     'supplier-management'    => 'POManagement',
+    'procurement-bids'       => 'POManagement',
     'po-payments'            => 'POManagement',
     'po-receiving'           => 'POManagement',
     'jazz-asns'              => 'POManagement',
@@ -74,6 +79,9 @@ function auth_permissions_from_role_row(array $row): array
         'POApproval'           => $row['POApproval'],
         'TEManagement'         => $row['TEManagement'] ?? null,
         'TEApproval'           => $row['TEApproval'] ?? null,
+        'TEProcessing'         => $row['TEProcessing'] ?? null,
+        'QBOInsertApproval'    => $row['QBOInsertApproval'] ?? null,
+        'PaymentApproval'      => $row['PaymentApproval'] ?? null,
         'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
     ];
 }
@@ -107,6 +115,9 @@ function auth_refresh_permissions(): void
                 POApproval,
                 TEManagement,
                 TEApproval,
+                TEProcessing,
+                QBOInsertApproval,
+                PaymentApproval,
                 ProviderAccountReview
             FROM dbo.Role
             WHERE RoleID = :role_id
@@ -512,7 +523,11 @@ function auth_attempt_login(string $login, string $password): array
             r.RoleAdmin,
             r.POApproval,
             r.TEManagement,
-            r.TEApproval
+            r.TEApproval,
+            r.TEProcessing,
+            r.QBOInsertApproval,
+            r.PaymentApproval,
+            r.ProviderAccountReview
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

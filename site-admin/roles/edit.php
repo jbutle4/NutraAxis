@@ -45,26 +45,32 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/site-admin/roles/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Roles
-      </a>
+      <?php
+      render_list_page_header([
+          'back_href'  => '/site-admin/roles/',
+          'back_label' => 'Back to Roles',
+          'category'   => 'Site Admin',
+          'title'      => 'Edit Role',
+          'lead'       => 'Update permissions for ' . $role['RoleName'] . '.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/admin-nav.php'; ?>
-
-      <div class="page-hero">
-        <div class="section-label">Site Admin</div>
-        <h1>Edit Role</h1>
-        <p class="page-lead">Update permissions for <?= htmlspecialchars($role['RoleName']) ?>.</p>
-      </div>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
       <form class="admin-form" method="post" action="/site-admin/roles/edit.php?id=<?= $roleId ?>">
+        <?php
+        $formActions = capture_form_actions(function () {
+            ?>
+            <button class="btn-primary" type="submit">Save Role</button>
+            <a class="btn-secondary" href="/site-admin/roles/">Cancel</a>
+            <?php
+        });
+        render_form_actions($formActions, 'top');
+        ?>
         <div class="form-group">
           <label for="role_name">Role name</label>
           <input class="form-input" type="text" id="role_name" name="role_name" value="<?= htmlspecialchars($role['RoleName']) ?>" required />
@@ -80,10 +86,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
         <?php $editable = true; require dirname(__DIR__, 2) . '/includes/admin-permission-grid.php'; ?>
 
-        <div class="module-actions">
-          <button class="btn-primary" type="submit">Save Role</button>
-          <a class="btn-secondary" href="/site-admin/roles/">Cancel</a>
-        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
     </div>
   </main>

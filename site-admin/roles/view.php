@@ -26,29 +26,24 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/site-admin/roles/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to Roles
-      </a>
+      <?php
+      $listToolbar = auth_can_update(ADMIN_PERMISSION_COLUMNS['roles'])
+          ? '<a class="btn-primary" href="/site-admin/roles/edit.php?id=' . $roleId . '">Edit Role</a><a class="btn-secondary" href="/site-admin/roles/">Back to Roles</a>'
+          : '<a class="btn-secondary" href="/site-admin/roles/">Back to Roles</a>';
+      render_list_page_header([
+          'back_href'  => '/site-admin/roles/',
+          'back_label' => 'Back to Roles',
+          'category'   => 'Site Admin',
+          'title'      => $role['RoleName'],
+          'lead'       => $role['RoleDesc'] ?? 'No description provided.',
+      ]);
+      ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/admin-nav.php'; ?>
 
-      <div class="page-hero">
-        <div class="section-label">Site Admin</div>
-        <h1><?= htmlspecialchars($role['RoleName']) ?></h1>
-        <p class="page-lead"><?= htmlspecialchars($role['RoleDesc'] ?? 'No description provided.') ?></p>
-      </div>
-
       <?php $editable = false; require dirname(__DIR__, 2) . '/includes/admin-permission-grid.php'; ?>
 
-      <div class="module-actions">
-        <?php if (auth_can_update(ADMIN_PERMISSION_COLUMNS['roles'])): ?>
-        <a class="btn-primary" href="/site-admin/roles/edit.php?id=<?= $roleId ?>">Edit Role</a>
-        <?php endif; ?>
-        <a class="btn-secondary" href="/site-admin/roles/">Back to Roles</a>
-      </div>
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
     </div>
   </main>
 <?php

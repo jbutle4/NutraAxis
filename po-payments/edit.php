@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/po-payment.php';
+require dirname(__DIR__) . '/includes/po-payment-attachments.php';
 
 po_payment_require_update();
 
@@ -14,8 +15,11 @@ if ($payment === null) {
 
 $activeSlug = 'po-payments';
 $error = null;
+$notice = $_GET['notice'] ?? null;
 $form = po_payment_to_form($payment);
 $poOptions = po_payment_po_options();
+$invoiceOptions = po_payment_invoice_options();
+$attachments = po_payment_list_attachments($paymentId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = array_merge($form, po_payment_from_input($_POST));
@@ -35,19 +39,20 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
-      <a class="breadcrumb" href="/po-payments/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to PO Payments
-      </a>
+    <div class="container page-inner page-inner--wide">
+      <?php
+      render_list_page_header([
+          'back_href'  => '/po-payments/',
+          'back_label' => 'Back to PO Payments',
+          'category'   => 'Inventory',
+          'title'      => 'Edit Payment',
+          'lead'       => po_payment_reference_label($payment) . ' · ' . ($payment['SupplierName'] ?? '') . ' · ' . po_format_money($payment['PaymentAmount']),
+      ]);
+      ?>
 
-      <div class="page-hero">
-        <div class="section-label">Inventory</div>
-        <h1>Edit Payment</h1>
-        <p class="page-lead"><?= htmlspecialchars($payment['PONumber']) ?> · <?= htmlspecialchars(po_format_money($payment['PaymentAmount'])) ?></p>
-      </div>
+      <?php if ($notice === 'created'): ?>
+      <div class="admin-notice is-success" role="status">Payment recorded successfully. Upload supporting documents below.</div>
+      <?php endif; ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -57,6 +62,12 @@ require dirname(__DIR__) . '/includes/header.php';
         $isEdit = true;
         $formAction = '/po-payments/edit.php?id=' . $paymentId;
         require dirname(__DIR__) . '/includes/po-payment-form.php';
+      ?>
+
+      <?php
+        $showUploadForm = po_payment_can_update();
+        $uploadNotice = $notice;
+        require dirname(__DIR__) . '/includes/po-payment-attachments-section.php';
       ?>
     </div>
   </main>

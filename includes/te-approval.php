@@ -118,16 +118,9 @@ function te_list_pending_approvals(array $filters = []): array
 
 function te_list_approval_log(int $reportId): array
 {
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        SELECT ApprovalID, ReportID, ApproverName, ApproverResult, ApproverComments, LogDate
-        FROM dbo.TEApprovalLog
-        WHERE ReportID = :id
-        ORDER BY LogDate DESC
-    SQL);
-    $stmt->execute(['id' => $reportId]);
+    require_once __DIR__ . '/approval.php';
 
-    return $stmt->fetchAll();
+    return approval_list_log('TE', $reportId);
 }
 
 function te_can_submit_for_approval(array $report): bool
@@ -260,17 +253,15 @@ function te_process_approval_action(int $reportId, string $action, string $comme
             'id'          => $reportId,
         ], $approveParams));
 
-        $log = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.TEApprovalLog (ReportID, ApproverName, ApproverResult, ApproverComments)
-            OUTPUT INSERTED.ApprovalID AS inserted_id
-            VALUES (:report, :name, :result, :comments)
-        SQL);
-        $log->execute([
-            'report'   => $reportId,
-            'name'     => $approverName,
-            'result'   => $config['result'],
-            'comments' => $comments !== '' ? $comments : null,
-        ]);
+        require_once __DIR__ . '/approval.php';
+        approval_append_log(
+            'TE',
+            $reportId,
+            $approverName,
+            $config['result'],
+            $comments !== '' ? $comments : null,
+            $approverId
+        );
 
         $pdo->commit();
 
@@ -302,7 +293,7 @@ function te_format_approval_notify_message(array $notify): string
 {
     return alert_format_notify_message(
         $notify,
-        'No designated T&E approvers are configured. No approval email was sent.'
+        'No users with T&E Approval Update access are configured. No approval email was sent.'
     );
 }
 
@@ -477,10 +468,14 @@ function te_build_processor_attachments(array $report, array $totals, string $ap
         if ($full === null) {
             continue;
         }
+        $resolved = attachment_storage_resolve_content($full);
+        if (!$resolved['ok']) {
+            continue;
+        }
         $attachments[] = [
             'filename'     => (string) $full['FileName'],
-            'content'      => (string) $full['FileData'],
-            'content_type' => (string) ($full['ContentType'] ?: 'application/pdf'),
+            'content'      => $resolved['content'],
+            'content_type' => (string) ($resolved['content_type'] ?: 'application/pdf'),
         ];
     }
 
@@ -506,7 +501,7 @@ function te_notify_processors_of_approval(array $report, string $approverName, s
     $processors = te_list_po_processors();
     if ($processors === []) {
         $result['skipped_reason'] = 'no_subscribers';
-        error_log('te_notify_processors_of_approval skipped (no IsPOProcessor users) for ' . ($report['ReportNumber'] ?? ''));
+        error_log('te_notify_processors_of_approval skipped (no users with T&E Processing Read) for ' . ($report['ReportNumber'] ?? ''));
 
         return $result;
     }
