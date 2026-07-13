@@ -32,7 +32,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = bid_estimate_from_input($_POST);
     $result = bid_estimate_save($initiativeId, $_POST);
     if ($result['ok']) {
-        header('Location: /procurement-bids/bid-edit.php?id=' . (int) $result['id'] . '&notice=bid_created', true, 302);
+        $bidId = (int) $result['id'];
+        $notice = 'bid_created';
+        $file = $_FILES['attachment'] ?? null;
+        if (is_array($file) && (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $kind = trim((string) ($_POST['attachment_kind'] ?? 'Estimate'));
+            if (!array_key_exists($kind, BID_ESTIMATE_ATTACHMENT_KINDS)) {
+                $kind = 'Estimate';
+            }
+            $uploaded = bid_estimate_save_attachment($bidId, $file, $kind);
+            $notice = $uploaded['ok'] ? 'bid_created_with_file' : 'bid_created_file_failed';
+        }
+        header(
+            'Location: /procurement-bids/bid-edit.php?id=' . $bidId . '&notice=' . rawurlencode($notice),
+            true,
+            302
+        );
         exit;
     }
     $error = $result['error'];
@@ -63,9 +78,29 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form class="admin-form" method="post" action="/procurement-bids/bid-new.php?initiative_id=<?= $initiativeId ?>">
+      <form class="admin-form" method="post" enctype="multipart/form-data" action="/procurement-bids/bid-new.php?initiative_id=<?= $initiativeId ?>">
         <input type="hidden" name="initiative_id" value="<?= $initiativeId ?>" />
         <?php require dirname(__DIR__) . '/includes/bid-estimate-form.php'; ?>
+
+        <div class="form-grid" style="margin-top: 8px;">
+          <?php
+            $uploadFieldId = 'attachment';
+            $uploadLabel = 'Estimate / invoice file (optional)';
+            $uploadTitle = 'Drop, paste, or choose file';
+            $uploadHint = 'Drag a PDF or image here, paste a screenshot, or choose a file';
+            $uploadFormHint = 'You can also add more files after saving.';
+            require dirname(__DIR__) . '/includes/file-upload-dropzone-field.php';
+          ?>
+          <div class="form-group">
+            <label for="attachment_kind">Attachment type</label>
+            <select class="form-input" id="attachment_kind" name="attachment_kind">
+              <?php foreach (BID_ESTIMATE_ATTACHMENT_KINDS as $kind => $label): ?>
+              <option value="<?= htmlspecialchars($kind) ?>"><?= htmlspecialchars($label) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save Bid</button>
           <a class="btn-secondary" href="/procurement-bids/view.php?id=<?= $initiativeId ?>">Cancel</a>

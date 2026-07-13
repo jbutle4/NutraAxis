@@ -67,7 +67,11 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <?php if ($notice === 'bid_created'): ?>
-      <div class="admin-notice is-success" role="status">Bid created. Upload the estimate file below if available.</div>
+      <div class="admin-notice is-success" role="status">Bid created. Upload the estimate file below if needed.</div>
+      <?php elseif ($notice === 'bid_created_with_file'): ?>
+      <div class="admin-notice is-success" role="status">Bid created and estimate file uploaded.</div>
+      <?php elseif ($notice === 'bid_created_file_failed'): ?>
+      <div class="admin-notice is-error is-detail" role="alert">Bid was saved, but the file upload failed. Try uploading again below.</div>
       <?php elseif ($notice === 'bid_updated'): ?>
       <div class="admin-notice is-success" role="status">Bid updated.</div>
       <?php elseif ($notice === 'attachment'): ?>

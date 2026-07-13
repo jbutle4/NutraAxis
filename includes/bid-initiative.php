@@ -537,22 +537,23 @@ function bid_estimate_save(int $initiativeId, array $input, ?int $bidEstimateId 
                 VALUES (
                     :initiative_id, :supplier_id, :vendor_name, :contact_name, :contact_email, :contact_phone,
                     :bid_amount, :currency_code, :submitted_date, :valid_until, :notes, :status,
-                    :actor, :actor
+                    :created_by_user, :modified_by_user
                 )
             SQL);
-            $stmt->bindValue(':initiative_id', $params['initiative_id'], PDO::PARAM_INT);
-            $stmt->bindValue(':supplier_id', $params['supplier_id'], $params['supplier_id'] === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-            $stmt->bindValue(':vendor_name', $params['vendor_name']);
-            $stmt->bindValue(':contact_name', $params['contact_name']);
-            $stmt->bindValue(':contact_email', $params['contact_email']);
-            $stmt->bindValue(':contact_phone', $params['contact_phone']);
-            $stmt->bindValue(':bid_amount', $params['bid_amount']);
-            $stmt->bindValue(':currency_code', $params['currency_code']);
-            $stmt->bindValue(':submitted_date', $params['submitted_date']);
-            $stmt->bindValue(':valid_until', $params['valid_until']);
-            $stmt->bindValue(':notes', $params['notes']);
-            $stmt->bindValue(':status', $params['status']);
-            $stmt->bindValue(':actor', $params['actor'], $params['actor'] === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            db_bind_value($stmt, ':initiative_id', $params['initiative_id'], PDO::PARAM_INT);
+            db_bind_value($stmt, ':supplier_id', $params['supplier_id'], PDO::PARAM_INT);
+            db_bind_value($stmt, ':vendor_name', $params['vendor_name']);
+            db_bind_value($stmt, ':contact_name', $params['contact_name']);
+            db_bind_value($stmt, ':contact_email', $params['contact_email']);
+            db_bind_value($stmt, ':contact_phone', $params['contact_phone']);
+            db_bind_value($stmt, ':bid_amount', $params['bid_amount']);
+            db_bind_value($stmt, ':currency_code', $params['currency_code']);
+            db_bind_value($stmt, ':submitted_date', $params['submitted_date']);
+            db_bind_value($stmt, ':valid_until', $params['valid_until']);
+            db_bind_value($stmt, ':notes', $params['notes']);
+            db_bind_value($stmt, ':status', $params['status']);
+            db_bind_value($stmt, ':created_by_user', $params['actor'], PDO::PARAM_INT);
+            db_bind_value($stmt, ':modified_by_user', $params['actor'], PDO::PARAM_INT);
             $stmt->execute();
             $bidEstimateId = db_fetch_inserted_int($stmt, 'inserted_id');
         } else {
@@ -578,22 +579,22 @@ function bid_estimate_save(int $initiativeId, array $input, ?int $bidEstimateId 
                     Notes = :notes,
                     Status = :status,
                     ModifiedDate = SYSUTCDATETIME(),
-                    ModifiedByUser = :actor
+                    ModifiedByUser = :modified_by_user
                 WHERE BidEstimateID = :id
             SQL);
-            $stmt->bindValue(':supplier_id', $params['supplier_id'], $params['supplier_id'] === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-            $stmt->bindValue(':vendor_name', $params['vendor_name']);
-            $stmt->bindValue(':contact_name', $params['contact_name']);
-            $stmt->bindValue(':contact_email', $params['contact_email']);
-            $stmt->bindValue(':contact_phone', $params['contact_phone']);
-            $stmt->bindValue(':bid_amount', $params['bid_amount']);
-            $stmt->bindValue(':currency_code', $params['currency_code']);
-            $stmt->bindValue(':submitted_date', $params['submitted_date']);
-            $stmt->bindValue(':valid_until', $params['valid_until']);
-            $stmt->bindValue(':notes', $params['notes']);
-            $stmt->bindValue(':status', $params['status']);
-            $stmt->bindValue(':actor', $params['actor'], $params['actor'] === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-            $stmt->bindValue(':id', $bidEstimateId, PDO::PARAM_INT);
+            db_bind_value($stmt, ':supplier_id', $params['supplier_id'], PDO::PARAM_INT);
+            db_bind_value($stmt, ':vendor_name', $params['vendor_name']);
+            db_bind_value($stmt, ':contact_name', $params['contact_name']);
+            db_bind_value($stmt, ':contact_email', $params['contact_email']);
+            db_bind_value($stmt, ':contact_phone', $params['contact_phone']);
+            db_bind_value($stmt, ':bid_amount', $params['bid_amount']);
+            db_bind_value($stmt, ':currency_code', $params['currency_code']);
+            db_bind_value($stmt, ':submitted_date', $params['submitted_date']);
+            db_bind_value($stmt, ':valid_until', $params['valid_until']);
+            db_bind_value($stmt, ':notes', $params['notes']);
+            db_bind_value($stmt, ':status', $params['status']);
+            db_bind_value($stmt, ':modified_by_user', $params['actor'], PDO::PARAM_INT);
+            db_bind_value($stmt, ':id', $bidEstimateId, PDO::PARAM_INT);
             $stmt->execute();
         }
 
@@ -601,7 +602,7 @@ function bid_estimate_save(int $initiativeId, array $input, ?int $bidEstimateId 
     } catch (Throwable $e) {
         error_log('bid_estimate_save: ' . $e->getMessage());
 
-        return ['ok' => false, 'error' => 'Unable to save bid. Please try again.'];
+        return ['ok' => false, 'error' => 'Unable to save bid. ' . $e->getMessage()];
     }
 }
 
