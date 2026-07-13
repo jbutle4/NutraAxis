@@ -99,14 +99,15 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars($row['Category'] ?? '—') ?></td>
               <td><span class="status-badge <?= bid_initiative_status_class((string) $row['Status']) ?>"><?= htmlspecialchars($row['Status']) ?></span></td>
               <td><?= $row['BudgetAmount'] !== null ? htmlspecialchars(accounting_format_money($row['BudgetAmount'])) : '—' ?></td>
-              <td><?= htmlspecialchars(supplier_invoice_normalize_form_date($row['TargetAwardDate'] ?? null) ?: '—') ?></td>
+              <td><?= htmlspecialchars(accounting_format_date($row['TargetAwardDate'] ?? null)) ?></td>
               <td><?= htmlspecialchars(admin_format_datetime($row['ModifiedDate'] ?? null)) ?></td>
-              <td class="table-actions">
-                <a class="btn-text" href="/procurement-bids/view.php?id=<?= (int) $row['InitiativeID'] ?>">View</a>
-                <?php if (bid_can_update()): ?>
-                <a class="btn-text" href="/procurement-bids/edit.php?id=<?= (int) $row['InitiativeID'] ?>">Edit</a>
-                <?php endif; ?>
-              </td>
+              <?php
+              table_view_edit_cell(
+                  '/procurement-bids/view.php?id=' . (int) $row['InitiativeID'],
+                  '/procurement-bids/edit.php?id=' . (int) $row['InitiativeID'],
+                  bid_can_update()
+              );
+              ?>
             </tr>
             <?php endforeach; ?>
             <?php endif; ?>

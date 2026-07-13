@@ -124,9 +124,21 @@ function supplier_invoice_normalize_form_date(mixed $value): string
     }
 
     require_once __DIR__ . '/admin.php';
-    $text = admin_db_to_string($value);
+    $text = trim(admin_db_to_string($value));
+    if ($text === '') {
+        return '';
+    }
 
-    return strlen($text) >= 10 ? substr($text, 0, 10) : $text;
+    // SQL Server freestyle strings sometimes use ":AM"/":PM".
+    $normalized = preg_replace('/:([AaPp][Mm])\b/', ' $1', $text) ?? $text;
+
+    try {
+        return (new DateTimeImmutable($normalized))->format('Y-m-d');
+    } catch (Throwable) {
+        return strlen($text) >= 10 && preg_match('/^\d{4}-\d{2}-\d{2}/', $text) === 1
+            ? substr($text, 0, 10)
+            : '';
+    }
 }
 
 function supplier_invoice_reference(array $invoice): string

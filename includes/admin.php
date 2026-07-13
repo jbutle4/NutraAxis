@@ -50,18 +50,49 @@ const ADMIN_ROLES_LIST_SORT_SQL = [
     'description' => 'RoleDesc',
 ];
 
-function admin_format_datetime(?string $value): string
+function admin_db_to_string(mixed $value): string
+{
+    if ($value === null) {
+        return '';
+    }
+
+    if (is_string($value)) {
+        return $value;
+    }
+
+    if ($value instanceof DateTimeInterface) {
+        return $value->format('Y-m-d H:i:s');
+    }
+
+    if (is_resource($value) && get_resource_type($value) === 'stream') {
+        $contents = stream_get_contents($value);
+
+        return is_string($contents) ? $contents : '';
+    }
+
+    if (is_scalar($value)) {
+        return (string) $value;
+    }
+
+    return '';
+}
+
+function admin_format_datetime(DateTimeInterface|string|null $value): string
 {
     if ($value === null || $value === '') {
         return '—';
     }
 
     try {
-        $dt = new DateTimeImmutable($value);
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('M j, Y g:i A');
+        }
+
+        $dt = new DateTimeImmutable((string) $value);
 
         return $dt->format('M j, Y g:i A');
     } catch (Throwable) {
-        return $value;
+        return is_scalar($value) ? (string) $value : '—';
     }
 }
 

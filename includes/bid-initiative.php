@@ -180,8 +180,8 @@ function bid_initiative_list(array $filters = []): array
             i.Category,
             i.Status,
             i.BudgetAmount,
-            i.TargetAwardDate,
-            i.ModifiedDate,
+            CONVERT(varchar(10), i.TargetAwardDate, 23) AS TargetAwardDate,
+            CONVERT(varchar(19), i.ModifiedDate, 120) AS ModifiedDate,
             u.UserName AS OwnerName,
             (
                 SELECT COUNT(*)
