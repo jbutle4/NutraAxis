@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/bid-initiative.php';
-require dirname(__DIR__) . '/includes/accounting.php';
 
 bid_require_read();
 
