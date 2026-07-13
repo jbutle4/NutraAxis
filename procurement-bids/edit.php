@@ -14,6 +14,9 @@ if ($initiative === null) {
 $activeSlug = 'procurement-bids';
 $error = null;
 $form = bid_initiative_to_form($initiative);
+$bids = bid_estimate_list_for_initiative($initiativeId);
+$canAward = bid_can_update() && !in_array((string) $initiative['Status'], ['Cancelled', 'Closed'], true);
+$canAddBid = bid_can_create() && !in_array((string) $initiative['Status'], ['Awarded', 'Cancelled', 'Closed'], true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = bid_initiative_from_input($_POST);
@@ -44,6 +47,11 @@ require dirname(__DIR__) . '/includes/header.php';
           <h1>Edit <?= htmlspecialchars($initiative['InitiativeNumber']) ?></h1>
           <p class="page-lead"><?= htmlspecialchars($initiative['Title']) ?></p>
         </div>
+        <?php if ($canAddBid): ?>
+        <div class="admin-actions">
+          <a class="btn-primary" href="/procurement-bids/bid-new.php?initiative_id=<?= $initiativeId ?>">Add Bid</a>
+        </div>
+        <?php endif; ?>
       </div>
 
       <?php if ($error !== null): ?>
@@ -58,6 +66,11 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/procurement-bids/view.php?id=<?= $initiativeId ?>">Cancel</a>
         </div>
       </form>
+
+      <?php
+      $bidsSectionFollow = true;
+      require dirname(__DIR__) . '/includes/bid-initiative-bids-section.php';
+      ?>
     </div>
   </main>
 <?php require dirname(__DIR__) . '/includes/footer.php'; ?>

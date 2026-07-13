@@ -1293,6 +1293,27 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-bottom: 16px;
 }
 
+.detail-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.detail-card-header h2 {
+  margin-bottom: 4px;
+}
+
+.detail-card-header .form-hint {
+  margin: 0;
+}
+
+.detail-card--follow {
+  margin-top: 28px;
+}
+
 .jazz-order-lines {
   margin-top: 24px;
 }

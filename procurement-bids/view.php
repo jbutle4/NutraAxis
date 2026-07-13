@@ -15,6 +15,7 @@ $activeSlug = 'procurement-bids';
 $bids = bid_estimate_list_for_initiative($initiativeId);
 $notice = $_GET['notice'] ?? null;
 $canAward = bid_can_update() && !in_array((string) $initiative['Status'], ['Cancelled', 'Closed'], true);
+$canAddBid = bid_can_create() && !in_array((string) $initiative['Status'], ['Awarded', 'Cancelled', 'Closed'], true);
 
 $pageTitle = $initiative['InitiativeNumber'] . ' | Initiatives & Bids';
 $pageDescription = 'Initiative details and supplier bid estimates.';
@@ -46,7 +47,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php if (bid_can_update()): ?>
           <a class="btn-secondary" href="/procurement-bids/edit.php?id=<?= $initiativeId ?>">Edit Initiative</a>
           <?php endif; ?>
-          <?php if (bid_can_create() && !in_array((string) $initiative['Status'], ['Awarded', 'Cancelled', 'Closed'], true)): ?>
+          <?php if ($canAddBid): ?>
           <a class="btn-primary" href="/procurement-bids/bid-new.php?initiative_id=<?= $initiativeId ?>">Add Bid</a>
           <?php endif; ?>
         </div>
@@ -72,55 +73,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
       <?php endif; ?>
 
-      <section class="detail-card">
-        <h2>Bids / Estimates</h2>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Amount</th>
-                <th>Submitted</th>
-                <th>Status</th>
-                <th>Files</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if ($bids === []): ?>
-              <tr><td colspan="6">No bids yet. Add supplier estimates to compare and award.</td></tr>
-              <?php else: ?>
-              <?php foreach ($bids as $bid): ?>
-              <tr>
-                <td>
-                  <?= htmlspecialchars($bid['VendorName']) ?>
-                  <?php if (!empty($bid['SupplierCode'])): ?>
-                  <div class="form-hint"><?= htmlspecialchars($bid['SupplierCode']) ?></div>
-                  <?php endif; ?>
-                </td>
-                <td><?= htmlspecialchars(accounting_format_money($bid['BidAmount'])) ?> <?= htmlspecialchars($bid['CurrencyCode'] ?? 'USD') ?></td>
-                <td><?= htmlspecialchars(supplier_invoice_normalize_form_date($bid['SubmittedDate'] ?? null) ?: '—') ?></td>
-                <td><span class="status-badge <?= bid_estimate_status_class((string) $bid['Status']) ?>"><?= htmlspecialchars($bid['Status']) ?></span></td>
-                <td><?= (int) $bid['AttachmentCount'] ?></td>
-                <td class="table-actions">
-                  <a class="btn-text" href="/procurement-bids/bid-edit.php?id=<?= (int) $bid['BidEstimateID'] ?>">Open</a>
-                  <?php if ($canAward && (string) $bid['Status'] !== 'Selected' && (string) $bid['Status'] !== 'Withdrawn'): ?>
-                  <form method="post" action="/procurement-bids/award.php" class="inline-form" onsubmit="return confirm('Award this bid? This creates or links a Supplier and a Draft/Estimate Supplier Invoice. No payment request will be created.');">
-                    <input type="hidden" name="bid_id" value="<?= (int) $bid['BidEstimateID'] ?>" />
-                    <button type="submit" class="btn-text">Select / Award</button>
-                  </form>
-                  <?php endif; ?>
-                  <?php if (!empty($bid['AwardedSupplierInvoiceID'])): ?>
-                  <a class="btn-text" href="/accounting/supplier-invoices/view.php?id=<?= (int) $bid['AwardedSupplierInvoiceID'] ?>">Invoice</a>
-                  <?php endif; ?>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <?php require dirname(__DIR__) . '/includes/bid-initiative-bids-section.php'; ?>
     </div>
   </main>
 <?php require dirname(__DIR__) . '/includes/footer.php'; ?>
