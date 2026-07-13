@@ -7,6 +7,51 @@ require_once __DIR__ . '/provider-signup-crypto.php';
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 
+/** @var ?string */
+$providerSignupAccsRecaptchaToken = null;
+
+function provider_signup_accs_set_recaptcha_token(?string $token): void
+{
+    global $providerSignupAccsRecaptchaToken;
+    $token = trim((string) $token);
+    $providerSignupAccsRecaptchaToken = $token !== '' ? $token : null;
+}
+
+function provider_signup_accs_recaptcha_token(): ?string
+{
+    global $providerSignupAccsRecaptchaToken;
+    if ($providerSignupAccsRecaptchaToken !== null) {
+        return $providerSignupAccsRecaptchaToken;
+    }
+
+    $envToken = trim((string) env('ADOBE_COMMERCE_RECAPTCHA_TOKEN', ''));
+
+    return $envToken !== '' ? $envToken : null;
+}
+
+function provider_signup_accs_recaptcha_site_key(): string
+{
+    return trim((string) env('ADOBE_COMMERCE_RECAPTCHA_SITE_KEY', ''));
+}
+
+function provider_signup_accs_recaptcha_version(): string
+{
+    $version = strtolower(trim((string) env('ADOBE_COMMERCE_RECAPTCHA_VERSION', 'v2')));
+
+    return $version === 'v3' ? 'v3' : 'v2';
+}
+
+function provider_signup_accs_recaptcha_required_for_request(string $method, string $path): bool
+{
+    if (strtoupper($method) !== 'POST') {
+        return false;
+    }
+
+    $path = '/' . ltrim(strtolower($path), '/');
+
+    return in_array($path, ['/customers', '/company', '/company/setcustomattributes'], true);
+}
+
 function provider_signup_accs_target_environment(): string
 {
     return strtolower(trim((string) env('PROVIDER_SIGNUP_ACCS_ENVIRONMENT', 'stage')));
@@ -55,6 +100,15 @@ function provider_signup_accs_api_base_url(): string
 function provider_signup_accs_format_api_error(array $result): string
 {
     $message = (string) ($result['error'] ?? 'Adobe Commerce request failed.');
+    if (stripos($message, 'recaptcha') !== false) {
+        $hint = ' ACCS requires a valid reCAPTCHA token for this API call.';
+        if (provider_signup_accs_recaptcha_site_key() === '' && provider_signup_accs_recaptcha_token() === null) {
+            $hint .= ' Add ADOBE_COMMERCE_RECAPTCHA_SITE_KEY to Azure app settings using the Google API Website Key from ACCS Stores > Security > Google reCAPTCHA (reCAPTCHA v2 Invisible).';
+        }
+
+        return $message . $hint;
+    }
+
     $parameters = $result['data']['parameters'] ?? null;
     if (!is_array($parameters)) {
         return $message;
@@ -138,6 +192,11 @@ function provider_signup_accs_api_request(string $method, string $path, ?array $
 
     if ($body !== null) {
         $curlOptions[CURLOPT_POSTFIELDS] = json_encode($body, JSON_THROW_ON_ERROR);
+    }
+
+    $recaptchaToken = provider_signup_accs_recaptcha_token();
+    if ($recaptchaToken !== null && provider_signup_accs_recaptcha_required_for_request($method, $path)) {
+        $curlOptions[CURLOPT_HTTPHEADER][] = 'X-ReCaptcha: ' . $recaptchaToken;
     }
 
     curl_setopt_array($ch, $curlOptions);

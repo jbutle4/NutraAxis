@@ -554,7 +554,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
     return ['ok' => true, 'error' => null];
 }
 
-function provider_signup_ops_provision(int $applicationId): array
+function provider_signup_ops_provision(int $applicationId, ?string $recaptchaToken = null): array
 {
     provider_signup_require_update();
     $application = provider_signup_get($applicationId);
@@ -568,11 +568,17 @@ function provider_signup_ops_provision(int $applicationId): array
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
 
-    return provider_signup_finalize_provision(
-        $applicationId,
-        $reviewerId > 0 ? $reviewerId : null,
-        'ACCS company created by operations reviewer.'
-    );
+    provider_signup_accs_set_recaptcha_token($recaptchaToken);
+
+    try {
+        return provider_signup_finalize_provision(
+            $applicationId,
+            $reviewerId > 0 ? $reviewerId : null,
+            'ACCS company created by operations reviewer.'
+        );
+    } finally {
+        provider_signup_accs_set_recaptcha_token(null);
+    }
 }
 
 function provider_signup_persist_form(int $applicationId, array $form, bool $submitting): array

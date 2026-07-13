@@ -84,7 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
             }
             exit;
         case 'provision':
-            $result = provider_signup_ops_provision($applicationId);
+            $recaptchaToken = trim((string) ($_POST['accs_recaptcha_token'] ?? ''));
+            $result = provider_signup_ops_provision(
+                $applicationId,
+                $recaptchaToken !== '' ? $recaptchaToken : null
+            );
             if ($result['ok']) {
                 $suffix = !empty($result['already']) ? 'notice=already_provisioned' : 'notice=provisioned';
                 header('Location: ' . $redirect . '&' . $suffix, true, 302);
@@ -330,9 +334,20 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </section>
       </div>
 
-      <?php if ($canUpdate): ?>
-      <form class="admin-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+      <?php
+      $accsRecaptchaSiteKey = provider_signup_accs_recaptcha_site_key();
+      $accsRecaptchaVersion = provider_signup_accs_recaptcha_version();
+      if ($canUpdate):
+      ?>
+      <form class="admin-form" id="signup-review-actions" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+        <?php if ($canProvision && $accsRecaptchaSiteKey !== ''): ?>
+        <input type="hidden" name="accs_recaptcha_token" id="accs_recaptcha_token" value="">
+        <div id="accs-recaptcha-anchor" style="display:none" aria-hidden="true"></div>
+        <?php endif; ?>
         <h2 class="admin-form-subhead">Reviewer actions</h2>
+        <?php if ($canProvision && $accsRecaptchaSiteKey === ''): ?>
+        <p class="form-hint">ACCS requires reCAPTCHA when creating a new customer account. Add <code>ADOBE_COMMERCE_RECAPTCHA_SITE_KEY</code> to Azure app settings using the <strong>Google API Website Key</strong> from ACCS Stores &gt; Security &gt; Google reCAPTCHA &gt; reCAPTCHA v2 Invisible.</p>
+        <?php endif; ?>
         <div class="form-group">
           <label for="comments">Comments / return notes</label>
           <textarea class="form-input form-textarea" id="comments" name="comments" rows="4"></textarea>
@@ -363,6 +378,104 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </div>
         <?php endif; ?>
       </form>
+      <?php if ($canProvision && $accsRecaptchaSiteKey !== ''): ?>
+      <?php if ($accsRecaptchaVersion === 'v3'): ?>
+      <script src="https://www.google.com/recaptcha/api.js?render=<?= htmlspecialchars($accsRecaptchaSiteKey) ?>"></script>
+      <script>
+      (function () {
+        var form = document.getElementById('signup-review-actions');
+        var siteKey = <?= json_encode($accsRecaptchaSiteKey, JSON_THROW_ON_ERROR) ?>;
+        if (!form || !siteKey || typeof grecaptcha === 'undefined') {
+          return;
+        }
+
+        form.addEventListener('submit', function (event) {
+          if (form.dataset.recaptchaDone === '1') {
+            form.dataset.recaptchaDone = '0';
+            return;
+          }
+
+          var submitter = event.submitter;
+          if (!submitter || submitter.name !== 'action' || submitter.value !== 'provision') {
+            return;
+          }
+
+          event.preventDefault();
+          grecaptcha.ready(function () {
+            grecaptcha.execute(siteKey, { action: 'create_customer' }).then(function (token) {
+              document.getElementById('accs_recaptcha_token').value = token;
+              form.dataset.recaptchaDone = '1';
+              submitter.click();
+            }).catch(function () {
+              window.alert('Unable to verify reCAPTCHA. Please try again.');
+            });
+          });
+        });
+      }());
+      </script>
+      <?php else: ?>
+      <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+      <script>
+      (function () {
+        var form = document.getElementById('signup-review-actions');
+        var siteKey = <?= json_encode($accsRecaptchaSiteKey, JSON_THROW_ON_ERROR) ?>;
+        var widgetId = null;
+        var pendingSubmitter = null;
+
+        if (!form || !siteKey) {
+          return;
+        }
+
+        function submitWithToken(token) {
+          var tokenInput = document.getElementById('accs_recaptcha_token');
+          if (tokenInput) {
+            tokenInput.value = token;
+          }
+          form.dataset.recaptchaDone = '1';
+          if (pendingSubmitter) {
+            pendingSubmitter.click();
+          }
+        }
+
+        function ensureWidget(callback) {
+          if (typeof grecaptcha === 'undefined') {
+            window.alert('Unable to load reCAPTCHA. Please refresh and try again.');
+            return;
+          }
+
+          grecaptcha.ready(function () {
+            if (widgetId === null) {
+              widgetId = grecaptcha.render('accs-recaptcha-anchor', {
+                sitekey: siteKey,
+                size: 'invisible',
+                callback: submitWithToken
+              });
+            }
+            callback();
+          });
+        }
+
+        form.addEventListener('submit', function (event) {
+          if (form.dataset.recaptchaDone === '1') {
+            form.dataset.recaptchaDone = '0';
+            return;
+          }
+
+          var submitter = event.submitter;
+          if (!submitter || submitter.name !== 'action' || submitter.value !== 'provision') {
+            return;
+          }
+
+          event.preventDefault();
+          pendingSubmitter = submitter;
+          ensureWidget(function () {
+            grecaptcha.execute(widgetId);
+          });
+        });
+      }());
+      </script>
+      <?php endif; ?>
+      <?php endif; ?>
       <?php endif; ?>
 
       <section class="admin-table-wrap" style="margin-top: 2rem;">
