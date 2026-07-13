@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/includes/delivery-appointment.php';
 das_require_read();
 
 $activeSlug = 'delivery-scheduling-log';
+$hubBack = app_module_hub_back_link('delivery-scheduling-log');
 $pageContainerClass = 'page-inner--wide';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
@@ -17,7 +18,7 @@ $notice = $_GET['notice'] ?? null;
 $emailNotice = $_GET['email_notice'] ?? null;
 $emailError = isset($_GET['email_error']) ? (string) $_GET['email_error'] : null;
 
-$pageTitle = 'Delivery Scheduling Log | Supply Chain Management';
+$pageTitle = 'Delivery Scheduling Log | Inbound & Receiving';
 $pageDescription = 'Track inbound delivery appointments and scheduling updates.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -25,11 +26,11 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="/inventory-management/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">

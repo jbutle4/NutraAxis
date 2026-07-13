@@ -21,24 +21,25 @@ $skus = catalog_list_skus([
 $notice = $_GET['notice'] ?? null;
 $actionHeader = table_actions_header(catalog_can_update() ? ['View', 'Edit'] : ['View']);
 
-$pageTitle = 'Product SKU Master | Inventory Management';
+$pageTitle = 'Product SKU Master | Product Master';
 $pageDescription = 'View and manage the master product catalog and SKU reference data.';
+$hubBack = app_module_hub_back_link('product-catalog');
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Operations Home
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">
         <div>
-          <div class="section-label">Inventory</div>
+          <div class="section-label">Master Data</div>
           <h1>Product SKU Master</h1>
           <p class="page-lead">Maintain SKU codes, product attributes, pricing, and catalog data used across NutraAxis operations.</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(catalog_permission_value())) ?></p>

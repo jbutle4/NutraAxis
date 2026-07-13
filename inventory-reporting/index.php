@@ -1,14 +1,22 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reporting.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
 
 inventory_reporting_require_read();
 
-$activeSlug = 'inventory-reporting';
+$activeSlug = $activeSlug ?? 'inventory-reporting';
+$listPath = data_profile_page_path('/inventory-reporting');
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_inventory() : ['ok' => true, 'error' => null, 'rows' => []];
+if ($configError === null && ($listResult['ok'] ?? false) && ($listResult['rows'] ?? []) !== []) {
+    $listResult['rows'] = inventory_reporting_enrich_product_names($listResult['rows']);
+}
 $inventorySortColumns = [
     'sku_code'           => 'SKU',
+    'product_name'       => 'Product',
     'facility_code'      => 'Facility',
     'available_quantity' => 'Available',
     'on_hand_quantity'   => 'On hand',
@@ -18,6 +26,7 @@ $inventorySortColumns = [
 $listFilters = table_sort_state($inventorySortColumns, 'sku_code', 'asc', $_GET);
 $inventorySortAccessors = [
     'sku_code'           => fn(array $row): string => (string) ($row['sku_code'] ?? ''),
+    'product_name'       => fn(array $row): string => (string) ($row['product_name'] ?? ''),
     'facility_code'      => fn(array $row): string => (string) ($row['facility_code'] ?? ''),
     'available_quantity' => fn(array $row) => $row['available_quantity'] ?? 0,
     'on_hand_quantity'   => fn(array $row) => $row['on_hand_quantity'] ?? 0,
@@ -35,7 +44,7 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
     );
 }
 
-$pageTitle = 'Jazz Current Inventory | Supply Chain Management';
+$pageTitle = 'Jazz Current Inventory | Inventory Management';
 $pageDescription = 'View stock on hand and availability from Jazz OMS.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -47,7 +56,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        Back to Inventory Management
       </a>
 
       <div class="admin-header">
@@ -67,7 +76,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="status-banner">
         <div>
           <strong>Jazz OMS connected</strong>
-          <p><?= count($listResult['rows']) ?> inventory record<?= count($listResult['rows']) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?></p>
+          <p><?= count($listResult['rows']) ?> inventory record<?= count($listResult['rows']) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?> · <?= htmlspecialchars(jazz_oms_data_source_label()) ?></p>
         </div>
       </div>
 
@@ -76,7 +85,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $inventorySortColumns,
-                '/inventory-reporting',
+                $listPath,
                 $listFilters,
                 [],
                 ['available_quantity', 'on_hand_quantity', 'qty_ordered', 'total_quantity'],
@@ -86,11 +95,12 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?>
-            <tr><td colspan="6">No inventory records returned from Jazz OMS.</td></tr>
+            <tr><td colspan="7">No inventory records returned from Jazz OMS.</td></tr>
             <?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>
             <tr>
               <td><?= htmlspecialchars((string) ($row['sku_code'] ?? '')) ?></td>
+              <td><?= htmlspecialchars(trim((string) ($row['product_name'] ?? '')) !== '' ? (string) $row['product_name'] : '—') ?></td>
               <td><?= htmlspecialchars((string) ($row['facility_code'] ?? '—')) ?></td>
               <td><?= htmlspecialchars(jazz_oms_format_quantity($row['available_quantity'] ?? null)) ?></td>
               <td><?= htmlspecialchars(jazz_oms_format_quantity($row['on_hand_quantity'] ?? null)) ?></td>

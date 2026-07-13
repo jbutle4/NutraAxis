@@ -1,26 +1,35 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accs-inventory-reporting.php';
+
+adobe_commerce_use_environment(data_profile_is_uat() ? 'stage' : 'production');
 
 accs_inventory_reporting_require_read();
 
-$activeSlug = 'accs-inventory-reporting';
+$activeSlug = $activeSlug ?? 'accs-inventory-reporting';
+$listPath = data_profile_page_path('/accs-inventory-reporting');
 $configError = adobe_commerce_config_error();
 $listResult = $configError === null
     ? adobe_commerce_list_inventory()
     : ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
+if ($configError === null && ($listResult['ok'] ?? false) && ($listResult['rows'] ?? []) !== []) {
+    $listResult['rows'] = inventory_reporting_enrich_product_names($listResult['rows']);
+}
 $accsSortColumns = [
-    'sku'      => 'SKU',
-    'source'   => 'Source',
-    'quantity' => 'Quantity',
-    'status'   => 'Status',
+    'sku'          => 'SKU',
+    'product_name' => 'Product',
+    'source'       => 'Source',
+    'quantity'     => 'Quantity',
+    'status'       => 'Status',
 ];
 $listFilters = table_sort_state($accsSortColumns, 'sku', 'asc', $_GET);
 $accsSortAccessors = [
-    'sku'      => fn(array $row): string => (string) ($row['sku'] ?? ''),
-    'source'   => fn(array $row): string => (string) ($row['source_code'] ?? ''),
-    'quantity' => fn(array $row) => $row['quantity'] ?? 0,
-    'status'   => fn(array $row): string => adobe_commerce_source_item_status_label($row['status'] ?? 0),
+    'sku'          => fn(array $row): string => (string) ($row['sku'] ?? ''),
+    'product_name' => fn(array $row): string => (string) ($row['product_name'] ?? ''),
+    'source'       => fn(array $row): string => (string) ($row['source_code'] ?? ''),
+    'quantity'     => fn(array $row) => $row['quantity'] ?? 0,
+    'status'       => fn(array $row): string => adobe_commerce_source_item_status_label($row['status'] ?? 0),
 ];
 if ($configError === null && ($listResult['rows'] ?? []) !== []) {
     $listResult['rows'] = table_sort_rows(
@@ -33,7 +42,7 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
     );
 }
 
-$pageTitle = 'ACCS Inventory Reporting | Inventory Management';
+$pageTitle = 'ACCS Current Inventory | Inventory Management';
 $pageDescription = 'View stock levels by SKU and source from Adobe Commerce (ACCS).';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -51,7 +60,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Inventory</div>
-          <h1>ACCS Inventory Reporting</h1>
+          <h1>ACCS Current Inventory</h1>
           <p class="page-lead">Live inventory by SKU and source from Adobe Commerce (ACCS).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(accs_inventory_reporting_permission_value())) ?></p>
         </div>
@@ -74,7 +83,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $accsSortColumns,
-                '/accs-inventory-reporting',
+                $listPath,
                 $listFilters,
                 [],
                 ['quantity'],
@@ -84,11 +93,12 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?>
-            <tr><td colspan="4">No inventory records returned from Adobe Commerce.</td></tr>
+            <tr><td colspan="5">No inventory records returned from Adobe Commerce.</td></tr>
             <?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>
             <tr>
               <td><?= htmlspecialchars((string) ($row['sku'] ?? '')) ?></td>
+              <td><?= htmlspecialchars(trim((string) ($row['product_name'] ?? '')) !== '' ? (string) $row['product_name'] : '—') ?></td>
               <td><?= htmlspecialchars((string) ($row['source_code'] ?? '—')) ?></td>
               <td><?= htmlspecialchars(adobe_commerce_format_quantity($row['quantity'] ?? null)) ?></td>
               <td><span class="status-badge <?= adobe_commerce_source_item_status_class($row['status'] ?? 0) ?>"><?= htmlspecialchars(adobe_commerce_source_item_status_label($row['status'] ?? 0)) ?></span></td>

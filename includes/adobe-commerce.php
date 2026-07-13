@@ -20,8 +20,23 @@ const ADOBE_COMMERCE_ENVIRONMENTS = [
     ],
 ];
 
+function adobe_commerce_use_environment(string $environment): void
+{
+    $environment = strtolower(trim($environment));
+    if (!array_key_exists($environment, ADOBE_COMMERCE_ENVIRONMENTS)) {
+        return;
+    }
+
+    $GLOBALS['_adobe_commerce_environment_override'] = $environment;
+}
+
 function adobe_commerce_environment(): string
 {
+    $override = strtolower(trim((string) ($GLOBALS['_adobe_commerce_environment_override'] ?? '')));
+    if ($override !== '' && array_key_exists($override, ADOBE_COMMERCE_ENVIRONMENTS)) {
+        return $override;
+    }
+
     $env = strtolower(trim((string) env('ADOBE_COMMERCE_ENVIRONMENT', 'stage')));
 
     return array_key_exists($env, ADOBE_COMMERCE_ENVIRONMENTS) ? $env : 'stage';

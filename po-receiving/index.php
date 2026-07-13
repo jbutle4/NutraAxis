@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/includes/po-receiving.php';
 por_require_read();
 
 $activeSlug = 'po-receiving';
+$hubBack = app_module_hub_back_link('po-receiving');
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
 $listFilters = [
@@ -14,7 +15,7 @@ $listFilters = [
 $receipts = por_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'PO Receiving | Supply Chain Management';
+$pageTitle = 'PO Receiving | Inbound & Receiving';
 $pageDescription = 'Advanced shipping notices and purchase order receiving.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -22,11 +23,11 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">

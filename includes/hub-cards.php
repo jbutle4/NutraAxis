@@ -8,17 +8,76 @@ function hub_render_capability_cards(array $items, string $cardClass = 'capabili
     $hasProduction = $sections['production'] !== [];
     $hasUat = $sections['uat'] !== [];
 
-    if ($hasProduction) {
-        if ($hasUat) {
-            echo '<h2 class="hub-section-title hub-production-section-title">Production Systems</h2>';
-        }
-        hub_render_card_grid($sections['production'], $cardClass, $gridClass);
+    if (!$hasProduction && !$hasUat) {
+        return;
     }
 
-    if ($hasUat) {
-        echo '<h2 class="hub-uat-section-title">UAT / Test Systems</h2>';
-        hub_render_card_grid($sections['uat'], $cardClass, $gridClass);
+    if ($hasProduction && !$hasUat) {
+        hub_render_card_grid($sections['production'], $cardClass, $gridClass);
+        return;
     }
+
+    if (!$hasProduction && $hasUat) {
+        hub_render_expandable_section(
+            'uat',
+            'UAT',
+            'Test and sandbox systems — Jazz UAT and ACCS Stage.',
+            $sections['uat'],
+            $cardClass,
+            $gridClass,
+            false
+        );
+        return;
+    }
+
+    echo '<div class="portal-function-groups hub-env-groups">';
+    hub_render_expandable_section(
+        'production',
+        'Production',
+        'Live Jazz OMS and Adobe Commerce systems.',
+        $sections['production'],
+        $cardClass,
+        $gridClass,
+        true
+    );
+    hub_render_expandable_section(
+        'uat',
+        'UAT',
+        'Test and sandbox systems — Jazz UAT and ACCS Stage.',
+        $sections['uat'],
+        $cardClass,
+        $gridClass,
+        false
+    );
+    echo '</div>';
+}
+
+/**
+ * @param list<array<string, mixed>> $items
+ */
+function hub_render_expandable_section(
+    string $key,
+    string $title,
+    string $desc,
+    array $items,
+    string $cardClass,
+    string $gridClass,
+    bool $openByDefault
+): void {
+    $panelId = 'hub-env-panel-' . $key;
+    echo '<details class="portal-function-group portal-function-group--' . htmlspecialchars($key)
+        . ' hub-env-group hub-env-group--' . htmlspecialchars($key) . '"'
+        . ($openByDefault ? ' open' : '') . '>';
+    echo '<summary class="portal-function-group__summary" aria-controls="' . htmlspecialchars($panelId) . '">';
+    echo '<span class="portal-function-group__header">';
+    echo '<span class="portal-function-group__title">' . htmlspecialchars($title) . '</span>';
+    echo '<span class="portal-function-group__desc">' . htmlspecialchars($desc) . '</span>';
+    echo '</span>';
+    echo '<span class="portal-function-group__toggle" aria-hidden="true">Expand</span>';
+    echo '</summary>';
+    echo '<div class="portal-function-group__panel" id="' . htmlspecialchars($panelId) . '">';
+    hub_render_card_grid($items, $cardClass, $gridClass);
+    echo '</div></details>';
 }
 
 function hub_render_function_cards(array $items): void

@@ -1,10 +1,15 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/jazz-item-master.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
 
 jazz_item_master_require_read();
 
-$activeSlug = 'jazz-item-master';
+$activeSlug = $activeSlug ?? 'jazz-item-master';
+$listPath = data_profile_page_path('/jazz-item-master');
+$listPathSlash = data_profile_page_path('/jazz-item-master/');
 $pageContainerClass = 'page-inner--wide';
 $view = jazz_item_master_view_from_query();
 $search = trim($_GET['q'] ?? '');
@@ -29,19 +34,20 @@ if ($rows !== [] && $sortAccessors !== []) {
     $rows = table_sort_rows($rows, $listFilters, $sortAccessors, [], $defaultSortColumn, 'asc');
 }
 
-$pageTitle = 'Jazz Item Master | Supply Chain Management';
+$pageTitle = 'Jazz Item Master | Product Master';
 $pageDescription = 'SKU and item reference data from Jazz OMS.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="/inventory-management/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">
@@ -54,11 +60,11 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <nav class="admin-nav" aria-label="Jazz Item Master views">
-        <a href="/jazz-item-master/?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'sku', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'sku' ? 'is-active' : '' ?>">SKUs</a>
-        <a href="/jazz-item-master/?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'item', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'item' ? 'is-active' : '' ?>">Items</a>
+        <a href="<?= htmlspecialchars($listPathSlash) ?>?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'sku', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'sku' ? 'is-active' : '' ?>">SKUs</a>
+        <a href="<?= htmlspecialchars($listPathSlash) ?>?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'item', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'item' ? 'is-active' : '' ?>">Items</a>
       </nav>
 
-      <form class="po-filter audit-filter" method="get" action="/jazz-item-master/">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($listPathSlash) ?>">
         <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>" />
         <?php table_sort_hidden_inputs($listFilters, $defaultSortColumn, 'asc'); ?>
         <div class="audit-filter-grid">
@@ -70,7 +76,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Search</button>
           <?php if ($search !== ''): ?>
-          <a class="btn-secondary" href="/jazz-item-master/?view=<?= rawurlencode($view) ?>">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPathSlash) ?>?view=<?= rawurlencode($view) ?>">Clear</a>
           <?php endif; ?>
         </div>
       </form>
@@ -90,6 +96,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php endif; ?>
             · <?= count($listResult['rows'] ?? []) ?> total loaded from <?= htmlspecialchars(jazz_oms_base_url() . ($listResult['endpoint'] ?? '')) ?>
             · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?>
+            · <?= htmlspecialchars(jazz_oms_data_source_label()) ?>
           </p>
         </div>
       </div>
@@ -105,7 +112,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php table_sort_render_th(
                   $column,
                   jazz_oms_field_label($column),
-                  '/jazz-item-master',
+                  $listPath,
                   $sortColumnDefs,
                   $listFilters,
                   ['view', 'q'],

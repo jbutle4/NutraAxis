@@ -1,12 +1,16 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+
 por_require_read();
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'jazz-asns';
+$jazzAsnsPath = data_profile_page_path('/po-receiving/jazz-asns.php');
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_asns() : ['ok' => true, 'error' => null, 'rows' => []];
 $rows = $listResult['rows'] ?? [];
@@ -36,19 +40,20 @@ $notice = $_GET['notice'] ?? null;
 $transmittedPorId = (int) ($_GET['por_id'] ?? 0);
 $transmittedReceipt = $transmittedPorId > 0 ? por_get($transmittedPorId) : null;
 
-$pageTitle = 'Jazz ASNs | PO Receiving';
+$pageTitle = 'Jazz ASNs | Inbound & Receiving';
 $pageDescription = 'Advanced shipping notices currently in Jazz OMS.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to PO Receiving
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">
@@ -83,7 +88,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="status-banner">
         <div>
           <strong>Jazz OMS connected</strong>
-          <p><?= count($rows) ?> ASN record<?= count($rows) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url() . por_asn_endpoint()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?></p>
+          <p><?= count($rows) ?> ASN record<?= count($rows) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url() . por_asn_endpoint()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?> · <?= htmlspecialchars(jazz_oms_data_source_label()) ?></p>
         </div>
       </div>
 
@@ -100,7 +105,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php table_sort_render_th(
                   $column,
                   jazz_oms_asn_column_label($column),
-                  '/po-receiving/jazz-asns.php',
+                  $jazzAsnsPath,
                   $asnSortColumns,
                   $listFilters,
                   [],

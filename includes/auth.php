@@ -13,6 +13,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'inventory-reconciliation'   => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
+    'jazz-order-report'      => 'SalesReporting',
     'sales-daily-summary'    => 'SalesReporting',
     'sales-monthly-summary'  => 'SalesReporting',
     'inventory-forecasting'  => 'InventoryForecasting',
@@ -34,6 +35,13 @@ const MODULE_PERMISSION_COLUMNS = [
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
     'signup-review'          => 'ProviderAccountReview',
+    'inventory-reporting-uat'      => 'InventoryReporting',
+    'jazz-item-master-uat'         => 'InventoryReporting',
+    'accs-inventory-reporting-uat' => 'InventoryReporting',
+    'inventory-reconciliation-uat' => 'InventoryReporting',
+    'jazz-asns-uat'                => 'POManagement',
+    'accs-order-report-uat'        => 'SalesReporting',
+    'jazz-order-report-uat'        => 'SalesReporting',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [

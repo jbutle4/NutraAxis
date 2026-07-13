@@ -1,10 +1,15 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reconciliation.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+adobe_commerce_use_environment(data_profile_is_uat() ? 'stage' : 'production');
 
 inventory_reconciliation_require_read();
 
-$activeSlug = 'inventory-reconciliation';
+$activeSlug = $activeSlug ?? 'inventory-reconciliation';
+$listPath = data_profile_page_path('/inventory-reconciliation');
 
 $jazzConfigError = jazz_oms_config_error();
 $accsConfigError = adobe_commerce_config_error();
@@ -104,6 +109,8 @@ require dirname(__DIR__) . '/includes/header.php';
             · <?= count($jazzResult['rows'] ?? []) ?> Jazz record<?= count($jazzResult['rows'] ?? []) === 1 ? '' : 's' ?>
             · <?= count($accsResult['rows'] ?? []) ?> ACCS record<?= count($accsResult['rows'] ?? []) === 1 ? '' : 's' ?>
             · <?= $mismatchCount ?> mismatch<?= $mismatchCount === 1 ? '' : 'es' ?> (Jazz available vs ACCS quantity)
+            · Jazz <?= htmlspecialchars(jazz_oms_base_url()) ?> (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>)
+            · ACCS <?= htmlspecialchars(adobe_commerce_base_url()) ?> (<?= htmlspecialchars(adobe_commerce_environment()) ?>)
           </p>
         </div>
       </div>
@@ -113,7 +120,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $reconSortColumns,
-                '/inventory-reconciliation',
+                $listPath,
                 $listFilters,
                 [],
                 ['available', 'on_hand', 'ordered', 'total', 'accs_qty'],

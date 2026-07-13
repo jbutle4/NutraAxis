@@ -29,7 +29,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        Back to Inventory Management
       </a>
 
       <div class="page-hero">
@@ -150,7 +150,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </section>
 
       <div class="module-actions">
-        <a class="btn-secondary" href="/inventory-management/">All Supply Chain Applications</a>
+        <a class="btn-secondary" href="/inventory-management/">All Inventory Applications</a>
         <?php if (auth_can_read(MODULE_PERMISSION_COLUMNS['process-log'] ?? '')): ?>
         <a class="btn-secondary" href="/process-log/">Process Log</a>
         <?php endif; ?>
