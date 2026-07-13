@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
-require dirname(__DIR__, 2) . '/includes/accounting.php';
-require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
+require_once dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 
 supplier_invoice_require_delete();
 

@@ -816,14 +816,67 @@ function supplier_invoice_delete(int $invoiceId): array
         return ['ok' => false, 'error' => 'You do not have permission to delete supplier invoices.'];
     }
 
-    $pdo = db();
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM dbo.POPayment WHERE SupplierInvoiceID = :id');
-    $stmt->execute(['id' => $invoiceId]);
-    if ((int) $stmt->fetchColumn() > 0) {
-        return ['ok' => false, 'error' => 'Delete payments linked to this invoice before deleting it.'];
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM dbo.POPayment WHERE SupplierInvoiceID = :id');
+        $stmt->execute(['id' => $invoiceId]);
+        if ((int) $stmt->fetchColumn() > 0) {
+            return ['ok' => false, 'error' => 'Delete payments linked to this invoice before deleting it.'];
+        }
+
+        $pdo->beginTransaction();
+
+        // Awarded bids reference the draft invoice; clear that link before delete.
+        $awardedBids = $pdo->prepare(<<<SQL
+            SELECT BidEstimateID, InitiativeID, Status
+            FROM dbo.BidEstimate
+            WHERE AwardedSupplierInvoiceID = :id
+        SQL);
+        $awardedBids->execute(['id' => $invoiceId]);
+        $linkedBids = $awardedBids->fetchAll();
+
+        if ($linkedBids !== []) {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.BidEstimate
+                SET AwardedSupplierInvoiceID = NULL,
+                    Status = CASE WHEN Status = N'Selected' THEN N'Under Review' ELSE Status END,
+                    ModifiedDate = SYSUTCDATETIME()
+                WHERE AwardedSupplierInvoiceID = :id
+            SQL)->execute(['id' => $invoiceId]);
+
+            $initiativeIds = [];
+            foreach ($linkedBids as $bid) {
+                $initiativeIds[(int) $bid['InitiativeID']] = true;
+            }
+            foreach (array_keys($initiativeIds) as $initiativeId) {
+                $pdo->prepare(<<<SQL
+                    UPDATE dbo.BidInitiative
+                    SET Status = N'Under Review',
+                        ModifiedDate = SYSUTCDATETIME()
+                    WHERE InitiativeID = :id
+                      AND Status = N'Awarded'
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM dbo.BidEstimate e
+                          WHERE e.InitiativeID = :id2
+                            AND e.Status = N'Selected'
+                      )
+                SQL)->execute(['id' => $initiativeId, 'id2' => $initiativeId]);
+            }
+        }
+
+        $pdo->prepare('DELETE FROM dbo.SupplierInvoice WHERE SupplierInvoiceID = :id')
+            ->execute(['id' => $invoiceId]);
+
+        $pdo->commit();
+
+        return ['ok' => true, 'error' => null];
+    } catch (Throwable $e) {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('supplier_invoice_delete: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to delete invoice. ' . $e->getMessage()];
     }
-
-    $pdo->prepare('DELETE FROM dbo.SupplierInvoice WHERE SupplierInvoiceID = :id')->execute(['id' => $invoiceId]);
-
-    return ['ok' => true, 'error' => null];
 }
