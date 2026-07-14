@@ -1,10 +1,15 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/jazz-item-master.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
 
 jazz_item_master_require_read();
 
-$activeSlug = 'jazz-item-master';
+$activeSlug = $activeSlug ?? 'jazz-item-master';
+$listPath = data_profile_page_path('/jazz-item-master');
+$listPathSlash = data_profile_page_path('/jazz-item-master/');
 $pageContainerClass = 'page-inner--wide';
 $view = jazz_item_master_view_from_query();
 $search = trim($_GET['q'] ?? '');
@@ -47,18 +52,18 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Supply Chain</div>
-          <h1>Jazz Item Master</h1>
-          <p class="page-lead">SKU and item reference data from Jazz OMS.</p>
+          <h1>Jazz Item Master<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
+          <p class="page-lead">SKU and item reference data from Jazz OMS (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(inventory_reporting_permission_value())) ?></p>
         </div>
       </div>
 
       <nav class="admin-nav" aria-label="Jazz Item Master views">
-        <a href="/jazz-item-master/?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'sku', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'sku' ? 'is-active' : '' ?>">SKUs</a>
-        <a href="/jazz-item-master/?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'item', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'item' ? 'is-active' : '' ?>">Items</a>
+        <a href="<?= htmlspecialchars($listPathSlash) ?>?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'sku', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'sku' ? 'is-active' : '' ?>">SKUs</a>
+        <a href="<?= htmlspecialchars($listPathSlash) ?>?<?= htmlspecialchars(http_build_query(array_filter(['view' => 'item', 'q' => $search !== '' ? $search : null]))) ?>" class="<?= $view === 'item' ? 'is-active' : '' ?>">Items</a>
       </nav>
 
-      <form class="po-filter audit-filter" method="get" action="/jazz-item-master/">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($listPathSlash) ?>">
         <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>" />
         <?php table_sort_hidden_inputs($listFilters, $defaultSortColumn, 'asc'); ?>
         <div class="audit-filter-grid">
@@ -70,7 +75,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Search</button>
           <?php if ($search !== ''): ?>
-          <a class="btn-secondary" href="/jazz-item-master/?view=<?= rawurlencode($view) ?>">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPathSlash) ?>?view=<?= rawurlencode($view) ?>">Clear</a>
           <?php endif; ?>
         </div>
       </form>
@@ -82,7 +87,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php else: ?>
       <div class="status-banner">
         <div>
-          <strong>Jazz OMS connected</strong>
+          <strong>Jazz OMS connected (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>)</strong>
           <p>
             <?= count($rows) ?> <?= strtolower(jazz_item_master_view_label($view)) ?><?= count($rows) === 1 ? '' : 's' ?>
             <?php if ($search !== ''): ?>
@@ -105,7 +110,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php table_sort_render_th(
                   $column,
                   jazz_oms_field_label($column),
-                  '/jazz-item-master',
+                  $listPath,
                   $sortColumnDefs,
                   $listFilters,
                   ['view', 'q'],

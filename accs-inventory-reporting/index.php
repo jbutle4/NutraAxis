@@ -1,10 +1,12 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accs-inventory-reporting.php';
 
 accs_inventory_reporting_require_read();
 
-$activeSlug = 'accs-inventory-reporting';
+$activeSlug = $activeSlug ?? 'accs-inventory-reporting';
+$listPath = data_profile_page_path('/accs-inventory-reporting');
 $configError = adobe_commerce_config_error();
 $listResult = $configError === null
     ? adobe_commerce_list_inventory()
@@ -51,7 +53,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Inventory</div>
-          <h1>ACCS Inventory Reporting</h1>
+          <h1>ACCS Inventory Reporting<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
           <p class="page-lead">Live inventory by SKU and source from Adobe Commerce (ACCS).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(accs_inventory_reporting_permission_value())) ?></p>
         </div>
@@ -74,7 +76,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $accsSortColumns,
-                '/accs-inventory-reporting',
+                $listPath,
                 $listFilters,
                 [],
                 ['quantity'],

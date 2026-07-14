@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/attachment-storage.php';
 require_once __DIR__ . '/provider-signup-crypto.php';
 require_once __DIR__ . '/provider-signup-npi.php';
 require_once __DIR__ . '/provider-signup-mail.php';
@@ -694,26 +695,62 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
 
     try {
         $pdo = db();
-        $pdo->prepare(<<<SQL
-            DELETE FROM dbo.ProviderSignupAttachment
+
+        $oldStmt = $pdo->prepare(<<<SQL
+            SELECT AttachmentID, BlobPath
+            FROM dbo.ProviderSignupAttachment
             WHERE ApplicationID = :id AND AttachmentKind = N'ResellerCertificate'
-        SQL)->execute(['id' => $applicationId]);
+        SQL);
+        $oldStmt->execute(['id' => $applicationId]);
+        $oldRows = $oldStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.ProviderSignupAttachment (
-                ApplicationID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind
+                ApplicationID, FileName, ContentType, FileSizeBytes, FileData, BlobPath, IsEncrypted, AttachmentKind
             )
-            VALUES (:application_id, :name, :type, :size, :data, N'ResellerCertificate')
+            OUTPUT INSERTED.AttachmentID AS inserted_id
+            VALUES (:application_id, :name, :type, :size, NULL, NULL, 0, N'ResellerCertificate')
         SQL);
         $stmt->bindValue(':application_id', $applicationId, PDO::PARAM_INT);
         $stmt->bindValue(':name', $fileName);
         $stmt->bindValue(':type', $contentType);
         $stmt->bindValue(':size', (int) ($file['size'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->execute();
 
-        $idRow = $pdo->query('SELECT CAST(SCOPE_IDENTITY() AS INT) AS inserted_id')->fetch(PDO::FETCH_ASSOC);
-        $attachmentId = (int) ($idRow['inserted_id'] ?? 0);
+        $attachmentId = db_fetch_inserted_int($stmt, 'inserted_id');
+        $stored = attachment_storage_save(
+            'provider-signup',
+            $applicationId,
+            $attachmentId,
+            $fileName,
+            $contentType,
+            $content,
+            ['encrypt' => true]
+        );
+        if (!$stored['ok']) {
+            $pdo->prepare('DELETE FROM dbo.ProviderSignupAttachment WHERE AttachmentID = :id')
+                ->execute(['id' => $attachmentId]);
+
+            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save the reseller certificate.'];
+        }
+
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupAttachment
+            SET BlobPath = :path, FileData = NULL, IsEncrypted = 1
+            WHERE AttachmentID = :id
+        SQL)->execute([
+            'path' => $stored['blob_path'],
+            'id'   => $attachmentId,
+        ]);
+
+        foreach ($oldRows as $oldRow) {
+            $oldId = (int) ($oldRow['AttachmentID'] ?? 0);
+            if ($oldId > 0 && $oldId !== $attachmentId) {
+                attachment_storage_delete_row_blob($oldRow);
+                $pdo->prepare('DELETE FROM dbo.ProviderSignupAttachment WHERE AttachmentID = :id')
+                    ->execute(['id' => $oldId]);
+            }
+        }
 
         return ['ok' => true, 'error' => null, 'id' => $attachmentId];
     } catch (Throwable) {
@@ -725,7 +762,7 @@ function provider_signup_list_attachments(int $applicationId): array
 {
     $pdo = db();
     $stmt = $pdo->prepare(<<<SQL
-        SELECT AttachmentID, FileName, ContentType, FileSizeBytes, AttachmentKind, UploadDate
+        SELECT AttachmentID, FileName, ContentType, FileSizeBytes, AttachmentKind, UploadDate, BlobPath, IsEncrypted
         FROM dbo.ProviderSignupAttachment
         WHERE ApplicationID = :id
         ORDER BY UploadDate DESC
@@ -747,18 +784,9 @@ function provider_signup_get_attachment(int $attachmentId): ?array
 
 function provider_signup_attachment_bytes(array $attachment): string
 {
-    $fileData = $attachment['FileData'] ?? null;
-    if ($fileData === null || $fileData === '') {
-        return '';
-    }
+    $resolved = attachment_storage_resolve_content($attachment);
 
-    if (is_resource($fileData)) {
-        $contents = stream_get_contents($fileData);
-
-        return is_string($contents) ? $contents : '';
-    }
-
-    return is_string($fileData) ? $fileData : '';
+    return $resolved['ok'] ? (string) $resolved['content'] : '';
 }
 
 function provider_signup_list_applications(array $filters = []): array

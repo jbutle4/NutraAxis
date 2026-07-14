@@ -3,6 +3,7 @@
 /** @var array $attachments */
 /** @var bool $showUploadForm */
 $showUploadForm = $showUploadForm ?? false;
+$attachmentFieldId = 'legal-attachment-' . (int) $contractId;
 ?>
       <section class="detail-card supplier-po-report">
         <h2>Attachments</h2>
@@ -39,10 +40,19 @@ $showUploadForm = $showUploadForm ?? false;
         <form class="admin-form" method="post" enctype="multipart/form-data" action="/legal-agreements/upload-attachment.php" style="margin-top: 16px;">
           <input type="hidden" name="contract_id" value="<?= $contractId ?>" />
           <div class="form-grid">
-            <div class="form-group">
-              <label for="attachment">Upload file</label>
-              <input class="form-input" type="file" id="attachment" name="attachment" accept=".pdf,.doc,.docx,.xlsx,.csv,application/pdf" required />
-            </div>
+            <?php
+            $uploadFieldId = $attachmentFieldId;
+            $uploadFieldName = 'attachment';
+            $uploadLabel = 'Upload file';
+            $uploadTitle = 'Drop, paste, or choose file';
+            $uploadHint = 'Drag a file here, click and paste (Ctrl+V / Cmd+V), or choose a file';
+            $uploadAccept = '.pdf,.doc,.docx,.xlsx,.csv,application/pdf';
+            $uploadMaxBytes = LEGAL_MAX_ATTACHMENT_BYTES;
+            $uploadAllowedExt = ['pdf', 'doc', 'docx', 'xlsx', 'csv'];
+            $uploadRequired = true;
+            $uploadGridClass = '';
+            require __DIR__ . '/file-upload-dropzone-field.php';
+            ?>
             <div class="form-group">
               <label for="attachment_kind">Attachment type</label>
               <select class="form-input" id="attachment_kind" name="attachment_kind">

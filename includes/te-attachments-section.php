@@ -4,6 +4,7 @@
 /** @var bool $showUploadForm */
 $showUploadForm = $showUploadForm ?? false;
 $attachments = te_list_attachments($reportId);
+$attachmentFieldId = 'te-attachment-' . (int) $reportId;
 ?>
       <section class="detail-card supplier-po-report">
         <h2>Receipt attachments</h2>
@@ -52,10 +53,19 @@ $attachments = te_list_attachments($reportId);
         <form class="admin-form" method="post" enctype="multipart/form-data" action="/travel-expense/upload-attachment.php" style="margin-top: 16px;">
           <input type="hidden" name="report_id" value="<?= $reportId ?>" />
           <div class="form-grid">
-            <div class="form-group">
-              <label for="attachment">Upload receipt (PDF)</label>
-              <input class="form-input" type="file" id="attachment" name="attachment" accept=".pdf,application/pdf" required />
-            </div>
+            <?php
+            $uploadFieldId = $attachmentFieldId;
+            $uploadFieldName = 'attachment';
+            $uploadLabel = 'Upload receipt (PDF)';
+            $uploadTitle = 'Drop, paste, or choose PDF';
+            $uploadHint = 'Drag a PDF here, click and paste (Ctrl+V / Cmd+V), or choose a file';
+            $uploadAccept = '.pdf,application/pdf';
+            $uploadMaxBytes = TE_MAX_ATTACHMENT_BYTES;
+            $uploadAllowedExt = ['pdf'];
+            $uploadRequired = true;
+            $uploadGridClass = '';
+            require __DIR__ . '/file-upload-dropzone-field.php';
+            ?>
             <div class="form-group">
               <label for="attachment_kind">Attachment type</label>
               <select class="form-input" id="attachment_kind" name="attachment_kind">

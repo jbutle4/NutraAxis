@@ -1,10 +1,14 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/sales-reporting.php';
 
 sales_reporting_require_read();
 
-$activeSlug = 'accs-order-report';
+$activeSlug = $activeSlug ?? 'accs-order-report';
+$reportListPath = data_profile_page_path('/sales-reporting/accs-order-report/');
+$orderDetailPath = data_profile_page_path('/sales-reporting/order.php');
+$reportListSortPath = data_profile_page_path('/sales-reporting/accs-order-report');
 $configError = adobe_commerce_config_error();
 $search = trim($_GET['order'] ?? '');
 $listResult = ['ok' => true, 'error' => null, 'rows' => [], 'total' => 0];
@@ -41,7 +45,9 @@ if ($configError === null && ($listResult['rows'] ?? []) !== []) {
 }
 
 $pageTitle = 'ACCS Order Report | Sales Reporting Summaries';
-$pageDescription = 'View Adobe Commerce orders and order detail from ACCS.';
+$pageDescription = data_profile_is_uat()
+    ? 'View Adobe Commerce stage orders and order detail from ACCS UAT.'
+    : 'View Adobe Commerce production orders and order detail from ACCS.';
 
 require dirname(__DIR__, 2) . '/includes/head.php';
 require dirname(__DIR__, 2) . '/includes/header.php';
@@ -58,7 +64,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Sales</div>
-          <h1>ACCS Order Report</h1>
+          <h1>ACCS Order Report<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
           <p class="page-lead">Adobe Commerce (ACCS) orders — search by order number or browse recent orders.</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(sales_reporting_permission_value())) ?></p>
         </div>
@@ -68,7 +74,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($configError) ?></div>
       <?php else: ?>
 
-      <form class="po-filter audit-filter" method="get" action="/sales-reporting/order.php">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($orderDetailPath) ?>">
         <div class="audit-filter-grid">
           <div class="audit-filter-wide">
             <label for="order">Order number</label>
@@ -95,7 +101,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $orderSortColumns,
-                '/sales-reporting/accs-order-report',
+                $reportListSortPath,
                 $listFilters,
                 [],
                 ['total', 'items'],
@@ -118,7 +124,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><?= htmlspecialchars(adobe_commerce_format_money($row['grand_total'] ?? null)) ?></td>
               <td><?= adobe_commerce_order_item_qty($row) ?></td>
               <?php table_actions_cell([
-                  ['href' => '/sales-reporting/order.php?order=' . rawurlencode((string) ($row['increment_id'] ?? '')), 'label' => 'View'],
+                  ['href' => $orderDetailPath . '?order=' . rawurlencode((string) ($row['increment_id'] ?? '')), 'label' => 'View'],
               ]); ?>
             </tr>
             <?php endforeach; ?>

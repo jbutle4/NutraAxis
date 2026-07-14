@@ -1,10 +1,14 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reconciliation.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
 
 inventory_reconciliation_require_read();
 
-$activeSlug = 'inventory-reconciliation';
+$activeSlug = $activeSlug ?? 'inventory-reconciliation';
+$listPath = data_profile_page_path('/inventory-reconciliation');
 
 $jazzConfigError = jazz_oms_config_error();
 $accsConfigError = adobe_commerce_config_error();
@@ -85,7 +89,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Inventory</div>
-          <h1>Inventory Reconciliation (Jazz-ACCS)</h1>
+          <h1>Inventory Reconciliation (Jazz-ACCS)<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
           <p class="page-lead">Side-by-side Jazz OMS and Adobe Commerce quantities for the same SKU to spot reporting differences.</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(inventory_reconciliation_permission_value())) ?></p>
         </div>
@@ -98,7 +102,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($canRenderTable): ?>
       <div class="status-banner">
         <div>
-          <strong>Reconciliation loaded</strong>
+          <strong>Reconciliation loaded (Jazz <?= htmlspecialchars(jazz_oms_data_source_label()) ?> · ACCS <?= htmlspecialchars(adobe_commerce_environment()) ?>)</strong>
           <p>
             <?= count($rows) ?> row<?= count($rows) === 1 ? '' : 's' ?>
             · <?= count($jazzResult['rows'] ?? []) ?> Jazz record<?= count($jazzResult['rows'] ?? []) === 1 ? '' : 's' ?>
@@ -113,7 +117,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $reconSortColumns,
-                '/inventory-reconciliation',
+                $listPath,
                 $listFilters,
                 [],
                 ['available', 'on_hand', 'ordered', 'total', 'accs_qty'],

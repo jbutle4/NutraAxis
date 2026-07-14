@@ -1,22 +1,14 @@
 <?php
 
-require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/file-crypto.php';
 
+/**
+ * Symmetric key for sensitive provider-signup form fields (tax ID, ACH).
+ * Shares resolution with file_crypto_key() so one ops secret covers fields and documents.
+ */
 function provider_signup_encryption_key(): string
 {
-    static $key = null;
-
-    if ($key !== null) {
-        return $key;
-    }
-
-    $configured = trim((string) env('PROVIDER_SIGNUP_ENCRYPTION_KEY', ''));
-    if ($configured !== '') {
-        return $key = hash('sha256', $configured, true);
-    }
-
-    $fallback = trim((string) env_first(['DB_PASS', 'DB_PASSWORD'], 'nutraaxis-provider-signup'));
-    return $key = hash('sha256', $fallback, true);
+    return file_crypto_key();
 }
 
 function provider_signup_encrypt(?string $plaintext): ?string

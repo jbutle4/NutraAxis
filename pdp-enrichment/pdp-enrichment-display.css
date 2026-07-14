@@ -1,0 +1,71 @@
+/* Public product page enrichment typography (nutraaxislabs.com) */
+#pdp-enrichment.pdp-enrichment-content {
+  display: block !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 24px 16px !important;
+  box-sizing: border-box !important;
+  font-family: inherit;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+#pdp-enrichment .pdp-enrichment-inner {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#pdp-enrichment p {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+#pdp-enrichment ul {
+  margin: 0 0 24px;
+  padding-left: 20px;
+  line-height: 1.8;
+  list-style-type: disc;
+}
+
+#pdp-enrichment ol {
+  margin: 0 0 24px;
+  padding-left: 20px;
+  line-height: 1.8;
+  list-style-type: disc;
+}
+
+#pdp-enrichment li {
+  margin-bottom: 0.35em;
+}
+
+#pdp-enrichment a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+#pdp-enrichment strong {
+  font-weight: 700;
+}
+
+#pdp-enrichment .ql-size-small,
+#pdp-enrichment .pdp-text-small {
+  font-size: 0.875rem;
+}
+
+#pdp-enrichment .ql-size-large,
+#pdp-enrichment .pdp-text-large {
+  font-size: 1.125rem;
+}
+
+#pdp-enrichment .ql-size-huge,
+#pdp-enrichment .pdp-text-huge {
+  font-size: 1.25rem;
+}
