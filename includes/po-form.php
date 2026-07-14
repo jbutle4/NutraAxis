@@ -123,11 +123,20 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
   </div>
 
   <?php if ($allowAttachment): ?>
-  <div class="form-group">
-    <label for="source_pdf">Attach source PDF (optional)</label>
-    <input class="form-input" type="file" id="source_pdf" name="source_pdf" accept=".pdf,application/pdf" />
-    <p class="form-hint">Signed or draft PO PDF stored in the database (max 15 MB).</p>
-  </div>
+  <?php
+  $uploadFieldId = 'source_pdf';
+  $uploadFieldName = 'source_pdf';
+  $uploadLabel = 'Attach source PDF (optional)';
+  $uploadTitle = 'Drop, paste, or choose PDF';
+  $uploadHint = 'Drag a PDF here, click and paste (Ctrl+V / Cmd+V), or choose a file';
+  $uploadFormHint = 'Signed or draft PO PDF stored via shared attachment storage (max 15 MB).';
+  $uploadAccept = '.pdf,application/pdf';
+  $uploadMaxBytes = PO_MAX_ATTACHMENT_BYTES;
+  $uploadAllowedExt = ['pdf'];
+  $uploadRequired = false;
+  $uploadGridClass = '';
+  require __DIR__ . '/file-upload-dropzone-field.php';
+  ?>
   <?php endif; ?>
 
   <div class="po-lines-section">

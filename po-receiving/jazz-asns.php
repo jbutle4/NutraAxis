@@ -1,12 +1,16 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+
 por_require_read();
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'jazz-asns';
+$listPath = data_profile_page_path('/po-receiving/jazz-asns.php');
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_asns() : ['ok' => true, 'error' => null, 'rows' => []];
 $rows = $listResult['rows'] ?? [];
@@ -54,8 +58,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Supply Chain</div>
-          <h1>Jazz ASNs</h1>
-          <p class="page-lead">Advanced shipping notices on file in Jazz OMS.</p>
+          <h1>Jazz ASNs<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
+          <p class="page-lead">Advanced shipping notices on file in Jazz OMS (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
         </div>
       </div>
@@ -82,7 +86,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php else: ?>
       <div class="status-banner">
         <div>
-          <strong>Jazz OMS connected</strong>
+          <strong>Jazz OMS connected (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>)</strong>
           <p><?= count($rows) ?> ASN record<?= count($rows) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url() . por_asn_endpoint()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?></p>
         </div>
       </div>
@@ -100,7 +104,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php table_sort_render_th(
                   $column,
                   jazz_oms_asn_column_label($column),
-                  '/po-receiving/jazz-asns.php',
+                  $listPath,
                   $asnSortColumns,
                   $listFilters,
                   [],

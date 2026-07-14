@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/te.php';
+require_once __DIR__ . '/attachment-storage.php';
 
 const TE_ATTACHMENT_KINDS = ['Receipt', 'Other'];
 
@@ -54,24 +55,37 @@ function te_save_attachment(int $reportId, array $file, string $kind = 'Receipt'
 
     try {
         $pdo = db();
+        $fileName = (string) ($file['name'] ?? 'attachment');
+        $resolvedType = $contentType !== '' ? $contentType : 'application/pdf';
+
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.TEAttachment (
-                ReportID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind, UploadedByUser
+                ReportID, FileName, ContentType, FileSizeBytes, FileData, BlobPath, AttachmentKind, UploadedByUser
             )
             OUTPUT INSERTED.AttachmentID AS inserted_id
-            VALUES (:report, :name, :type, :size, :data, :kind, :user)
+            VALUES (:report, :name, :type, :size, NULL, NULL, :kind, :user)
         SQL);
 
         $stmt->bindValue(':report', $reportId, PDO::PARAM_INT);
         $stmt->bindValue(':name', $fileName);
-        $stmt->bindValue(':type', $contentType !== '' ? $contentType : 'application/pdf');
+        $stmt->bindValue(':type', $resolvedType);
         $stmt->bindValue(':size', (int) $file['size'], PDO::PARAM_INT);
-        $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->bindValue(':kind', $kind);
         $stmt->bindValue(':user', auth_user()['UserID'] ?? 0, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['ok' => true, 'error' => null, 'id' => db_fetch_inserted_int($stmt, 'inserted_id')];
+        $id = db_fetch_inserted_int($stmt, 'inserted_id');
+        $stored = attachment_storage_save('te', $reportId, $id, $fileName, $resolvedType, $content);
+        if (!$stored['ok']) {
+            $pdo->prepare('DELETE FROM dbo.TEAttachment WHERE AttachmentID = :id')->execute(['id' => $id]);
+
+            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save attachment to blob storage.'];
+        }
+
+        $pdo->prepare('UPDATE dbo.TEAttachment SET BlobPath = :path, FileData = NULL WHERE AttachmentID = :id')
+            ->execute(['path' => $stored['blob_path'], 'id' => $id]);
+
+        return ['ok' => true, 'error' => null, 'id' => $id];
     } catch (Throwable $e) {
         return ['ok' => false, 'error' => te_format_exception_message($e, 'save the receipt attachment')];
     }
@@ -143,6 +157,8 @@ function te_delete_attachment(int $reportId, int $attachmentId): array
     }
 
     try {
+        attachment_storage_delete_row_blob($attachment);
+
         $pdo = db();
         $pdo->prepare('DELETE FROM dbo.TEAttachment WHERE AttachmentID = :id AND ReportID = :report')
             ->execute(['id' => $attachmentId, 'report' => $reportId]);

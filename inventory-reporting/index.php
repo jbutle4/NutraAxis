@@ -1,10 +1,14 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-reporting.php';
+
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
 
 inventory_reporting_require_read();
 
-$activeSlug = 'inventory-reporting';
+$activeSlug = $activeSlug ?? 'inventory-reporting';
+$listPath = data_profile_page_path('/inventory-reporting');
 $configError = jazz_oms_config_error();
 $listResult = $configError === null ? jazz_oms_list_inventory() : ['ok' => true, 'error' => null, 'rows' => []];
 $inventorySortColumns = [
@@ -53,8 +57,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">Inventory</div>
-          <h1>Jazz Current Inventory</h1>
-          <p class="page-lead">Live inventory by SKU and facility from Jazz OMS.</p>
+          <h1>Jazz Current Inventory<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
+          <p class="page-lead">Live inventory by SKU and facility from Jazz OMS (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(inventory_reporting_permission_value())) ?></p>
         </div>
       </div>
@@ -66,7 +70,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php else: ?>
       <div class="status-banner">
         <div>
-          <strong>Jazz OMS connected</strong>
+          <strong>Jazz OMS connected (<?= htmlspecialchars(jazz_oms_data_source_label()) ?>)</strong>
           <p><?= count($listResult['rows']) ?> inventory record<?= count($listResult['rows']) === 1 ? '' : 's' ?> loaded from <?= htmlspecialchars(jazz_oms_base_url()) ?> · tenant <?= htmlspecialchars(jazz_oms_tenant_code()) ?></p>
         </div>
       </div>
@@ -76,7 +80,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 $inventorySortColumns,
-                '/inventory-reporting',
+                $listPath,
                 $listFilters,
                 [],
                 ['available_quantity', 'on_hand_quantity', 'qty_ordered', 'total_quantity'],

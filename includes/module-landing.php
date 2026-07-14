@@ -1,14 +1,18 @@
 <?php
 /** @var array $module */
 /** @var string $activeSlug */
+
+$back = function_exists('app_module_hub_back_link')
+    ? app_module_hub_back_link((string) ($module['slug'] ?? ''))
+    : ['href' => '/', 'label' => 'Back to Operations Home'];
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/">
+      <a class="breadcrumb" href="<?= htmlspecialchars((string) $back['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Operations Home
+        <?= htmlspecialchars((string) $back['label']) ?>
       </a>
 
       <div class="page-hero">

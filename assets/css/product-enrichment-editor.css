@@ -1,0 +1,105 @@
+.pe-enrichment-editor {
+  border: 1px solid var(--border, #d8e3e1);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.pe-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #d8e3e1);
+  background: var(--bg-light, #f7faf9);
+}
+
+.pe-editor-mode,
+.pe-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pe-editor-mode button,
+.pe-editor-actions button {
+  appearance: none;
+  border: 1px solid var(--border, #d8e3e1);
+  background: #fff;
+  color: var(--text, #1a2e2b);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pe-editor-mode button.is-active {
+  background: var(--teal, #3d8b85);
+  border-color: var(--teal, #3d8b85);
+  color: #fff;
+}
+
+.pe-editor-actions button:hover,
+.pe-editor-mode button:hover:not(.is-active) {
+  border-color: var(--teal, #3d8b85);
+  color: var(--teal-dark, #2a6b65);
+}
+
+.pe-quill-panel {
+  min-height: 320px;
+  background: #fff;
+}
+
+.pe-quill-panel .ql-container {
+  min-height: 280px;
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.pe-quill-panel .ql-editor {
+  min-height: 280px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.pe-quill-panel .ql-editor p {
+  margin-bottom: 0.85em;
+}
+
+.pe-quill-panel .ql-editor ul {
+  margin-bottom: 1em;
+  padding-left: 1.25em;
+}
+
+.pe-quill-panel .ql-editor li {
+  margin-bottom: 0.35em;
+}
+
+.pe-quill-panel .ql-snow .ql-picker.ql-header,
+.pe-quill-panel .ql-snow .ql-picker.ql-size {
+  min-width: 7rem;
+}
+
+.pe-html-panel {
+  display: block;
+  width: 100%;
+  min-height: 320px;
+  border: 0;
+  border-radius: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.pe-html-panel[hidden],
+.pe-quill-panel[hidden] {
+  display: none !important;
+}
+
+.pe-enrichment-editor .form-hint {
+  margin: 10px 12px 12px;
+}
