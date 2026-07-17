@@ -24,7 +24,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/119_create_ims_tables.sql`
    - `sql/120_alter_facility_integration_flags.sql`
    - `sql/121_seed_wpc_facilities_and_inventory_sync_log.sql`
-5. Run `qbo-coa-sync` so Product Catalog account pickers populate.
+5. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
 6. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
    - `QBO_INV_ASSET_ACCOUNT_CART` / `_WPC` / `_CPPC` (for transfer JEs)
@@ -79,7 +79,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 
 | Symptom | Action |
 |---------|--------|
-| Sync blockers on SKU | Set three account refs; ensure COA sync ran |
+| Sync blockers on SKU | Set three account refs; ensure QuickBooks Chart of Accounts Sync ran |
 | Adjustment fails “item not inventory” | Run Convert to Inventory |
 | Duplicate DocNumber | Already logged — safe no-op |
 | Insufficient IMS qty on sale | Post opening/receipt first or investigate Jazz vs IMS |

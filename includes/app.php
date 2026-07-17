@@ -994,7 +994,7 @@ $modulePages = [
         'capabilities' => [
             ['title' => 'Supplier Invoices', 'desc' => 'Create vendor invoices with line detail, attachments, and QuickBooks Bill sync status.'],
             ['title' => 'Invoice Payments', 'desc' => 'Record check, ACH, and card payments against supplier invoices without a PO.'],
-            ['title' => 'QuickBooks Views', 'desc' => 'Browse AP, AR, purchase orders, inventory items, suppliers, and the chart of accounts.'],
+            ['title' => 'QuickBooks Views', 'desc' => 'Browse AP, AR, purchase orders, QBO SKU Master, suppliers, and the QBO chart of accounts (not Certificate of Analysis).'],
             ['title' => 'Approvals Queue', 'desc' => 'Pending and completed PO and supplier invoice approvals (Payment + QBO Insert).'],
             ['title' => 'Approvals', 'desc' => 'Combined approval history across PO, payment, and QBO insert workflows.'],
             ['title' => 'QuickBooks Connection', 'desc' => 'Users with Update access connect and disconnect the QuickBooks Online company.'],

@@ -14,7 +14,7 @@ All scheduled job **logic** runs here in Node.js. The PHP App Service serves the
 | `process-retry` | Service Bus | **Live** — event-driven retries for failed ProcessExecutionLog rows |
 | `inventory-receipt-sync` | Timer | **Live** — PO receipts → IMS + QBO InventoryAdjustment (+qty) |
 | `inventory-sales-sync` | Timer | **Live** — ACCS shipped sales → IMS + QBO InventoryAdjustment (−qty) |
-| `qbo-coa-sync` | Timer | **Live** — QuickBooks chart of accounts → dbo.QBO_COA |
+| `qbo-coa-sync` | Timer | **Live** — QuickBooks Chart of Accounts (GL) → dbo.QBO_COA; not Certificate of Analysis |
 | `accs-sales-order-sync` | Timer | **Live** — ACCS production orders → dbo.AccsSalesOrderHeader + AccsSalesOrderDetail |
 | `accs-employee-customer-create` | HTTP | **Live** — create ACCS Stage customers from dbo.EmployeeList (`FirstEmail=1`) |
 | `accs-jazz-order-test` | HTTP | **TEST** — fetch ACCS Stage order, map to Jazz UAT import payload, submit with incremented order number |

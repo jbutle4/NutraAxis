@@ -95,9 +95,9 @@ require dirname(__DIR__) . '/includes/header.php';
           <li><?= htmlspecialchars($blocker) ?></li>
           <?php endforeach; ?>
         </ul>
-        Account pickers use the cached chart of accounts from
-        <a href="/accounting/chart-of-accounts.php">Accounting → Chart of Accounts</a>
-        (run the QBO COA sync job if lists are empty).
+        Account pickers use the cached QuickBooks chart of accounts from
+        <a href="/accounting/chart-of-accounts.php">Accounting → QBO Chart of Accounts</a>
+        (run the QuickBooks Chart of Accounts Sync process if lists are empty).
       </div>
       <?php endif; ?>
 

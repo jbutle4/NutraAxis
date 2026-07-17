@@ -36,7 +36,7 @@ const REGISTRY = {
   },
   'qbo-coa-sync': {
     code: 'qbo-coa-sync',
-    name: 'QBO Chart of Accounts Sync',
+    name: 'QuickBooks Chart of Accounts Sync',
   },
   'inventory-receipt-sync': {
     code: 'inventory-receipt-sync',
