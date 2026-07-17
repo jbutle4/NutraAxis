@@ -88,6 +88,8 @@ On **Nutra-forecast-tool** (test), all timer schedules are disabled (`0 0 0 1 1 
 | `JAZZ_INVENTORY_SNAPSHOT_SCHEDULE` | `0 0 0 1 1 2099` |
 | `QBO_COA_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 | `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
+| `INVENTORY_RECEIPT_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
+| `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 
 Process Log reruns for `accs-sales-order-sync` route to the prod Function App via `NUTRA_FUNCTIONS_PROD_BASE_URL` / `NUTRA_FUNCTIONS_PROD_KEY` on the PHP App Service.
 
