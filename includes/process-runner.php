@@ -41,6 +41,20 @@ function process_registry(): array
             'function_name' => 'staging-db-sync',
             'schedule'      => 'Daily at 2:30 AM US Central',
         ],
+        'accs-sales-order-sync' => [
+            'code'          => 'accs-sales-order-sync',
+            'name'          => 'ACCS Sales Order Sync',
+            'description'   => 'Pull ACCS Magento sales orders into AccsSalesOrder tables for reporting and inventory sales posting.',
+            'function_name' => 'accs-sales-order-sync',
+            'schedule'      => 'Every 2 hours',
+        ],
+        'accs-employee-customer-create' => [
+            'code'          => 'accs-employee-customer-create',
+            'name'          => 'ACCS Stage Employee Customer Create',
+            'description'   => 'Create or correct ACCS stage employee customer accounts from portal users.',
+            'function_name' => 'accs-employee-customer-create',
+            'schedule'      => 'Manual / on demand',
+        ],
         'qbo-coa-sync' => [
             'code'          => 'qbo-coa-sync',
             'name'          => 'QuickBooks Chart of Accounts Sync',
