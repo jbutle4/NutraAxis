@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/po-receiving.php';
+require_once __DIR__ . '/attachment-storage.php';
 
 const POR_ATTACHMENT_KINDS = ['ASN', 'BOL', 'PackingSlip', 'Photo', 'Other'];
 
@@ -44,24 +45,37 @@ function por_save_attachment(int $porId, array $file, string $kind = 'Other'): a
 
     try {
         $pdo = db();
+        $fileName = (string) ($file['name'] ?? 'attachment');
+        $contentType = (string) ($file['type'] ?? 'application/octet-stream');
+
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.PORAttachment (
-                PORID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind, UploadedByUser
+                PORID, FileName, ContentType, FileSizeBytes, FileData, BlobPath, AttachmentKind, UploadedByUser
             )
             OUTPUT INSERTED.AttachmentID AS inserted_id
-            VALUES (:por, :name, :type, :size, :data, :kind, :user)
+            VALUES (:por, :name, :type, :size, NULL, NULL, :kind, :user)
         SQL);
 
         $stmt->bindValue(':por', $porId, PDO::PARAM_INT);
-        $stmt->bindValue(':name', (string) ($file['name'] ?? 'attachment'));
-        $stmt->bindValue(':type', (string) ($file['type'] ?? 'application/octet-stream'));
+        $stmt->bindValue(':name', $fileName);
+        $stmt->bindValue(':type', $contentType);
         $stmt->bindValue(':size', (int) $file['size'], PDO::PARAM_INT);
-        $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->bindValue(':kind', $kind);
         $stmt->bindValue(':user', auth_user()['UserID'] ?? 0, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['ok' => true, 'error' => null, 'id' => db_fetch_inserted_int($stmt, 'inserted_id')];
+        $id = db_fetch_inserted_int($stmt, 'inserted_id');
+        $stored = attachment_storage_save('po-receiving', $porId, $id, $fileName, $contentType, $content);
+        if (!$stored['ok']) {
+            $pdo->prepare('DELETE FROM dbo.PORAttachment WHERE AttachmentID = :id')->execute(['id' => $id]);
+
+            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save attachment to blob storage.'];
+        }
+
+        $pdo->prepare('UPDATE dbo.PORAttachment SET BlobPath = :path, FileData = NULL WHERE AttachmentID = :id')
+            ->execute(['path' => $stored['blob_path'], 'id' => $id]);
+
+        return ['ok' => true, 'error' => null, 'id' => $id];
     } catch (Throwable $e) {
         return ['ok' => false, 'error' => po_format_exception_message($e, 'save the file attachment')];
     }

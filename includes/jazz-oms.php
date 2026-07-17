@@ -2,6 +2,38 @@
 
 require_once __DIR__ . '/env.php';
 
+/**
+ * Bind this request to Jazz production or UAT credentials.
+ * UAT twin pages should call this after setting the portal data profile.
+ */
+function jazz_oms_use_environment(string $environment): void
+{
+    $environment = strtolower(trim($environment));
+    if (!in_array($environment, ['production', 'uat'], true)) {
+        return;
+    }
+
+    $GLOBALS['_jazz_oms_environment_override'] = $environment;
+}
+
+/**
+ * Default is production so unlabeled Jazz pages never silently hit UAT.
+ */
+function jazz_oms_is_production_environment(): bool
+{
+    $override = strtolower(trim((string) ($GLOBALS['_jazz_oms_environment_override'] ?? '')));
+    if ($override === 'uat') {
+        return false;
+    }
+
+    return true;
+}
+
+function jazz_oms_data_source_label(): string
+{
+    return jazz_oms_is_production_environment() ? 'Production' : 'UAT';
+}
+
 function jazz_oms_normalize_domain(string $domain): string
 {
     $domain = trim($domain);
@@ -19,17 +51,52 @@ function jazz_oms_normalize_domain(string $domain): string
 
 function jazz_oms_domain(): string
 {
-    return jazz_oms_normalize_domain((string) env('JAZZ_DOMAIN', ''));
+    if (jazz_oms_is_production_environment()) {
+        $domain = trim((string) env_first([
+            'JAZZ_DOMAIN_PROD',
+            'JAZZ_PRODUCTION_DOMAIN',
+            'JAZZ_DOMAIN',
+        ], ''));
+    } else {
+        $domain = trim((string) env_first([
+            'JAZZ_UAT_DOMAIN',
+            'JAZZ_DOMAIN',
+        ], ''));
+    }
+
+    return jazz_oms_normalize_domain($domain);
 }
 
 function jazz_oms_username(): string
 {
-    return trim((string) env('JAZZ_USERNAME', ''));
+    if (jazz_oms_is_production_environment()) {
+        return trim((string) env_first([
+            'JAZZ_USERNAME_PROD',
+            'JAZZ_PRODUCTION_USERNAME',
+            'JAZZ_USERNAME',
+        ], ''));
+    }
+
+    return trim((string) env_first([
+        'JAZZ_UAT_USERNAME',
+        'JAZZ_USERNAME',
+    ], ''));
 }
 
 function jazz_oms_password(): string
 {
-    return (string) env('JAZZ_PASSWORD', '');
+    if (jazz_oms_is_production_environment()) {
+        return (string) env_first([
+            'JAZZ_PASSWORD_PROD',
+            'JAZZ_PRODUCTION_PASSWORD',
+            'JAZZ_PASSWORD',
+        ], '');
+    }
+
+    return (string) env_first([
+        'JAZZ_UAT_PASSWORD',
+        'JAZZ_PASSWORD',
+    ], '');
 }
 
 function jazz_oms_tenant_code(): string
@@ -46,7 +113,19 @@ function jazz_oms_page_size(): int
 
 function jazz_oms_base_url(): string
 {
-    $override = rtrim(trim((string) env('JAZZ_BASE_URL', '')), '/');
+    if (jazz_oms_is_production_environment()) {
+        $override = rtrim(trim((string) env_first([
+            'JAZZ_BASE_URL_PROD',
+            'JAZZ_PRODUCTION_BASE_URL',
+            'JAZZ_BASE_URL',
+        ], '')), '/');
+    } else {
+        $override = rtrim(trim((string) env_first([
+            'JAZZ_UAT_BASE_URL',
+            'JAZZ_BASE_URL',
+        ], '')), '/');
+    }
+
     if ($override !== '') {
         return $override;
     }
@@ -70,7 +149,9 @@ function jazz_oms_config_error(): ?string
         return null;
     }
 
-    return 'Jazz OMS is not configured. Set JAZZ_DOMAIN, JAZZ_USERNAME, JAZZ_PASSWORD, and JAZZ_TENANT_CODE in application settings.';
+    return jazz_oms_is_production_environment()
+        ? 'Jazz OMS (production) is not configured. Set JAZZ_DOMAIN_PROD / JAZZ_USERNAME_PROD / JAZZ_PASSWORD_PROD (or legacy JAZZ_*), and JAZZ_TENANT_CODE in application settings.'
+        : 'Jazz OMS (UAT) is not configured. Set JAZZ_UAT_DOMAIN / JAZZ_UAT_USERNAME / JAZZ_UAT_PASSWORD (or legacy JAZZ_*), and JAZZ_TENANT_CODE in application settings.';
 }
 
 function jazz_oms_is_cloudflare_block(?string $responseBody): bool

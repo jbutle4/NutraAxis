@@ -105,7 +105,9 @@ BEGIN
         FileName            NVARCHAR(255)   NOT NULL,
         ContentType         NVARCHAR(100)   NOT NULL,
         FileSizeBytes       INT             NOT NULL,
-        FileData            VARBINARY(MAX)  NOT NULL,
+        FileData            VARBINARY(MAX)  NULL,
+        BlobPath            NVARCHAR(512)   NULL,
+        IsEncrypted         BIT             NOT NULL CONSTRAINT DF_ProviderSignupAttachment_IsEncrypted DEFAULT (0),
         AttachmentKind      NVARCHAR(30)    NOT NULL CONSTRAINT DF_ProviderSignupAttachment_Kind DEFAULT (N'ResellerCertificate'),
         UploadDate          DATETIME2(0)    NOT NULL CONSTRAINT DF_ProviderSignupAttachment_UploadDate DEFAULT (SYSUTCDATETIME()),
 
@@ -120,6 +122,10 @@ BEGIN
 
     CREATE NONCLUSTERED INDEX IX_ProviderSignupAttachment_ApplicationID
         ON dbo.ProviderSignupAttachment (ApplicationID, UploadDate DESC);
+
+    CREATE NONCLUSTERED INDEX IX_ProviderSignupAttachment_BlobPath
+        ON dbo.ProviderSignupAttachment (BlobPath)
+        WHERE BlobPath IS NOT NULL;
 END;
 GO
 

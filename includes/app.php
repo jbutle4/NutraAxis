@@ -79,7 +79,7 @@ $inventoryManagementSubModules = [
         'slug'  => 'inventory-balances',
         'title' => 'Inventory Balances',
         'desc'  => 'Live operational stock by SKU and facility from the IMS ledger.',
-        'href'  => '/inventory-balances/',
+        'href'  => '',
         'icon'  => 'inventory',
         'tier'  => 'production',
         'sort'  => 5,
@@ -771,10 +771,20 @@ function app_hub_slugs(): array
     ];
 }
 
-/** Modules kept in the codebase but hidden from portal menus and cards. */
+/**
+ * Modules kept in the codebase / app.php registry but hidden from portal
+ * menus and cards until the feature is ready to ship.
+ */
 function app_nav_hidden_module_slugs(): array
 {
-    return ['travel-expense'];
+    return [
+        'travel-expense',
+        // Leaf pages not built yet — show as Coming soon via empty href instead of hiding:
+        // (inventory-balances kept hidden until IMS ledger page exists)
+        'inventory-balances',
+        'jazz-order-report',
+        'jazz-order-report-uat',
+    ];
 }
 
 function app_nav_hidden_approval_types(): array

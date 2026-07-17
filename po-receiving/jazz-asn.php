@@ -1,18 +1,22 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 
+jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+
 por_require_read();
 
+$listPath = data_profile_page_path('/po-receiving/jazz-asns.php');
 $asnId = trim((string) ($_GET['id'] ?? ''));
 if ($asnId === '') {
-    header('Location: /po-receiving/jazz-asns.php', true, 302);
+    header('Location: ' . $listPath, true, 302);
     exit;
 }
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'jazz-asns';
 $configError = jazz_oms_config_error();
 $result = $configError === null ? jazz_oms_get_asn($asnId) : ['ok' => false, 'error' => $configError, 'row' => null];
 $asn = $result['row'] ?? null;
@@ -28,7 +32,7 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/jazz-asns.php">
+      <a class="breadcrumb" href="<?= htmlspecialchars($listPath) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
@@ -53,7 +57,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($result['error'] ?? 'ASN not found.') ?></div>
       <div class="module-actions">
-        <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Back to Jazz ASNs</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($listPath) ?>">Back to Jazz ASNs</a>
       </div>
 
       <?php else: ?>
@@ -62,7 +66,7 @@ require dirname(__DIR__) . '/includes/header.php';
       ?>
       <div class="admin-header">
         <div>
-          <div class="section-label">Supply Chain</div>
+          <div class="section-label">Supply Chain<?= data_profile_is_uat() ? ' · UAT' : '' ?></div>
           <h1>Jazz ASN <?= htmlspecialchars((string) ($asn['id'] ?? $asnId)) ?></h1>
           <p class="page-lead">
             <?php if (!empty($asn['status'])): ?>
@@ -124,7 +128,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </div>
 
       <div class="module-actions">
-        <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Back to Jazz ASNs</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars($listPath) ?>">Back to Jazz ASNs</a>
       </div>
       <?php endif; ?>
     </div>

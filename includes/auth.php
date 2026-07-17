@@ -9,12 +9,20 @@ const MODULE_PERMISSION_COLUMNS = [
     'po-management'          => 'POManagement',
     'inventory-reporting'        => 'InventoryReporting',
     'jazz-item-master'           => 'InventoryReporting',
+    'jazz-item-master-uat'       => 'InventoryReporting',
     'accs-inventory-reporting'   => 'InventoryReporting',
+    'accs-inventory-reporting-uat' => 'InventoryReporting',
     'inventory-reconciliation'   => 'InventoryReporting',
+    'inventory-reconciliation-uat' => 'InventoryReporting',
+    'inventory-reporting-uat'    => 'InventoryReporting',
+    'inventory-balances'         => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
+    'accs-order-report-uat'  => 'SalesReporting',
     'sales-daily-summary'    => 'SalesReporting',
     'sales-monthly-summary'  => 'SalesReporting',
+    'jazz-order-report'      => 'SalesReporting',
+    'jazz-order-report-uat'  => 'SalesReporting',
     'inventory-forecasting'  => 'InventoryForecasting',
     'labeling-operations'    => 'LabelingOperations',
     'operations-dashboard'          => 'OperationsDashboard',
@@ -24,11 +32,15 @@ const MODULE_PERMISSION_COLUMNS = [
     'enhancement-log'               => 'OperationsDashboard',
     'legal-agreements'       => 'LegalAgreements',
     'product-catalog'        => 'ProductCatalog',
+    'product-enrichment'     => 'ProductCatalog',
+    'coa-management'         => 'LabelingOperations',
     'links-index'            => 'LinksIndex',
     'support'                => 'Support',
     'accounting'             => 'Accounting',
     'supplier-invoices'      => 'Accounting',
     'invoice-payments'       => 'Accounting',
+    'qbo-sku-master'         => 'Accounting',
+    'qbo-inventory'          => 'Accounting',
     'qbo-purchase-orders'    => 'Accounting',
     'qbo-suppliers'          => 'Accounting',
     'supplier-management'    => 'POManagement',
@@ -36,6 +48,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'po-payments'            => 'POManagement',
     'po-receiving'           => 'POManagement',
     'jazz-asns'              => 'POManagement',
+    'jazz-asns-uat'          => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
     'travel-expense'         => 'TEManagement',
     'signup-review'          => 'ProviderAccountReview',
@@ -311,12 +324,16 @@ function auth_filter_inventory_submodules(array $submodules): array
 function auth_filter_sales_submodules(array $submodules): array
 {
     if (!auth_is_logged_in()) {
-        return $submodules;
+        return array_values(array_filter(
+            $submodules,
+            fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+        ));
     }
 
     return array_values(array_filter(
         $submodules,
-        fn(array $item): bool => auth_can_read_leaf_module($item['slug'])
+        fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+            && auth_can_read_leaf_module($item['slug'])
     ));
 }
 
@@ -457,12 +474,16 @@ function auth_render_access_denied(string $message): void
 function auth_filter_modules(array $modules): array
 {
     if (!auth_is_logged_in()) {
-        return $modules;
+        return array_values(array_filter(
+            $modules,
+            fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+        ));
     }
 
     return array_values(array_filter(
         $modules,
-        fn(array $item): bool => auth_can_read_module($item['slug'])
+        fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
+            && auth_can_read_module($item['slug'])
     ));
 }
 

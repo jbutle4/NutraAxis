@@ -18,8 +18,4 @@ if ($sku === null) {
     exit('SKU not found.');
 }
 
-header('Content-Type: ' . $attachment['ContentType']);
-header('Content-Disposition: attachment; filename="' . basename($attachment['FileName']) . '"');
-header('Content-Length: ' . (int) $attachment['FileSizeBytes']);
-echo $attachment['FileData'];
-exit;
+attachment_storage_stream_download($attachment);

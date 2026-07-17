@@ -1,0 +1,82 @@
+---
+description: How to add PHP portal pages correctly — bootstrap, auth, hubs, includes depth
+globs: "**/*.php"
+alwaysApply: false
+---
+
+# NutraAxis PHP page architecture
+
+Classic multi-page PHP (no framework). Each `.php` URL is an entry point. Shared code lives in `includes/`.
+
+## Required page shape (authenticated)
+
+```php
+<?php
+require dirname(__DIR__) . '/includes/init.php';          // depth 1
+// nested (sales-reporting/foo/, labeling-operations/bar/):
+// require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/<domain>.php';      // po.php, catalog.php, …
+
+po_require_read(); // or auth_require_module_read('slug') / *_require_create|update|delete
+
+$activeSlug = 'your-module-slug';
+$pageTitle = 'Title | NutraAxis Operations';
+
+require dirname(__DIR__) . '/includes/head.php';
+require dirname(__DIR__) . '/includes/header.php';
+?>
+  <main class="page-main">
+    <div class="container page-inner">
+      <?php render_list_page_header([
+          'back_href'  => '/parent-hub/',
+          'back_label' => 'Back to …',
+          'category'   => 'Section',
+          'title'      => 'Page title',
+          'lead'       => 'One sentence.',
+          'permission' => permission_label(…), // optional
+      ]); ?>
+      <!-- forms / tables -->
+    </div>
+  </main>
+<?php
+require dirname(__DIR__) . '/includes/footer.php';
+```
+
+## Non-negotiables
+
+1. **Always load `init.php` first** (except thin redirects). It starts the session, refreshes permissions, and loads table/form helpers.
+2. **Match `dirname()` depth to folder nesting.** Copying a shallow page into a nested folder without `dirname(__DIR__, 2)` causes fatal include errors.
+3. **Put DB/business logic in `includes/<domain>.php`**, not inline in the page when non-trivial. Use `db()` only from includes.
+4. **Register the slug** in:
+   - `MODULE_PERMISSION_COLUMNS` in `includes/auth.php` (leaf modules), and
+   - the right array / hub in `includes/app.php` (`$appFunctions`, hub `*_submodules`, `$modulePages`).
+5. **Use the domain’s `*_require_*` gate** when one exists (`po_require_update()`, `catalog_require_read()`, …). Do not rely on `auth_require_login()` alone.
+6. **Prefer shared UI helpers** already loaded by init: `render_list_page_header()`, `table_sort_*`, `table_actions_*`, `form_actions_*`. Do not paste a new breadcrumb SVG block.
+7. **Hub landings** for supply-chain areas: thin `index.php` that calls `module_hub_render('hub-slug', 'hub-slug')` after loading `module-hub.php` (see `product-master/`, `procurement/`, `inbound-receiving/`).
+8. **Do not hard-require optional feature includes.** If a nav partial depends on WIP code (e.g. `approval.php`), gate with `is_file()` / `function_exists()` so main stays bootable.
+9. **Hide unfinished modules** via `app_nav_hidden_module_slugs()` in `app.php` until the leaf page and permission column exist — do not leave hub cards pointing at 404s.
+10. **Session writes after `init.php`:** session is closed for writing. Follow login/logout patterns that reopen the session when mutating `$_SESSION`.
+
+## Attachments
+
+Upload UI: `includes/file-upload-dropzone-field.php`. Persistence: `attachment_storage_save($domain, …, ['encrypt' => true|false])` → Azure Blob. Sensitive docs must encrypt via shared `file-crypto.php` and set `IsEncrypted`. Resolve downloads with `attachment_storage_resolve_content()` / `attachment_storage_stream_download()`. Never store new document bytes in SQL `FileData`. Never add a parallel upload or crypto helper.
+
+## UAT / data profile
+
+- Portal cards are labeled Production vs UAT (`tier` in `app.php`). **Environment is page-bound**, not toggled by flipping site-wide `ADOBE_COMMERCE_ENVIRONMENT`.
+- Production leaf: `require …/page-data-profile.php` (defaults `$dataProfile` to production). Adobe resolves to production; Jazz calls `jazz_oms_use_environment('production')` (or rely on production default).
+- UAT twin stub:
+  ```php
+  <?php
+  $dataProfile = 'uat';
+  $activeSlug = '…-uat';
+  require dirname(__DIR__) . '/production-leaf/index.php';
+  ```
+- Leaf must load `page-data-profile.php` early, then call `jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production')` for Jazz pages. Use `data_profile_page_path()` for in-page links so you stay on the same twin.
+- `includes/uat-banner.php` shows when `data_profile_is_uat()`.
+- Never rely on changing Azure `ADOBE_COMMERCE_ENVIRONMENT` alone to switch portal cards.
+- QuickBooks is a single OAuth company: set `QBO_ENVIRONMENT=production` on prod App Service; reconnect if the stored connection env mismatches.
+
+## Longer reference
+
+See `docs/PHP_PAGE_ARCHITECTURE.md` for the full checklist and anti-patterns.

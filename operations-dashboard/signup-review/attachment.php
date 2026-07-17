@@ -18,14 +18,16 @@ if ($application === null) {
     exit('Application not found.');
 }
 
-$content = provider_signup_attachment_bytes($attachment);
-if ($content === '') {
+$resolved = attachment_storage_resolve_content($attachment);
+if (!$resolved['ok']) {
     http_response_code(404);
     exit('Attachment file is empty.');
 }
 
-header('Content-Type: ' . (string) ($attachment['ContentType'] ?? 'application/octet-stream'));
-header('Content-Length: ' . strlen($content));
-header('Content-Disposition: inline; filename="' . str_replace('"', '', (string) ($attachment['FileName'] ?? 'attachment')) . '"');
-echo $content;
+$fileName = str_replace('"', '', (string) ($attachment['FileName'] ?? 'attachment'));
+
+header('Content-Type: ' . $resolved['content_type']);
+header('Content-Length: ' . strlen($resolved['content']));
+header('Content-Disposition: inline; filename="' . $fileName . '"');
+echo $resolved['content'];
 exit;

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/legal.php';
+require_once __DIR__ . '/attachment-storage.php';
 
 const LEGAL_MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
@@ -41,24 +42,37 @@ function legal_save_attachment(int $contractId, array $file, string $kind = 'Oth
 
     try {
         $pdo = db();
+        $fileName = (string) ($file['name'] ?? 'attachment');
+        $contentType = (string) ($file['type'] ?? 'application/octet-stream');
+
         $stmt = $pdo->prepare(<<<SQL
             INSERT INTO dbo.ContractAttachment (
-                ContractID, FileName, ContentType, FileSizeBytes, FileData, AttachmentKind, UploadedByUser
+                ContractID, FileName, ContentType, FileSizeBytes, FileData, BlobPath, AttachmentKind, UploadedByUser
             )
             OUTPUT INSERTED.AttachmentID AS inserted_id
-            VALUES (:contract, :name, :type, :size, :data, :kind, :user)
+            VALUES (:contract, :name, :type, :size, NULL, NULL, :kind, :user)
         SQL);
 
         $stmt->bindValue(':contract', $contractId, PDO::PARAM_INT);
-        $stmt->bindValue(':name', (string) ($file['name'] ?? 'attachment'));
-        $stmt->bindValue(':type', (string) ($file['type'] ?? 'application/octet-stream'));
+        $stmt->bindValue(':name', $fileName);
+        $stmt->bindValue(':type', $contentType);
         $stmt->bindValue(':size', (int) $file['size'], PDO::PARAM_INT);
-        $stmt->bindValue(':data', $content, PDO::PARAM_LOB);
         $stmt->bindValue(':kind', $kind);
         $stmt->bindValue(':user', auth_user()['UserID'] ?? 0, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['ok' => true, 'error' => null, 'id' => db_fetch_inserted_int($stmt, 'inserted_id')];
+        $id = db_fetch_inserted_int($stmt, 'inserted_id');
+        $stored = attachment_storage_save('legal', $contractId, $id, $fileName, $contentType, $content);
+        if (!$stored['ok']) {
+            $pdo->prepare('DELETE FROM dbo.ContractAttachment WHERE AttachmentID = :id')->execute(['id' => $id]);
+
+            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save attachment to blob storage.'];
+        }
+
+        $pdo->prepare('UPDATE dbo.ContractAttachment SET BlobPath = :path, FileData = NULL WHERE AttachmentID = :id')
+            ->execute(['path' => $stored['blob_path'], 'id' => $id]);
+
+        return ['ok' => true, 'error' => null, 'id' => $id];
     } catch (Throwable) {
         return ['ok' => false, 'error' => 'Unable to save attachment. Please try again.'];
     }
