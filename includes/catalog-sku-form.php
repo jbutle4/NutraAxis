@@ -216,8 +216,8 @@ $formActions = capture_form_actions(function () use ($isEdit, $form) {
         <?php if ($qboIncomeAccounts === [] || $qboExpenseAccounts === [] || $qboAssetAccounts === []): ?>
         <div class="admin-notice is-warning" role="status">
           One or more account lists is empty. Sync the chart of accounts from
-          <a href="/accounting/chart-of-accounts.php">Accounting → Chart of Accounts</a>
-          (QBO Chart of Accounts Sync process), then reload this page.
+          <a href="/accounting/chart-of-accounts.php">Accounting → QBO Chart of Accounts</a>
+          (QuickBooks Chart of Accounts Sync process — not Certificate of Analysis), then reload this page.
         </div>
         <?php endif; ?>
         <div class="form-grid">

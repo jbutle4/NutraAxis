@@ -29,7 +29,7 @@ if ($listResult['ok'] && qbo_is_connected()) {
     $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['balance'], 'number', 'asc');
 }
 
-$pageTitle = 'Chart of Accounts | Accounting';
+$pageTitle = 'QBO Chart of Accounts | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
@@ -39,8 +39,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">QuickBooks</div>
-          <h1>Chart of Accounts</h1>
-          <p class="page-lead">General ledger accounts from QuickBooks Online. Read-only.</p>
+          <h1>QBO Chart of Accounts</h1>
+          <p class="page-lead">QuickBooks Online general ledger accounts (not Certificate of Analysis). Read-only.</p>
         </div>
       </div>
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>

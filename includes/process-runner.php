@@ -43,8 +43,8 @@ function process_registry(): array
         ],
         'qbo-coa-sync' => [
             'code'          => 'qbo-coa-sync',
-            'name'          => 'QBO Chart of Accounts Sync',
-            'description'   => 'Sync QuickBooks Online accounts into dbo.QBO_COA.',
+            'name'          => 'QuickBooks Chart of Accounts Sync',
+            'description'   => 'Sync QuickBooks Online general ledger accounts for Product Catalog account pickers. Not Certificate of Analysis.',
             'function_name' => 'qbo-coa-sync',
             'schedule'      => 'Friday at 6:00 PM US Central',
         ],

@@ -764,7 +764,7 @@ $modulePages = [
             ['title' => 'Accounts Receivable', 'desc' => 'View customer invoices and open balances.'],
             ['title' => 'Purchase Orders', 'desc' => 'Browse QuickBooks purchase orders; create and update from Operations is planned.'],
             ['title' => 'Inventory & Suppliers', 'desc' => 'Read inventory items and vendor directory; supplier create/update from Operations is planned.'],
-            ['title' => 'Chart of Accounts', 'desc' => 'Browse general ledger accounts and current balances.'],
+            ['title' => 'QBO Chart of Accounts', 'desc' => 'Browse QuickBooks Online general ledger accounts (not Certificate of Analysis).'],
             ['title' => 'QuickBooks Connection', 'desc' => 'Users with Update access connect and disconnect the QuickBooks Online company.'],
         ],
     ],

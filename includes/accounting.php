@@ -11,7 +11,7 @@ const ACCOUNTING_SECTIONS = [
     'pos'      => ['title' => 'Purchase Orders', 'href' => '/accounting/pos.php'],
     'inventory'=> ['title' => 'Inventory', 'href' => '/accounting/inventory.php'],
     'suppliers'=> ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
-    'accounts' => ['title' => 'Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
+    'accounts' => ['title' => 'QBO Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
 ];
 
 function accounting_permission_value(): ?string
