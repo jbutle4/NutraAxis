@@ -8,6 +8,16 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-17 — QBO inventory sync Function App + portal deploy (sandbox)
+
+- Published `functions/` to **Nutra-forecast-tool** (sandbox), including `inventory-receipt-sync` and `inventory-sales-sync`.
+- Deployed portal zip to **nutraaxisweb** (Process Log registry + Run controls, IMS pages).
+- Applied SQL `067`, `117`–`121` on `nutraaxis` (IMS tables, `POReceipt.IMSPostedAt`, `QBOInventorySyncLog`, WPC facilities).
+- Set Function App `DB_NAME_INVENTORY_SYNC=nutraaxis`, disabled inventory timers on test app (`0 0 0 1 1 2099`), confirmed `QBO_INV_ADJUST_ACCOUNT_ID=85`.
+- Smoke: Process Log run ids 463/464 — Inventory Receipt Sync / Inventory Sales Sync completed (`0` rows when no pending receipts/orders).
+
+---
+
 ## 2026-06-05 — Project bootstrap
 
 - Created default home page `index.php` with NutraAxis branding (teal/salmon palette, Inter font).
