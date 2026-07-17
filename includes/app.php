@@ -79,10 +79,28 @@ $inventoryManagementSubModules = [
         'slug'  => 'inventory-balances',
         'title' => 'Inventory Balances',
         'desc'  => 'Live operational stock by SKU and facility from the IMS ledger.',
-        'href'  => '',
+        'href'  => '/inventory-balances/',
         'icon'  => 'inventory',
         'tier'  => 'production',
         'sort'  => 5,
+    ],
+    [
+        'slug'  => 'inventory-transfers',
+        'title' => 'Facility Transfers',
+        'desc'  => 'Move stock between Cart.com, CPPC, White Label, and transit.',
+        'href'  => '/inventory-transfers/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 6,
+    ],
+    [
+        'slug'  => 'inventory-qbo-recon',
+        'title' => 'QBO Inventory Reconciliation',
+        'desc'  => 'Compare IMS location totals with QuickBooks Qty on hand.',
+        'href'  => '/inventory-qbo-recon/',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 9,
     ],
     [
         'slug'  => 'qbo-inventory',
@@ -516,6 +534,28 @@ $modulePages = [
             ['title' => 'Ledger Foundation', 'desc' => 'Read-only view of InvCurrentBalance; movements post through InvTransaction in later phases.'],
         ],
     ],
+    'inventory-transfers' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Facility Transfers',
+        'lead'        => 'Request and complete hub-and-spoke inventory transfers between Cart.com and spoke facilities.',
+        'capabilities' => [
+            ['title' => 'Hub and Spoke', 'desc' => 'Replenish CPPC and White Label from Cart.com only.'],
+            ['title' => 'Transit Bucket', 'desc' => 'Optional TRANSIT facility for in-flight quantities.'],
+            ['title' => 'IMS Posting', 'desc' => 'Ship and receive posts TransferOut / TransferIn to the ledger.'],
+            ['title' => 'QBO Valuation', 'desc' => 'Same-SKU transfers keep company QtyOnHand unchanged; G/L moves via Journal Entry when configured.'],
+        ],
+    ],
+    'inventory-qbo-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'QBO Inventory Reconciliation',
+        'lead'        => 'Compare NutraAxis IMS company-wide quantity with QuickBooks Online Qty on hand by SKU.',
+        'capabilities' => [
+            ['title' => 'IMS vs QBO', 'desc' => 'Side-by-side company totals for each SKU.'],
+            ['title' => 'Mismatch Focus', 'desc' => 'Highlight rows where ledger and QuickBooks disagree.'],
+            ['title' => 'Sandbox Safe', 'desc' => 'Built against QBO Sandbox during UAT.'],
+            ['title' => 'Cutover Ready', 'desc' => 'Use before promoting inventory sync to production QuickBooks.'],
+        ],
+    ],
     'inventory-reconciliation' => [
         'label'       => 'Inventory',
         'headline'    => 'Inventory Reconciliation (Jazz-ACCS)',
@@ -749,9 +789,6 @@ function app_nav_hidden_module_slugs(): array
 {
     return [
         'travel-expense',
-        // Leaf pages not built yet — show as Coming soon via empty href instead of hiding:
-        // (inventory-balances kept hidden until IMS ledger page exists)
-        'inventory-balances',
         'jazz-order-report',
         'jazz-order-report-uat',
     ];

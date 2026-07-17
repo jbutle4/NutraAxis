@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/catalog.php';
 require dirname(__DIR__) . '/includes/catalog-attachments.php';
+require dirname(__DIR__) . '/includes/quickbooks.php';
 
 catalog_require_read();
 
@@ -15,8 +16,10 @@ if ($sku === null) {
 
 $activeSlug = 'product-catalog';
 $notice = $_GET['notice'] ?? null;
-$error = $_GET['error'] ?? null;
+$error = isset($_GET['error']) ? qbo_humanize_error((string) $_GET['error']) : null;
+$warning = $_GET['warning'] ?? null;
 $attachments = catalog_list_attachments($skuId);
+$qboSyncBlockers = catalog_can_update() ? catalog_qbo_sync_blockers($sku) : [];
 
 $pageTitle = $sku['SKUCode'] . ' | Product Catalog';
 
@@ -25,26 +28,23 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/product-catalog/">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-        Back to SKU Master
-      </a>
-
-      <div class="admin-header">
-        <div>
-          <div class="section-label">SKU</div>
-          <h1><?= htmlspecialchars($sku['ProductName']) ?></h1>
-          <p class="page-lead">
-            <span class="status-badge <?= catalog_status_class($sku['SKUStatus']) ?>"><?= htmlspecialchars($sku['SKUStatus']) ?></span>
-            · <?= htmlspecialchars($sku['SKUCode']) ?>
-            · <?= htmlspecialchars($sku['Brand']) ?>
-          </p>
-        </div>
-        <div class="admin-actions">
+      <?php
+      ob_start();
+      ?>
           <?php if (catalog_can_update()): ?>
           <a class="btn-primary" href="/product-catalog/edit.php?id=<?= $skuId ?>">Edit</a>
+          <?php if (qbo_is_connected()): ?>
+          <form method="post" action="/product-catalog/sync-qbo.php" class="inline-form" onsubmit="return confirm('Sync this SKU to QuickBooks as a product item?');">
+            <input type="hidden" name="sku_id" value="<?= $skuId ?>" />
+            <button type="submit" class="btn-secondary">Sync to QuickBooks</button>
+          </form>
+          <form method="post" action="/product-catalog/convert-qbo-inventory.php" class="inline-form" onsubmit="return confirm('Convert this SKU to a QuickBooks Inventory item with Qty on hand = 0? Existing Non-inventory items will be inactivated.');">
+            <input type="hidden" name="sku_id" value="<?= $skuId ?>" />
+            <button type="submit" class="btn-secondary">Convert to Inventory</button>
+          </form>
+          <?php else: ?>
+          <a class="btn-secondary" href="/accounting/">Connect QuickBooks</a>
+          <?php endif; ?>
           <?php endif; ?>
           <?php if (catalog_can_delete()): ?>
           <form method="post" action="/product-catalog/delete.php" class="inline-form" onsubmit="return confirm('Delete this SKU from the catalog?');">
@@ -52,22 +52,61 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-text btn-text-danger">Delete</button>
           </form>
           <?php endif; ?>
-        </div>
-      </div>
+      <?php
+      $listToolbar = trim(ob_get_clean());
+      $catalogLead = '<span class="status-badge ' . catalog_status_class($sku['SKUStatus']) . '">' . htmlspecialchars($sku['SKUStatus']) . '</span> · ' . htmlspecialchars($sku['SKUCode']) . ' · ' . htmlspecialchars($sku['Brand']);
+      render_list_page_header([
+          'back_href'  => '/product-catalog/',
+          'back_label' => 'Back to SKU Master',
+          'category'   => 'SKU',
+          'title'      => $sku['ProductName'],
+          'lead'       => $catalogLead,
+          'lead_html'  => true,
+      ]);
+      ?>
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">SKU saved successfully.</div>
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
+      <?php elseif ($notice === 'qbo_synced'): ?>
+      <div class="admin-notice is-success" role="status">SKU synced to QuickBooks successfully.</div>
+      <?php elseif ($notice === 'qbo_reconciled'): ?>
+      <div class="admin-notice is-success" role="status">QuickBooks item linked successfully.</div>
+      <?php elseif ($notice === 'qbo_inventory_converted'): ?>
+      <div class="admin-notice is-success" role="status">SKU converted to a QuickBooks Inventory item (Qty on hand = 0).</div>
+      <?php elseif ($notice === 'qbo_already_inventory'): ?>
+      <div class="admin-notice is-success" role="status">SKU is already linked to a QuickBooks Inventory item.</div>
+      <?php endif; ?>
+      <?php if ($warning !== null): ?>
+      <div class="admin-notice is-warning" role="status"><?= htmlspecialchars($warning) ?></div>
       <?php endif; ?>
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
+      <?php if ($qboSyncBlockers !== []): ?>
+      <div class="admin-notice is-warning" role="status">
+        <strong>QuickBooks sync is not ready.</strong>
+        Set the following on the
+        <a href="/product-catalog/edit.php?id=<?= $skuId ?>#qbo-settings">Edit SKU</a>
+        page under <em>QuickBooks inventory item</em>:
+        <ul class="notice-list">
+          <?php foreach ($qboSyncBlockers as $blocker): ?>
+          <li><?= htmlspecialchars($blocker) ?></li>
+          <?php endforeach; ?>
+        </ul>
+        Account pickers use the cached chart of accounts from
+        <a href="/accounting/chart-of-accounts.php">Accounting → Chart of Accounts</a>
+        (run the QBO COA sync job if lists are empty).
+      </div>
+      <?php endif; ?>
 
-      <div class="detail-grid">
-        <section class="detail-card">
+      <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
+
+      <div class="account-grid po-summary-grid">
+        <div class="account-card">
           <h2>Product details</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>SKU code</dt><dd><?= htmlspecialchars($sku['SKUCode']) ?></dd></div>
             <div><dt>Brand</dt><dd><?= htmlspecialchars($sku['Brand']) ?></dd></div>
             <div><dt>Manufacturer</dt><dd><?= htmlspecialchars($sku['Manufacturer']) ?></dd></div>
@@ -90,11 +129,11 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Launch date</dt><dd><?= htmlspecialchars(catalog_format_date($sku['LaunchDate'])) ?></dd></div>
             <div><dt>Last modified</dt><dd><?= htmlspecialchars(admin_format_datetime($sku['ModifiedDate'])) ?><?= !empty($sku['ModifiedByName']) ? ' by ' . htmlspecialchars($sku['ModifiedByName']) : '' ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card">
           <h2>Packaging &amp; identifiers</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>Capsule count</dt><dd><?= $sku['CapsuleCount'] !== null ? (int) $sku['CapsuleCount'] : '—' ?></dd></div>
             <div><dt>Servings per container</dt><dd><?= $sku['ServingCount'] !== null ? (int) $sku['ServingCount'] : '—' ?></dd></div>
             <div><dt>Bottle size</dt><dd><?= htmlspecialchars($sku['BottleSize'] ?? '—') ?></dd></div>
@@ -107,20 +146,38 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Non-GMO certified</dt><dd><?= !empty($sku['NonGMOCertified']) ? 'Yes' : 'No' ?></dd></div>
             <div><dt>Allergen statement</dt><dd><?= htmlspecialchars(catalog_format_allergens($sku['AllergenStatement'] ?? null)) ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card">
+          <h2>QuickBooks</h2>
+          <dl class="account-details">
+            <div><dt>Sync status</dt><dd><?= htmlspecialchars(catalog_qbo_sync_status_label((string) ($sku['QBO_SyncStatus'] ?? 'NotSynced'))) ?></dd></div>
+            <div><dt>QBO item ID</dt><dd><?= htmlspecialchars($sku['QBO_ItemID'] ?? '—') ?></dd></div>
+            <div><dt>Display name</dt><dd><?= htmlspecialchars($sku['QBO_DisplayName'] ?? catalog_build_qbo_item_name($sku) ?: '—') ?></dd></div>
+            <div><dt>Taxable</dt><dd><?= !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']) ? 'Yes' : 'No' ?></dd></div>
+            <div><dt>Income account</dt><dd><?= htmlspecialchars(trim(($sku['QBO_IncomeAccountRefName'] ?? '') . ($sku['QBO_IncomeAccountRefValue'] ?? '' ? ' (' . $sku['QBO_IncomeAccountRefValue'] . ')' : '')) ?: '—') ?></dd></div>
+            <div><dt>COGS account</dt><dd><?= htmlspecialchars(trim(($sku['QBO_ExpenseAccountRefName'] ?? '') . ($sku['QBO_ExpenseAccountRefValue'] ?? '' ? ' (' . $sku['QBO_ExpenseAccountRefValue'] . ')' : '')) ?: '—') ?></dd></div>
+            <div><dt>Inventory asset account</dt><dd><?= htmlspecialchars(trim(($sku['QBO_AssetAccountRefName'] ?? '') . ($sku['QBO_AssetAccountRefValue'] ?? '' ? ' (' . $sku['QBO_AssetAccountRefValue'] . ')' : '')) ?: '—') ?></dd></div>
+            <div><dt>Purchase description</dt><dd><?= htmlspecialchars($sku['QBO_PurchaseDesc'] ?? '—') ?></dd></div>
+            <div><dt>Last synced</dt><dd><?= !empty($sku['QBO_SyncedAt']) ? htmlspecialchars(admin_format_datetime($sku['QBO_SyncedAt'])) : '—' ?></dd></div>
+            <?php if (!empty($sku['QBO_SyncError'])): ?>
+            <div><dt>Sync error</dt><dd><?= htmlspecialchars(qbo_humanize_error((string) $sku['QBO_SyncError'])) ?></dd></div>
+            <?php endif; ?>
+          </dl>
+        </div>
+
+        <div class="account-card">
           <h2>Pricing</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div><dt>COGS</dt><dd><?= htmlspecialchars(catalog_format_money($sku['COGS'])) ?></dd></div>
-            <div><dt>Wholesale price</dt><dd><?= htmlspecialchars(catalog_format_money($sku['WholesalePrice'])) ?></dd></div>
+            <div><dt>WHSLE</dt><dd><?= htmlspecialchars(catalog_format_money($sku['WholesalePrice'])) ?></dd></div>
             <div><dt>MSRP</dt><dd><?= htmlspecialchars(catalog_format_money($sku['MSRP'])) ?></dd></div>
           </dl>
-        </section>
+        </div>
 
-        <section class="detail-card">
+        <div class="account-card account-grid-span-full">
           <h2>Documents &amp; notes</h2>
-          <dl class="detail-list">
+          <dl class="account-details">
             <div>
               <dt>SFP link</dt>
               <dd>
@@ -138,7 +195,7 @@ require dirname(__DIR__) . '/includes/header.php';
               </dd>
             </div>
             <div>
-              <dt>Label (print-ready) link</dt>
+              <dt>Label link</dt>
               <dd>
                 <?php if (!empty($sku['LabelPrintReadyLink'])): ?>
                 <?php $labelLinkName = catalog_link_display_label($sku['LabelPrintReadyLink'], 'product label'); ?>
@@ -148,36 +205,32 @@ require dirname(__DIR__) . '/includes/header.php';
                 <?php endif; ?>
               </dd>
             </div>
+            <?php if (!empty($sku['Formulation'])): ?>
+            <div><dt>Formulation</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Formulation'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Product'])): ?>
+            <div><dt>Product</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Product'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Claims'])): ?>
+            <div><dt>Claims</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Claims'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Directions'])): ?>
+            <div><dt>Directions</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Directions'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['CertsOnLabel'])): ?>
+            <div><dt>Certs on label</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['CertsOnLabel'])) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($sku['Notes'])): ?>
+            <div><dt>Notes</dt><dd class="is-prose"><?= nl2br(htmlspecialchars($sku['Notes'])) ?></dd></div>
+            <?php endif; ?>
           </dl>
-          <?php if (!empty($sku['Formulation'])): ?>
-          <h3 class="production-line-header">Formulation</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Formulation'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Product'])): ?>
-          <h3 class="production-line-header">Product</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Product'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Claims'])): ?>
-          <h3 class="production-line-header">Claims</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Claims'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Directions'])): ?>
-          <h3 class="production-line-header">Directions</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Directions'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['CertsOnLabel'])): ?>
-          <h3 class="production-line-header">Certs on label</h3>
-          <p><?= nl2br(htmlspecialchars($sku['CertsOnLabel'])) ?></p>
-          <?php endif; ?>
-          <?php if (!empty($sku['Notes'])): ?>
-          <h3 class="production-line-header">Notes</h3>
-          <p><?= nl2br(htmlspecialchars($sku['Notes'])) ?></p>
-          <?php endif; ?>
-        </section>
+        </div>
       </div>
 
       <?php
         $showUploadForm = catalog_can_update();
+        $uploadReturnPath = '/product-catalog/view.php?id=' . $skuId;
+        $uploadNotice = $notice;
         require dirname(__DIR__) . '/includes/catalog-attachments-section.php';
       ?>
     </div>

@@ -84,3 +84,48 @@ function accounting_ref_name(?array $ref): string
 
     return $name !== '' ? $name : '—';
 }
+
+function accounting_skumaster_qbo_links(): array
+{
+    try {
+        $pdo = db();
+        $stmt = $pdo->query(<<<SQL
+            SELECT SKUID, SKUCode, ProductName, QBO_ItemID, QBO_SyncStatus
+            FROM dbo.SKUMaster
+        SQL);
+        $bySkuCode = [];
+        $byQboItemId = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $skuCode = trim((string) ($row['SKUCode'] ?? ''));
+            if ($skuCode !== '') {
+                $bySkuCode[strtoupper($skuCode)] = $row;
+            }
+
+            $qboItemId = trim((string) ($row['QBO_ItemID'] ?? ''));
+            if ($qboItemId !== '') {
+                $byQboItemId[$qboItemId] = $row;
+            }
+        }
+
+        return ['by_sku_code' => $bySkuCode, 'by_qbo_item_id' => $byQboItemId];
+    } catch (Throwable) {
+        return ['by_sku_code' => [], 'by_qbo_item_id' => []];
+    }
+}
+
+function accounting_match_skumaster_for_qbo_item(array $item, array $links): ?array
+{
+    $qboItemId = trim((string) ($item['Id'] ?? ''));
+    if ($qboItemId !== '' && isset($links['by_qbo_item_id'][$qboItemId])) {
+        return $links['by_qbo_item_id'][$qboItemId];
+    }
+
+    $skuCode = trim((string) ($item['Sku'] ?? ''));
+    if ($skuCode !== '') {
+        $match = $links['by_sku_code'][strtoupper($skuCode)] ?? null;
+
+        return is_array($match) ? $match : null;
+    }
+
+    return null;
+}

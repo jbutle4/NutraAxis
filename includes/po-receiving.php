@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/po.php';
+require_once __DIR__ . '/facility.php';
 
 const POR_STATUSES = ['Draft', 'Scheduled', 'Transmitted', 'Complete', 'Cancelled'];
 
@@ -443,7 +444,7 @@ function por_default_header_fields(): array
         'por_notes'              => '',
         'business_type'          => '',
         'shipment_number'        => '',
-        'facility'               => '',
+        'facility'               => facility_default_po_receipt_code(),
         'carrier_number'         => '',
         'seal_number'            => '',
         'load_number'            => '',
@@ -514,7 +515,7 @@ function por_to_form(array $receipt, array $lines): array
         'por_notes'              => (string) ($receipt['PORNotes'] ?? ''),
         'business_type'          => (string) ($receipt['BusinessType'] ?? ''),
         'shipment_number'        => (string) ($receipt['ShipmentNumber'] ?? ''),
-        'facility'               => (string) ($receipt['Facility'] ?? ''),
+        'facility'               => (string) ($receipt['Facility'] ?? facility_default_po_receipt_code()),
         'carrier_number'         => (string) ($receipt['CarrierNumber'] ?? ''),
         'seal_number'            => (string) ($receipt['SealNumber'] ?? ''),
         'load_number'            => (string) ($receipt['LoadNumber'] ?? ''),
@@ -703,6 +704,11 @@ function por_save(array $input, ?int $porId = null): array
 
     if (!in_array($data['por_status'], POR_STATUSES, true)) {
         return ['ok' => false, 'error' => 'Select a valid receipt status.'];
+    }
+
+    $facilityError = facility_validate_po_receipt_destination($data['facility'] ?? '');
+    if ($facilityError !== null) {
+        return ['ok' => false, 'error' => $facilityError];
     }
 
     $lineResult = por_parse_lines($data['lines'], $poId);
