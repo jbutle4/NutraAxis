@@ -21,9 +21,22 @@ $activeSlug = 'accounting';
 $accountingSection = 'invoices';
 $error = null;
 $isLocked = supplier_invoice_is_locked($invoice);
-$isStandalone = empty($invoice['POID']);
-$approvalLog = $isStandalone ? payment_approval_invoice_list_log($invoiceId) : qbo_insert_list_approval_log($invoiceId);
-$latestSendBack = supplier_invoice_latest_send_back($approvalLog);
+$paymentLog = payment_approval_invoice_list_log($invoiceId);
+$qboLog = qbo_insert_list_approval_log($invoiceId);
+$approvalLog = array_merge($paymentLog, $qboLog);
+usort($approvalLog, static function (array $a, array $b): int {
+    $dateA = $a['LogDate'] ?? '';
+    $dateB = $b['LogDate'] ?? '';
+    if ($dateA instanceof DateTimeInterface) {
+        $dateA = $dateA->format('Y-m-d H:i:s.u');
+    }
+    if ($dateB instanceof DateTimeInterface) {
+        $dateB = $dateB->format('Y-m-d H:i:s.u');
+    }
+
+    return strcmp((string) $dateB, (string) $dateA);
+});
+$latestSendBack = supplier_invoice_latest_send_back($paymentLog);
 $lines = supplier_invoice_get_lines($invoiceId);
 $form = supplier_invoice_to_form($invoice, $lines);
 $suppliers = supplier_invoice_list_suppliers();
@@ -65,7 +78,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($isLocked): ?>
       <div class="admin-notice is-detail" role="status">This invoice is <?= htmlspecialchars(strtolower((string) $invoice['SyncStatus'])) ?> and cannot be edited.</div>
       <?php elseif (supplier_invoice_posted_is_reopenable($invoice)): ?>
-      <div class="admin-notice" role="status">This invoice was approved<?= qbo_insert_is_stub_mode() ? ' in QBO insert test mode' : '' ?> and can be edited before resubmitting for approval from the invoice view page.</div>
+      <div class="admin-notice" role="status">This invoice was payment-approved<?= payment_approval_is_stub_mode() ? ' in test mode' : '' ?> and can be edited before resubmitting for payment approval from the invoice view page. Use Submit for QBO Insert there if you only need accounting posting recovery.</div>
       <?php endif; ?>
 
       <?php if ($error !== null): ?>
@@ -87,7 +100,6 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php
         $isEdit = true;
         $formAction = '/accounting/supplier-invoices/edit.php?id=' . $invoiceId;
-        $isStandaloneInvoice = $isStandalone;
         require dirname(__DIR__, 2) . '/includes/supplier-invoice-form.php';
       ?>
 

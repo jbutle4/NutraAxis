@@ -97,7 +97,7 @@ const PAYMENT_APPROVAL_INVOICE_LIST_SORT_NUMERIC = ['total'];
 
 const PAYMENT_APPROVAL_INVOICE_ACTIONS = [
     'approve'   => [
-        'label'            => 'Approve & Post to QBO',
+        'label'            => 'Approve Payment',
         'result'           => 'Approved',
         'status'           => QBO_INSERT_STATUS_POSTED,
         'require_comments' => false,
@@ -210,10 +210,38 @@ function payment_approval_is_editable(?array $payment): bool
     return in_array((string) ($payment['PaymentStatus'] ?? ''), PAYMENT_APPROVAL_EDITABLE_STATUSES, true);
 }
 
+function payment_approval_invoice_has_approved(int $invoiceId): bool
+{
+    foreach (payment_approval_invoice_list_log($invoiceId) as $entry) {
+        if (($entry['ApproverResult'] ?? '') === 'Approved') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function payment_approval_invoice_pending_sql_exclude_qbo_recovery(): string
+{
+    return <<<SQL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM dbo.ApprovalLog al
+              WHERE al.ApprovalType = N'Payment'
+                AND al.EntityType = N'SupplierInvoice'
+                AND al.EntityID = si.SupplierInvoiceID
+                AND al.ApproverResult = N'Approved'
+          )
+    SQL;
+}
+
 function payment_approval_count_pending(): int
 {
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM dbo.SupplierInvoice WHERE SyncStatus = :status AND POID IS NULL');
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM dbo.SupplierInvoice si WHERE si.SyncStatus = :status'
+        . payment_approval_invoice_pending_sql_exclude_qbo_recovery()
+    );
     $stmt->execute(['status' => QBO_INSERT_STATUS_SUBMITTED]);
 
     return (int) $stmt->fetchColumn();
@@ -237,8 +265,8 @@ function payment_approval_list_pending(array $filters = []): array
         INNER JOIN dbo.Supplier s ON s.SupplierID = si.SupplierID
         LEFT JOIN dbo.[User] cu ON cu.UserID = si.CreatedByUser
         WHERE si.SyncStatus = :status
-          AND si.POID IS NULL
     SQL;
+    $sql .= payment_approval_invoice_pending_sql_exclude_qbo_recovery();
 
     $sortState = table_sort_state(PAYMENT_APPROVAL_INVOICE_LIST_SORT_COLUMNS, 'txn_date', 'asc', $filters);
     $sql .= ' ORDER BY ' . table_sort_sql_clause(PAYMENT_APPROVAL_INVOICE_LIST_SORT_SQL, $sortState, 'txn_date', 'doc_number');
@@ -256,11 +284,15 @@ function payment_approval_invoice_is_standalone(?array $invoice): bool
 
 function payment_approval_invoice_can_submit(array $invoice): bool
 {
-    if (!payment_approval_invoice_is_standalone($invoice)) {
+    $status = (string) ($invoice['SyncStatus'] ?? '');
+    $invoiceId = (int) ($invoice['SupplierInvoiceID'] ?? 0);
+
+    // After payment approval, Failed invoices recover via manual QBO Insert — not payment re-submit.
+    if ($status === QBO_INSERT_STATUS_FAILED && $invoiceId > 0 && payment_approval_invoice_has_approved($invoiceId)) {
         return false;
     }
 
-    if (in_array((string) ($invoice['SyncStatus'] ?? ''), QBO_INSERT_EDITABLE_STATUSES, true)) {
+    if (in_array($status, QBO_INSERT_EDITABLE_STATUSES, true)) {
         return true;
     }
 
@@ -271,7 +303,7 @@ function payment_approval_invoice_actions(): array
 {
     $actions = PAYMENT_APPROVAL_INVOICE_ACTIONS;
     if (payment_approval_is_stub_mode()) {
-        $actions['approve']['label'] = 'Approve (Test Mode)';
+        $actions['approve']['label'] = 'Approve Payment (Test Mode)';
     }
 
     return $actions;
@@ -338,6 +370,10 @@ function payment_approval_invoice_resubmit(int $invoiceId): array
         return ['ok' => false, 'error' => 'Only invoices already submitted for approval can be resubmitted.'];
     }
 
+    if (payment_approval_invoice_has_approved($invoiceId)) {
+        return ['ok' => false, 'error' => 'This invoice is awaiting QBO insert recovery. Use Resubmit for QBO Insert instead.'];
+    }
+
     try {
         payment_approval_invoice_token_invalidate($invoiceId);
         $notify = payment_approval_invoice_notify_approvers($invoice, true);
@@ -362,12 +398,17 @@ function payment_approval_invoice_process_action(int $invoiceId, string $action,
     }
 
     $invoice = supplier_invoice_get($invoiceId);
-    if ($invoice === null || !payment_approval_invoice_is_standalone($invoice)) {
+    if ($invoice === null) {
         return ['ok' => false, 'error' => 'Supplier invoice not found.'];
     }
 
     if ($invoice['SyncStatus'] !== QBO_INSERT_STATUS_SUBMITTED) {
         return ['ok' => false, 'error' => 'Only invoices submitted for approval can be actioned.'];
+    }
+
+    // QBO recovery submissions are actioned by QBO Insert approvers, not Payment.
+    if (payment_approval_invoice_has_approved($invoiceId)) {
+        return ['ok' => false, 'error' => 'This invoice is awaiting QBO insert recovery, not payment approval.'];
     }
 
     $user = $actingUser ?? auth_user();
@@ -382,8 +423,11 @@ function payment_approval_invoice_process_action(int $invoiceId, string $action,
     $qboError = null;
 
     if ($action === 'approve') {
-        if (payment_approval_is_stub_mode()) {
-            $stubNote = 'Payment approval stub mode: approval recorded; QuickBooks bill was not created.';
+        $hasBill = trim((string) ($invoice['QBO_BillId'] ?? '')) !== '';
+        if ($hasBill) {
+            $newStatus = QBO_INSERT_STATUS_POSTED;
+        } elseif (payment_approval_is_stub_mode()) {
+            $stubNote = 'Payment approval stub mode: approval recorded; QuickBooks bill was not created. Use Submit for QBO Insert when ready to post, or set QBO_INSERT_STUB=0.';
         } else {
             require_once __DIR__ . '/quickbooks.php';
             $post = qbo_create_bill_from_supplier_invoice($invoiceId);
@@ -485,6 +529,10 @@ function payment_approval_invoice_notify_requestor(array $invoice, array $config
         }
         if ($qboError !== null && $qboError !== '') {
             $body .= "\nQuickBooks error: {$qboError}";
+            if (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_FAILED
+                || ($config['status'] ?? null) === QBO_INSERT_STATUS_FAILED) {
+                $body .= "\nPayment approval was recorded. Use Submit for QBO Insert on the invoice to retry posting with accounting.";
+            }
         }
         $body .= "\n\nView invoice: {$siteUrl}/accounting/supplier-invoices/view.php?id={$invoiceId}";
     }

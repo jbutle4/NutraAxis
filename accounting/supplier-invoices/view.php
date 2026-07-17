@@ -24,14 +24,30 @@ $lines = supplier_invoice_get_lines($invoiceId);
 $attachments = supplier_invoice_list_attachments($invoiceId);
 $isLocked = supplier_invoice_is_locked($invoice);
 $isEditable = supplier_invoice_is_editable($invoice);
-$isStandalone = empty($invoice['POID']);
-$approvalLog = $isStandalone ? payment_approval_invoice_list_log($invoiceId) : qbo_insert_list_approval_log($invoiceId);
-$latestSendBack = supplier_invoice_latest_send_back($approvalLog);
-$canSubmitForApproval = supplier_invoice_can_update() && (
-    ($isStandalone && payment_approval_invoice_can_submit($invoice))
-    || (!$isStandalone && qbo_insert_can_submit($invoice))
-);
-$canResubmitApproval = supplier_invoice_can_update() && $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED;
+$paymentLog = payment_approval_invoice_list_log($invoiceId);
+$qboLog = qbo_insert_list_approval_log($invoiceId);
+$approvalLog = array_merge($paymentLog, $qboLog);
+usort($approvalLog, static function (array $a, array $b): int {
+    $dateA = $a['LogDate'] ?? '';
+    $dateB = $b['LogDate'] ?? '';
+    if ($dateA instanceof DateTimeInterface) {
+        $dateA = $dateA->format('Y-m-d H:i:s.u');
+    }
+    if ($dateB instanceof DateTimeInterface) {
+        $dateB = $dateB->format('Y-m-d H:i:s.u');
+    }
+
+    return strcmp((string) $dateB, (string) $dateA);
+});
+$latestSendBack = supplier_invoice_latest_send_back($paymentLog);
+$isQboRecoveryPending = qbo_insert_is_recovery_pending($invoice);
+$canSubmitForApproval = supplier_invoice_can_update() && payment_approval_invoice_can_submit($invoice);
+$canResubmitApproval = supplier_invoice_can_update()
+    && $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED
+    && !$isQboRecoveryPending;
+$canSubmitForQbo = supplier_invoice_can_update() && qbo_insert_can_manual_submit($invoice)
+    && $invoice['SyncStatus'] !== QBO_INSERT_STATUS_SUBMITTED;
+$canResubmitQbo = supplier_invoice_can_update() && $isQboRecoveryPending;
 $postedIsReopenable = supplier_invoice_posted_is_reopenable($invoice);
 $paidTotal = po_payment_total_for_invoice($invoiceId);
 $invoicePayments = po_payment_list(['supplier_invoice_id' => $invoiceId]);
@@ -54,15 +70,27 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <a class="btn-secondary" href="/po-payments/new.php?supplier_invoice_id=<?= $invoiceId ?><?= !empty($invoice['POID']) ? '&po_id=' . (int) $invoice['POID'] : '' ?>">New Payment Request</a>
           <?php endif; ?>
           <?php if ($canSubmitForApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for approval again? Approvers will receive a new approval email.' : 'Submit this invoice for approval? Approvers will be notified by email.'), ENT_QUOTES) ?>);">
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for payment approval again? Payment approvers will receive a new approval email.' : 'Submit this invoice for payment approval? Payment approvers will be notified by email.'), ENT_QUOTES) ?>);">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="submit" class="btn-primary"><?= $postedIsReopenable ? 'Resubmit for Approval' : 'Submit for Approval' ?></button>
           </form>
           <?php endif; ?>
           <?php if ($canResubmitApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the approval email to approvers?');">
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the payment approval email to approvers?');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="resubmit" class="btn-secondary">Resubmit to Approvers</button>
+          </form>
+          <?php endif; ?>
+          <?php if ($canSubmitForQbo): ?>
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Submit this invoice for QBO Insert recovery? Accounting (QBO Insert approvers) will be notified to post the bill.');">
+            <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
+            <button type="submit" name="action" value="submit_qbo" class="btn-secondary">Submit for QBO Insert</button>
+          </form>
+          <?php endif; ?>
+          <?php if ($canResubmitQbo): ?>
+          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the QBO Insert recovery email to accounting?');">
+            <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
+            <button type="submit" name="action" value="resubmit_qbo" class="btn-secondary">Resubmit for QBO Insert</button>
           </form>
           <?php endif; ?>
       <?php
@@ -85,44 +113,51 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php elseif ($notice === 'submitted'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for approval.')) ?></div>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for payment approval.')) ?></div>
       <?php elseif ($notice === 'resubmitted'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Approval request resent to approvers.')) ?></div>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Payment approval request resent to approvers.')) ?></div>
+      <?php elseif ($notice === 'submitted_qbo'): ?>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for QBO Insert recovery.')) ?></div>
+      <?php elseif ($notice === 'resubmitted_qbo'): ?>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'QBO Insert recovery request resent to accounting.')) ?></div>
       <?php endif; ?>
-      <?php if (!empty($_GET['mail_message']) && !in_array($notice, ['submitted', 'resubmitted'], true)): ?>
+      <?php if (!empty($_GET['mail_message']) && !in_array($notice, ['submitted', 'resubmitted', 'submitted_qbo', 'resubmitted_qbo'], true)): ?>
       <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) $_GET['mail_message']) ?></div>
       <?php endif; ?>
 
-      <?php if ($isStandalone && payment_approval_is_stub_mode()): ?>
-      <div class="admin-notice" role="status">Payment approval test mode is active — approving records the decision and sends email only. QuickBooks is not updated. Set <code>QBO_INSERT_STUB=0</code> when ready to post bills.</div>
-      <?php elseif (!$isStandalone && qbo_insert_is_stub_mode()): ?>
-      <div class="admin-notice" role="status">QBO insert test mode is active — submit sends approval email; approve does not post to QuickBooks.</div>
+      <?php if (payment_approval_is_stub_mode()): ?>
+      <div class="admin-notice" role="status">Payment approval test mode is active — approving records the payment decision and marks the invoice Posted without creating a QuickBooks bill. Use <strong>Submit for QBO Insert</strong> for accounting posting recovery, or set <code>QBO_INSERT_STUB=0</code> to auto-post bills on approve.</div>
       <?php endif; ?>
 
-      <?php if ($isStandalone && ($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK && $latestSendBack !== null): ?>
+      <?php if (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK && $latestSendBack !== null): ?>
       <div class="admin-notice is-detail" role="status">
         <strong>Approver comments</strong> from <?= htmlspecialchars($latestSendBack['ApproverName']) ?>
         on <?= htmlspecialchars(admin_format_datetime($latestSendBack['LogDate'])) ?>:
         <p style="margin: 8px 0 0;"><?= nl2br(htmlspecialchars(supplier_invoice_format_log_comments($latestSendBack['ApproverComments'] ?? null))) ?></p>
       </div>
-      <div class="admin-notice" role="status">Update the invoice and submit for approval again when ready.</div>
-      <?php elseif ($isStandalone && ($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK): ?>
-      <div class="admin-notice" role="status">This invoice was sent back for comment. Update the invoice and submit for approval again.</div>
-      <?php elseif ($isStandalone && $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED): ?>
-      <div class="admin-notice" role="status">This invoice is awaiting payment approval. <a href="/approvals/?type=Payment&status=pending">View approvals</a></div>
-      <?php elseif ($isStandalone): ?>
-      <div class="admin-notice" role="status">Submit this invoice for payment approver review. When approved, the bill is posted to QuickBooks. Payment activity is updated from the QBO integration.</div>
+      <div class="admin-notice" role="status">Update the invoice and submit for payment approval again when ready.</div>
+      <?php elseif (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK): ?>
+      <div class="admin-notice" role="status">This invoice was sent back for comment. Update the invoice and submit for payment approval again.</div>
+      <?php elseif ($isQboRecoveryPending): ?>
+      <div class="admin-notice" role="status">This invoice is awaiting QBO Insert recovery (accounting posting). <a href="/approvals/?type=QBOInsert&status=pending">View approvals</a></div>
       <?php elseif ($invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED): ?>
-      <div class="admin-notice" role="status">This invoice is in the QBO insert approval queue. <a href="/approvals/?type=QBOInsert&status=pending">View approvals</a></div>
+      <div class="admin-notice" role="status">This invoice is awaiting payment approval. <a href="/approvals/?type=Payment&status=pending">View approvals</a></div>
+      <?php elseif (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_FAILED && payment_approval_invoice_has_approved($invoiceId)): ?>
+      <div class="admin-notice is-error is-detail" role="status">
+        Payment was approved, but QuickBooks bill creation failed<?= trim((string) ($invoice['LastSyncError'] ?? '')) !== '' ? ': ' . htmlspecialchars((string) $invoice['LastSyncError']) : '.' ?>
+        Use <strong>Submit for QBO Insert</strong> to send this to accounting for posting recovery.
+      </div>
       <?php elseif ($postedIsReopenable): ?>
       <div class="admin-notice" role="status">
-        <?php if (qbo_insert_is_stub_mode()): ?>
-        This invoice was approved in QBO insert test mode and was not posted to QuickBooks.
+        <?php if (payment_approval_is_stub_mode()): ?>
+        This invoice was payment-approved in test mode and was not posted to QuickBooks.
         <?php else: ?>
         This invoice is marked Posted but has no QuickBooks bill ID.
         <?php endif; ?>
-        Edit the invoice if changes are needed, then resubmit for approval.
+        Edit and resubmit for payment approval if needed, or use <strong>Submit for QBO Insert</strong> for accounting posting recovery.
       </div>
+      <?php elseif ($canSubmitForApproval): ?>
+      <div class="admin-notice" role="status">Submit this invoice for payment approval. When approved, the bill is posted to QuickBooks automatically (or use Submit for QBO Insert if posting fails). Cash payment is requested separately via New Payment Request.</div>
       <?php endif; ?>
 
       <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>

@@ -169,6 +169,15 @@ $procurementSubModules = [
         'sort'  => 10,
     ],
     [
+        'slug'  => 'procurement-approvals',
+        'title' => 'Approvals Queue',
+        'desc'  => 'See pending and completed PO and supplier invoice approvals (Payment + QBO Insert recovery).',
+        'href'  => '/procurement-approvals/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+        'sort'  => 15,
+    ],
+    [
         'slug'  => 'supplier-management',
         'title' => 'Supplier Management',
         'desc'  => 'Maintain supplier profiles, contacts, and procurement relationships.',
@@ -461,6 +470,7 @@ $modulePages = [
         'lead'        => 'Source materials and services — purchase orders, suppliers, invoices, and payments.',
         'capabilities' => [
             ['title' => 'PO Management', 'desc' => 'Create, approve, and track purchase orders.'],
+            ['title' => 'Approvals Queue', 'desc' => 'Pending and completed PO and supplier invoice approvals.'],
             ['title' => 'Supplier Management', 'desc' => 'Supplier profiles, contacts, and QuickBooks vendor links.'],
             ['title' => 'Initiatives & Bids', 'desc' => 'Light RFPs and supplier estimates; award creates a draft invoice without a PO.'],
             ['title' => 'Supplier Invoices', 'desc' => 'Vendor invoices for PO and non-PO spend, with attachments and QBO sync.'],

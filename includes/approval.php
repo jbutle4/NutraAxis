@@ -22,13 +22,13 @@ const APPROVAL_TYPES = [
         'label'            => 'QBO Insert Approval',
         'permission'       => 'QBOInsertApproval',
         'entity_type'      => 'SupplierInvoice',
-        'entity_label'     => 'Supplier invoice',
+        'entity_label'     => 'Supplier invoice (QBO posting recovery)',
     ],
     'Payment' => [
         'label'            => 'Payment Approval',
         'permission'       => 'PaymentApproval',
         'entity_type'      => 'POPayment',
-        'entity_label'     => 'Payment request',
+        'entity_label'     => 'Payment request / supplier invoice',
         'secondary_type'   => 'SupplierInvoice',
     ],
 ];
@@ -719,7 +719,7 @@ function approval_queue_links_for_user(): array
     if (approval_can_read_type('QBOInsert')) {
         require_once __DIR__ . '/qbo-insert-approval.php';
         $links[] = [
-            'label'   => 'QBO Insert Approval',
+            'label'   => 'QBO Insert (recovery)',
             'type'    => 'QBOInsert',
             'href'    => approval_index_url('QBOInsert', 'pending'),
             'pending' => qbo_insert_count_pending(),

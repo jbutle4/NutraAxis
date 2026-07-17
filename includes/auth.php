@@ -262,6 +262,14 @@ function auth_can_read_leaf_module(string $slug): bool
         return te_can_access_pages();
     }
 
+    if ($slug === 'procurement-approvals') {
+        require_once __DIR__ . '/approval.php';
+
+        return approval_can_read_type('PO')
+            || approval_can_read_type('Payment')
+            || approval_can_read_type('QBOInsert');
+    }
+
     $column = MODULE_PERMISSION_COLUMNS[$slug] ?? null;
     if ($column === null) {
         return false;

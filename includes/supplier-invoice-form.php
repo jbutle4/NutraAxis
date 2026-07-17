@@ -74,7 +74,7 @@ if (!$isLocked) {
           <?= htmlspecialchars($form['sync_status'] ?? 'Draft') ?>
         </span>
       </p>
-      <p class="form-hint"><?php if (!empty($isStandaloneInvoice)): ?>Status changes through payment approval on the invoice view page.<?php else: ?>Status changes through the QBO insert approval workflow on the invoice view page.<?php endif; ?></p>
+      <p class="form-hint">Status changes through payment approval on the invoice view page. QBO Insert is available there only for accounting posting recovery after payment approval.</p>
     </div>
     <div class="form-group">
       <label for="global_tax_calculation">Tax calculation</label>

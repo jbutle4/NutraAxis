@@ -27,19 +27,28 @@ $action = trim($_POST['action'] ?? '');
 $comments = trim($_POST['comments'] ?? '');
 $rawToken = trim($_POST['approval_token'] ?? '');
 $invoice = $invoiceId > 0 ? supplier_invoice_get($invoiceId) : null;
-$isStandalone = $invoice !== null && payment_approval_invoice_is_standalone($invoice);
 
 $tokenContext = null;
+$tokenKind = null;
 if ($rawToken !== '') {
-    $tokenContext = $isStandalone
-        ? payment_approval_invoice_token_resolve($rawToken, $invoiceId)
-        : qbo_insert_approval_token_resolve($rawToken, $invoiceId);
+    $tokenContext = payment_approval_invoice_token_resolve($rawToken, $invoiceId);
+    if ($tokenContext !== null) {
+        $tokenKind = 'Payment';
+    } else {
+        $tokenContext = qbo_insert_approval_token_resolve($rawToken, $invoiceId);
+        if ($tokenContext !== null) {
+            $tokenKind = 'QBOInsert';
+        }
+    }
 }
 
+$isQboRecovery = $tokenKind === 'QBOInsert'
+    || ($tokenKind === null && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
+
 if ($tokenContext !== null) {
-    $result = $isStandalone
-        ? payment_approval_invoice_process_action($invoiceId, $action, $comments, $tokenContext['user'])
-        : qbo_insert_process_approval_action($invoiceId, $action, $comments, $tokenContext['user']);
+    $result = $isQboRecovery
+        ? qbo_insert_process_approval_action($invoiceId, $action, $comments, $tokenContext['user'])
+        : payment_approval_invoice_process_action($invoiceId, $action, $comments, $tokenContext['user']);
     $invoice = supplier_invoice_get($invoiceId);
     $pageTitle = 'Approval Recorded | Accounting';
     require dirname(__DIR__, 2) . '/includes/head.php';
@@ -61,14 +70,14 @@ if ($tokenContext !== null) {
     exit;
 }
 
-if ($isStandalone) {
-    payment_approval_require_action();
-    $result = payment_approval_invoice_process_action($invoiceId, $action, $comments);
-    $redirectQueue = '/approvals/?type=Payment&status=pending&notice=actioned';
-} else {
+if ($isQboRecovery) {
     qbo_insert_require_action();
     $result = qbo_insert_process_approval_action($invoiceId, $action, $comments);
     $redirectQueue = '/approvals/?type=QBOInsert&status=pending&notice=actioned';
+} else {
+    payment_approval_require_action();
+    $result = payment_approval_invoice_process_action($invoiceId, $action, $comments);
+    $redirectQueue = '/approvals/?type=Payment&status=pending&notice=actioned';
 }
 
 if ($result['ok']) {

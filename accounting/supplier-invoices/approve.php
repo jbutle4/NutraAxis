@@ -11,15 +11,23 @@ $invoiceId = (int) ($_GET['id'] ?? 0);
 $rawToken = trim($_GET['token'] ?? '');
 $prefillAction = trim($_GET['action'] ?? '');
 $invoice = $invoiceId > 0 ? supplier_invoice_get($invoiceId) : null;
-$isStandalone = $invoice !== null && payment_approval_invoice_is_standalone($invoice);
 
 $tokenContext = null;
+$tokenKind = null;
 if ($rawToken !== '') {
-    $tokenContext = $isStandalone
-        ? payment_approval_invoice_token_resolve($rawToken, $invoiceId)
-        : qbo_insert_approval_token_resolve($rawToken, $invoiceId);
+    $tokenContext = payment_approval_invoice_token_resolve($rawToken, $invoiceId);
+    if ($tokenContext !== null) {
+        $tokenKind = 'Payment';
+    } else {
+        $tokenContext = qbo_insert_approval_token_resolve($rawToken, $invoiceId);
+        if ($tokenContext !== null) {
+            $tokenKind = 'QBOInsert';
+        }
+    }
 }
 $isTokenAccess = $tokenContext !== null;
+$isQboRecovery = $tokenKind === 'QBOInsert'
+    || ($tokenKind === null && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
 
 if ($rawToken !== '' && $tokenContext === null) {
     http_response_code(403);
@@ -32,15 +40,15 @@ if ($rawToken !== '' && $tokenContext === null) {
 }
 
 if (!$isTokenAccess) {
-    if ($isStandalone) {
-        payment_approval_require_read();
-    } else {
+    if ($isQboRecovery) {
         qbo_insert_require_read();
+    } else {
+        payment_approval_require_read();
     }
 }
 
 if ($invoice === null) {
-    header('Location: /approvals/?type=' . ($isStandalone ? 'Payment' : 'QBOInsert') . '&status=pending', true, 302);
+    header('Location: /approvals/?type=' . ($isQboRecovery ? 'QBOInsert' : 'Payment') . '&status=pending', true, 302);
     exit;
 }
 
@@ -48,16 +56,32 @@ $activeSlug = 'accounting';
 $accountingSection = 'approvals';
 $lines = supplier_invoice_get_lines($invoiceId);
 $attachments = supplier_invoice_list_attachments($invoiceId);
-$approvalLog = $isStandalone ? payment_approval_invoice_list_log($invoiceId) : qbo_insert_list_approval_log($invoiceId);
+$paymentLog = payment_approval_invoice_list_log($invoiceId);
+$qboLog = qbo_insert_list_approval_log($invoiceId);
+$approvalLog = array_merge($paymentLog, $qboLog);
+usort($approvalLog, static function (array $a, array $b): int {
+    $dateA = $a['LogDate'] ?? '';
+    $dateB = $b['LogDate'] ?? '';
+    if ($dateA instanceof DateTimeInterface) {
+        $dateA = $dateA->format('Y-m-d H:i:s.u');
+    }
+    if ($dateB instanceof DateTimeInterface) {
+        $dateB = $dateB->format('Y-m-d H:i:s.u');
+    }
+
+    return strcmp((string) $dateB, (string) $dateA);
+});
 $error = $_GET['error'] ?? null;
 $notice = $_GET['notice'] ?? null;
 $canAct = $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED && (
     ($isTokenAccess && $tokenContext['can_act'])
-    || (!$isTokenAccess && ($isStandalone ? payment_approval_can_take_action() : qbo_insert_can_take_action()))
+    || (!$isTokenAccess && ($isQboRecovery ? qbo_insert_can_take_action() : payment_approval_can_take_action()))
 );
-$approvalActions = $isStandalone ? payment_approval_invoice_actions() : qbo_insert_approval_actions();
+$approvalActions = $isQboRecovery ? qbo_insert_approval_actions() : payment_approval_invoice_actions();
+$queueType = $isQboRecovery ? 'QBOInsert' : 'Payment';
+$categoryLabel = $isQboRecovery ? 'QBO Insert Approval' : 'Payment Approval';
 
-$pageTitle = 'Review ' . supplier_invoice_reference($invoice) . ' | ' . ($isStandalone ? 'Payment Approval' : 'QBO Approval');
+$pageTitle = 'Review ' . supplier_invoice_reference($invoice) . ' | ' . ($isQboRecovery ? 'QBO Approval' : 'Payment Approval');
 
 require dirname(__DIR__, 2) . '/includes/head.php';
 require dirname(__DIR__, 2) . '/includes/header.php';
@@ -67,9 +91,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php
       $siApproveLead = '<span class="status-badge ' . supplier_invoice_status_class((string) $invoice['SyncStatus']) . '">' . htmlspecialchars($invoice['SyncStatus']) . '</span> · ' . htmlspecialchars($invoice['SupplierName']);
       render_list_page_header([
-          'back_href'  => '/approvals/?type=' . ($isStandalone ? 'Payment' : 'QBOInsert') . '&status=pending',
+          'back_href'  => '/approvals/?type=' . $queueType . '&status=pending',
           'back_label' => 'Back to Approvals',
-          'category'   => $isStandalone ? 'Payment Approval' : 'QBO Insert Approval',
+          'category'   => $categoryLabel,
           'title'      => supplier_invoice_reference($invoice),
           'lead'       => $siApproveLead,
           'lead_html'  => true,
@@ -92,11 +116,18 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($canAct): ?>
       <div class="account-card approval-actions-card">
         <h2>Approver actions</h2>
-        <?php if (($isStandalone ? payment_approval_is_stub_mode() : qbo_insert_is_stub_mode())): ?>
-        <div class="admin-notice" role="status">Test mode is on: approving records the decision and sends email only. QuickBooks is not updated. Set <code>QBO_INSERT_STUB=0</code> when ready to post bills.</div>
-        <p class="account-card-lead">Review the invoice and choose an action. The requestor will be notified by email.</p>
+        <?php if ($isQboRecovery): ?>
+          <?php if (qbo_insert_is_stub_mode()): ?>
+          <div class="admin-notice" role="status">Test mode is on: approving records the QBO Insert recovery decision and sends email only. QuickBooks is not updated. Set <code>QBO_INSERT_STUB=0</code> when ready to post bills.</div>
+          <?php endif; ?>
+          <p class="account-card-lead">This is accounting posting recovery after payment approval. Approving will create a Bill in QuickBooks Online.</p>
         <?php else: ?>
-        <p class="account-card-lead">Approving will create a Bill in QuickBooks Online. Payment activity is updated from the QBO integration.</p>
+          <?php if (payment_approval_is_stub_mode()): ?>
+          <div class="admin-notice" role="status">Test mode is on: approving records the payment decision and marks the invoice Posted without creating a QuickBooks bill. Set <code>QBO_INSERT_STUB=0</code> to auto-post bills on approve.</div>
+          <p class="account-card-lead">Review the invoice and choose an action. The requestor will be notified by email.</p>
+          <?php else: ?>
+          <p class="account-card-lead">Approving authorizes this invoice for payment and creates a Bill in QuickBooks Online when one is missing. Payment activity is updated from the QBO integration.</p>
+          <?php endif; ?>
         <?php endif; ?>
         <form class="admin-form" method="post" action="/accounting/supplier-invoices/approval-action.php">
           <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />

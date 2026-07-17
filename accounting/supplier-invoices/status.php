@@ -14,27 +14,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $invoiceId = (int) ($_POST['invoice_id'] ?? 0);
 $action = trim($_POST['action'] ?? '');
-$invoice = $invoiceId > 0 ? supplier_invoice_get($invoiceId) : null;
-$usePaymentApproval = $invoice !== null && payment_approval_invoice_is_standalone($invoice);
 
-if ($usePaymentApproval) {
+$isQboAction = in_array($action, ['submit_qbo', 'resubmit_qbo'], true);
+
+if ($isQboAction) {
+    $result = match ($action) {
+        'submit_qbo'   => qbo_insert_submit_for_approval($invoiceId),
+        'resubmit_qbo' => qbo_insert_resubmit_for_approval($invoiceId),
+        default        => ['ok' => false, 'error' => 'Invalid status action.'],
+    };
+    $formatNotify = 'qbo_insert_format_notify_message';
+    $notice = $action === 'resubmit_qbo' ? 'resubmitted_qbo' : 'submitted_qbo';
+} else {
     $result = match ($action) {
         'submit'   => payment_approval_invoice_submit($invoiceId),
         'resubmit' => payment_approval_invoice_resubmit($invoiceId),
         default    => ['ok' => false, 'error' => 'Invalid status action.'],
     };
     $formatNotify = 'payment_approval_format_notify_message';
-} else {
-    $result = match ($action) {
-        'submit'   => qbo_insert_submit_for_approval($invoiceId),
-        'resubmit' => qbo_insert_resubmit_for_approval($invoiceId),
-        default    => ['ok' => false, 'error' => 'Invalid status action.'],
-    };
-    $formatNotify = 'qbo_insert_format_notify_message';
+    $notice = $action === 'resubmit' ? 'resubmitted' : 'submitted';
 }
 
 if ($result['ok']) {
-    $notice = $action === 'resubmit' ? 'resubmitted' : 'submitted';
     $params = ['id' => $invoiceId, 'notice' => $notice];
     if (!empty($result['notify']) && is_array($result['notify'])) {
         $mailMessage = $formatNotify($result['notify']);
