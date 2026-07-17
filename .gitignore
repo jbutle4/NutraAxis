@@ -4,3 +4,4 @@ node_modules/
 .vscode/sftp.json
 nutraaxis_test/
 artifacts/uat/
+functions/node_modules/

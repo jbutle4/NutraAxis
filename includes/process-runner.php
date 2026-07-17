@@ -41,6 +41,27 @@ function process_registry(): array
             'function_name' => 'staging-db-sync',
             'schedule'      => 'Daily at 2:30 AM US Central',
         ],
+        'qbo-coa-sync' => [
+            'code'          => 'qbo-coa-sync',
+            'name'          => 'QBO Chart of Accounts Sync',
+            'description'   => 'Sync QuickBooks Online accounts into dbo.QBO_COA.',
+            'function_name' => 'qbo-coa-sync',
+            'schedule'      => 'Friday at 6:00 PM US Central',
+        ],
+        'inventory-receipt-sync' => [
+            'code'          => 'inventory-receipt-sync',
+            'name'          => 'Inventory Receipt Sync',
+            'description'   => 'Post Jazz-received PO receipts to IMS and QBO InventoryAdjustment (+qty).',
+            'function_name' => 'inventory-receipt-sync',
+            'schedule'      => 'Daily at 2:30 AM US Central',
+        ],
+        'inventory-sales-sync' => [
+            'code'          => 'inventory-sales-sync',
+            'name'          => 'Inventory Sales Sync',
+            'description'   => 'Post shipped ACCS sales to IMS and QBO InventoryAdjustment (−qty).',
+            'function_name' => 'inventory-sales-sync',
+            'schedule'      => 'Daily at 3:00 AM US Central',
+        ],
     ];
 }
 
