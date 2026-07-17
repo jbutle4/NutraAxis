@@ -17,15 +17,19 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - Inventory Asset — CPPC
    - An Expense (or COGS adjustment) account for InventoryAdjustment `AdjustAccountRef`
 3. Portal + Function App: `QBO_ENVIRONMENT=sandbox`, connected to realm `9341457230168529`.
-4. Run SQL migrations in order:
+4. **Deploy this branch** before Process Log can show Inventory Receipt / Sales Sync:
+   - App Service (PHP portal) — registers the processes and Process Log **Run** controls
+   - Function App **`Nutra-forecast-tool`** (sandbox) — hosts `inventory-receipt-sync` and `inventory-sales-sync`
+   - Until both are published, Process Log history will only show older jobs (e.g. QBO Chart of Accounts Sync, ACCS Sales Order Sync). Inventory Receipt Sync will not appear in **Registered Processes** or the history table.
+5. Run SQL migrations in order:
    - `sql/067_create_accs_sales_order_tables.sql` (if not already applied)
    - `sql/117_create_qbo_coa.sql`
    - `sql/118_alter_sku_master_qbo_item_fields.sql`
    - `sql/119_create_ims_tables.sql`
    - `sql/120_alter_facility_integration_flags.sql`
    - `sql/121_seed_wpc_facilities_and_inventory_sync_log.sql`
-5. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
-6. Set Function App settings:
+6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
+7. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
    - `QBO_INV_ASSET_ACCOUNT_CART` / `_WPC` / `_CPPC` (for transfer JEs)
    - `DB_NAME_INVENTORY_SYNC` (usually staging/test DB)
@@ -47,8 +51,9 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 ### 3. Receipt sync (+)
 
 1. Transmit a test ASN from `/po-receiving/`.
-2. When Jazz ASN status is received/complete (or leave status null for sandbox force-path), run Process Log → **Inventory Receipt Sync** (or wait for 2:30 AM timer).
+2. When Jazz ASN status is received/complete (or leave status null for sandbox force-path), open Process Log → **Registered Processes** → **Run** on **Inventory Receipt Sync** (or use **Run process** at the top, or wait for the 2:30 AM timer).
 3. Expect: IMS CART qty increases; QBO QtyOnHand increases; `QBOInventorySyncLog` DocNumber `NA-RCV-{por}-{line}`.
+4. If Run fails with `Unknown process code`, the Function App publish is missing — redeploy `functions/` to **Nutra-forecast-tool**.
 
 ### 4. Sales sync (−)
 

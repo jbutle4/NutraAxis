@@ -48,8 +48,33 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Process rerun completed successfully.</div>
       <?php elseif ($notice === 'rerun_failed'): ?>
       <div class="admin-notice is-error" role="alert">Process rerun failed. See the latest log entry for details.</div>
+      <?php elseif ($notice === 'run_success'): ?>
+      <div class="admin-notice is-success" role="status">Process run completed successfully. See the latest log entry below.</div>
+      <?php elseif ($notice === 'run_failed'): ?>
+      <div class="admin-notice is-error" role="alert">Process run failed. See the latest log entry for details<?= $error !== null && $error !== '' ? ': ' . htmlspecialchars($error) : '.' ?></div>
       <?php elseif ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
+      <?php endif; ?>
+
+      <?php if ($canRerun): ?>
+      <form class="po-filter audit-filter" method="post" action="/process-log/run.php">
+        <div class="audit-filter-grid">
+          <div>
+            <label for="run_process_code">Run process</label>
+            <select class="form-input" id="run_process_code" name="process_code" required>
+              <option value="">Select a registered process…</option>
+              <?php foreach ($registry as $entry): ?>
+              <option value="<?= htmlspecialchars($entry['code']) ?>">
+                <?= htmlspecialchars($entry['name']) ?> (<?= htmlspecialchars($entry['code']) ?>)
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+        <div class="audit-filter-actions">
+          <button type="submit" class="btn-primary">Run now</button>
+        </div>
+      </form>
       <?php endif; ?>
 
       <form class="po-filter audit-filter" method="get" action="/process-log/">
@@ -168,6 +193,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title">Registered Processes</h2>
+        <p class="page-lead">These names come from the portal PHP registry after deploy. A process appears in the history table only after it has run at least once on Function App <code>Nutra-forecast-tool</code>.</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -176,15 +202,29 @@ require dirname(__DIR__) . '/includes/header.php';
                 <th>Description</th>
                 <th>Azure Function</th>
                 <th>Schedule</th>
+                <?php if ($canRerun): ?>
+                <th>Action</th>
+                <?php endif; ?>
               </tr>
             </thead>
             <tbody>
               <?php foreach ($registry as $entry): ?>
               <tr>
-                <td><?= htmlspecialchars($entry['name']) ?></td>
+                <td>
+                  <strong><?= htmlspecialchars($entry['name']) ?></strong>
+                  <div class="permission-note"><?= htmlspecialchars($entry['code']) ?></div>
+                </td>
                 <td><?= htmlspecialchars($entry['description']) ?></td>
                 <td><code><?= htmlspecialchars($entry['function_name']) ?></code></td>
                 <td><?= htmlspecialchars($entry['schedule']) ?></td>
+                <?php if ($canRerun): ?>
+                <td>
+                  <form method="post" action="/process-log/run.php">
+                    <input type="hidden" name="process_code" value="<?= htmlspecialchars($entry['code']) ?>" />
+                    <button type="submit" class="btn-secondary btn-small">Run</button>
+                  </form>
+                </td>
+                <?php endif; ?>
               </tr>
               <?php endforeach; ?>
             </tbody>
