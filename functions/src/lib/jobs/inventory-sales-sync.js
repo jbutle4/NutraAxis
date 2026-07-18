@@ -203,19 +203,8 @@ async function loadShippedOrderLines(pool) {
 }
 
 async function resolveQboItemId(pool, sku) {
-  const local = await pool.request()
-    .input('sku', sql.NVarChar(100), sku)
-    .query(`
-      SELECT QBO_ItemID
-      FROM dbo.SKUMaster
-      WHERE SKUCode = @sku AND QBO_ItemID IS NOT NULL
-    `);
-  const localId = String(local.recordset[0]?.QBO_ItemID || '').trim();
-  if (localId) {
-    return localId;
-  }
-  const remote = await qboInventory.findItemBySku(sku);
-  return remote.ok && remote.item ? String(remote.item.Id || '').trim() : '';
+  const resolved = await qboInventory.resolveInventoryItemId(pool, sql, sku);
+  return resolved.ok ? resolved.item_id : '';
 }
 
 async function run() {
@@ -244,7 +233,7 @@ async function run() {
     const byHeader = new Map();
     for (const line of lines) {
       const docNumber = `NA-SAL-${line.header_id}-${line.detail_id}`;
-      if (await logExists(pool, docNumber)) {
+      if (await hasSyncedLog(pool, docNumber)) {
         skipped += 1;
         continue;
       }
