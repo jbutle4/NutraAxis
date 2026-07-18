@@ -28,6 +28,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/119_create_ims_tables.sql`
    - `sql/120_alter_facility_integration_flags.sql`
    - `sql/121_seed_wpc_facilities_and_inventory_sync_log.sql`
+   - `sql/122_create_inventory_movement_recon.sql`
 6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
 7. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
@@ -70,8 +71,10 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 
 ### 6. Reconciliation
 
-1. Open `/inventory-qbo-recon/`.
-2. Investigate mismatches before any production cutover.
+1. **Movement completeness (Layer 1):** Run Process Log → **Inventory Movement Completeness Recon**, then open `/inventory-movement-recon/`.
+2. Investigate Action-severity rows (missing IMS posts, QBO Error sync-log, approved-unposted adjustments).
+3. **Balance pair (Layer 2):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
+4. Investigate mismatches before any production cutover.
 
 ## Production cutover (later — out of scope for sandbox build)
 
