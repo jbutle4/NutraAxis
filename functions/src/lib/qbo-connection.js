@@ -2,12 +2,28 @@ const { sql, connectPool, getSyncSettings, getProductionDatabase } = require('./
 const qboConfig = require('./qbo-config');
 
 function stagingDatabase() {
-  return getSyncSettings().stagingDb;
+  // Portal stores sandbox QBO tokens on nutraaxis. Prefer that over nutraaxis_test
+  // unless an explicit staging DB override is configured and reachable.
+  const explicit = process.env.DB_NAME_STAGING
+    || process.env.DB_NAME_STAGE
+    || process.env.DB_NAME_QBO
+    || process.env.DB_NAME_INVENTORY_SYNC
+    || '';
+  if (String(explicit).trim() !== '') {
+    return String(explicit).trim();
+  }
+
+  return getProductionDatabase() || 'nutraaxis';
 }
 
-function createConnectionStore(database) {
+function createConnectionStore(resolveDatabase) {
+  const resolve = typeof resolveDatabase === 'function'
+    ? resolveDatabase
+    : () => resolveDatabase;
+
   async function getConnection(pool = null) {
     const owned = pool === null;
+    const database = resolve();
     const db = pool || await connectPool(database);
 
     try {
@@ -37,6 +53,7 @@ function createConnectionStore(database) {
 
   async function saveConnection(data, pool = null) {
     const owned = pool === null;
+    const database = resolve();
     const db = pool || await connectPool(database);
     const environment = qboConfig.environment();
     const connectedBy = Number(process.env.QBO_CONNECTED_BY_USER_ID || 1);
@@ -73,6 +90,7 @@ function createConnectionStore(database) {
 
   async function disconnect(pool = null) {
     const owned = pool === null;
+    const database = resolve();
     const db = pool || await connectPool(database);
 
     try {
@@ -87,15 +105,17 @@ function createConnectionStore(database) {
   }
 
   return {
-    database,
+    get database() {
+      return resolve();
+    },
     getConnection,
     saveConnection,
     disconnect,
   };
 }
 
-const stagingStore = createConnectionStore(stagingDatabase());
-const productionStore = createConnectionStore(getProductionDatabase());
+const stagingStore = createConnectionStore(stagingDatabase);
+const productionStore = createConnectionStore(getProductionDatabase);
 
 module.exports = {
   getConnection: (pool) => stagingStore.getConnection(pool),
