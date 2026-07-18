@@ -57,9 +57,9 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <?php if ($canRerun): ?>
-      <form class="po-filter audit-filter" method="post" action="/process-log/run.php">
+      <form class="po-filter audit-filter process-log-run-form" method="post" action="/process-log/run.php">
         <div class="audit-filter-grid">
-          <div>
+          <div class="process-log-run-field">
             <label for="run_process_code">Run process</label>
             <select class="form-input" id="run_process_code" name="process_code" required>
               <option value="">Select a registered process…</option>
