@@ -13,6 +13,7 @@ Running record of changes, deployments, and database work for the Operations sit
 - Portal `/inventory-jazz-ims-recon/` compares Jazz mothership `on_hand_quantity` to IMS CART OK+Q+H.
 - Resolves Jazz facility codes via `Facility.ExternalReferenceCode` (CART ← `FBF09`).
 - Prod/UAT Jazz toggle + mismatches-only filter; Inventory hub card registered.
+- Smoke (live Jazz + SQL): Jazz facility `FBF09`, 17 SKUs compared, **16 mismatches** (expected — IMS sandbox smoke qty ≠ Jazz mothership on-hand; e.g. `NA-MT-004` Jazz 1000 vs IMS 7).
 
 ## 2026-07-18 — Inventory adjustments (shrink/gain workflow)
 
