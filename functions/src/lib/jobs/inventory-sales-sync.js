@@ -92,7 +92,26 @@ async function ensureBalance(pool, sku, facility) {
     `);
 }
 
+async function findExistingSaleTxn(pool, referenceId) {
+  const result = await pool.request()
+    .input('refId', sql.Int, referenceId)
+    .query(`
+      SELECT TOP (1) TransactionID
+      FROM dbo.InvTransaction
+      WHERE ReferenceType = N'AccsSalesOrderHeader'
+        AND ReferenceID = @refId
+        AND TransactionType = N'Sale'
+      ORDER BY TransactionID DESC
+    `);
+  return Number(result.recordset[0]?.TransactionID || 0);
+}
+
 async function postImsSale(pool, referenceId, facility, lines, note) {
+  const existingTxnId = await findExistingSaleTxn(pool, referenceId);
+  if (existingTxnId > 0) {
+    return existingTxnId;
+  }
+
   const header = await pool.request()
     .input('refId', sql.Int, referenceId)
     .input('notes', sql.NVarChar(500), note)
@@ -202,11 +221,6 @@ async function loadShippedOrderLines(pool) {
   }).filter((row) => row.sku && row.qty > 0 && row.header_id > 0 && row.detail_id > 0);
 }
 
-async function resolveQboItemId(pool, sku) {
-  const resolved = await qboInventory.resolveInventoryItemId(pool, sql, sku);
-  return resolved.ok ? resolved.item_id : '';
-}
-
 async function run() {
   const accountId = adjustAccountId();
   if (!accountId) {
@@ -250,10 +264,15 @@ async function run() {
       let missing = false;
 
       for (const line of headerLines) {
-        const itemId = await resolveQboItemId(pool, line.sku);
+        const resolved = await qboInventory.resolveInventoryItemId(pool, sql, line.sku);
+        const itemId = resolved.ok ? String(resolved.item_id || '').trim() : '';
         if (!itemId) {
           missing = true;
-          failures.push({ header_id: headerId, sku: line.sku, error: 'Missing QBO_ItemID for Inventory item.' });
+          failures.push({
+            header_id: headerId,
+            sku: line.sku,
+            error: resolved.error || 'Missing QBO Inventory Item Id for SKU.',
+          });
           break;
         }
         qboLines.push({

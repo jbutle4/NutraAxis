@@ -8,6 +8,14 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Inventory sales sync smoke (sandbox)
+
+- ACCS order tables were empty; seeded stage order `NA-SMOKE-SAL-001` via `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (qty 2 × `NA-MT-004` / `NA-HR-006`).
+- Hardened sales sync: reuse existing IMS `Sale` txn per header (no double decrement on QBO retry).
+- QBO client: refresh 2 minutes early + force-refresh retry on HTTP 401 (stale JWT with future SQL expiry).
+- Process Log **486** Success — IMS CART 10→8 both SKUs; QBO InventoryAdjustment txn `168`; docs `NA-SAL-1-1` / `NA-SAL-1-2` Synced.
+- Re-run **487** skipped both lines; movement recon **488** / ReconRun **3** — 0 exceptions.
+
 ## 2026-07-18 — Inventory movement completeness recon (Layer 1)
 
 - Added `sql/122_create_inventory_movement_recon.sql` (`InventoryMovementReconRun` / `InventoryMovementReconLine`).
