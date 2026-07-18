@@ -8,6 +8,14 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Inventory adjustments (shrink/gain workflow)
+
+- Portal `/inventory-adjustments/` — create Pending, approve/reject, Retry QBO.
+- Approve posts IMS `AdjustmentLoss`/`AdjustmentGain` + QBO InventoryAdjustment; DocNumber `NA-ADJ-{id}`.
+- SQL `124` adds `Adjustment` to `QBOInventorySyncLog.SyncType`.
+- PHP QBO adj line detail fixed to `ItemAdjustmentLineDetail` + sync-log MERGE upsert.
+- Movement recon flags pending, approved-unposted, and QBO Error/missing for adjustments.
+
 ## 2026-07-18 — Inventory sales sync smoke (sandbox)
 
 - ACCS order tables were empty; seeded stage order `NA-SMOKE-SAL-001` via `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (qty 2 × `NA-MT-004` / `NA-HR-006`).

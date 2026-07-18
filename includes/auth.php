@@ -19,6 +19,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'inventory-transfers'        => 'InventoryReporting',
     'inventory-qbo-recon'        => 'InventoryReporting',
     'inventory-movement-recon'   => 'InventoryReporting',
+    'inventory-adjustments'      => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
     'accs-order-report-uat'  => 'SalesReporting',

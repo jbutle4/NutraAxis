@@ -103,6 +103,15 @@ $inventoryManagementSubModules = [
         'sort'  => 6,
     ],
     [
+        'slug'  => 'inventory-adjustments',
+        'title' => 'Inventory Adjustments',
+        'desc'  => 'Approve shrink/gain adjustments to IMS and QuickBooks Qty on hand.',
+        'href'  => '/inventory-adjustments/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 7,
+    ],
+    [
         'slug'  => 'inventory-qbo-recon',
         'title' => 'QBO Inventory Reconciliation',
         'desc'  => 'Compare IMS location totals with QuickBooks Qty on hand.',
@@ -562,6 +571,17 @@ $modulePages = [
             ['title' => 'Transit Bucket', 'desc' => 'Optional TRANSIT facility for in-flight quantities.'],
             ['title' => 'IMS Posting', 'desc' => 'Ship and receive posts TransferOut / TransferIn to the ledger.'],
             ['title' => 'QBO Valuation', 'desc' => 'Same-SKU transfers keep company QtyOnHand unchanged; G/L moves via Journal Entry when configured.'],
+        ],
+    ],
+    'inventory-adjustments' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Inventory Adjustments',
+        'lead'        => 'Pending shrink and gain requests that post to IMS and QuickBooks InventoryAdjustment on approval.',
+        'capabilities' => [
+            ['title' => 'Shrink / Gain', 'desc' => 'Signed quantity change against OK, quarantine, on hold, or destroy buckets.'],
+            ['title' => 'Approval Workflow', 'desc' => 'Create as Pending; approve to post IMS AdjustmentLoss/Gain + QBO QtyDiff.'],
+            ['title' => 'Reason Codes', 'desc' => 'DAMAGE, COUNT_VAR, QUAR_RELEASE, and OTHER_ADJ from InvReasonCode.'],
+            ['title' => 'Idempotent QBO', 'desc' => 'DocNumber NA-ADJ-{id} in QBOInventorySyncLog; Error rows can retry.'],
         ],
     ],
     'inventory-qbo-recon' => [

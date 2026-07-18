@@ -1902,16 +1902,18 @@ function qbo_post_inventory_adjustment_qty(
     }
 
     $detailLines = [];
+    $lineId = 0;
     foreach ($lines as $line) {
         $itemId = trim((string) ($line['qbo_item_id'] ?? ''));
         $qty = (float) ($line['qty_change'] ?? 0);
         if ($itemId === '' || abs($qty) < 0.0000001) {
             continue;
         }
+        $lineId++;
         $detailLines[] = [
-            'DetailType' => 'InventoryAdjustmentLineDetail',
-            'Amount' => 0,
-            'InventoryAdjustmentLineDetail' => [
+            'Id' => (string) $lineId,
+            'DetailType' => 'ItemAdjustmentLineDetail',
+            'ItemAdjustmentLineDetail' => [
                 'ItemRef' => ['value' => $itemId],
                 'QtyDiff' => $qty,
             ],
@@ -2018,18 +2020,45 @@ function qbo_inventory_sync_log_exists(string $docNumber): bool
 
 function qbo_inventory_sync_log_write(array $row): void
 {
+    qbo_inventory_sync_log_upsert($row);
+}
+
+/**
+ * Insert or update a QBO inventory sync-log row by DocNumber (allows Error retries).
+ */
+function qbo_inventory_sync_log_upsert(array $row): void
+{
     $pdo = db();
     $pdo->prepare(<<<SQL
-        INSERT INTO dbo.QBOInventorySyncLog (
-            DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
-            SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
-            SyncStatus, SyncError, SyncedAt
-        )
-        VALUES (
-            :doc, :sync_type, :ref_type, :ref_id, :line_key,
-            :sku, :qty, :facility, :txn_id, :sync_token,
-            :status, :error, CASE WHEN :status2 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
-        )
+        MERGE dbo.QBOInventorySyncLog AS target
+        USING (SELECT :doc AS DocNumber) AS source
+            ON target.DocNumber = source.DocNumber
+        WHEN MATCHED THEN
+            UPDATE SET
+                SyncType = :sync_type,
+                ReferenceType = :ref_type,
+                ReferenceID = :ref_id,
+                ReferenceLineKey = :line_key,
+                SKUCode = :sku,
+                QtyChange = :qty,
+                FacilityCode = :facility,
+                QBO_TxnId = :txn_id,
+                QBO_SyncToken = :sync_token,
+                SyncStatus = :status,
+                SyncError = :error,
+                SyncedAt = CASE WHEN :status2 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+        WHEN NOT MATCHED THEN
+            INSERT (
+                DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
+                SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
+                SyncStatus, SyncError, SyncedAt
+            )
+            VALUES (
+                :doc2, :sync_type2, :ref_type2, :ref_id2, :line_key2,
+                :sku2, :qty2, :facility2, :txn_id2, :sync_token2,
+                :status3, :error2,
+                CASE WHEN :status4 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+            );
     SQL)->execute([
         'doc' => $row['doc_number'],
         'sync_type' => $row['sync_type'],
@@ -2044,6 +2073,29 @@ function qbo_inventory_sync_log_write(array $row): void
         'status' => $row['sync_status'],
         'status2' => $row['sync_status'],
         'error' => $row['sync_error'] ?? null,
+        'doc2' => $row['doc_number'],
+        'sync_type2' => $row['sync_type'],
+        'ref_type2' => $row['reference_type'],
+        'ref_id2' => (int) $row['reference_id'],
+        'line_key2' => $row['reference_line_key'] ?? null,
+        'sku2' => $row['sku_code'],
+        'qty2' => (float) $row['qty_change'],
+        'facility2' => $row['facility_code'] ?? null,
+        'txn_id2' => $row['qbo_txn_id'] ?? null,
+        'sync_token2' => $row['qbo_sync_token'] ?? null,
+        'status3' => $row['sync_status'],
+        'error2' => $row['sync_error'] ?? null,
+        'status4' => $row['sync_status'],
     ]);
+}
+
+function qbo_inventory_sync_log_status(string $docNumber): ?string
+{
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT SyncStatus FROM dbo.QBOInventorySyncLog WHERE DocNumber = :doc');
+    $stmt->execute(['doc' => $docNumber]);
+    $status = $stmt->fetchColumn();
+
+    return $status === false || $status === null ? null : (string) $status;
 }
 
