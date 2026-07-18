@@ -13,7 +13,9 @@ Running record of changes, deployments, and database work for the Operations sit
 - Portal `/inventory-jazz-ims-align/` previews Jazz on-hand vs IMS CART deltas and posts `JazzSyncReconcile` (IMS only).
 - SQL `125` — `InventoryJazzImsAlignRun` audit (dry-run / apply).
 - Confirm gate (`ALIGN`); optional zero-out for IMS SKUs missing from Jazz; link from Jazz vs IMS recon.
+- Negative Jazz on-hand clamped to align target 0 (IMS QtyOK cannot go negative).
 - Does **not** bootstrap QBO QtyOnHand from Jazz.
+- Smoke (Jazz UAT): dry-run #1; failed partial #2; success run **#3** / txn **11** posted **11** lines — post-align mismatches vs clamped Jazz target **0** (`NA-MT-004`/`NA-HR-006` = 1000/999).
 
 ## 2026-07-18 — Jazz vs IMS CART balance recon
 
