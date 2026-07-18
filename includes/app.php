@@ -112,6 +112,15 @@ $inventoryManagementSubModules = [
         'sort'  => 7,
     ],
     [
+        'slug'  => 'inventory-jazz-ims-recon',
+        'title' => 'Jazz vs IMS CART',
+        'desc'  => 'Compare Jazz mothership on-hand with IMS CART ledger balances.',
+        'href'  => '/inventory-jazz-ims-recon/',
+        'icon'  => 'boxes',
+        'tier'  => 'production',
+        'sort'  => 8,
+    ],
+    [
         'slug'  => 'inventory-qbo-recon',
         'title' => 'QBO Inventory Reconciliation',
         'desc'  => 'Compare IMS location totals with QuickBooks Qty on hand.',
@@ -582,6 +591,17 @@ $modulePages = [
             ['title' => 'Approval Workflow', 'desc' => 'Create as Pending; approve to post IMS AdjustmentLoss/Gain + QBO QtyDiff.'],
             ['title' => 'Reason Codes', 'desc' => 'DAMAGE, COUNT_VAR, QUAR_RELEASE, and OTHER_ADJ from InvReasonCode.'],
             ['title' => 'Idempotent QBO', 'desc' => 'DocNumber NA-ADJ-{id} in QBOInventorySyncLog; Error rows can retry.'],
+        ],
+    ],
+    'inventory-jazz-ims-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Jazz vs IMS CART',
+        'lead'        => 'Mothership balance pair — Jazz physical on-hand versus NutraAxis IMS CART ledger.',
+        'capabilities' => [
+            ['title' => 'CART Alias Aware', 'desc' => 'Maps Jazz facility codes via Facility.ExternalReferenceCode (e.g. FBF09 → CART).'],
+            ['title' => 'Physical On Hand', 'desc' => 'Compares Jazz on_hand_quantity to IMS OK + quarantine + on hold.'],
+            ['title' => 'Mismatch Focus', 'desc' => 'Filter to SKUs present on only one side or with quantity deltas.'],
+            ['title' => 'Prod / UAT Toggle', 'desc' => 'Switch Jazz environment without leaving the recon view.'],
         ],
     ],
     'inventory-qbo-recon' => [

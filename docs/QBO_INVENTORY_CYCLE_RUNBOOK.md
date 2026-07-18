@@ -86,8 +86,9 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 
 1. **Movement completeness (Layer 1):** Run Process Log → **Inventory Movement Completeness Recon**, then open `/inventory-movement-recon/`.
 2. Investigate Action-severity rows (missing IMS posts, QBO Error sync-log, approved-unposted adjustments).
-3. **Balance pair (Layer 2):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
-4. Investigate mismatches before any production cutover.
+3. **Jazz vs IMS CART (Layer 2 mothership):** Open `/inventory-jazz-ims-recon/` — Jazz `on_hand_quantity` at CART aliases (e.g. `FBF09`) vs IMS CART OK+quarantine+on hold.
+4. **IMS vs QBO (Layer 2 financial):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
+5. Investigate mismatches before any production cutover.
 
 ## Production cutover (later — out of scope for sandbox build)
 

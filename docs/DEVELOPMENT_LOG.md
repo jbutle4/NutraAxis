@@ -8,6 +8,12 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Jazz vs IMS CART balance recon
+
+- Portal `/inventory-jazz-ims-recon/` compares Jazz mothership `on_hand_quantity` to IMS CART OK+Q+H.
+- Resolves Jazz facility codes via `Facility.ExternalReferenceCode` (CART ← `FBF09`).
+- Prod/UAT Jazz toggle + mismatches-only filter; Inventory hub card registered.
+
 ## 2026-07-18 — Inventory adjustments (shrink/gain workflow)
 
 - Portal `/inventory-adjustments/` — create Pending, approve/reject, Retry QBO.
