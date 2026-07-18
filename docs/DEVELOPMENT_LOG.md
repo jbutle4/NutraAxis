@@ -14,6 +14,8 @@ Running record of changes, deployments, and database work for the Operations sit
 - Function job `inventory-movement-recon` scans receipts, sales, transfers, and adjustments for missing IMS/QBO posts.
 - Process Log registry + timer (default 4:00 AM CT; disable on test app like other inventory timers).
 - Portal `/inventory-movement-recon/` + Inventory hub card **Movement Completeness**.
+- Deployed: SQL `122` on `nutraaxis`; Function App **Nutra-forecast-tool** (timer disabled); portal **nutraaxisweb**.
+- Smoke: Process Log **483** / ReconRun **1** Success — `0` exceptions (POR 19 already Synced; no pending sales/transfers/adjs in window).
 
 ## 2026-07-18 — Inventory receipt sync unblocked (sandbox)
 
