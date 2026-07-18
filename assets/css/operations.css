@@ -2337,6 +2337,16 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   max-width: 420px;
 }
 
+.process-log-run-form .process-log-run-field {
+  flex: 1 1 420px;
+  min-width: min(100%, 320px);
+  max-width: 560px;
+}
+
+.process-log-run-form .process-log-run-field .form-input {
+  min-width: 100%;
+}
+
 .audit-filter-actions {
   display: flex;
   flex-wrap: wrap;
