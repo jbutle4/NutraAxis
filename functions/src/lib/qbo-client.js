@@ -106,22 +106,7 @@ async function fetchCompanyName(realmId, accessToken) {
   return { ok: name !== '', name: name || null };
 }
 
-async function ensureAccessToken(connectionStore = qboConnection.staging) {
-  const connection = await connectionStore.getConnection();
-  if (!connection) {
-    return {
-      ok: false,
-      error: connectionStore === qboConnection.production
-        ? 'QuickBooks is not connected in the production database. Connect via Accounting in the web app.'
-        : 'QuickBooks sandbox is not connected. Open /api/qbo-sandbox-oauth-start on the test function app.',
-    };
-  }
-
-  const expires = new Date(connection.AccessTokenExpiresAt);
-  if (expires > new Date()) {
-    return { ok: true, connection };
-  }
-
+async function refreshAndStore(connection, connectionStore = qboConnection.staging) {
   const refresh = await refreshAccessToken(connection);
   if (!refresh.ok) {
     return refresh;
@@ -136,45 +121,81 @@ async function ensureAccessToken(connectionStore = qboConnection.staging) {
   return { ok: true, connection: updated };
 }
 
+async function ensureAccessToken(connectionStore = qboConnection.staging, { forceRefresh = false } = {}) {
+  const connection = await connectionStore.getConnection();
+  if (!connection) {
+    return {
+      ok: false,
+      error: connectionStore === qboConnection.production
+        ? 'QuickBooks is not connected in the production database. Connect via Accounting in the web app.'
+        : 'QuickBooks sandbox is not connected. Open /api/qbo-sandbox-oauth-start on the test function app.',
+    };
+  }
+
+  // Refresh 2 minutes early — SQL DateTime2 expiry can look valid while Intuit already rejects the JWT.
+  const expires = new Date(connection.AccessTokenExpiresAt);
+  const refreshSkewMs = 2 * 60 * 1000;
+  if (!forceRefresh && expires.getTime() - refreshSkewMs > Date.now()) {
+    return { ok: true, connection };
+  }
+
+  return refreshAndStore(connection, connectionStore);
+}
+
 async function apiRequest(method, path, { query = null, body = null, connectionStore = qboConnection.staging } = {}) {
   const configError = qboConfig.configError();
   if (configError) {
     return { ok: false, error: configError, data: null, status: 0 };
   }
 
-  const tokenResult = await ensureAccessToken(connectionStore);
+  let tokenResult = await ensureAccessToken(connectionStore);
   if (!tokenResult.ok) {
     return tokenResult;
   }
 
-  const connection = tokenResult.connection;
-  const realmId = String(connection.RealmID);
-  let url = `${qboConfig.apiBaseUrl()}/v3/company/${encodeURIComponent(realmId)}${path}`;
-
-  if (query && Object.keys(query).length > 0) {
-    const params = new URLSearchParams(query);
-    url += (path.includes('?') ? '&' : '?') + params.toString();
-  }
-
-  const options = {
-    method,
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${connection.AccessToken}`,
-    },
+  const buildUrl = (realmId) => {
+    let url = `${qboConfig.apiBaseUrl()}/v3/company/${encodeURIComponent(realmId)}${path}`;
+    if (query && Object.keys(query).length > 0) {
+      const params = new URLSearchParams(query);
+      url += (path.includes('?') ? '&' : '?') + params.toString();
+    }
+    return url;
   };
 
-  if (body !== null) {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(body);
-  }
+  const send = async (connection) => {
+    const options = {
+      method,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${connection.AccessToken}`,
+      },
+    };
 
-  const response = await fetch(url, options);
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
+    if (body !== null) {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(buildUrl(String(connection.RealmID)), options);
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    return { response, data };
+  };
+
+  let connection = tokenResult.connection;
+  let { response, data } = await send(connection);
+
+  if (response.status === 401) {
+    tokenResult = await ensureAccessToken(connectionStore, { forceRefresh: true });
+    if (!tokenResult.ok) {
+      return tokenResult;
+    }
+    connection = tokenResult.connection;
+    ({ response, data } = await send(connection));
   }
 
   if (!response.ok) {

@@ -29,6 +29,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/120_alter_facility_integration_flags.sql`
    - `sql/121_seed_wpc_facilities_and_inventory_sync_log.sql`
    - `sql/122_create_inventory_movement_recon.sql`
+   - `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (optional — only if `AccsSalesOrder*` is empty for sales smoke)
 6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
 7. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
@@ -59,9 +60,12 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 ### 4. Sales sync (−)
 
 1. Ensure Accs sales order sync has shipped/complete lines in `AccsSalesOrder*`.
+   - If the ACCS table is empty in sandbox, apply `sql/123_seed_sandbox_sales_sync_smoke_order.sql`
+     (stage order `NA-SMOKE-SAL-001`, qty 2 of `NA-MT-004` / `NA-HR-006` against CART IMS from the ASN sim).
 2. Run **Inventory Sales Sync**.
 3. Expect: IMS facility qty decreases; QBO QtyOnHand decreases; log DocNumber `NA-SAL-{header}-{detail}`.
 4. SalesReceipt financial insert must **not** attach Inventory ItemRefs (uses NonInventory or `QBO_SANDBOX_FALLBACK_ITEM_ID`).
+5. Re-run is safe: Synced `QBOInventorySyncLog` rows skip; IMS `Sale` txn is not double-posted for the same header.
 
 ### 5. Transfers
 
