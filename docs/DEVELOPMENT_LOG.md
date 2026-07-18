@@ -14,7 +14,9 @@ Running record of changes, deployments, and database work for the Operations sit
 - Approve posts IMS `AdjustmentLoss`/`AdjustmentGain` + QBO InventoryAdjustment; DocNumber `NA-ADJ-{id}`.
 - SQL `124` adds `Adjustment` to `QBOInventorySyncLog.SyncType`.
 - PHP QBO adj line detail fixed to `ItemAdjustmentLineDetail` + sync-log MERGE upsert.
+- App Service env allowlist: `QBO_INV_ADJUST_ACCOUNT_ID` (+ asset account keys) now readable via `env()`.
 - Movement recon flags pending, approved-unposted, and QBO Error/missing for adjustments.
+- Smoke: Adjustment **1** Approved — `NA-MT-004` CART 8→7; IMS txn **9**; QBO adj **169**; sync `NA-ADJ-1` Synced.
 
 ## 2026-07-18 — Inventory sales sync smoke (sandbox)
 
