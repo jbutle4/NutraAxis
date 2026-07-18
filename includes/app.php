@@ -112,6 +112,15 @@ $inventoryManagementSubModules = [
         'sort'  => 9,
     ],
     [
+        'slug'  => 'inventory-movement-recon',
+        'title' => 'Movement Completeness',
+        'desc'  => 'Find receipts, sales, transfers, and adjustments missing IMS or QBO posts.',
+        'href'  => '/inventory-movement-recon/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 10,
+    ],
+    [
         'slug'  => 'qbo-inventory',
         'title' => 'QBO Inventory',
         'desc'  => 'QuickBooks Online quantity on hand by SKU — financial inventory view.',
@@ -564,6 +573,17 @@ $modulePages = [
             ['title' => 'Mismatch Focus', 'desc' => 'Highlight rows where ledger and QuickBooks disagree.'],
             ['title' => 'Sandbox Safe', 'desc' => 'Built against QBO Sandbox during UAT.'],
             ['title' => 'Cutover Ready', 'desc' => 'Use before promoting inventory sync to production QuickBooks.'],
+        ],
+    ],
+    'inventory-movement-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Inventory Movement Completeness',
+        'lead'        => 'Layer 1 recon of the inventory cycle — exceptions where source movements are incomplete in IMS or QBO.',
+        'capabilities' => [
+            ['title' => 'Receipt Gaps', 'desc' => 'Jazz-received PORs missing IMS posts or QBO InventoryAdjustment (+qty).'],
+            ['title' => 'Sales Gaps', 'desc' => 'Shipped ACCS lines missing IMS sale or QBO InventoryAdjustment (−qty).'],
+            ['title' => 'Transfer Gaps', 'desc' => 'Ship/receive transfers missing outbound/inbound IMS txns or failed JEs.'],
+            ['title' => 'Adjustment Queue', 'desc' => 'Pending or approved-unposted shrink/gain adjustments awaiting workflow.'],
         ],
     ],
     'inventory-reconciliation' => [

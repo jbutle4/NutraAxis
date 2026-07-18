@@ -76,6 +76,13 @@ function process_registry(): array
             'function_name' => 'inventory-sales-sync',
             'schedule'      => 'Daily at 3:00 AM US Central',
         ],
+        'inventory-movement-recon' => [
+            'code'          => 'inventory-movement-recon',
+            'name'          => 'Inventory Movement Completeness Recon',
+            'description'   => 'Scan receipts, sales, transfers, and adjustments for missing IMS/QBO posts.',
+            'function_name' => 'inventory-movement-recon',
+            'schedule'      => 'Daily at 4:00 AM US Central',
+        ],
     ];
 }
 

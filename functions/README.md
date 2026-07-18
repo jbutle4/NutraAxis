@@ -14,6 +14,7 @@ All scheduled job **logic** runs here in Node.js. The PHP App Service serves the
 | `process-retry` | Service Bus | **Live** — event-driven retries for failed ProcessExecutionLog rows |
 | `inventory-receipt-sync` | Timer | **Live** — PO receipts → IMS + QBO InventoryAdjustment (+qty) |
 | `inventory-sales-sync` | Timer | **Live** — ACCS shipped sales → IMS + QBO InventoryAdjustment (−qty) |
+| `inventory-movement-recon` | Timer | **Live** — movement completeness exceptions (receipts/sales/transfers/adjs) |
 | `qbo-coa-sync` | Timer | **Live** — QuickBooks Chart of Accounts (GL) → dbo.QBO_COA; not Certificate of Analysis |
 | `accs-sales-order-sync` | Timer | **Live** — ACCS production orders → dbo.AccsSalesOrderHeader + AccsSalesOrderDetail |
 | `accs-employee-customer-create` | HTTP | **Live** — create ACCS Stage customers from dbo.EmployeeList (`FirstEmail=1`) |
@@ -53,6 +54,7 @@ Set `WEBSITE_TIME_ZONE=America/Chicago`. Override schedules via app settings:
 | `daily-sales-summary` | `DAILY_SALES_SCHEDULE` | `0 0 2 * * *` (daily 2:00 AM) |
 | `inventory-receipt-sync` | `INVENTORY_RECEIPT_SYNC_SCHEDULE` | `0 30 2 * * *` (daily 2:30 AM) |
 | `inventory-sales-sync` | `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 3 * * *` (daily 3:00 AM) |
+| `inventory-movement-recon` | `INVENTORY_MOVEMENT_RECON_SCHEDULE` | `0 0 4 * * *` (daily 4:00 AM) |
 | `qbo-coa-sync` | `QBO_COA_SYNC_SCHEDULE` | `0 0 18 * * 5` (Fri 6:00 PM) |
 | `accs-sales-order-sync` | `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 */2 * * *` (every 2 hours) |
 | `jazz-inventory-snapshot` | `JAZZ_INVENTORY_SNAPSHOT_SCHEDULE` | `0 0 12 * * 0` (Sun 12:00 PM) |
@@ -90,6 +92,7 @@ On **Nutra-forecast-tool** (test), all timer schedules are disabled (`0 0 0 1 1 
 | `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 | `INVENTORY_RECEIPT_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 | `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
+| `INVENTORY_MOVEMENT_RECON_SCHEDULE` | `0 0 0 1 1 2099` |
 
 Process Log reruns for `accs-sales-order-sync` route to the prod Function App via `NUTRA_FUNCTIONS_PROD_BASE_URL` / `NUTRA_FUNCTIONS_PROD_KEY` on the PHP App Service.
 

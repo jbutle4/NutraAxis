@@ -8,6 +8,13 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Inventory movement completeness recon (Layer 1)
+
+- Added `sql/122_create_inventory_movement_recon.sql` (`InventoryMovementReconRun` / `InventoryMovementReconLine`).
+- Function job `inventory-movement-recon` scans receipts, sales, transfers, and adjustments for missing IMS/QBO posts.
+- Process Log registry + timer (default 4:00 AM CT; disable on test app like other inventory timers).
+- Portal `/inventory-movement-recon/` + Inventory hub card **Movement Completeness**.
+
 ## 2026-07-18 — Inventory receipt sync unblocked (sandbox)
 
 - Root cause: `SKUMaster.QBO_ItemID` pointed at stale NonInventory/Service Ids; live Inventory twins were different Ids.

@@ -8,6 +8,7 @@ const accsEmployeeCustomerCreate = require('./jobs/accs-employee-customer-create
 const qboCoaSync = require('./jobs/qbo-coa-sync');
 const inventoryReceiptSync = require('./jobs/inventory-receipt-sync');
 const inventorySalesSync = require('./jobs/inventory-sales-sync');
+const inventoryMovementRecon = require('./jobs/inventory-movement-recon');
 
 const REGISTRY = {
   'monthly-sales-summary': {
@@ -46,6 +47,10 @@ const REGISTRY = {
     code: 'inventory-sales-sync',
     name: 'Inventory Sales Sync (IMS + QBO)',
   },
+  'inventory-movement-recon': {
+    code: 'inventory-movement-recon',
+    name: 'Inventory Movement Completeness Recon',
+  },
 };
 
 function buildResultMessage(code, result) {
@@ -71,6 +76,11 @@ function buildResultMessage(code, result) {
       return `Processed ${result.processed ?? 0} receipts — ${result.posted ?? 0} posted, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed.`;
     case 'inventory-sales-sync':
       return `Processed ${result.processed ?? 0} orders — ${result.posted ?? 0} posted, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed.`;
+    case 'inventory-movement-recon':
+      return result.summary
+        || `Lookback ${result.lookback_days ?? '—'}d — ${result.total ?? 0} exceptions `
+          + `(receipts ${result.receipt ?? 0}, sales ${result.sale ?? 0}, `
+          + `transfers ${result.transfer ?? 0}, adjustments ${result.adjustment ?? 0}).`;
     default:
       return 'Process completed.';
   }
@@ -101,6 +111,12 @@ async function invoke(code, params = {}) {
       return inventoryReceiptSync.run();
     case 'inventory-sales-sync':
       return inventorySalesSync.run();
+    case 'inventory-movement-recon':
+      return inventoryMovementRecon.run({
+        lookback_days: params.lookback_days ?? params.lookbackDays ?? null,
+        trigger_type: params.trigger_type ?? params.triggerType ?? null,
+        triggered_by_user_id: params.triggered_by_user_id ?? params.triggeredByUserId ?? null,
+      });
     default:
       return {
         ok: false,
@@ -153,7 +169,11 @@ async function execute(code, params = {}, triggerType = processLog.TRIGGER.SCHED
   );
 
   try {
-    const result = await invoke(code, params);
+    const result = await invoke(code, {
+      ...params,
+      trigger_type: triggerType,
+      triggered_by_user_id: triggeredByUserId,
+    });
     const ok = Boolean(result.ok);
     const error = String(result.error || '').trim();
     const message = ok
