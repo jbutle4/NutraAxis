@@ -8,6 +8,12 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — IMS vs QBO Layer 2 recon (financial)
+
+- Hardened `/inventory-qbo-recon/`: summary totals, match method (Sku / `SKUMaster.QBO_ItemID`), cutover policy banner.
+- Smoke (sandbox): 16 SKUs compared, **0** missing on either side, **14** qty mismatches (expected after Jazz→IMS align).
+- Ops focus: `NA-MT-004` IMS 1000 / QBO **7**; `NA-HR-006` IMS 999 / QBO **8** (receipt +10, sale −2, adj −1 on MT-004) — QBO tracks operational posts only; do not bootstrap from Jazz.
+
 ## 2026-07-18 — Transfer JE smoke (asset accounts + retry)
 
 - Root cause of first JE failure: `QBO_INV_ASSET_ACCOUNT_*` pointed at Ids from realm `9341457225657953` (stale `QBO_COA`), while the connected sandbox is `9341457230168529`.
