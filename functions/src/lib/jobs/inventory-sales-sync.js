@@ -1,10 +1,10 @@
-const { sql, connectPool, getSyncSettings } = require('../db-config');
+const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const qboInventory = require('../qbo-inventory-adjustment');
 
 function inventoryDatabase() {
   return process.env.DB_NAME_INVENTORY_SYNC
-    || getSyncSettings().stagingDb
-    || 'nutraaxis_test';
+    || getProductionDatabase()
+    || 'nutraaxis';
 }
 
 function adjustAccountId() {
@@ -22,10 +22,15 @@ function facilityForFulfillment(fulfillment) {
   return 'CART';
 }
 
-async function logExists(pool, docNumber) {
+async function hasSyncedLog(pool, docNumber) {
   const result = await pool.request()
     .input('doc', sql.NVarChar(50), docNumber)
-    .query('SELECT 1 AS ok FROM dbo.QBOInventorySyncLog WHERE DocNumber = @doc');
+    .query(`
+      SELECT 1 AS ok
+      FROM dbo.QBOInventorySyncLog
+      WHERE DocNumber = @doc
+        AND SyncStatus = N'Synced'
+    `);
   return Boolean(result.recordset[0]);
 }
 
@@ -44,16 +49,34 @@ async function writeLog(pool, row) {
     .input('status', sql.NVarChar(20), row.sync_status)
     .input('error', sql.NVarChar(500), row.sync_error ?? null)
     .query(`
-      INSERT INTO dbo.QBOInventorySyncLog (
-        DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
-        SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
-        SyncStatus, SyncError, SyncedAt
-      )
-      VALUES (
-        @doc, @syncType, @refType, @refId, @lineKey,
-        @sku, @qty, @facility, @txnId, @syncToken,
-        @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
-      )
+      MERGE dbo.QBOInventorySyncLog AS target
+      USING (SELECT @doc AS DocNumber) AS source
+        ON target.DocNumber = source.DocNumber
+      WHEN MATCHED THEN
+        UPDATE SET
+          SyncType = @syncType,
+          ReferenceType = @refType,
+          ReferenceID = @refId,
+          ReferenceLineKey = @lineKey,
+          SKUCode = @sku,
+          QtyChange = @qty,
+          FacilityCode = @facility,
+          QBO_TxnId = @txnId,
+          QBO_SyncToken = @syncToken,
+          SyncStatus = @status,
+          SyncError = @error,
+          SyncedAt = CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+      WHEN NOT MATCHED THEN
+        INSERT (
+          DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
+          SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
+          SyncStatus, SyncError, SyncedAt
+        )
+        VALUES (
+          @doc, @syncType, @refType, @refId, @lineKey,
+          @sku, @qty, @facility, @txnId, @syncToken,
+          @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+        );
     `);
 }
 

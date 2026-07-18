@@ -1,10 +1,10 @@
-const { sql, connectPool, getSyncSettings } = require('../db-config');
+const { sql, connectPool, getSyncSettings, getProductionDatabase } = require('../db-config');
 const qboInventory = require('../qbo-inventory-adjustment');
 
 function inventoryDatabase() {
   return process.env.DB_NAME_INVENTORY_SYNC
-    || getSyncSettings().stagingDb
-    || 'nutraaxis_test';
+    || getProductionDatabase()
+    || 'nutraaxis';
 }
 
 function adjustAccountId() {
@@ -21,10 +21,15 @@ function isReceivedStatus(status) {
   );
 }
 
-async function logExists(pool, docNumber) {
+async function hasSyncedLog(pool, docNumber) {
   const result = await pool.request()
     .input('doc', sql.NVarChar(50), docNumber)
-    .query('SELECT 1 AS ok FROM dbo.QBOInventorySyncLog WHERE DocNumber = @doc');
+    .query(`
+      SELECT 1 AS ok
+      FROM dbo.QBOInventorySyncLog
+      WHERE DocNumber = @doc
+        AND SyncStatus = N'Synced'
+    `);
   return Boolean(result.recordset[0]);
 }
 
@@ -43,16 +48,34 @@ async function writeLog(pool, row) {
     .input('status', sql.NVarChar(20), row.sync_status)
     .input('error', sql.NVarChar(500), row.sync_error ?? null)
     .query(`
-      INSERT INTO dbo.QBOInventorySyncLog (
-        DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
-        SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
-        SyncStatus, SyncError, SyncedAt
-      )
-      VALUES (
-        @doc, @syncType, @refType, @refId, @lineKey,
-        @sku, @qty, @facility, @txnId, @syncToken,
-        @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
-      )
+      MERGE dbo.QBOInventorySyncLog AS target
+      USING (SELECT @doc AS DocNumber) AS source
+        ON target.DocNumber = source.DocNumber
+      WHEN MATCHED THEN
+        UPDATE SET
+          SyncType = @syncType,
+          ReferenceType = @refType,
+          ReferenceID = @refId,
+          ReferenceLineKey = @lineKey,
+          SKUCode = @sku,
+          QtyChange = @qty,
+          FacilityCode = @facility,
+          QBO_TxnId = @txnId,
+          QBO_SyncToken = @syncToken,
+          SyncStatus = @status,
+          SyncError = @error,
+          SyncedAt = CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+      WHEN NOT MATCHED THEN
+        INSERT (
+          DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
+          SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
+          SyncStatus, SyncError, SyncedAt
+        )
+        VALUES (
+          @doc, @syncType, @refType, @refId, @lineKey,
+          @sku, @qty, @facility, @txnId, @syncToken,
+          @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+        );
     `);
 }
 
@@ -151,13 +174,22 @@ async function loadCandidateReceipts(pool) {
       r.IMSPostedAt
     FROM dbo.POReceipt r
     WHERE r.PORStatus IN (N'Transmitted', N'Complete')
-      AND r.IMSPostedAt IS NULL
       AND (
         r.JazzASNStatus IS NULL
         OR LOWER(r.JazzASNStatus) LIKE N'%receiv%'
         OR LOWER(r.JazzASNStatus) LIKE N'%complete%'
         OR LOWER(r.JazzASNStatus) LIKE N'%putaway%'
         OR LOWER(r.JazzASNStatus) LIKE N'%closed%'
+      )
+      AND (
+        r.IMSPostedAt IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM dbo.QBOInventorySyncLog l
+          WHERE l.ReferenceType = N'POReceipt'
+            AND l.ReferenceID = r.PORID
+            AND l.SyncStatus = N'Error'
+        )
       )
     ORDER BY r.PORID ASC
   `);
@@ -211,23 +243,6 @@ async function loadReceiptLines(pool, porId) {
     .filter(Boolean);
 }
 
-async function resolveQboItemId(pool, sku) {
-  const local = await pool.request()
-    .input('sku', sql.NVarChar(100), sku)
-    .query(`
-      SELECT QBO_ItemID
-      FROM dbo.SKUMaster
-      WHERE SKUCode = @sku AND QBO_ItemID IS NOT NULL
-    `);
-  const localId = String(local.recordset[0]?.QBO_ItemID || '').trim();
-  if (localId) {
-    return localId;
-  }
-
-  const remote = await qboInventory.findItemBySku(sku);
-  return remote.ok && remote.item ? String(remote.item.Id || '').trim() : '';
-}
-
 async function run() {
   const accountId = adjustAccountId();
   if (!accountId) {
@@ -272,13 +287,17 @@ async function run() {
       let missingItem = false;
       for (const line of lines) {
         const docNumber = `NA-RCV-${porId}-${line.detail_id}`;
-        if (await logExists(pool, docNumber)) {
+        if (await hasSyncedLog(pool, docNumber)) {
           continue;
         }
-        const itemId = await resolveQboItemId(pool, line.sku);
-        if (!itemId) {
+        const resolved = await qboInventory.resolveInventoryItemId(pool, sql, line.sku);
+        if (!resolved.ok || !resolved.item_id) {
           missingItem = true;
-          failures.push({ por_id: porId, sku: line.sku, error: 'Missing QBO_ItemID for Inventory item.' });
+          failures.push({
+            por_id: porId,
+            sku: line.sku,
+            error: resolved.error || 'Missing QBO Inventory Item Id.',
+          });
           break;
         }
         qboLines.push({
@@ -286,7 +305,7 @@ async function run() {
           detail_id: line.detail_id,
           sku: line.sku,
           qty: line.qty,
-          qbo_item_id: itemId,
+          qbo_item_id: resolved.item_id,
         });
       }
 
@@ -296,7 +315,7 @@ async function run() {
       }
 
       if (qboLines.length === 0) {
-        // Already synced — still mark IMS posted if needed.
+        // Fully synced already — ensure IMS posted flag if needed.
         if (!receipt.IMSPostedAt) {
           await postImsReceipt(pool, porId, facility, lines);
         }
@@ -305,7 +324,10 @@ async function run() {
       }
 
       try {
-        await postImsReceipt(pool, porId, facility, lines);
+        // Keep IMS idempotent: only post once.
+        if (!receipt.IMSPostedAt) {
+          await postImsReceipt(pool, porId, facility, lines);
+        }
 
         const adj = await qboInventory.postInventoryAdjustment({
           docNumber: `NA-RCV-${porId}`,
@@ -314,7 +336,7 @@ async function run() {
             qty_change: line.qty,
           })),
           adjustAccountId: accountId,
-          privateNote: `NutraAxis PO receipt ${porId}`,
+          privateNote: `NutraAxis PO receipt ${porId} Jazz ASN ${receipt.JazzASN || ''}`.trim(),
         });
 
         for (const line of qboLines) {
