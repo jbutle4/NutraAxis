@@ -76,6 +76,15 @@ $productMasterSubModules = [
 
 $inventoryManagementSubModules = [
     [
+        'slug'  => 'product-catalog',
+        'title' => 'SKU Master',
+        'desc'  => 'Create and maintain NutraAxis SKUs, attributes, pricing, and QuickBooks sync.',
+        'href'  => '/product-catalog/',
+        'icon'  => 'catalog',
+        'tier'  => 'production',
+        'sort'  => 1,
+    ],
+    [
         'slug'  => 'inventory-balances',
         'title' => 'Inventory Balances',
         'desc'  => 'Live operational stock by SKU and facility from the IMS ledger.',
@@ -438,6 +447,7 @@ $modulePages = [
         'headline'    => 'Inventory Management',
         'lead'        => 'Monitor stock across systems, reconcile Jazz and ACCS, and plan replenishment.',
         'capabilities' => [
+            ['title' => 'SKU Master', 'desc' => 'Create and maintain NutraAxis SKUs and catalog data.'],
             ['title' => 'Inventory Balances', 'desc' => 'Live IMS ledger balances by SKU, facility, and status bucket.'],
             ['title' => 'QBO Inventory', 'desc' => 'QuickBooks Online quantity on hand by SKU.'],
             ['title' => 'Jazz Current Inventory', 'desc' => 'Jazz OMS stock on hand by SKU and facility.'],
