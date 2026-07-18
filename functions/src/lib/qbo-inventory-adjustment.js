@@ -14,16 +14,16 @@ function qboConfigEnvironment() {
 
 async function postInventoryAdjustment({ docNumber, lines, adjustAccountId, privateNote = null }) {
   const detailLines = (lines || [])
-    .map((line) => {
+    .map((line, index) => {
       const itemId = String(line.qbo_item_id || '').trim();
       const qty = Number(line.qty_change || 0);
       if (!itemId || !Number.isFinite(qty) || Math.abs(qty) < 0.0000001) {
         return null;
       }
       return {
-        DetailType: 'InventoryAdjustmentLineDetail',
-        Amount: 0,
-        InventoryAdjustmentLineDetail: {
+        Id: String(index + 1),
+        DetailType: 'ItemAdjustmentLineDetail',
+        ItemAdjustmentLineDetail: {
           ItemRef: { value: itemId },
           QtyDiff: qty,
         },
