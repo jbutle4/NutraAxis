@@ -121,6 +121,15 @@ $inventoryManagementSubModules = [
         'sort'  => 8,
     ],
     [
+        'slug'  => 'inventory-jazz-ims-align',
+        'title' => 'Jazz → IMS CART Align',
+        'desc'  => 'Post JazzSyncReconcile so IMS CART matches Jazz mothership on-hand.',
+        'href'  => '/inventory-jazz-ims-align/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 85,
+    ],
+    [
         'slug'  => 'inventory-qbo-recon',
         'title' => 'QBO Inventory Reconciliation',
         'desc'  => 'Compare IMS location totals with QuickBooks Qty on hand.',
@@ -602,6 +611,17 @@ $modulePages = [
             ['title' => 'Physical On Hand', 'desc' => 'Compares Jazz on_hand_quantity to IMS OK + quarantine + on hold.'],
             ['title' => 'Mismatch Focus', 'desc' => 'Filter to SKUs present on only one side or with quantity deltas.'],
             ['title' => 'Prod / UAT Toggle', 'desc' => 'Switch Jazz environment without leaving the recon view.'],
+        ],
+    ],
+    'inventory-jazz-ims-align' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Jazz → IMS CART Align',
+        'lead'        => 'Controlled mothership sync — post JazzSyncReconcile so IMS CART matches Jazz on-hand without touching QBO.',
+        'capabilities' => [
+            ['title' => 'Preview Deltas', 'desc' => 'See signed OK-bucket changes before posting.'],
+            ['title' => 'Dry Run Audit', 'desc' => 'Record candidates in InventoryJazzImsAlignRun without mutating balances.'],
+            ['title' => 'IMS Only', 'desc' => 'Does not bootstrap QuickBooks QtyOnHand from Jazz.'],
+            ['title' => 'Confirm Gate', 'desc' => 'Live apply requires typing ALIGN.'],
         ],
     ],
     'inventory-qbo-recon' => [

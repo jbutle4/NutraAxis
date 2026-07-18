@@ -8,6 +8,13 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Jazz → IMS CART align
+
+- Portal `/inventory-jazz-ims-align/` previews Jazz on-hand vs IMS CART deltas and posts `JazzSyncReconcile` (IMS only).
+- SQL `125` — `InventoryJazzImsAlignRun` audit (dry-run / apply).
+- Confirm gate (`ALIGN`); optional zero-out for IMS SKUs missing from Jazz; link from Jazz vs IMS recon.
+- Does **not** bootstrap QBO QtyOnHand from Jazz.
+
 ## 2026-07-18 — Jazz vs IMS CART balance recon
 
 - Portal `/inventory-jazz-ims-recon/` compares Jazz mothership `on_hand_quantity` to IMS CART OK+Q+H.

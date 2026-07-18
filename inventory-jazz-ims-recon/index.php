@@ -51,6 +51,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php else: ?>
           <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=uat<?= $mismatchesOnly ? '&mismatches=1' : '' ?>">Use Jazz UAT</a>
           <?php endif; ?>
+          <a class="btn-secondary" href="/inventory-jazz-ims-align/?env=<?= htmlspecialchars($jazzEnv) ?>">Align IMS CART</a>
           <?php if ($mismatchesOnly): ?>
           <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=<?= htmlspecialchars($jazzEnv) ?>">Show all</a>
           <?php else: ?>

@@ -31,6 +31,8 @@ See also [QBO Inventory Cycle Runbook](./QBO_INVENTORY_CYCLE_RUNBOOK.md) for san
 
 **Balance recon:** `/inventory-jazz-ims-recon/` compares live Jazz on-hand (facility → CART via `ExternalReferenceCode`) with IMS CART OK + quarantine + on hold.
 
+**CART align:** `/inventory-jazz-ims-align/` posts `JazzSyncReconcile` to bring IMS CART in line with Jazz on-hand (IMS only; QBO stays on receipt/sales/adjustment accumulation).
+
 ---
 
 ## Facility flags (`dbo.Facility`)
