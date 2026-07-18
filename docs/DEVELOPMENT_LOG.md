@@ -8,6 +8,16 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Transfer JE smoke (asset accounts + retry)
+
+- Root cause of first JE failure: `QBO_INV_ASSET_ACCOUNT_*` pointed at Ids from realm `9341457225657953` (stale `QBO_COA`), while the connected sandbox is `9341457230168529`.
+- Created live sandbox accounts under Inventory Asset:
+  - Cart.com `1150040000`, WPC WIP `1150040001`, CPPC `1150040002`.
+- Transfer resolve now validates env Ids against the connected realm’s `QBO_COA`, then falls back to account name lookup.
+- JE retry skips only when sync status is `Synced` (Error rows can retry); transfer view shows QBO doc status + **Retry QBO journal**.
+- Smoke: Transfer **#1** CART→WPC_QUEUE qty 2 `NA-MT-004` — IMS Received; `NA-XFER-1` Synced; QBO JournalEntry **170** ($33.20).
+- Note: App Service appsettings may still hold the old wrong Ids until Azure RBAC allows an update; name fallback covers the live realm.
+
 ## 2026-07-18 — Jazz → IMS CART align
 
 - Portal `/inventory-jazz-ims-align/` previews Jazz on-hand vs IMS CART deltas and posts `JazzSyncReconcile` (IMS only).

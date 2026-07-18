@@ -291,7 +291,8 @@ function inventory_transfers_maybe_post_qbo_journal(int $transferId): array
     }
 
     $docNumber = 'NA-XFER-' . $transferId;
-    if (qbo_inventory_sync_log_exists($docNumber)) {
+    // Allow retry when a prior attempt logged Error (upsert updates the same DocNumber).
+    if (qbo_inventory_sync_log_status($docNumber) === 'Synced') {
         return ['ok' => true, 'skipped' => true, 'error' => null, 'reason' => 'Already posted.'];
     }
 
@@ -325,10 +326,14 @@ function inventory_transfers_maybe_post_qbo_journal(int $transferId): array
     return $result;
 }
 
+/**
+ * Resolve inventory-asset Account Id for a facility.
+ * Prefers env Ids that exist on the connected QBO realm; otherwise looks up QBO_COA by name.
+ */
 function inventory_transfers_asset_account_for_facility(string $facilityCode): string
 {
     $facilityCode = strtoupper(trim($facilityCode));
-    $map = [
+    $envMap = [
         'CART' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CART', '')),
         'CART_COM' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CART', '')),
         'CPPC' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CPPC', '')),
@@ -336,8 +341,92 @@ function inventory_transfers_asset_account_for_facility(string $facilityCode): s
         'WPC_QUEUE' => trim((string) env('QBO_INV_ASSET_ACCOUNT_WPC', '')),
         'WPC_WIP' => trim((string) env('QBO_INV_ASSET_ACCOUNT_WPC', '')),
     ];
+    $nameMap = [
+        'CART' => 'Inventory Asset - Cart.com',
+        'CART_COM' => 'Inventory Asset - Cart.com',
+        'CPPC' => 'Inventory Asset - CPPC',
+        'WLO' => 'Inventory Asset - WPC WIP',
+        'WPC_QUEUE' => 'Inventory Asset - WPC WIP',
+        'WPC_WIP' => 'Inventory Asset - WPC WIP',
+    ];
 
-    return $map[$facilityCode] ?? '';
+    $fromEnv = $envMap[$facilityCode] ?? '';
+    if ($fromEnv !== '' && inventory_transfers_coa_account_id_exists($fromEnv)) {
+        return $fromEnv;
+    }
+
+    $accountName = $nameMap[$facilityCode] ?? '';
+    if ($accountName === '') {
+        return '';
+    }
+
+    return inventory_transfers_coa_account_id_by_name($accountName);
+}
+
+function inventory_transfers_coa_account_id_exists(string $accountId): bool
+{
+    $accountId = trim($accountId);
+    if ($accountId === '') {
+        return false;
+    }
+
+    $realmId = qbo_coa_realm_id();
+    if ($realmId === null) {
+        return false;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(<<<SQL
+            SELECT 1
+            FROM dbo.QBO_COA
+            WHERE RealmID = :realm
+              AND QBO_AccountId = :aid
+              AND Active = 1
+        SQL);
+        $stmt->execute(['realm' => $realmId, 'aid' => $accountId]);
+
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable) {
+        return false;
+    }
+}
+
+function inventory_transfers_coa_account_id_by_name(string $accountName): string
+{
+    $accountName = trim($accountName);
+    if ($accountName === '') {
+        return '';
+    }
+
+    $realmId = qbo_coa_realm_id();
+    if ($realmId === null) {
+        return '';
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(<<<SQL
+            SELECT TOP (1) QBO_AccountId
+            FROM dbo.QBO_COA
+            WHERE RealmID = :realm
+              AND Active = 1
+              AND (Name = :name OR FullyQualifiedName = :fqn OR FullyQualifiedName LIKE :fqn_suffix)
+            ORDER BY CASE WHEN Name = :name2 THEN 0 ELSE 1 END, SyncedAt DESC
+        SQL);
+        $stmt->execute([
+            'realm' => $realmId,
+            'name' => $accountName,
+            'name2' => $accountName,
+            'fqn' => $accountName,
+            'fqn_suffix' => '%:' . $accountName,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false || $id === null ? '' : trim((string) $id);
+    } catch (Throwable) {
+        return '';
+    }
 }
 
 function inventory_transfers_sku_unit_cost(string $skuCode): float

@@ -11,11 +11,13 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 ## Prerequisites
 
 1. Sandbox company supports Inventory items (Plus/Advanced).
-2. Create sandbox COA accounts:
+2. Create sandbox COA accounts **in the connected realm** (Ids differ per company):
    - Inventory Asset — Cart.com
    - Inventory Asset — WPC WIP
    - Inventory Asset — CPPC
    - An Expense (or COGS adjustment) account for InventoryAdjustment `AdjustAccountRef`
+   - Sandbox realm `9341457230168529` (Jul 2026 smoke): Cart.com `1150040000`, WPC WIP `1150040001`, CPPC `1150040002`; adjust account `85`.
+   - Do not copy Ids from another realm’s `QBO_COA` rows — transfer posting validates env Ids against the connected realm and falls back to name lookup.
 3. Portal + Function App: `QBO_ENVIRONMENT=sandbox`, connected to realm `9341457230168529`.
 4. **Deploy this branch** before Process Log can show Inventory Receipt / Sales Sync:
    - App Service (PHP portal) — registers the processes and Process Log **Run** controls
@@ -73,7 +75,9 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 
 1. Create transfer at `/inventory-transfers/` (CART → CPPC/WLO/WPC_*).
 2. Ship (and receive if routed via TRANSIT).
-3. Same-SKU company QtyOnHand unchanged; optional Journal Entry when asset account env vars are set.
+3. Same-SKU company QtyOnHand unchanged; optional Journal Entry when asset accounts resolve (env Ids for the connected realm, or `QBO_COA` name match).
+4. DocNumber `NA-XFER-{transferId}`; on QBO Error use **Retry QBO journal** on the transfer view.
+5. Smoke (Jul 2026): Transfer #1 CART→WPC_QUEUE qty 2 `NA-MT-004` → JE `170`, `NA-XFER-1` Synced.
 
 ### 5b. Adjustments (shrink / gain)
 
