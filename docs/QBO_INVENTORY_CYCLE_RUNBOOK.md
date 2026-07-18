@@ -31,6 +31,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/122_create_inventory_movement_recon.sql`
    - `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (optional — only if `AccsSalesOrder*` is empty for sales smoke)
    - `sql/124_alter_qbo_inventory_sync_log_adjustment_type.sql`
+   - `sql/125_create_jazz_ims_align_run.sql`
 6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
 7. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
@@ -87,8 +88,9 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 1. **Movement completeness (Layer 1):** Run Process Log → **Inventory Movement Completeness Recon**, then open `/inventory-movement-recon/`.
 2. Investigate Action-severity rows (missing IMS posts, QBO Error sync-log, approved-unposted adjustments).
 3. **Jazz vs IMS CART (Layer 2 mothership):** Open `/inventory-jazz-ims-recon/` — Jazz `on_hand_quantity` at CART aliases (e.g. `FBF09`) vs IMS CART OK+quarantine+on hold.
-4. **IMS vs QBO (Layer 2 financial):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
-5. Investigate mismatches before any production cutover.
+4. **Align IMS CART (optional cutover):** `/inventory-jazz-ims-align/` — dry run, then type `ALIGN` to post `JazzSyncReconcile` so IMS CART matches Jazz on-hand. **Does not change QBO QtyOnHand.**
+5. **IMS vs QBO (Layer 2 financial):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
+6. Investigate remaining mismatches before any production cutover.
 
 ## Production cutover (later — out of scope for sandbox build)
 

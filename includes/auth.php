@@ -21,6 +21,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'inventory-movement-recon'   => 'InventoryReporting',
     'inventory-adjustments'      => 'InventoryReporting',
     'inventory-jazz-ims-recon'   => 'InventoryReporting',
+    'inventory-jazz-ims-align'   => 'InventoryReporting',
     'sales-reporting'        => 'SalesReporting',
     'accs-order-report'      => 'SalesReporting',
     'accs-order-report-uat'  => 'SalesReporting',
