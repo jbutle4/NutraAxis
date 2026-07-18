@@ -74,17 +74,19 @@ function inventory_jazz_ims_align_preview(string $jazzEnvironment = 'production'
 
         $hasJazz = !empty($row['has_jazz']);
         $hasIms = !empty($row['has_ims']);
-        $jazzQty = $hasJazz ? (float) $row['jazz_on_hand'] : null;
+        $jazzRaw = $hasJazz ? (float) $row['jazz_on_hand'] : null;
         $imsQty = $hasIms ? (float) $row['ims_qty'] : 0.0;
 
         if (!$hasJazz) {
             if (!$zeroMissingJazz || !$hasIms) {
                 continue;
             }
-            $jazzQty = 0.0;
+            $jazzRaw = 0.0;
         }
 
-        $delta = (float) $jazzQty - (float) $imsQty;
+        // Jazz can report negative on-hand; IMS QtyOK cannot go below zero.
+        $jazzTarget = max(0.0, (float) $jazzRaw);
+        $delta = $jazzTarget - (float) $imsQty;
         if (abs($delta) < 0.0001) {
             continue;
         }
@@ -93,10 +95,12 @@ function inventory_jazz_ims_align_preview(string $jazzEnvironment = 'production'
             'sku_code' => $skuMaster[$skuKey],
             'facility_code' => 'CART',
             'status_bucket' => 'OK',
-            'jazz_on_hand' => (float) $jazzQty,
+            'jazz_on_hand' => (float) $jazzRaw,
+            'jazz_target' => $jazzTarget,
             'ims_qty' => (float) $imsQty,
             'qty_change' => $delta,
             'jazz_facility' => (string) ($row['jazz_facility'] ?? ''),
+            'clamped' => $jazzRaw !== null && (float) $jazzRaw < 0,
         ];
     }
 
@@ -220,7 +224,9 @@ function inventory_jazz_ims_align_run(
             'facility_code' => 'CART',
             'status_bucket' => 'OK',
             'qty_change' => $line['qty_change'],
-            'notes' => 'Jazz OH ' . $line['jazz_on_hand'] . ' ← IMS ' . $line['ims_qty'],
+            'notes' => 'Jazz OH ' . $line['jazz_on_hand']
+                . (empty($line['clamped']) ? '' : ' (clamped→0)')
+                . ' ← IMS ' . $line['ims_qty'],
         ];
     }
 

@@ -170,19 +170,21 @@ require dirname(__DIR__) . '/includes/header.php';
               <th>SKU</th>
               <th>Jazz facility</th>
               <th>Jazz on hand</th>
+              <th>Align target</th>
               <th>IMS CART</th>
               <th>Qty change (→ OK)</th>
             </tr>
           </thead>
           <tbody>
             <?php if ($lines === []): ?>
-            <tr><td colspan="5">IMS CART already matches Jazz on-hand for SKU Master items<?= $zeroMissing ? '' : ' present in Jazz' ?>.</td></tr>
+            <tr><td colspan="6">IMS CART already matches Jazz on-hand for SKU Master items<?= $zeroMissing ? '' : ' present in Jazz' ?>.</td></tr>
             <?php else: ?>
             <?php foreach ($lines as $line): ?>
             <tr class="is-warning">
               <td><?= htmlspecialchars((string) $line['sku_code']) ?></td>
               <td><?= htmlspecialchars((string) ($line['jazz_facility'] ?: '—')) ?></td>
-              <td><?= htmlspecialchars(inventory_ledger_format_quantity($line['jazz_on_hand'])) ?></td>
+              <td><?= htmlspecialchars(inventory_ledger_format_quantity($line['jazz_on_hand'])) ?><?= !empty($line['clamped']) ? ' *' : '' ?></td>
+              <td><?= htmlspecialchars(inventory_ledger_format_quantity($line['jazz_target'] ?? $line['jazz_on_hand'])) ?></td>
               <td><?= htmlspecialchars(inventory_ledger_format_quantity($line['ims_qty'])) ?></td>
               <td><?= htmlspecialchars(inventory_ledger_format_quantity($line['qty_change'])) ?></td>
             </tr>
@@ -190,6 +192,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <?php endif; ?>
           </tbody>
         </table>
+        <p style="margin-top:0.75rem;opacity:0.8;">* Jazz on-hand below zero is clamped to align target 0 (IMS cannot store negative OK qty).</p>
       </div>
       <?php endif; ?>
     </div>
