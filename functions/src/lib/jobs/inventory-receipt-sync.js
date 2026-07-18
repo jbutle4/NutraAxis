@@ -164,19 +164,37 @@ async function loadCandidateReceipts(pool) {
   return result.recordset;
 }
 
+async function resolveImsFacility(pool, facilityCode) {
+  const code = String(facilityCode || 'CART').trim() || 'CART';
+  const result = await pool.request()
+    .input('code', sql.NVarChar(50), code)
+    .query(`
+      SELECT TOP (1) FacilityCode
+      FROM dbo.Facility
+      WHERE UPPER(FacilityCode) = UPPER(@code)
+         OR (
+              ExternalReferenceCode IS NOT NULL
+              AND UPPER(ExternalReferenceCode) = UPPER(@code)
+         )
+      ORDER BY CASE WHEN UPPER(FacilityCode) = UPPER(@code) THEN 0 ELSE 1 END
+    `);
+
+  return String(result.recordset[0]?.FacilityCode || 'CART').trim() || 'CART';
+}
+
 async function loadReceiptLines(pool, porId) {
   const result = await pool.request()
     .input('porId', sql.Int, porId)
     .query(`
-      SELECT PORDetailID, SKUCode, QuantityReceived, QuantityExpected
+      SELECT PORDID, ItemSKU, QuantityReceived, QuantityExpected
       FROM dbo.PORDetail
       WHERE PORID = @porId
-      ORDER BY PORDetailID
+      ORDER BY PORDID
     `);
 
   return result.recordset
     .map((row) => {
-      const sku = String(row.SKUCode || '').trim();
+      const sku = String(row.ItemSKU || '').trim();
       let qty = Number(row.QuantityReceived || 0);
       if (!(qty > 0)) {
         qty = Number(row.QuantityExpected || 0);
@@ -185,7 +203,7 @@ async function loadReceiptLines(pool, porId) {
         return null;
       }
       return {
-        detail_id: Number(row.PORDetailID),
+        detail_id: Number(row.PORDID),
         sku,
         qty,
       };
@@ -235,7 +253,7 @@ async function run() {
     for (const receipt of receipts) {
       processed += 1;
       const porId = Number(receipt.PORID);
-      const facility = String(receipt.Facility || 'CART').trim() || 'CART';
+      const facility = await resolveImsFacility(pool, receipt.Facility || 'CART');
       const status = String(receipt.JazzASNStatus || '');
 
       // Require an explicit received-like status when JazzASNStatus is populated.

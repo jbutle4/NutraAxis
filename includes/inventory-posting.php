@@ -188,10 +188,10 @@ function inventory_posting_receipt_lines(int $porId, string $facilityCode = 'CAR
 {
     $pdo = db();
     $stmt = $pdo->prepare(<<<SQL
-        SELECT d.PORDetailID, d.SKUCode, d.QuantityReceived, d.QuantityExpected
+        SELECT d.PORDID, d.ItemSKU, d.QuantityReceived, d.QuantityExpected
         FROM dbo.PORDetail d
         WHERE d.PORID = :por_id
-        ORDER BY d.PORDetailID
+        ORDER BY d.PORDID
     SQL);
     $stmt->execute(['por_id' => $porId]);
 
@@ -204,7 +204,7 @@ function inventory_posting_receipt_lines(int $porId, string $facilityCode = 'CAR
         if ($qty <= 0) {
             continue;
         }
-        $sku = trim((string) ($row['SKUCode'] ?? ''));
+        $sku = trim((string) ($row['ItemSKU'] ?? ''));
         if ($sku === '') {
             continue;
         }
@@ -213,8 +213,8 @@ function inventory_posting_receipt_lines(int $porId, string $facilityCode = 'CAR
             'facility_code'  => $facilityCode,
             'status_bucket'  => 'OK',
             'qty_change'     => $qty,
-            'notes'          => 'PORDetail ' . (int) $row['PORDetailID'],
-            'detail_id'      => (int) $row['PORDetailID'],
+            'notes'          => 'PORDetail ' . (int) $row['PORDID'],
+            'detail_id'      => (int) $row['PORDID'],
         ];
     }
 
