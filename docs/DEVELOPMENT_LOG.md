@@ -8,6 +8,14 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-18 — Inventory receipt sync unblocked (sandbox)
+
+- Root cause: `SKUMaster.QBO_ItemID` pointed at stale NonInventory/Service Ids; live Inventory twins were different Ids.
+- Receipt/sales sync now resolve live QBO Inventory Item Ids by SKU and upsert sync-log Error rows for retry.
+- Simulated Jazz ASN `231041` / POR 19: IMS CART +10 for `NA-MT-004`/`NA-HR-006`; QBO InventoryAdjustment txn `167`; Process Log **481** Success.
+
+---
+
 ## 2026-07-17 — QBO inventory sync Function App + portal deploy (sandbox)
 
 - Published `functions/` to **Nutra-forecast-tool** (sandbox), including `inventory-receipt-sync` and `inventory-sales-sync`.
