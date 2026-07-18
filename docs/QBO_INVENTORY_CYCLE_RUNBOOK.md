@@ -94,7 +94,10 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 3. **Jazz vs IMS CART (Layer 2 mothership):** Open `/inventory-jazz-ims-recon/` — Jazz `on_hand_quantity` at CART aliases (e.g. `FBF09`) vs IMS CART OK+quarantine+on hold.
 4. **Align IMS CART (optional cutover):** `/inventory-jazz-ims-align/` — dry run, then type `ALIGN` to post `JazzSyncReconcile` so IMS CART matches Jazz on-hand. **Does not change QBO QtyOnHand.**
 5. **IMS vs QBO (Layer 2 financial):** Open `/inventory-qbo-recon/` for IMS company total vs QBO QtyOnHand.
-6. Investigate remaining mismatches before any production cutover.
+   - Banner + summary explain that large IMS − QBO deltas after Jazz→IMS align are **expected**.
+   - Rows match QBO Inventory items by Sku, falling back to `SKUMaster.QBO_ItemID`.
+   - Smoke (Jul 2026): 16 SKUs, 0 missing, 14 qty mismatches; `NA-MT-004` QBO=7 / `NA-HR-006` QBO=8 (ops posts only).
+6. Investigate remaining *unexpected* mismatches (missing Inventory item, wrong Item Id, QBO Error sync-log) before production cutover — not Jazz-aligned IMS vs low QBO.
 
 ## Production cutover (later — out of scope for sandbox build)
 
