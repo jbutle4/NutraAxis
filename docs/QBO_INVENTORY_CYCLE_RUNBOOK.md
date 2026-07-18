@@ -30,6 +30,7 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/121_seed_wpc_facilities_and_inventory_sync_log.sql`
    - `sql/122_create_inventory_movement_recon.sql`
    - `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (optional — only if `AccsSalesOrder*` is empty for sales smoke)
+   - `sql/124_alter_qbo_inventory_sync_log_adjustment_type.sql`
 6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
 7. Set Function App settings:
    - `QBO_INV_ADJUST_ACCOUNT_ID`
@@ -72,6 +73,14 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
 1. Create transfer at `/inventory-transfers/` (CART → CPPC/WLO/WPC_*).
 2. Ship (and receive if routed via TRANSIT).
 3. Same-SKU company QtyOnHand unchanged; optional Journal Entry when asset account env vars are set.
+
+### 5b. Adjustments (shrink / gain)
+
+1. Open `/inventory-adjustments/` → **New adjustment**.
+2. Choose SKU, facility, bucket, direction (Shrink − / Gain +), qty, and reason (e.g. `DAMAGE`).
+3. Create as **Pending**, then **Approve & post**.
+4. Expect: IMS `AdjustmentLoss`/`AdjustmentGain`; QBO InventoryAdjustment DocNumber `NA-ADJ-{id}`; sync-log Synced.
+5. Reject leaves IMS/QBO untouched. QBO Error rows can **Retry QBO post** without double-posting IMS.
 
 ### 6. Reconciliation
 

@@ -449,9 +449,14 @@ async function collectAdjustmentExceptions(pool, lookback) {
         a.AdjStatus,
         a.TransactionID,
         a.AdjustmentDate,
-        rc.ReasonCode
+        rc.ReasonCode,
+        l.SyncStatus AS QboSyncStatus,
+        l.SyncError AS QboSyncError,
+        l.DocNumber
       FROM dbo.InvAdjustment a
       LEFT JOIN dbo.InvReasonCode rc ON rc.ReasonCodeID = a.ReasonCodeID
+      LEFT JOIN dbo.QBOInventorySyncLog l
+        ON l.DocNumber = CONCAT(N'NA-ADJ-', a.AdjustmentID)
       WHERE a.CreateDate >= DATEADD(DAY, -@days, SYSUTCDATETIME())
         AND a.AdjStatus IN (N'Pending', N'Approved')
       ORDER BY a.AdjustmentID DESC
@@ -460,6 +465,9 @@ async function collectAdjustmentExceptions(pool, lookback) {
   const lines = [];
   for (const row of result.recordset) {
     const status = String(row.AdjStatus || '');
+    const qboStatus = String(row.QboSyncStatus || '');
+    const doc = String(row.DocNumber || `NA-ADJ-${row.AdjustmentID}`);
+
     if (status === 'Pending') {
       lines.push({
         movement_type: 'Adjustment',
@@ -474,7 +482,7 @@ async function collectAdjustmentExceptions(pool, lookback) {
         source_status: status,
         ims_status: 'Awaiting approval',
         qbo_status: '—',
-        recommended_action: 'Review and approve/reject pending inventory adjustment (shrink/gain workflow).',
+        recommended_action: 'Open Inventory Adjustments and approve/reject this pending request.',
         detail_message: `Adjustment ${row.AdjustmentID} still Pending.`,
       });
       continue;
@@ -493,9 +501,49 @@ async function collectAdjustmentExceptions(pool, lookback) {
         qty: Number(row.QtyAdjusted || 0),
         source_status: status,
         ims_status: 'Approved, not posted',
-        qbo_status: 'Not posted',
-        recommended_action: 'Post approved adjustment to IMS + QBO (shrink/gain posting workflow).',
+        qbo_status: qboStatus || 'Not posted',
+        recommended_action: 'Open Inventory Adjustments and Approve & post (or Retry QBO).',
         detail_message: `Adjustment ${row.AdjustmentID} approved but has no InvTransaction.`,
+      });
+      continue;
+    }
+
+    if (status === 'Approved' && qboStatus === 'Error') {
+      lines.push({
+        movement_type: 'Adjustment',
+        action_code: 'ADJUSTMENT_QBO_ERROR',
+        severity: 'Action',
+        reference_type: 'InvAdjustment',
+        reference_id: Number(row.AdjustmentID),
+        reference_key: doc,
+        sku_code: String(row.SKUCode || ''),
+        facility_code: String(row.FacilityCode || ''),
+        qty: Number(row.QtyAdjusted || 0),
+        source_status: status,
+        ims_status: 'Posted',
+        qbo_status: `Error: ${String(row.QboSyncError || '').slice(0, 120)}`,
+        recommended_action: 'Fix QBO mapping/accounts, then Retry QBO post on the adjustment detail page.',
+        detail_message: `${doc} IMS posted but QBO sync error.`,
+      });
+      continue;
+    }
+
+    if (status === 'Approved' && qboStatus !== 'Synced' && qboStatus !== 'Skipped') {
+      lines.push({
+        movement_type: 'Adjustment',
+        action_code: 'ADJUSTMENT_MISSING_QBO',
+        severity: 'Action',
+        reference_type: 'InvAdjustment',
+        reference_id: Number(row.AdjustmentID),
+        reference_key: doc,
+        sku_code: String(row.SKUCode || ''),
+        facility_code: String(row.FacilityCode || ''),
+        qty: Number(row.QtyAdjusted || 0),
+        source_status: status,
+        ims_status: 'Posted',
+        qbo_status: qboStatus || 'Not posted',
+        recommended_action: 'Open Inventory Adjustments → Retry QBO post.',
+        detail_message: `${doc} IMS posted but QBO not Synced.`,
       });
     }
   }
