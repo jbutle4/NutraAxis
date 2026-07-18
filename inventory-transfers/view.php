@@ -16,6 +16,9 @@ $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 $userId = auth_user()['UserID'] ?? null;
 
+$docNumber = 'NA-XFER-' . $transferId;
+$syncStatus = qbo_inventory_sync_log_status($docNumber);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
     $action = (string) ($_POST['action'] ?? '');
     if ($action === 'ship') {
@@ -42,9 +45,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
         );
         exit;
     }
+    if ($action === 'retry_qbo') {
+        $result = inventory_transfers_maybe_post_qbo_journal($transferId);
+        $ok = !empty($result['ok']) || !empty($result['skipped']);
+        header(
+            'Location: /inventory-transfers/view.php?id=' . $transferId . '&'
+                . http_build_query($ok
+                    ? ['notice' => !empty($result['skipped']) ? 'qbo_skipped' : 'qbo_synced']
+                    : ['error' => $result['error'] ?? 'QuickBooks journal entry failed.']),
+            true,
+            302
+        );
+        exit;
+    }
 }
 
 $transfer = inventory_transfers_get($transferId);
+$syncStatus = qbo_inventory_sync_log_status($docNumber);
 $pageTitle = 'Transfer #' . $transferId . ' | Inventory Management';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -75,11 +92,25 @@ require dirname(__DIR__) . '/includes/header.php';
         <button type="submit" class="btn-primary">Receive transfer</button>
       </form>
       <?php endif;
+      if (
+          inventory_transfers_can_update()
+          && ($transfer['TransferStatus'] ?? '') === 'Received'
+          && $syncStatus !== 'Synced'
+      ): ?>
+      <form method="post" class="inline-form" onsubmit="return confirm('Retry the QuickBooks transfer journal entry?');">
+        <input type="hidden" name="action" value="retry_qbo" />
+        <button type="submit" class="btn-secondary">Retry QBO journal</button>
+      </form>
+      <?php endif;
       render_list_page_toolbar(trim(ob_get_clean()) ?: null);
       ?>
 
       <?php if ($notice === 'created' || $notice === 'shipped' || $notice === 'received'): ?>
       <div class="admin-notice is-success" role="status">Transfer updated.</div>
+      <?php elseif ($notice === 'qbo_synced'): ?>
+      <div class="admin-notice is-success" role="status">QuickBooks journal entry synced.</div>
+      <?php elseif ($notice === 'qbo_skipped'): ?>
+      <div class="admin-notice is-success" role="status">QuickBooks journal entry already synced or skipped.</div>
       <?php endif; ?>
       <?php if ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -93,6 +124,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <div><dt>Requested</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyRequested'] ?? null)) ?></dd></div>
         <div><dt>Shipped</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyShipped'] ?? null)) ?></dd></div>
         <div><dt>Received</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyReceived'] ?? null)) ?></dd></div>
+        <div><dt>QBO Doc</dt><dd><?= htmlspecialchars($docNumber) ?><?= $syncStatus !== null ? ' · ' . htmlspecialchars($syncStatus) : '' ?></dd></div>
         <div><dt>Notes</dt><dd><?= htmlspecialchars((string) ($transfer['Notes'] ?? '—')) ?></dd></div>
       </dl>
     </div>
