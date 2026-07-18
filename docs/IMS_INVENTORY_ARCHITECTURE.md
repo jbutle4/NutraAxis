@@ -29,6 +29,8 @@ CPPC / WLO → local IMS (sales, adjustments) — no Jazz sync
 
 See also [QBO Inventory Cycle Runbook](./QBO_INVENTORY_CYCLE_RUNBOOK.md) for sandbox cutover steps.
 
+**Balance recon:** `/inventory-jazz-ims-recon/` compares live Jazz on-hand (facility → CART via `ExternalReferenceCode`) with IMS CART OK + quarantine + on hold.
+
 ---
 
 ## Facility flags (`dbo.Facility`)
