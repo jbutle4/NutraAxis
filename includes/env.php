@@ -81,7 +81,7 @@ function env(string $key, ?string $default = null): ?string
             'AZURE_STORAGE_ENDPOINT_SUFFIX',
             'NUTRA_SMOKE_KEY', 'SMOKE_KEY',
             'JAZZ_DOMAIN', 'JAZZ_USERNAME', 'JAZZ_PASSWORD', 'JAZZ_TENANT_CODE', 'JAZZ_BASE_URL', 'JAZZ_PAGE_SIZE',
-            'CRON_SECRET',
+            'CRON_SECRET', 'SMOKE_KEY', 'NUTRA_SMOKE_KEY',
             'PROCESS_ALERT_EMAIL',
             'PROVIDER_SIGNUP_ENCRYPTION_KEY',
             'FILE_CRYPTO_ENCRYPTION_KEY',

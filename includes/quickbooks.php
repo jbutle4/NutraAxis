@@ -2246,8 +2246,6 @@ function qbo_inventory_sync_log_upsert(array $row): void
         'status4' => $row['sync_status'],
     ]);
 }
-<<<<<<< HEAD
-=======
 
 function qbo_inventory_sync_log_status(string $docNumber): ?string
 {
@@ -2258,5 +2256,3 @@ function qbo_inventory_sync_log_status(string $docNumber): ?string
 
     return $status === false || $status === null ? null : (string) $status;
 }
-
->>>>>>> 9b20b3c (Add inventory adjustments shrink/gain portal workflow.)
