@@ -13,6 +13,18 @@ function environment() {
   return env === 'production' ? 'production' : 'sandbox';
 }
 
+/** Prefer *_SANDBOX / *_PROD keys; fall back to unsuffixed for the active QBO_ENVIRONMENT. */
+function invAccountSetting(baseKey, fallback = '') {
+  const key = String(baseKey || '').trim();
+  if (!key) {
+    return fallback;
+  }
+  if (environment() === 'production') {
+    return envValue(`${key}_PROD`, envValue(key, fallback));
+  }
+  return envValue(`${key}_SANDBOX`, envValue(key, fallback));
+}
+
 function clientId() {
   return envValue('QBO_CLIENT_ID');
 }
@@ -64,6 +76,7 @@ function oauthConfigError() {
 
 module.exports = {
   environment,
+  invAccountSetting,
   clientId,
   clientSecret,
   redirectUri,

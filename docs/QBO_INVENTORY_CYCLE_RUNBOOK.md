@@ -35,10 +35,12 @@ Stand up company-wide QuickBooks Inventory quantity tracking at **QtyOnHand = 0*
    - `sql/124_alter_qbo_inventory_sync_log_adjustment_type.sql`
    - `sql/125_create_jazz_ims_align_run.sql`
 6. Run **QuickBooks Chart of Accounts Sync** (`qbo-coa-sync` — general ledger, not Certificate of Analysis) so Product Catalog account pickers populate.
-7. Set Function App settings:
-   - `QBO_INV_ADJUST_ACCOUNT_ID`
-   - `QBO_INV_ASSET_ACCOUNT_CART` / `_WPC` / `_CPPC` (for transfer JEs)
-   - `DB_NAME_INVENTORY_SYNC` (usually staging/test DB)
+7. Set App Service (portal) inventory account settings — **both envs at once** (resolved by `QBO_ENVIRONMENT`):
+   - Sandbox: `QBO_INV_ADJUST_ACCOUNT_ID_SANDBOX`, `QBO_INV_ASSET_ACCOUNT_{CART,WPC,CPPC}_SANDBOX`
+   - Production: same keys with `_PROD` (fill when production COA Ids are known)
+   - Legacy unsuffixed keys still work as fallback for the active environment
+   - Transfer JEs read these on **nutraaxisweb**; Function App needs adjust account for receipt/sales sync
+   - `DB_NAME_INVENTORY_SYNC` on the Function App (usually staging/test DB)
 
 ## Phase checklist
 

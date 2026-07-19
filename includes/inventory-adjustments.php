@@ -142,7 +142,12 @@ function inventory_adjustments_doc_number(int $adjustmentId): string
 
 function inventory_adjustments_adjust_account_id(): string
 {
-    return trim((string) env('QBO_INV_ADJUST_ACCOUNT_ID', env('QBO_INV_ASSET_ACCOUNT_CART', '')));
+    $adjust = qbo_inv_account_setting('QBO_INV_ADJUST_ACCOUNT_ID');
+    if ($adjust !== '') {
+        return $adjust;
+    }
+
+    return qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART');
 }
 
 /**

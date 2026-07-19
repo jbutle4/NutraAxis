@@ -334,12 +334,12 @@ function inventory_transfers_asset_account_for_facility(string $facilityCode): s
 {
     $facilityCode = strtoupper(trim($facilityCode));
     $envMap = [
-        'CART' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CART', '')),
-        'CART_COM' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CART', '')),
-        'CPPC' => trim((string) env('QBO_INV_ASSET_ACCOUNT_CPPC', '')),
-        'WLO' => trim((string) env('QBO_INV_ASSET_ACCOUNT_WPC', '')),
-        'WPC_QUEUE' => trim((string) env('QBO_INV_ASSET_ACCOUNT_WPC', '')),
-        'WPC_WIP' => trim((string) env('QBO_INV_ASSET_ACCOUNT_WPC', '')),
+        'CART' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART'),
+        'CART_COM' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART'),
+        'CPPC' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CPPC'),
+        'WLO' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
+        'WPC_QUEUE' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
+        'WPC_WIP' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
     ];
     $nameMap = [
         'CART' => 'Inventory Asset - Cart.com',
@@ -441,5 +441,10 @@ function inventory_transfers_sku_unit_cost(string $skuCode): float
 
 function inventory_transfers_adjust_account_id(): string
 {
-    return trim((string) env('QBO_INV_ADJUST_ACCOUNT_ID', env('QBO_INV_ASSET_ACCOUNT_CART', '')));
+    $adjust = qbo_inv_account_setting('QBO_INV_ADJUST_ACCOUNT_ID');
+    if ($adjust !== '') {
+        return $adjust;
+    }
+
+    return qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART');
 }
