@@ -86,7 +86,7 @@ function db(): PDO
 
     $connectionTimeout = 5;
     $drivers = [
-        'sqlsrv' => "sqlsrv:Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout}",
+        'sqlsrv' => "sqlsrv:Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;LoginTimeout={$connectionTimeout}",
         'dblib'  => "dblib:host={$host}:{$port};dbname={$name};charset=UTF-8",
         'odbc18' => "odbc:Driver={ODBC Driver 18 for SQL Server};Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout};",
         'odbc17' => "odbc:Driver={ODBC Driver 17 for SQL Server};Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout};",
