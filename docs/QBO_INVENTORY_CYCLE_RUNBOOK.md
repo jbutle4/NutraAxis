@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Environment:** QBO Sandbox / UAT only  
-**Related:** [IMS Inventory Architecture](./IMS_INVENTORY_ARCHITECTURE.md), Accounting Ops v1.4
+**Related:** [IMS Inventory Architecture](./IMS_INVENTORY_ARCHITECTURE.md), [UAT E2E Checklist](./QBO_INVENTORY_UAT_E2E_CHECKLIST.md), Accounting Ops v1.4
 
 ## Goal
 
