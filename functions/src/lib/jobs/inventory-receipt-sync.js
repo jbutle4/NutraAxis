@@ -1,4 +1,5 @@
 const { sql, connectPool, getSyncSettings, getProductionDatabase } = require('../db-config');
+const qboConfig = require('../qbo-config');
 const qboInventory = require('../qbo-inventory-adjustment');
 
 function inventoryDatabase() {
@@ -8,7 +9,10 @@ function inventoryDatabase() {
 }
 
 function adjustAccountId() {
-  return String(process.env.QBO_INV_ADJUST_ACCOUNT_ID || process.env.QBO_INV_ASSET_ACCOUNT_CART || '').trim();
+  return qboConfig.invAccountSetting(
+    'QBO_INV_ADJUST_ACCOUNT_ID',
+    qboConfig.invAccountSetting('QBO_INV_ASSET_ACCOUNT_CART')
+  );
 }
 
 function isReceivedStatus(status) {

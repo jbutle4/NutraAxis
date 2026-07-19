@@ -8,6 +8,11 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-19 — Dual-env QBO inventory account settings
+
+- Portal + Function App resolve inventory COA Ids by `QBO_ENVIRONMENT` via `*_SANDBOX` / `*_PROD` (fallback to unsuffixed), matching `QBO_CLIENT_ID_PROD` pattern.
+- Azure: set both sandbox and production values once; flip only `QBO_ENVIRONMENT` (and reconnect) for cutover — no more swapping account Ids.
+
 ## 2026-07-18 — IMS vs QBO Layer 2 recon (financial)
 
 - Hardened `/inventory-qbo-recon/`: summary totals, match method (Sku / `SKUMaster.QBO_ItemID`), cutover policy banner.
