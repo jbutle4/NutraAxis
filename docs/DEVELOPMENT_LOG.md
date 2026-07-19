@@ -8,6 +8,10 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-19 — UAT E2E checklist
+
+- Added `docs/QBO_INVENTORY_UAT_E2E_CHECKLIST.md` — full sandbox pass with portal URLs, Process Log jobs, and SQL verification per use case; linked from the inventory cycle runbook.
+
 ## 2026-07-19 — Dual-env QBO inventory account settings
 
 - Portal + Function App resolve inventory COA Ids by `QBO_ENVIRONMENT` via `*_SANDBOX` / `*_PROD` (fallback to unsuffixed), matching `QBO_CLIENT_ID_PROD` pattern.
