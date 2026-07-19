@@ -8,6 +8,92 @@ Running record of changes, deployments, and database work for the Operations sit
 
 ---
 
+## 2026-07-19 — UAT E2E checklist
+
+- Added `docs/QBO_INVENTORY_UAT_E2E_CHECKLIST.md` — full sandbox pass with portal URLs, Process Log jobs, and SQL verification per use case; linked from the inventory cycle runbook.
+
+## 2026-07-19 — Dual-env QBO inventory account settings
+
+- Portal + Function App resolve inventory COA Ids by `QBO_ENVIRONMENT` via `*_SANDBOX` / `*_PROD` (fallback to unsuffixed), matching `QBO_CLIENT_ID_PROD` pattern.
+- Azure: set both sandbox and production values once; flip only `QBO_ENVIRONMENT` (and reconnect) for cutover — no more swapping account Ids.
+
+## 2026-07-18 — IMS vs QBO Layer 2 recon (financial)
+
+- Hardened `/inventory-qbo-recon/`: summary totals, match method (Sku / `SKUMaster.QBO_ItemID`), cutover policy banner.
+- Smoke (sandbox): 16 SKUs compared, **0** missing on either side, **14** qty mismatches (expected after Jazz→IMS align).
+- Ops focus: `NA-MT-004` IMS 1000 / QBO **7**; `NA-HR-006` IMS 999 / QBO **8** (receipt +10, sale −2, adj −1 on MT-004) — QBO tracks operational posts only; do not bootstrap from Jazz.
+
+## 2026-07-18 — Transfer JE smoke (asset accounts + retry)
+
+- Root cause of first JE failure: `QBO_INV_ASSET_ACCOUNT_*` pointed at Ids from realm `9341457225657953` (stale `QBO_COA`), while the connected sandbox is `9341457230168529`.
+- Created live sandbox accounts under Inventory Asset:
+  - Cart.com `1150040000`, WPC WIP `1150040001`, CPPC `1150040002`.
+- Transfer resolve now validates env Ids against the connected realm’s `QBO_COA`, then falls back to account name lookup.
+- JE retry skips only when sync status is `Synced` (Error rows can retry); transfer view shows QBO doc status + **Retry QBO journal**.
+- Smoke: Transfer **#1** CART→WPC_QUEUE qty 2 `NA-MT-004` — IMS Received; `NA-XFER-1` Synced; QBO JournalEntry **170** ($33.20).
+- Note: App Service appsettings may still hold the old wrong Ids until Azure RBAC allows an update; name fallback covers the live realm.
+
+## 2026-07-18 — Jazz → IMS CART align
+
+- Portal `/inventory-jazz-ims-align/` previews Jazz on-hand vs IMS CART deltas and posts `JazzSyncReconcile` (IMS only).
+- SQL `125` — `InventoryJazzImsAlignRun` audit (dry-run / apply).
+- Confirm gate (`ALIGN`); optional zero-out for IMS SKUs missing from Jazz; link from Jazz vs IMS recon.
+- Negative Jazz on-hand clamped to align target 0 (IMS QtyOK cannot go negative).
+- Does **not** bootstrap QBO QtyOnHand from Jazz.
+- Smoke (Jazz UAT): dry-run #1; failed partial #2; success run **#3** / txn **11** posted **11** lines — post-align mismatches vs clamped Jazz target **0** (`NA-MT-004`/`NA-HR-006` = 1000/999).
+
+## 2026-07-18 — Jazz vs IMS CART balance recon
+
+- Portal `/inventory-jazz-ims-recon/` compares Jazz mothership `on_hand_quantity` to IMS CART OK+Q+H.
+- Resolves Jazz facility codes via `Facility.ExternalReferenceCode` (CART ← `FBF09`).
+- Prod/UAT Jazz toggle + mismatches-only filter; Inventory hub card registered.
+- Smoke (live Jazz + SQL): Jazz facility `FBF09`, 17 SKUs compared, **16 mismatches** (expected — IMS sandbox smoke qty ≠ Jazz mothership on-hand; e.g. `NA-MT-004` Jazz 1000 vs IMS 7).
+
+## 2026-07-18 — Inventory adjustments (shrink/gain workflow)
+
+- Portal `/inventory-adjustments/` — create Pending, approve/reject, Retry QBO.
+- Approve posts IMS `AdjustmentLoss`/`AdjustmentGain` + QBO InventoryAdjustment; DocNumber `NA-ADJ-{id}`.
+- SQL `124` adds `Adjustment` to `QBOInventorySyncLog.SyncType`.
+- PHP QBO adj line detail fixed to `ItemAdjustmentLineDetail` + sync-log MERGE upsert.
+- App Service env allowlist: `QBO_INV_ADJUST_ACCOUNT_ID` (+ asset account keys) now readable via `env()`.
+- Movement recon flags pending, approved-unposted, and QBO Error/missing for adjustments.
+- Smoke: Adjustment **1** Approved — `NA-MT-004` CART 8→7; IMS txn **9**; QBO adj **169**; sync `NA-ADJ-1` Synced.
+
+## 2026-07-18 — Inventory sales sync smoke (sandbox)
+
+- ACCS order tables were empty; seeded stage order `NA-SMOKE-SAL-001` via `sql/123_seed_sandbox_sales_sync_smoke_order.sql` (qty 2 × `NA-MT-004` / `NA-HR-006`).
+- Hardened sales sync: reuse existing IMS `Sale` txn per header (no double decrement on QBO retry).
+- QBO client: refresh 2 minutes early + force-refresh retry on HTTP 401 (stale JWT with future SQL expiry).
+- Process Log **486** Success — IMS CART 10→8 both SKUs; QBO InventoryAdjustment txn `168`; docs `NA-SAL-1-1` / `NA-SAL-1-2` Synced.
+- Re-run **487** skipped both lines; movement recon **488** / ReconRun **3** — 0 exceptions.
+
+## 2026-07-18 — Inventory movement completeness recon (Layer 1)
+
+- Added `sql/122_create_inventory_movement_recon.sql` (`InventoryMovementReconRun` / `InventoryMovementReconLine`).
+- Function job `inventory-movement-recon` scans receipts, sales, transfers, and adjustments for missing IMS/QBO posts.
+- Process Log registry + timer (default 4:00 AM CT; disable on test app like other inventory timers).
+- Portal `/inventory-movement-recon/` + Inventory hub card **Movement Completeness**.
+- Deployed: SQL `122` on `nutraaxis`; Function App **Nutra-forecast-tool** (timer disabled); portal **nutraaxisweb**.
+- Smoke: Process Log **483** / ReconRun **1** Success — `0` exceptions (POR 19 already Synced; no pending sales/transfers/adjs in window).
+
+## 2026-07-18 — Inventory receipt sync unblocked (sandbox)
+
+- Root cause: `SKUMaster.QBO_ItemID` pointed at stale NonInventory/Service Ids; live Inventory twins were different Ids.
+- Receipt/sales sync now resolve live QBO Inventory Item Ids by SKU and upsert sync-log Error rows for retry.
+- Simulated Jazz ASN `231041` / POR 19: IMS CART +10 for `NA-MT-004`/`NA-HR-006`; QBO InventoryAdjustment txn `167`; Process Log **481** Success.
+
+---
+
+## 2026-07-17 — QBO inventory sync Function App + portal deploy (sandbox)
+
+- Published `functions/` to **Nutra-forecast-tool** (sandbox), including `inventory-receipt-sync` and `inventory-sales-sync`.
+- Deployed portal zip to **nutraaxisweb** (Process Log registry + Run controls, IMS pages).
+- Applied SQL `067`, `117`–`121` on `nutraaxis` (IMS tables, `POReceipt.IMSPostedAt`, `QBOInventorySyncLog`, WPC facilities).
+- Set Function App `DB_NAME_INVENTORY_SYNC=nutraaxis`, disabled inventory timers on test app (`0 0 0 1 1 2099`), confirmed `QBO_INV_ADJUST_ACCOUNT_ID=85`.
+- Smoke: Process Log run ids 463/464 — Inventory Receipt Sync / Inventory Sales Sync completed (`0` rows when no pending receipts/orders).
+
+---
+
 ## 2026-06-05 — Project bootstrap
 
 - Created default home page `index.php` with NutraAxis branding (teal/salmon palette, Inter font).

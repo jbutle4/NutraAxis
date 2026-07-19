@@ -51,7 +51,7 @@ require dirname(__DIR__) . '/includes/header.php';
               ['pos', 'Purchase Orders', 'QuickBooks purchase orders and status.', 'View POs'],
               ['inventory', 'Inventory', 'Inventory items, SKU, and quantity on hand.', 'View Inventory'],
               ['suppliers', 'Suppliers', 'QuickBooks vendor directory and balances.', 'View Suppliers'],
-              ['accounts', 'Chart of Accounts', 'General ledger accounts and current balances.', 'View Accounts'],
+              ['accounts', 'QBO Chart of Accounts', 'QuickBooks Online general ledger accounts (not Certificate of Analysis).', 'View Accounts'],
           ];
           foreach ($cards as [$slug, $title, $desc, $cta]):
               $href = ACCOUNTING_SECTIONS[$slug]['href'];

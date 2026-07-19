@@ -41,6 +41,48 @@ function process_registry(): array
             'function_name' => 'staging-db-sync',
             'schedule'      => 'Daily at 2:30 AM US Central',
         ],
+        'accs-sales-order-sync' => [
+            'code'          => 'accs-sales-order-sync',
+            'name'          => 'ACCS Sales Order Sync',
+            'description'   => 'Pull ACCS Magento sales orders into AccsSalesOrder tables for reporting and inventory sales posting.',
+            'function_name' => 'accs-sales-order-sync',
+            'schedule'      => 'Every 2 hours',
+        ],
+        'accs-employee-customer-create' => [
+            'code'          => 'accs-employee-customer-create',
+            'name'          => 'ACCS Stage Employee Customer Create',
+            'description'   => 'Create or correct ACCS stage employee customer accounts from portal users.',
+            'function_name' => 'accs-employee-customer-create',
+            'schedule'      => 'Manual / on demand',
+        ],
+        'qbo-coa-sync' => [
+            'code'          => 'qbo-coa-sync',
+            'name'          => 'QuickBooks Chart of Accounts Sync',
+            'description'   => 'Sync QuickBooks Online general ledger accounts for Product Catalog account pickers. Not Certificate of Analysis.',
+            'function_name' => 'qbo-coa-sync',
+            'schedule'      => 'Friday at 6:00 PM US Central',
+        ],
+        'inventory-receipt-sync' => [
+            'code'          => 'inventory-receipt-sync',
+            'name'          => 'Inventory Receipt Sync',
+            'description'   => 'Post Jazz-received PO receipts to IMS and QBO InventoryAdjustment (+qty).',
+            'function_name' => 'inventory-receipt-sync',
+            'schedule'      => 'Daily at 2:30 AM US Central',
+        ],
+        'inventory-sales-sync' => [
+            'code'          => 'inventory-sales-sync',
+            'name'          => 'Inventory Sales Sync',
+            'description'   => 'Post shipped ACCS sales to IMS and QBO InventoryAdjustment (−qty).',
+            'function_name' => 'inventory-sales-sync',
+            'schedule'      => 'Daily at 3:00 AM US Central',
+        ],
+        'inventory-movement-recon' => [
+            'code'          => 'inventory-movement-recon',
+            'name'          => 'Inventory Movement Completeness Recon',
+            'description'   => 'Scan receipts, sales, transfers, and adjustments for missing IMS/QBO posts.',
+            'function_name' => 'inventory-movement-recon',
+            'schedule'      => 'Daily at 4:00 AM US Central',
+        ],
     ];
 }
 

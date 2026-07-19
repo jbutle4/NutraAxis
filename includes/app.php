@@ -76,13 +76,76 @@ $productMasterSubModules = [
 
 $inventoryManagementSubModules = [
     [
+        'slug'  => 'product-catalog',
+        'title' => 'SKU Master',
+        'desc'  => 'Create and maintain NutraAxis SKUs, attributes, pricing, and QuickBooks sync.',
+        'href'  => '/product-catalog/',
+        'icon'  => 'catalog',
+        'tier'  => 'production',
+        'sort'  => 1,
+    ],
+    [
         'slug'  => 'inventory-balances',
         'title' => 'Inventory Balances',
         'desc'  => 'Live operational stock by SKU and facility from the IMS ledger.',
-        'href'  => '',
+        'href'  => '/inventory-balances/',
         'icon'  => 'inventory',
         'tier'  => 'production',
         'sort'  => 5,
+    ],
+    [
+        'slug'  => 'inventory-transfers',
+        'title' => 'Facility Transfers',
+        'desc'  => 'Move stock between Cart.com, CPPC, White Label, and transit.',
+        'href'  => '/inventory-transfers/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 6,
+    ],
+    [
+        'slug'  => 'inventory-adjustments',
+        'title' => 'Inventory Adjustments',
+        'desc'  => 'Approve shrink/gain adjustments to IMS and QuickBooks Qty on hand.',
+        'href'  => '/inventory-adjustments/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 7,
+    ],
+    [
+        'slug'  => 'inventory-jazz-ims-recon',
+        'title' => 'Jazz vs IMS CART',
+        'desc'  => 'Compare Jazz mothership on-hand with IMS CART ledger balances.',
+        'href'  => '/inventory-jazz-ims-recon/',
+        'icon'  => 'boxes',
+        'tier'  => 'production',
+        'sort'  => 8,
+    ],
+    [
+        'slug'  => 'inventory-jazz-ims-align',
+        'title' => 'Jazz → IMS CART Align',
+        'desc'  => 'Post JazzSyncReconcile so IMS CART matches Jazz mothership on-hand.',
+        'href'  => '/inventory-jazz-ims-align/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 85,
+    ],
+    [
+        'slug'  => 'inventory-qbo-recon',
+        'title' => 'QBO Inventory Reconciliation',
+        'desc'  => 'Compare IMS location totals with QuickBooks Qty on hand.',
+        'href'  => '/inventory-qbo-recon/',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 9,
+    ],
+    [
+        'slug'  => 'inventory-movement-recon',
+        'title' => 'Movement Completeness',
+        'desc'  => 'Find receipts, sales, transfers, and adjustments missing IMS or QBO posts.',
+        'href'  => '/inventory-movement-recon/',
+        'icon'  => 'inventory',
+        'tier'  => 'production',
+        'sort'  => 10,
     ],
     [
         'slug'  => 'qbo-inventory',
@@ -420,6 +483,7 @@ $modulePages = [
         'headline'    => 'Inventory Management',
         'lead'        => 'Monitor stock across systems, reconcile Jazz and ACCS, and plan replenishment.',
         'capabilities' => [
+            ['title' => 'SKU Master', 'desc' => 'Create and maintain NutraAxis SKUs and catalog data.'],
             ['title' => 'Inventory Balances', 'desc' => 'Live IMS ledger balances by SKU, facility, and status bucket.'],
             ['title' => 'QBO Inventory', 'desc' => 'QuickBooks Online quantity on hand by SKU.'],
             ['title' => 'Jazz Current Inventory', 'desc' => 'Jazz OMS stock on hand by SKU and facility.'],
@@ -514,6 +578,72 @@ $modulePages = [
             ['title' => 'Facility Filter', 'desc' => 'Focus on Cart.com, CPPC, White Label, or transit locations as they come online.'],
             ['title' => 'QBO Rollup', 'desc' => 'Company-wide quantity for QuickBooks valuation (OK + quarantine + on hold).'],
             ['title' => 'Ledger Foundation', 'desc' => 'Read-only view of InvCurrentBalance; movements post through InvTransaction in later phases.'],
+        ],
+    ],
+    'inventory-transfers' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Facility Transfers',
+        'lead'        => 'Request and complete hub-and-spoke inventory transfers between Cart.com and spoke facilities.',
+        'capabilities' => [
+            ['title' => 'Hub and Spoke', 'desc' => 'Replenish CPPC and White Label from Cart.com only.'],
+            ['title' => 'Transit Bucket', 'desc' => 'Optional TRANSIT facility for in-flight quantities.'],
+            ['title' => 'IMS Posting', 'desc' => 'Ship and receive posts TransferOut / TransferIn to the ledger.'],
+            ['title' => 'QBO Valuation', 'desc' => 'Same-SKU transfers keep company QtyOnHand unchanged; G/L moves via Journal Entry when configured.'],
+        ],
+    ],
+    'inventory-adjustments' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Inventory Adjustments',
+        'lead'        => 'Pending shrink and gain requests that post to IMS and QuickBooks InventoryAdjustment on approval.',
+        'capabilities' => [
+            ['title' => 'Shrink / Gain', 'desc' => 'Signed quantity change against OK, quarantine, on hold, or destroy buckets.'],
+            ['title' => 'Approval Workflow', 'desc' => 'Create as Pending; approve to post IMS AdjustmentLoss/Gain + QBO QtyDiff.'],
+            ['title' => 'Reason Codes', 'desc' => 'DAMAGE, COUNT_VAR, QUAR_RELEASE, and OTHER_ADJ from InvReasonCode.'],
+            ['title' => 'Idempotent QBO', 'desc' => 'DocNumber NA-ADJ-{id} in QBOInventorySyncLog; Error rows can retry.'],
+        ],
+    ],
+    'inventory-jazz-ims-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Jazz vs IMS CART',
+        'lead'        => 'Mothership balance pair — Jazz physical on-hand versus NutraAxis IMS CART ledger.',
+        'capabilities' => [
+            ['title' => 'CART Alias Aware', 'desc' => 'Maps Jazz facility codes via Facility.ExternalReferenceCode (e.g. FBF09 → CART).'],
+            ['title' => 'Physical On Hand', 'desc' => 'Compares Jazz on_hand_quantity to IMS OK + quarantine + on hold.'],
+            ['title' => 'Mismatch Focus', 'desc' => 'Filter to SKUs present on only one side or with quantity deltas.'],
+            ['title' => 'Prod / UAT Toggle', 'desc' => 'Switch Jazz environment without leaving the recon view.'],
+        ],
+    ],
+    'inventory-jazz-ims-align' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Jazz → IMS CART Align',
+        'lead'        => 'Controlled mothership sync — post JazzSyncReconcile so IMS CART matches Jazz on-hand without touching QBO.',
+        'capabilities' => [
+            ['title' => 'Preview Deltas', 'desc' => 'See signed OK-bucket changes before posting.'],
+            ['title' => 'Dry Run Audit', 'desc' => 'Record candidates in InventoryJazzImsAlignRun without mutating balances.'],
+            ['title' => 'IMS Only', 'desc' => 'Does not bootstrap QuickBooks QtyOnHand from Jazz.'],
+            ['title' => 'Confirm Gate', 'desc' => 'Live apply requires typing ALIGN.'],
+        ],
+    ],
+    'inventory-qbo-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'QBO Inventory Reconciliation',
+        'lead'        => 'Compare NutraAxis IMS company-wide quantity with QuickBooks Online Qty on hand by SKU.',
+        'capabilities' => [
+            ['title' => 'IMS vs QBO', 'desc' => 'Side-by-side company totals for each SKU.'],
+            ['title' => 'Mismatch Focus', 'desc' => 'Highlight rows where ledger and QuickBooks disagree.'],
+            ['title' => 'Sandbox Safe', 'desc' => 'Built against QBO Sandbox during UAT.'],
+            ['title' => 'Cutover Ready', 'desc' => 'Use before promoting inventory sync to production QuickBooks.'],
+        ],
+    ],
+    'inventory-movement-recon' => [
+        'label'       => 'Inventory',
+        'headline'    => 'Inventory Movement Completeness',
+        'lead'        => 'Layer 1 recon of the inventory cycle — exceptions where source movements are incomplete in IMS or QBO.',
+        'capabilities' => [
+            ['title' => 'Receipt Gaps', 'desc' => 'Jazz-received PORs missing IMS posts or QBO InventoryAdjustment (+qty).'],
+            ['title' => 'Sales Gaps', 'desc' => 'Shipped ACCS lines missing IMS sale or QBO InventoryAdjustment (−qty).'],
+            ['title' => 'Transfer Gaps', 'desc' => 'Ship/receive transfers missing outbound/inbound IMS txns or failed JEs.'],
+            ['title' => 'Adjustment Queue', 'desc' => 'Pending or approved-unposted shrink/gain adjustments awaiting workflow.'],
         ],
     ],
     'inventory-reconciliation' => [
@@ -724,7 +854,7 @@ $modulePages = [
             ['title' => 'Accounts Receivable', 'desc' => 'View customer invoices and open balances.'],
             ['title' => 'Purchase Orders', 'desc' => 'Browse QuickBooks purchase orders; create and update from Operations is planned.'],
             ['title' => 'Inventory & Suppliers', 'desc' => 'Read inventory items and vendor directory; supplier create/update from Operations is planned.'],
-            ['title' => 'Chart of Accounts', 'desc' => 'Browse general ledger accounts and current balances.'],
+            ['title' => 'QBO Chart of Accounts', 'desc' => 'Browse QuickBooks Online general ledger accounts (not Certificate of Analysis).'],
             ['title' => 'QuickBooks Connection', 'desc' => 'Users with Update access connect and disconnect the QuickBooks Online company.'],
         ],
     ],
@@ -749,9 +879,6 @@ function app_nav_hidden_module_slugs(): array
 {
     return [
         'travel-expense',
-        // Leaf pages not built yet — show as Coming soon via empty href instead of hiding:
-        // (inventory-balances kept hidden until IMS ledger page exists)
-        'inventory-balances',
         'jazz-order-report',
         'jazz-order-report-uat',
     ];

@@ -3,12 +3,25 @@
 /** @var string $formAction */
 /** @var bool $isEdit */
 /** @var array $supplierOptions */
+/** @var array $qboIncomeAccounts */
+/** @var array $qboExpenseAccounts */
+/** @var array $qboAssetAccounts */
 $isEdit = $isEdit ?? false;
 $supplierOptions = $supplierOptions ?? catalog_supplier_options(
     ($form['supplier_id'] ?? '') !== '' ? (int) $form['supplier_id'] : null
 );
+$qboIncomeAccounts = $qboIncomeAccounts ?? catalog_qbo_account_options('income');
+$qboExpenseAccounts = $qboExpenseAccounts ?? catalog_qbo_account_options('expense');
+$qboAssetAccounts = $qboAssetAccounts ?? catalog_qbo_account_options('asset');
+$formActions = capture_form_actions(function () use ($isEdit, $form) {
+    ?>
+    <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create SKU' ?></button>
+    <a class="btn-secondary" href="<?= $isEdit ? '/product-catalog/view.php?id=' . (int) ($form['sku_id'] ?? 0) : '/product-catalog/' ?>">Cancel</a>
+    <?php
+});
 ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+        <?php render_form_actions($formActions, 'top'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="sku_code">SKU / Item code</label>
@@ -195,8 +208,74 @@ $supplierOptions = $supplierOptions ?? catalog_supplier_options(
             <textarea class="form-input" id="notes" name="notes" rows="4"><?= htmlspecialchars($form['notes'] ?? '') ?></textarea>
           </div>
         </div>
-        <div class="module-actions">
-          <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create SKU' ?></button>
-          <a class="btn-secondary" href="<?= $isEdit ? '/product-catalog/view.php?id=' . (int) ($form['sku_id'] ?? 0) : '/product-catalog/' ?>">Cancel</a>
+
+        <div class="form-section-header" id="qbo-settings">
+          <h2>QuickBooks inventory item</h2>
+          <p class="form-section-lead">Required before sync: income account, COGS account, inventory asset account, MSRP, and COGS. MSRP maps to Unit Price; COGS maps to Purchase Cost.</p>
         </div>
+        <?php if ($qboIncomeAccounts === [] || $qboExpenseAccounts === [] || $qboAssetAccounts === []): ?>
+        <div class="admin-notice is-warning" role="status">
+          One or more account lists is empty. Sync the chart of accounts from
+          <a href="/accounting/chart-of-accounts.php">Accounting → QBO Chart of Accounts</a>
+          (QuickBooks Chart of Accounts Sync process — not Certificate of Analysis), then reload this page.
+        </div>
+        <?php endif; ?>
+        <div class="form-grid">
+          <div class="form-group form-grid-full">
+            <label for="qbo_purchase_desc">Purchase description</label>
+            <textarea class="form-input" id="qbo_purchase_desc" name="qbo_purchase_desc" rows="3" placeholder="Purchase description sent to QuickBooks"><?= htmlspecialchars($form['qbo_purchase_desc'] ?? '') ?></textarea>
+          </div>
+          <div class="form-group">
+            <label for="qbo_taxable">Taxable in QuickBooks</label>
+            <select class="form-input" id="qbo_taxable" name="qbo_taxable">
+              <option value="1" <?= !empty($form['qbo_taxable']) ? 'selected' : '' ?>>Yes</option>
+              <option value="0" <?= empty($form['qbo_taxable']) ? 'selected' : '' ?>>No</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="qbo_income_account_ref_value">Income account</label>
+            <select class="form-input qbo-account-select" id="qbo_income_account_ref_value" name="qbo_income_account_ref_value" data-name-target="qbo_income_account_ref_name">
+              <option value="">Select income account</option>
+              <?php foreach ($qboIncomeAccounts as $account): ?>
+              <option value="<?= htmlspecialchars($account['id']) ?>" data-name="<?= htmlspecialchars($account['name']) ?>" <?= (string) ($form['qbo_income_account_ref_value'] ?? '') === (string) $account['id'] ? 'selected' : '' ?>><?= htmlspecialchars($account['label']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <input type="hidden" id="qbo_income_account_ref_name" name="qbo_income_account_ref_name" value="<?= htmlspecialchars($form['qbo_income_account_ref_name'] ?? '') ?>" />
+          </div>
+          <div class="form-group">
+            <label for="qbo_expense_account_ref_value">COGS account</label>
+            <select class="form-input qbo-account-select" id="qbo_expense_account_ref_value" name="qbo_expense_account_ref_value" data-name-target="qbo_expense_account_ref_name">
+              <option value="">Select COGS account</option>
+              <?php foreach ($qboExpenseAccounts as $account): ?>
+              <option value="<?= htmlspecialchars($account['id']) ?>" data-name="<?= htmlspecialchars($account['name']) ?>" <?= (string) ($form['qbo_expense_account_ref_value'] ?? '') === (string) $account['id'] ? 'selected' : '' ?>><?= htmlspecialchars($account['label']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <input type="hidden" id="qbo_expense_account_ref_name" name="qbo_expense_account_ref_name" value="<?= htmlspecialchars($form['qbo_expense_account_ref_name'] ?? '') ?>" />
+          </div>
+          <div class="form-group">
+            <label for="qbo_asset_account_ref_value">Inventory asset account</label>
+            <select class="form-input qbo-account-select" id="qbo_asset_account_ref_value" name="qbo_asset_account_ref_value" data-name-target="qbo_asset_account_ref_name">
+              <option value="">Select inventory asset account</option>
+              <?php foreach ($qboAssetAccounts as $account): ?>
+              <option value="<?= htmlspecialchars($account['id']) ?>" data-name="<?= htmlspecialchars($account['name']) ?>" <?= (string) ($form['qbo_asset_account_ref_value'] ?? '') === (string) $account['id'] ? 'selected' : '' ?>><?= htmlspecialchars($account['label']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <input type="hidden" id="qbo_asset_account_ref_name" name="qbo_asset_account_ref_name" value="<?= htmlspecialchars($form['qbo_asset_account_ref_name'] ?? '') ?>" />
+          </div>
+        </div>
+        <?php render_form_actions($formActions, 'bottom'); ?>
       </form>
+      <script>
+        document.querySelectorAll('.qbo-account-select').forEach(function (select) {
+          var targetId = select.getAttribute('data-name-target');
+          if (!targetId) return;
+          var target = document.getElementById(targetId);
+          if (!target) return;
+          var sync = function () {
+            var option = select.options[select.selectedIndex];
+            target.value = option && option.dataset.name ? option.dataset.name : '';
+          };
+          select.addEventListener('change', sync);
+          sync();
+        });
+      </script>

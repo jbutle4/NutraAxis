@@ -11,6 +11,7 @@ $listResult = qbo_is_connected() ? qbo_list_accounts() : ['ok' => true, 'rows' =
 $qboSortColumns = [
     'number'  => 'Number',
     'name'    => 'Name',
+    'qbo_id'  => 'QBO account Id',
     'type'    => 'Type',
     'subtype' => 'Subtype',
     'balance' => 'Balance',
@@ -20,6 +21,7 @@ $listFilters = table_sort_state($qboSortColumns, 'number', 'asc', $_GET);
 $qboSortAccessors = [
     'number'  => fn(array $row): string => (string) ($row['AcctNum'] ?? ''),
     'name'    => fn(array $row): string => (string) ($row['Name'] ?? ''),
+    'qbo_id'  => fn(array $row): string => (string) ($row['Id'] ?? ''),
     'type'    => fn(array $row): string => (string) ($row['AccountType'] ?? ''),
     'subtype' => fn(array $row): string => (string) ($row['AccountSubType'] ?? ''),
     'balance' => fn(array $row) => $row['CurrentBalance'] ?? 0,
@@ -29,7 +31,7 @@ if ($listResult['ok'] && qbo_is_connected()) {
     $listResult['rows'] = table_sort_rows($listResult['rows'] ?? [], $listFilters, $qboSortAccessors, ['balance'], 'number', 'asc');
 }
 
-$pageTitle = 'Chart of Accounts | Accounting';
+$pageTitle = 'QBO Chart of Accounts | Accounting';
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
@@ -39,8 +41,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-header">
         <div>
           <div class="section-label">QuickBooks</div>
-          <h1>Chart of Accounts</h1>
-          <p class="page-lead">General ledger accounts from QuickBooks Online. Read-only.</p>
+          <h1>QBO Chart of Accounts</h1>
+          <p class="page-lead">QuickBooks Online general ledger accounts (not Certificate of Analysis). Read-only. Use <strong>QBO account Id</strong> for App Settings such as <code>QBO_INV_ADJUST_ACCOUNT_ID</code> (Inventory Shrinkage) and inventory asset accounts.</p>
         </div>
       </div>
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
@@ -52,11 +54,12 @@ require dirname(__DIR__) . '/includes/header.php';
         <table class="admin-table">
           <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/chart-of-accounts.php', $listFilters, [], ['balance'], 'number', 'asc'); ?></thead>
           <tbody>
-            <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="6">No accounts found.</td></tr><?php else: ?>
+            <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="7">No accounts found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>
             <tr>
               <td><?= htmlspecialchars((string) ($row['AcctNum'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['Name'] ?? '')) ?></td>
+              <td><code><?= htmlspecialchars((string) ($row['Id'] ?? '—')) ?></code></td>
               <td><?= htmlspecialchars((string) ($row['AccountType'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['AccountSubType'] ?? '—')) ?></td>
               <td><?= htmlspecialchars(accounting_format_money($row['CurrentBalance'] ?? null)) ?></td>
