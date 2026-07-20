@@ -11,6 +11,13 @@ require_once __DIR__ . '/provider-signup-accs.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
 
+/** Current Practitioner Reseller & Advertising Policy document version (PDF filename date). */
+const PROVIDER_SIGNUP_POLICY_VERSION = '2026-07-14';
+
+const PROVIDER_SIGNUP_POLICY_PDF_PATH = '/assets/docs/NutraAxis_Practitioner_Reseller_Policy_20260714.pdf';
+
+const PROVIDER_SIGNUP_POLICY_ACK_STATEMENT = 'I acknowledge that I have received and will comply with the NutraAxis Labs, LLC Practitioner and Reseller Policies, including but not limited to the iMAP Policy.';
+
 const PROVIDER_SIGNUP_STATUS_DRAFT = 'Draft';
 const PROVIDER_SIGNUP_STATUS_SUBMITTED = 'Submitted';
 const PROVIDER_SIGNUP_STATUS_RETURNED = 'Returned';
@@ -301,6 +308,76 @@ function provider_signup_has_reseller_certificate(int $applicationId): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function provider_signup_policy_pdf_url(): string
+{
+    return PROVIDER_SIGNUP_POLICY_PDF_PATH;
+}
+
+function provider_signup_has_current_policy_ack(array $application): bool
+{
+    $acknowledgedAt = trim((string) ($application['PolicyAcknowledgedAt'] ?? ''));
+    $version = trim((string) ($application['PolicyVersion'] ?? ''));
+
+    return $acknowledgedAt !== '' && $version === PROVIDER_SIGNUP_POLICY_VERSION;
+}
+
+/**
+ * @return array{ok: bool, error: ?string, already?: bool}
+ */
+function provider_signup_acknowledge_policy(string $accessToken): array
+{
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_provider_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer be edited online.'];
+    }
+
+    if (provider_signup_has_current_policy_ack($application)) {
+        return ['ok' => true, 'error' => null, 'already' => true];
+    }
+
+    $email = provider_signup_normalize_email((string) ($application['ProviderEmail'] ?? ''));
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'A valid provider email is required to acknowledge the policy.'];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET PolicyAcknowledgedAt = SYSUTCDATETIME(),
+                PolicyAcknowledgedByEmail = :email,
+                PolicyVersion = :version,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'email'   => $email,
+            'version' => PROVIDER_SIGNUP_POLICY_VERSION,
+            'id'      => (int) $application['ApplicationID'],
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_acknowledge_policy: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to record policy acknowledgement.'];
+    }
+
+    try {
+        provider_signup_add_review_log(
+            (int) $application['ApplicationID'],
+            null,
+            'PolicyAcknowledged',
+            'Policy ' . PROVIDER_SIGNUP_POLICY_VERSION . ' acknowledged by ' . $email . '.'
+        );
+    } catch (Throwable $e) {
+        error_log('provider_signup_acknowledge_policy review log: ' . $e->getMessage());
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
 /**
  * @return array{complete: bool, missing: list<string>}
  */
@@ -353,6 +430,11 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
 
     if (!provider_signup_has_reseller_certificate($applicationId)) {
         $missing[] = 'State reseller certificate upload';
+    }
+
+    $application = provider_signup_get($applicationId);
+    if ($application === null || !provider_signup_has_current_policy_ack($application)) {
+        $missing[] = 'Practitioner Reseller Policy acknowledgement';
     }
 
     $npi = preg_replace('/\D+/', '', (string) ($form['npi_number'] ?? '')) ?? '';

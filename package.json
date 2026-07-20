@@ -15,7 +15,8 @@
     "test-smtp": "php scripts/test-smtp.php",
     "item-master-comparison": "php scripts/item-master-comparison.php && node scripts/item-master-comparison-xlsx.js",
     "import-po-production-status": "php scripts/import-po-production-status.php",
-    "export-sku-master": "node scripts/export-sku-master-xlsx.js"
+    "export-sku-master": "node scripts/export-sku-master-xlsx.js",
+    "e2e:provider-signup-uat": "node scripts/e2e-provider-signup-uat.js"
   },
   "devDependencies": {
     "ftp": "^0.3.10",

@@ -24,6 +24,11 @@ function provider_signup_apply_url(string $accessToken): string
     return provider_signup_mail_base_url() . '/provider-signup/apply.php?token=' . rawurlencode($accessToken);
 }
 
+function provider_signup_policy_url(string $accessToken): string
+{
+    return provider_signup_mail_base_url() . '/provider-signup/policy.php?token=' . rawurlencode($accessToken);
+}
+
 function provider_signup_accs_login_url(): string
 {
     $configured = rtrim(trim((string) env('PROVIDER_ACCS_LOGIN_URL', '')), '/');
@@ -93,14 +98,14 @@ function provider_signup_mail_application_started(array $application): void
 {
     $company = trim((string) ($application['CompanyName'] ?? ''));
     $label = $company !== '' ? $company : 'your practice';
-    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
+    $continueUrl = provider_signup_policy_url((string) $application['AccessToken']);
     $subject = 'Continue your NutraAxis provider application';
 
     $plain = implode("\n", [
         'Thank you for starting a NutraAxis provider application for ' . $label . '.',
         '',
-        'Use the link below to save your progress and submit when ready:',
-        $applyUrl,
+        'Use the link below to review the Practitioner Reseller Policy, acknowledge it, and continue your application:',
+        $continueUrl,
         '',
         'You can return to this link any time while your application is in draft or returned status.',
         '',
@@ -112,7 +117,8 @@ function provider_signup_mail_application_started(array $application): void
     $html = '<p>Thank you for starting a NutraAxis provider application for <strong>'
         . htmlspecialchars($label)
         . '</strong>.</p>'
-        . '<p><a href="' . htmlspecialchars($applyUrl) . '">Continue your application</a></p>'
+        . '<p><a href="' . htmlspecialchars($continueUrl) . '">Continue your application</a></p>'
+        . '<p>You will review and acknowledge the Practitioner Reseller Policy before completing the application form.</p>'
         . '<p>You can return to this link any time while your application is in draft or returned status.</p>'
         . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
         . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';

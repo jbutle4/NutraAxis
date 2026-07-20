@@ -3,3 +3,4 @@ node_modules/
 .DS_Store
 .vscode/sftp.json
 nutraaxis_test/
+artifacts/uat/
