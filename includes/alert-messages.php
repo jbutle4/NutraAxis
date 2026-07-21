@@ -11,6 +11,12 @@ const ALERT_NAME_PO_VIEWED_BY_APPROVER = 'po-viewed-by-approver';
 const ALERT_NAME_TE_APPROVAL_REQUEST = 'te-approval-request';
 const ALERT_NAME_TE_STATUS_UPDATE = 'te-status-update';
 const ALERT_NAME_TE_VIEWED_BY_APPROVER = 'te-viewed-by-approver';
+const ALERT_NAME_QBO_INSERT_APPROVAL_REQUEST = 'qbo-insert-approval-request';
+const ALERT_NAME_QBO_INSERT_STATUS_UPDATE = 'qbo-insert-status-update';
+const ALERT_NAME_QBO_INSERT_VIEWED_BY_APPROVER = 'qbo-insert-viewed-by-approver';
+const ALERT_NAME_PAYMENT_APPROVAL_REQUEST = 'payment-approval-request';
+const ALERT_NAME_PAYMENT_STATUS_UPDATE = 'payment-status-update';
+const ALERT_NAME_PAYMENT_VIEWED_BY_APPROVER = 'payment-viewed-by-approver';
 
 const ALERT_ADDRESS_TYPES = ['TO', 'CC'];
 

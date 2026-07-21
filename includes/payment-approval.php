@@ -1012,7 +1012,7 @@ function payment_approval_process_action(int $paymentId, string $action, string 
 
 function payment_approval_format_exception(Throwable $e): string
 {
-    error_log('payment approval error: ' . $e->getMessage());
+    error_log('payment approval error: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
 
     return 'An unexpected error occurred. Please try again or contact support.';
 }
