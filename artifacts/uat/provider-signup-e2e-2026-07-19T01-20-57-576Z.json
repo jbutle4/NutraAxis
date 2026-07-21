@@ -1,0 +1,61 @@
+{
+  "suite": "provider-signup-e2e-uat",
+  "result": "PASS",
+  "through": "draft",
+  "baseUrl": "https://nutraaxisweb.azurewebsites.net",
+  "startedAt": "2026-07-19T01:20:53.237Z",
+  "finishedAt": "2026-07-19T01:20:57.575Z",
+  "applicationId": 12,
+  "accessTokenPreview": "e4ea6af8…",
+  "applyUrl": "https://nutraaxisweb.azurewebsites.net/provider-signup/apply.php?token=e4ea6af89e3a7e440ef24f8dabb088943a5a9ac19849145d4bfe9bb5fc58b868",
+  "opsViewUrl": "https://nutraaxisweb.azurewebsites.net/operations-dashboard/signup-review/view.php?id=12",
+  "providerEmail": "uat.provider+mrr40bg635@nutraaxislabs.com",
+  "adminEmail": "uat.admin+mrr40bg635@nutraaxislabs.com",
+  "companyName": "UAT Clinic mrr40bg635",
+  "finalStatus": "Draft",
+  "accsCompanyId": null,
+  "accsCustomerId": null,
+  "clinicId": null,
+  "warnings": [],
+  "signOffCriteria": [
+    "Public start creates Draft application with emailed return link",
+    "Provider can save company, admin, qualifications, and ACH fields",
+    "Reseller certificate upload succeeds",
+    "Ops can approve Draft when checklist is complete",
+    "Ops Create ACCS company sets Status=Provisioned with company + customer IDs",
+    "Provider receives Clinic Store ready email (manual mailbox check)"
+  ],
+  "steps": [
+    {
+      "name": "public_application_page",
+      "ok": true,
+      "at": "2026-07-19T01:20:53.811Z",
+      "status": 200
+    },
+    {
+      "name": "start_application",
+      "ok": true,
+      "at": "2026-07-19T01:20:56.191Z",
+      "detail": "id=12",
+      "tokenPreview": "e4ea6af8…",
+      "providerEmail": "uat.provider+mrr40bg635@nutraaxislabs.com"
+    },
+    {
+      "name": "save_draft",
+      "ok": true,
+      "at": "2026-07-19T01:20:56.837Z",
+      "status": "Draft"
+    },
+    {
+      "name": "upload_certificate",
+      "ok": true,
+      "at": "2026-07-19T01:20:57.575Z"
+    },
+    {
+      "name": "stop_after_draft",
+      "ok": true,
+      "at": "2026-07-19T01:20:57.575Z",
+      "detail": "--through=draft"
+    }
+  ]
+}
