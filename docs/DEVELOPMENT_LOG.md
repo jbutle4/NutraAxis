@@ -218,3 +218,9 @@ Example:
     includes/site-documentation.php \
     operations-dashboard/index.php my-account/index.php
   ```
+
+### Deploy follow-up (same day)
+
+- Deployed Approvals Queue + Contacts List + hub/auth includes to `nutraaxisweb` via **Kudu VFS** (`$nutraaxisweb` publishing credentials). Verified remote files contain `procurement-approvals` / `contacts-list` / `ContactsList`.
+- Live URLs `/procurement-approvals/` and `/contacts-list/` return auth redirect (302).
+- Azure SQL from this cloud IP is firewalled — could not re-run `067`/`068` here; App Service can still use existing Contacts schema if already applied. Whitelist agent IP or run migrations from an allowed network if ContactsList column/table is missing.
