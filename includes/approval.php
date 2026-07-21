@@ -802,3 +802,127 @@ function approval_queue_links_for_user(): array
 
     return $links;
 }
+
+function approval_submission_intro_text(bool $isResubmit): string
+{
+    return $isResubmit
+        ? 'A request was resubmitted for your approval in NutraAxis Operations.'
+        : 'A request was submitted for your approval in NutraAxis Operations.';
+}
+
+function approval_plain_attachment_note(array $attachments): string
+{
+    $names = [];
+    foreach ($attachments as $attachment) {
+        if (!is_array($attachment)) {
+            continue;
+        }
+        $name = trim((string) ($attachment['filename'] ?? ''));
+        if ($name !== '') {
+            $names[] = $name;
+        }
+    }
+
+    if ($names === []) {
+        return '';
+    }
+
+    return "\n\nAttachments included:\n- " . implode("\n- ", $names);
+}
+
+/**
+ * @return list<array{filename:string,content:string,content_type:string}>
+ */
+function approval_mail_attachment_from_row(array $row): ?array
+{
+    require_once __DIR__ . '/attachment-storage.php';
+
+    $resolved = attachment_storage_resolve_content($row);
+    if (!$resolved['ok'] || ($resolved['content'] ?? '') === '') {
+        return null;
+    }
+
+    $filename = trim((string) ($row['FileName'] ?? 'attachment.bin'));
+    if ($filename === '') {
+        $filename = 'attachment.bin';
+    }
+
+    return [
+        'filename'     => $filename,
+        'content'      => (string) $resolved['content'],
+        'content_type' => (string) ($resolved['content_type'] ?: 'application/octet-stream'),
+    ];
+}
+
+function approval_attachment_row_is_pdf(array $row): bool
+{
+    $name = strtolower((string) ($row['FileName'] ?? ''));
+    $type = strtolower((string) ($row['ContentType'] ?? ''));
+    $kind = (string) ($row['AttachmentKind'] ?? '');
+
+    if (str_ends_with($name, '.pdf') || str_contains($type, 'pdf')) {
+        return true;
+    }
+
+    return in_array($kind, ['SourcePDF', 'SignedPDF', 'InvoicePDF'], true);
+}
+
+/**
+ * @return list<array{filename:string,content:string,content_type:string}>
+ */
+function approval_collect_po_pdf_attachments(int $poId): array
+{
+    if ($poId <= 0) {
+        return [];
+    }
+
+    require_once __DIR__ . '/po-attachments.php';
+
+    $attachments = [];
+    foreach (po_list_attachments($poId) as $meta) {
+        if (!approval_attachment_row_is_pdf($meta)) {
+            continue;
+        }
+        $full = po_get_attachment((int) ($meta['AttachmentID'] ?? 0));
+        if ($full === null) {
+            continue;
+        }
+        $mailAttachment = approval_mail_attachment_from_row($full);
+        if ($mailAttachment !== null) {
+            $attachments[] = $mailAttachment;
+        }
+    }
+
+    return $attachments;
+}
+
+/**
+ * Collect PO PDFs plus supplier-invoice PDFs for payment-approval emails.
+ *
+ * @return list<array{filename:string,content:string,content_type:string}>
+ */
+function approval_collect_submission_attachments(int $poId, int $invoiceId): array
+{
+    $attachments = approval_collect_po_pdf_attachments($poId);
+    if ($invoiceId <= 0) {
+        return $attachments;
+    }
+
+    require_once __DIR__ . '/supplier-invoice-attachments.php';
+
+    foreach (supplier_invoice_list_attachments($invoiceId) as $meta) {
+        if (!approval_attachment_row_is_pdf($meta)) {
+            continue;
+        }
+        $full = supplier_invoice_get_attachment((int) ($meta['AttachmentID'] ?? 0));
+        if ($full === null) {
+            continue;
+        }
+        $mailAttachment = approval_mail_attachment_from_row($full);
+        if ($mailAttachment !== null) {
+            $attachments[] = $mailAttachment;
+        }
+    }
+
+    return $attachments;
+}
