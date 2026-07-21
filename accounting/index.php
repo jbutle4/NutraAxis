@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/module-hub.php';
-require dirname(__DIR__) . '/includes/quickbooks.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 
 auth_require_module_read('accounting');
@@ -15,6 +14,11 @@ if ($hub === null) {
 
 $areas = auth_filter_hub_submodules(app_hub_submodules('accounting'));
 $notice = $_GET['notice'] ?? null;
+$showConnectionBanner = accounting_can_read();
+
+if ($showConnectionBanner) {
+    require dirname(__DIR__) . '/includes/quickbooks.php';
+}
 
 $pageTitle = ($hub['title'] ?? 'Accounting') . ' | NutraAxis Operations';
 $pageDescription = (string) ($hub['desc'] ?? '');
@@ -38,7 +42,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">QuickBooks disconnected.</div>
       <?php endif; ?>
 
-      <?php if (accounting_can_read()): ?>
+      <?php if ($showConnectionBanner): ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
       <?php endif; ?>
 
