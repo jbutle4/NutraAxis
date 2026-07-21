@@ -99,6 +99,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <th>Date</th>
               <th>Type</th>
               <th>Reference</th>
+              <th>Supplier</th>
+              <th>Amount</th>
               <th>Approver</th>
               <th>Result</th>
               <th>Comments</th>
@@ -108,7 +110,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <tbody>
             <?php if ($entries === []): ?>
             <tr>
-              <td colspan="7" class="empty-cell">No approval entries match the current filters.</td>
+              <td colspan="9" class="empty-cell">No approval entries match the current filters.</td>
             </tr>
             <?php else: ?>
             <?php foreach ($entries as $entry):
@@ -122,6 +124,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars(admin_format_datetime($entry['LogDate'])) ?></td>
               <td><?= htmlspecialchars(approval_type_label((string) $entry['ApprovalType'])) ?></td>
               <td><?= htmlspecialchars($display['reference']) ?></td>
+              <td><?= htmlspecialchars((string) ($display['supplier'] ?? '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($display['amount'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) $entry['ApproverName']) ?></td>
               <td><?php if ($isPending): ?>
                 <span class="status-badge status-submitted">Pending approval</span>
