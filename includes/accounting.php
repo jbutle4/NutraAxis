@@ -87,6 +87,47 @@ function accounting_format_money($value): string
     return '$' . number_format((float) $value, 2);
 }
 
+/**
+ * Base path for Accounting modules that have Production + UAT twins.
+ */
+function accounting_module_base(string $module): string
+{
+    $module = trim($module, '/');
+    $production = '/accounting/' . $module;
+    if (!function_exists('data_profile_page_path')) {
+        return $production . '/';
+    }
+
+    return rtrim(data_profile_page_path($production . '/'), '/') . '/';
+}
+
+/**
+ * Profile-aware Accounting URL (Production path in, UAT twin out when on a UAT page).
+ */
+function accounting_path(string $path): string
+{
+    $path = '/' . ltrim(str_replace('\\', '/', $path), '/');
+    if (!str_starts_with($path, '/accounting/') && $path !== '/accounting') {
+        $path = '/accounting/' . ltrim($path, '/');
+    }
+    if (!function_exists('data_profile_page_path')) {
+        return $path;
+    }
+
+    return data_profile_page_path($path);
+}
+
+/**
+ * Bind the request to the QBO company matching the page data profile.
+ */
+function accounting_bind_qbo_environment(): void
+{
+    require_once __DIR__ . '/quickbooks.php';
+    require_once __DIR__ . '/data-profile.php';
+
+    qbo_use_environment(data_profile_is_uat() ? QBO_ENV_SANDBOX : QBO_ENV_PRODUCTION);
+}
+
 function accounting_format_date(DateTimeInterface|string|null $value): string
 {
     if ($value === null || $value === '') {

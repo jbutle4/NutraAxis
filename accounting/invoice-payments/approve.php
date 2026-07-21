@@ -1,6 +1,8 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
@@ -39,7 +41,7 @@ $canAct = $payment['PaymentStatus'] === PAYMENT_APPROVAL_STATUS_SUBMITTED && (
     || (!$isTokenAccess && payment_approval_can_take_action())
 );
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'approvals';
 $pageTitle = 'Review Payment | Accounting';
 
@@ -78,7 +80,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <?php else: ?>
         <p class="account-card-lead">Approving will post the supplier bill (if needed) and bill payment to QuickBooks Online.</p>
         <?php endif; ?>
-        <form class="admin-form" method="post" action="/accounting/invoice-payments/approval-action.php">
+        <form class="admin-form" method="post" action="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/approval-action.php')) ?>">
           <input type="hidden" name="payment_id" value="<?= $paymentId ?>" />
           <?php if ($isTokenAccess): ?>
           <input type="hidden" name="approval_token" value="<?= htmlspecialchars($rawToken) ?>" />

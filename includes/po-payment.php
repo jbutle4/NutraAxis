@@ -96,7 +96,7 @@ function po_payment_reference_href(array $payment): ?string
     }
 
     if (!empty($payment['SupplierInvoiceID'])) {
-        return '/accounting/supplier-invoices/view.php?id=' . (int) $payment['SupplierInvoiceID'];
+        return (function_exists('accounting_path') ? accounting_path('/accounting/supplier-invoices/view.php') : '/accounting/supplier-invoices/view.php') . '?id=' . (int) $payment['SupplierInvoiceID'];
     }
 
     return null;

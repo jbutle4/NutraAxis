@@ -1,11 +1,13 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 
 accounting_require_read();
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoice-payments';
 $typeFilter = $_GET['type'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
@@ -46,7 +48,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Payment updated successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter page-list-filters" method="get" action="/accounting/invoice-payments/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/')) ?>">
         <?php table_sort_hidden_inputs($listFilters, 'payment_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -74,7 +76,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
-          <a class="btn-secondary" href="/accounting/invoice-payments/">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/')) ?>">Clear</a>
         </div>
       </form>
 
@@ -83,7 +85,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 PO_PAYMENT_LIST_SORT_COLUMNS,
-                '/accounting/invoice-payments',
+                accounting_path('/accounting/invoice-payments'),
                 $listFilters,
                 ['type', 'status', 'q'],
                 PO_PAYMENT_LIST_SORT_NUMERIC,
@@ -117,7 +119,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td>
                 <?php $attachmentCount = (int) ($payment['AttachmentCount'] ?? 0); ?>
                 <?php if ($attachmentCount > 0 && accounting_can_update()): ?>
-                <a class="btn-text" href="/accounting/invoice-payments/edit.php?id=<?= (int) $payment['PaymentID'] ?>"><?= $attachmentCount === 1 ? '1 file' : $attachmentCount . ' files' ?></a>
+                <a class="btn-text" href="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/edit.php')) ?>?id=<?= (int) $payment['PaymentID'] ?>"><?= $attachmentCount === 1 ? '1 file' : $attachmentCount . ' files' ?></a>
                 <?php else: ?>
                 <?= $attachmentCount > 0 ? ($attachmentCount === 1 ? '1 file' : $attachmentCount . ' files') : '—' ?>
                 <?php endif; ?>
@@ -129,7 +131,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                   $paymentActions[] = ['href' => $referenceHref, 'label' => 'View invoice'];
               }
               if (accounting_can_update()) {
-                  $paymentActions[] = ['href' => '/accounting/invoice-payments/edit.php?id=' . (int) $payment['PaymentID'], 'label' => 'Edit'];
+                  $paymentActions[] = ['href' => accounting_path('/accounting/invoice-payments/edit.php') . '?id=' . (int) $payment['PaymentID'], 'label' => 'Edit'];
               }
               table_actions_cell($paymentActions);
               ?>

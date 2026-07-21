@@ -1,6 +1,8 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/admin.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
@@ -52,7 +54,7 @@ if ($invoice === null) {
     exit;
 }
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'approvals';
 $lines = supplier_invoice_get_lines($invoiceId);
 $attachments = supplier_invoice_list_attachments($invoiceId);
@@ -129,7 +131,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <p class="account-card-lead">Approving authorizes this invoice for payment and creates a Bill in QuickBooks Online when one is missing. Payment activity is updated from the QBO integration.</p>
           <?php endif; ?>
         <?php endif; ?>
-        <form class="admin-form" method="post" action="/accounting/supplier-invoices/approval-action.php">
+        <form class="admin-form" method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/approval-action.php')) ?>">
           <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
           <?php if ($isTokenAccess): ?>
           <input type="hidden" name="approval_token" value="<?= htmlspecialchars($rawToken) ?>" />
@@ -183,7 +185,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <h2>Attachments</h2>
         <ul>
           <?php foreach ($attachments as $attachment): ?>
-          <li><a href="/accounting/supplier-invoices/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>"><?= htmlspecialchars($attachment['FileName']) ?></a></li>
+          <li><a href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/attachment.php')) ?>?id=<?= (int) $attachment['AttachmentID'] ?>"><?= htmlspecialchars($attachment['FileName']) ?></a></li>
           <?php endforeach; ?>
         </ul>
       </section>

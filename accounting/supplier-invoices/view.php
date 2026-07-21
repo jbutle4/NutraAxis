@@ -1,6 +1,8 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/admin.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
@@ -14,11 +16,11 @@ $invoiceId = (int) ($_GET['id'] ?? 0);
 $invoice = $invoiceId > 0 ? supplier_invoice_get($invoiceId) : null;
 
 if ($invoice === null) {
-    header('Location: /accounting/supplier-invoices/', true, 302);
+    header('Location: ' . accounting_path('/accounting/supplier-invoices/'), true, 302);
     exit;
 }
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoices';
 $lines = supplier_invoice_get_lines($invoiceId);
 $attachments = supplier_invoice_list_attachments($invoiceId);
@@ -64,31 +66,31 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       ob_start();
       ?>
           <?php if (supplier_invoice_can_update() && $isEditable): ?>
-          <a class="btn-primary" href="/accounting/supplier-invoices/edit.php?id=<?= $invoiceId ?>">Edit Invoice</a>
+          <a class="btn-primary" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/edit.php') . '?id=' . $invoiceId) ?>">Edit Invoice</a>
           <?php endif; ?>
           <?php if (po_payment_can_create()): ?>
           <a class="btn-secondary" href="/po-payments/new.php?supplier_invoice_id=<?= $invoiceId ?><?= !empty($invoice['POID']) ? '&po_id=' . (int) $invoice['POID'] : '' ?>">New Payment Request</a>
           <?php endif; ?>
           <?php if ($canSubmitForApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for payment approval again? Payment approvers will receive a new approval email.' : 'Submit this invoice for payment approval? Payment approvers will be notified by email.'), ENT_QUOTES) ?>);">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for payment approval again? Payment approvers will receive a new approval email.' : 'Submit this invoice for payment approval? Payment approvers will be notified by email.'), ENT_QUOTES) ?>);">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="submit" class="btn-primary"><?= $postedIsReopenable ? 'Resubmit for Approval' : 'Submit for Approval' ?></button>
           </form>
           <?php endif; ?>
           <?php if ($canResubmitApproval): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the payment approval email to approvers?');">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Resend the payment approval email to approvers?');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="resubmit" class="btn-secondary">Resubmit to Approvers</button>
           </form>
           <?php endif; ?>
           <?php if ($canSubmitForQbo): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Submit this invoice for QBO Insert recovery? Accounting (QBO Insert approvers) will be notified to post the bill.');">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Submit this invoice for QBO Insert recovery? Accounting (QBO Insert approvers) will be notified to post the bill.');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="submit_qbo" class="btn-secondary">Submit for QBO Insert</button>
           </form>
           <?php endif; ?>
           <?php if ($canResubmitQbo): ?>
-          <form method="post" action="/accounting/supplier-invoices/status.php" class="inline-form" onsubmit="return confirm('Resend the QBO Insert recovery email to accounting?');">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Resend the QBO Insert recovery email to accounting?');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="resubmit_qbo" class="btn-secondary">Resubmit for QBO Insert</button>
           </form>
@@ -96,7 +98,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php
       $listToolbar = trim(ob_get_clean());
       render_list_page_header([
-          'back_href'  => '/accounting/supplier-invoices/',
+          'back_href'  => accounting_path('/accounting/supplier-invoices/'),
           'back_label' => 'Back to Supplier Invoices',
           'category'   => 'Finance',
           'title'      => supplier_invoice_reference($invoice),

@@ -28,8 +28,11 @@ $canReadApprovals = $approvalNavAvailable && approval_types_for_user() !== [];
     } elseif (!$canReadAccounting) {
         continue;
     }
+    $sectionHref = function_exists('accounting_path')
+        ? accounting_path((string) $section['href'])
+        : (string) $section['href'];
   ?>
-  <a href="<?= htmlspecialchars($section['href']) ?>" class="<?= $accountingSection === $slug ? 'is-active' : '' ?>"><?= htmlspecialchars($section['title']) ?></a>
+  <a href="<?= htmlspecialchars($sectionHref) ?>" class="<?= $accountingSection === $slug ? 'is-active' : '' ?>"><?= htmlspecialchars($section['title']) ?></a>
   <?php endforeach; ?>
   <?php if ($canReadApprovals): ?>
   <a href="<?= htmlspecialchars(approval_index_url(null, $approvalPending > 0 ? 'pending' : null)) ?>" class="<?= ($accountingSection ?? '') === 'approvals' ? 'is-active' : '' ?>">

@@ -1,6 +1,8 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
 

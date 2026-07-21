@@ -15,7 +15,7 @@ if (!$isLocked) {
     $formActions = capture_form_actions(function () use ($isEdit) {
         ?>
         <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Invoice' ?></button>
-        <a class="btn-secondary" href="/accounting/supplier-invoices/">Cancel</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/')) ?>">Cancel</a>
         <?php
     });
 }

@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
 
@@ -13,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         if ($action !== '') {
             $params['action'] = $action;
         }
-        header('Location: /accounting/invoice-payments/approve.php?' . http_build_query($params), true, 302);
+        header('Location: ' . accounting_path('/accounting/invoice-payments/approve.php') . '?' . http_build_query($params), true, 302);
         exit;
     }
 
@@ -51,5 +52,5 @@ if ($result['ok']) {
     exit;
 }
 
-header('Location: /accounting/invoice-payments/approve.php?id=' . $paymentId . '&error=' . rawurlencode($result['error']), true, 302);
+header('Location: ' . accounting_path('/accounting/invoice-payments/approve.php') . '?id=' . $paymentId . '&error=' . rawurlencode($result['error']), true, 302);
 exit;

@@ -105,7 +105,7 @@ function data_profile_page_path(string $productionPath): string
         '/inventory-reporting/'             => '/inventory-reporting-uat/',
         '/accs-inventory-reporting'         => '/accs-inventory-reporting-uat',
         '/accs-inventory-reporting/'        => '/accs-inventory-reporting-uat/',
-        '/inventory-reconciliation'       => '/inventory-reconciliation-uat',
+        '/inventory-reconciliation'         => '/inventory-reconciliation-uat',
         '/inventory-reconciliation/'        => '/inventory-reconciliation-uat/',
         '/jazz-item-master'                 => '/jazz-item-master-uat',
         '/jazz-item-master/'                => '/jazz-item-master-uat/',
@@ -117,9 +117,33 @@ function data_profile_page_path(string $productionPath): string
         '/sales-reporting/jazz-order-report'  => '/sales-reporting/jazz-order-report-uat',
         '/sales-reporting/jazz-order-report/' => '/sales-reporting/jazz-order-report-uat/',
         '/sales-reporting/jazz-order.php'     => '/sales-reporting/jazz-order-uat.php',
+        '/accounting/ap.php'                => '/accounting/ap-uat.php',
+        '/accounting/ar.php'                => '/accounting/ar-uat.php',
+        '/accounting/pos.php'               => '/accounting/pos-uat.php',
+        '/accounting/inventory.php'         => '/accounting/inventory-uat.php',
+        '/accounting/suppliers.php'         => '/accounting/suppliers-uat.php',
+        '/accounting/chart-of-accounts.php' => '/accounting/chart-of-accounts-uat.php',
+        '/accounting/supplier-invoices'     => '/accounting/supplier-invoices-uat',
+        '/accounting/supplier-invoices/'    => '/accounting/supplier-invoices-uat/',
+        '/accounting/invoice-payments'      => '/accounting/invoice-payments-uat',
+        '/accounting/invoice-payments/'     => '/accounting/invoice-payments-uat/',
     ];
 
-    return $map[$productionPath] ?? $productionPath;
+    if (isset($map[$productionPath])) {
+        return $map[$productionPath];
+    }
+
+    // Remap nested module paths (e.g. /accounting/supplier-invoices/view.php).
+    foreach ($map as $from => $to) {
+        if (!str_ends_with($from, '/')) {
+            continue;
+        }
+        if (str_starts_with($productionPath, $from)) {
+            return $to . substr($productionPath, strlen($from));
+        }
+    }
+
+    return $productionPath;
 }
 
 function hub_cards_partition_uat(array $items): array

@@ -1,12 +1,14 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 
 if (isset($_GET['new'])) {
     $params = $_GET;
     unset($params['new']);
-    $redirect = '/accounting/supplier-invoices/new.php';
+    $redirect = accounting_path('/accounting/supplier-invoices/new.php');
     if ($params !== []) {
         $redirect .= '?' . http_build_query($params);
     }
@@ -16,7 +18,7 @@ if (isset($_GET['new'])) {
 
 supplier_invoice_require_read();
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoices';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
@@ -36,7 +38,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner page-inner--wide">
       <?php
-      $listToolbar = supplier_invoice_can_create() ? '<a class="btn-primary" href="/accounting/supplier-invoices/new.php">New Invoice</a>' : '';
+      $listToolbar = supplier_invoice_can_create()
+          ? '<a class="btn-primary" href="' . htmlspecialchars(accounting_path('/accounting/supplier-invoices/new.php')) . '">New Invoice</a>'
+          : '';
       render_list_page_header([
           'back_href'  => '/accounting/',
           'back_label' => 'Back to Accounting',
@@ -57,7 +61,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Invoice deleted successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter page-list-filters" method="get" action="/accounting/supplier-invoices/">
+      <form class="po-filter audit-filter page-list-filters" method="get" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/')) ?>">
         <?php table_sort_hidden_inputs($listFilters, 'txn_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -76,7 +80,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
-          <a class="btn-secondary" href="/accounting/supplier-invoices/">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/')) ?>">Clear</a>
         </div>
       </form>
 
@@ -87,7 +91,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 SUPPLIER_INVOICE_LIST_SORT_COLUMNS,
-                '/accounting/supplier-invoices',
+                accounting_path('/accounting/supplier-invoices'),
                 $listFilters,
                 ['status', 'q'],
                 SUPPLIER_INVOICE_LIST_SORT_NUMERIC,
@@ -106,7 +110,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <?php foreach ($invoices as $invoice): ?>
             <tr>
               <td><?= htmlspecialchars(accounting_format_date($invoice['TxnDate'])) ?></td>
-              <td><a class="btn-text" href="/accounting/supplier-invoices/view.php?id=<?= (int) $invoice['SupplierInvoiceID'] ?>"><?= htmlspecialchars(supplier_invoice_reference($invoice)) ?></a></td>
+              <td><a class="btn-text" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/view.php')) ?>?id=<?= (int) $invoice['SupplierInvoiceID'] ?>"><?= htmlspecialchars(supplier_invoice_reference($invoice)) ?></a></td>
               <td><?= htmlspecialchars($invoice['SupplierName']) ?></td>
               <td><?= htmlspecialchars(accounting_format_money($invoice['TotalAmt'])) ?></td>
               <td><?= htmlspecialchars(accounting_format_money($invoice['Balance'] ?? max(0, (float) $invoice['TotalAmt'] - (float) ($invoice['PaidAmt'] ?? 0)))) ?></td>
@@ -114,9 +118,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><span class="status-badge <?= supplier_invoice_status_class((string) $invoice['SyncStatus']) ?>"><?= htmlspecialchars($invoice['SyncStatus']) ?></span></td>
               <td><?= !empty($invoice['PONumber']) ? htmlspecialchars($invoice['PONumber']) : '—' ?></td>
               <?php
-              $actions = [['href' => '/accounting/supplier-invoices/view.php?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'View']];
+              $actions = [['href' => accounting_path('/accounting/supplier-invoices/view.php') . '?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'View']];
               if (supplier_invoice_can_update() && supplier_invoice_is_editable($invoice)) {
-                  $actions[] = ['href' => '/accounting/supplier-invoices/edit.php?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'Edit'];
+                  $actions[] = ['href' => accounting_path('/accounting/supplier-invoices/edit.php') . '?id=' . (int) $invoice['SupplierInvoiceID'], 'label' => 'Edit'];
               }
               table_actions_cell($actions);
               ?>

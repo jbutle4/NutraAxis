@@ -1,11 +1,14 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/accounting.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
 
+accounting_bind_qbo_environment();
 accounting_require_read();
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
+$pagePath = accounting_path('/accounting/ar.php');
 $accountingSection = 'ar';
 $listResult = qbo_is_connected() ? qbo_list_invoices() : ['ok' => true, 'rows' => [], 'error' => null];
 $qboSortColumns = [
@@ -57,7 +60,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php elseif (qbo_is_connected()): ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><?php table_sort_render_head_row($qboSortColumns, '/accounting/ar.php', $listFilters, [], ['total', 'balance'], 'date', 'desc', 'date'); ?></thead>
+          <thead><?php table_sort_render_head_row($qboSortColumns, $pagePath, $listFilters, [], ['total', 'balance'], 'date', 'desc', 'date'); ?></thead>
           <tbody>
             <?php if (($listResult['rows'] ?? []) === []): ?><tr><td colspan="6">No invoices found.</td></tr><?php else: ?>
             <?php foreach ($listResult['rows'] as $row): ?>

@@ -1,11 +1,13 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 
 supplier_invoice_require_create();
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoices';
 $error = null;
 $form = supplier_invoice_to_form([]);
@@ -51,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = supplier_invoice_save($_POST);
 
     if ($result['ok']) {
-        header('Location: /accounting/supplier-invoices/view.php?id=' . (int) $result['id'] . '&notice=created', true, 302);
+        header('Location: ' . accounting_path('/accounting/supplier-invoices/view.php') . '?id=' . (int) $result['id'] . '&notice=created', true, 302);
         exit;
     }
 
@@ -69,7 +71,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => $preselectedPo > 0
               ? '/po-management/view.php?id=' . $preselectedPo
-              : '/accounting/supplier-invoices/',
+              : accounting_path('/accounting/supplier-invoices/'),
           'back_label' => $preselectedPo > 0 ? 'Back to Purchase Order' : 'Back to Supplier Invoices',
           'category'   => 'Finance',
           'title'      => 'New Supplier Invoice',
@@ -88,7 +90,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php
         $isEdit = false;
         $isLocked = false;
-        $formAction = '/accounting/supplier-invoices/new.php';
+        $formAction = accounting_path('/accounting/supplier-invoices/new.php');
         require dirname(__DIR__, 2) . '/includes/supplier-invoice-form.php';
       ?>
     </div>

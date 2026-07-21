@@ -1,13 +1,15 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
 
 accounting_require_update();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /accounting/invoice-payments/', true, 302);
+    header('Location: ' . accounting_path('/accounting/invoice-payments/'), true, 302);
     exit;
 }
 
@@ -32,7 +34,7 @@ if ($result['ok']) {
             $params['mail_warning'] = '1';
         }
     }
-    header('Location: /accounting/invoice-payments/edit.php?' . http_build_query($params), true, 302);
+    header('Location: ' . accounting_path('/accounting/invoice-payments/edit.php') . '?' . http_build_query($params), true, 302);
     exit;
 }
 
@@ -44,7 +46,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
     <div class="container page-inner">
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($result['error']) ?></div>
       <div class="module-actions">
-        <a class="btn-secondary" href="/accounting/invoice-payments/edit.php?id=<?= $paymentId ?>">Back to Payment</a>
+        <a class="btn-secondary" href="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/edit.php') . '?id=' . $paymentId) ?>">Back to Payment</a>
       </div>
     </div>
   </main>

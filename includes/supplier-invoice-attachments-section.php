@@ -8,9 +8,9 @@
 /** @var string|null $uploadReturnPath */
 $showUploadForm = $showUploadForm ?? false;
 $uploadNotice = $uploadNotice ?? null;
-$attachmentBasePath = $attachmentBasePath ?? '/accounting/supplier-invoices/attachment.php';
-$uploadActionPath = $uploadActionPath ?? '/accounting/supplier-invoices/upload-attachment.php';
-$uploadReturnPath = $uploadReturnPath ?? '/accounting/supplier-invoices/view.php?id=' . (int) $invoiceId;
+$attachmentBasePath = $attachmentBasePath ?? accounting_path('/accounting/supplier-invoices/attachment.php');
+$uploadActionPath = $uploadActionPath ?? accounting_path('/accounting/supplier-invoices/upload-attachment.php');
+$uploadReturnPath = $uploadReturnPath ?? (accounting_path('/accounting/supplier-invoices/view.php') . '?id=' . (int) $invoiceId);
 $attachmentAccept = '.pdf,.doc,.docx,.xlsx,.csv,.png,.jpg,.jpeg,.webp,application/pdf,image/*';
 ?>
 <section class="detail-card supplier-po-report">

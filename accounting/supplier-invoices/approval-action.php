@@ -1,5 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/qbo-insert-approval.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
@@ -14,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         if ($action !== '') {
             $params['action'] = $action;
         }
-        header('Location: /accounting/supplier-invoices/approve.php?' . http_build_query($params), true, 302);
+        header('Location: ' . accounting_path('/accounting/supplier-invoices/approve.php') . '?' . http_build_query($params), true, 302);
         exit;
     }
 
@@ -85,5 +86,5 @@ if ($result['ok']) {
     exit;
 }
 
-header('Location: /accounting/supplier-invoices/approve.php?id=' . $invoiceId . '&error=' . rawurlencode($result['error']), true, 302);
+header('Location: ' . accounting_path('/accounting/supplier-invoices/approve.php') . '?id=' . $invoiceId . '&error=' . rawurlencode($result['error']), true, 302);
 exit;

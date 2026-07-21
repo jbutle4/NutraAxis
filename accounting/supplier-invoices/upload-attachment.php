@@ -1,13 +1,15 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
 
 supplier_invoice_require_update();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /accounting/supplier-invoices/', true, 302);
+    header('Location: ' . accounting_path('/accounting/supplier-invoices/'), true, 302);
     exit;
 }
 
@@ -21,8 +23,15 @@ $isAjax = !empty($_POST['ajax'])
     || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
 
 $returnTo = trim((string) ($_POST['return_to'] ?? ''));
-$successRedirect = '/accounting/supplier-invoices/view.php?id=' . $invoiceId . '&notice=attachment';
-if ($returnTo !== '' && str_starts_with($returnTo, '/accounting/supplier-invoices/')) {
+$successRedirect = accounting_path('/accounting/supplier-invoices/view.php') . '?id=' . $invoiceId . '&notice=attachment';
+$returnToAllowed = false;
+foreach (['/accounting/supplier-invoices/', '/accounting/supplier-invoices-uat/'] as $prefix) {
+    if ($returnTo !== '' && str_starts_with($returnTo, $prefix)) {
+        $returnToAllowed = true;
+        break;
+    }
+}
+if ($returnToAllowed) {
     $successRedirect = $returnTo . (str_contains($returnTo, '?') ? '&' : '?') . 'notice=attachment';
 }
 
@@ -49,5 +58,5 @@ if ($result['ok']) {
     exit;
 }
 
-header('Location: /accounting/supplier-invoices/edit.php?id=' . $invoiceId . '&error=' . urlencode($result['error']), true, 302);
+header('Location: ' . accounting_path('/accounting/supplier-invoices/edit.php') . '?id=' . $invoiceId . '&error=' . urlencode($result['error']), true, 302);
 exit;

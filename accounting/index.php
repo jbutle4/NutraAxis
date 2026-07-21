@@ -14,11 +14,15 @@ if ($hub === null) {
 
 $areas = auth_filter_hub_submodules(app_hub_submodules('accounting'));
 $notice = $_GET['notice'] ?? null;
-$showConnectionBanner = accounting_can_read();
+$showConnectionBanner = accounting_can_read() || accounting_can_update();
 
-if ($showConnectionBanner) {
+if ($showConnectionBanner || $notice === 'connected' || $notice === 'disconnected' || $notice === 'config') {
     require dirname(__DIR__) . '/includes/quickbooks.php';
 }
+
+$noticeEnv = isset($_GET['env']) && function_exists('qbo_normalize_environment')
+    ? qbo_normalize_environment($_GET['env'])
+    : null;
 
 $pageTitle = ($hub['title'] ?? 'Accounting') . ' | NutraAxis Operations';
 $pageDescription = (string) ($hub['desc'] ?? '');
@@ -37,13 +41,15 @@ require dirname(__DIR__) . '/includes/header.php';
       ]); ?>
 
       <?php if ($notice === 'connected'): ?>
-      <div class="admin-notice is-success" role="status">QuickBooks connected successfully.</div>
+      <div class="admin-notice is-success" role="status">QuickBooks <?= $noticeEnv ? htmlspecialchars(qbo_environment_label($noticeEnv)) . ' ' : '' ?>connected successfully.</div>
       <?php elseif ($notice === 'disconnected'): ?>
-      <div class="admin-notice is-success" role="status">QuickBooks disconnected.</div>
+      <div class="admin-notice is-success" role="status">QuickBooks <?= $noticeEnv ? htmlspecialchars(qbo_environment_label($noticeEnv)) . ' ' : '' ?>disconnected.</div>
+      <?php elseif ($notice === 'config'): ?>
+      <div class="admin-notice is-error is-detail" role="alert">QuickBooks OAuth is not fully configured for <?= $noticeEnv ? htmlspecialchars(qbo_environment_label($noticeEnv)) : 'that' ?> environment. Check App Service client ID/secret and redirect URI settings.</div>
       <?php endif; ?>
 
       <?php if ($showConnectionBanner): ?>
-      <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
+      <?php require dirname(__DIR__) . '/includes/accounting-connection-dual-banner.php'; ?>
       <?php endif; ?>
 
       <?php if ($areas === []): ?>

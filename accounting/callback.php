@@ -20,14 +20,16 @@ if ($error !== '') {
     exit;
 }
 
-if ($code === '' || $realmId === '' || !qbo_validate_oauth_state($state)) {
+$stateCheck = qbo_validate_oauth_state($state);
+if ($code === '' || $realmId === '' || !$stateCheck['ok'] || $stateCheck['env'] === null) {
     header('Location: /accounting/', true, 302);
     exit;
 }
 
-$result = qbo_exchange_code($code, $realmId);
+$env = qbo_normalize_environment($stateCheck['env']);
+$result = qbo_exchange_code($code, $realmId, $env);
 if ($result['ok']) {
-    header('Location: /accounting/?notice=connected', true, 302);
+    header('Location: /accounting/?notice=connected&env=' . rawurlencode($env), true, 302);
     exit;
 }
 

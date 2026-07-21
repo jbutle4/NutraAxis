@@ -2,38 +2,67 @@
 
 require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/accounting.php';
+require_once __DIR__ . '/data-profile.php';
 
 const QBO_OAUTH_STATE_KEY = 'qbo_oauth_state';
+const QBO_ENV_SANDBOX = 'sandbox';
+const QBO_ENV_PRODUCTION = 'production';
+
+function qbo_normalize_environment(?string $env): string
+{
+    $env = strtolower(trim((string) $env));
+
+    return $env === QBO_ENV_PRODUCTION ? QBO_ENV_PRODUCTION : QBO_ENV_SANDBOX;
+}
+
+/**
+ * Bind API/OAuth helpers to a specific QBO company environment for this request.
+ */
+function qbo_use_environment(string $env): void
+{
+    $GLOBALS['_qbo_environment'] = qbo_normalize_environment($env);
+}
 
 function qbo_environment(): string
 {
-    $env = strtolower(trim((string) env('QBO_ENVIRONMENT', 'sandbox')));
+    if (isset($GLOBALS['_qbo_environment'])) {
+        return qbo_normalize_environment((string) $GLOBALS['_qbo_environment']);
+    }
 
-    return $env === 'production' ? 'production' : 'sandbox';
+    // Page-bound profile: UAT twins → sandbox company; production pages → production company.
+    if (function_exists('data_profile_is_uat') && data_profile_is_uat()) {
+        return QBO_ENV_SANDBOX;
+    }
+
+    return QBO_ENV_PRODUCTION;
 }
 
-function qbo_environment_label(): string
+function qbo_environment_label(?string $env = null): string
 {
-    return qbo_environment() === 'production' ? 'Production' : 'Sandbox';
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+
+    return $env === QBO_ENV_PRODUCTION ? 'Production' : 'Sandbox';
 }
 
-function qbo_uses_sandbox_oauth(): bool
+function qbo_uses_sandbox_oauth(?string $env = null): bool
 {
-    return qbo_environment() !== 'production';
+    return qbo_normalize_environment($env ?? qbo_environment()) !== QBO_ENV_PRODUCTION;
 }
 
-function qbo_client_id(): string
+function qbo_client_id(?string $env = null): string
 {
-    if (qbo_environment() === 'production') {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    if ($env === QBO_ENV_PRODUCTION) {
         return trim((string) env_first(['QBO_CLIENT_ID_PROD', 'QBO_CLIENT_ID'], ''));
     }
 
     return trim((string) env('QBO_CLIENT_ID', ''));
 }
 
-function qbo_client_secret(): string
+function qbo_client_secret(?string $env = null): string
 {
-    if (qbo_environment() === 'production') {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    if ($env === QBO_ENV_PRODUCTION) {
         return (string) env_first(['QBO_CLIENT_SECRET_PROD', 'QBO_CLIENT_SECRET'], '');
     }
 
@@ -55,23 +84,24 @@ function qbo_redirect_uri(): string
     return '';
 }
 
-function qbo_is_configured(): bool
+function qbo_is_configured(?string $env = null): bool
 {
-    return qbo_config_error() === null;
+    return qbo_config_error($env) === null;
 }
 
-function qbo_config_error(): ?string
+function qbo_config_error(?string $env = null): ?string
 {
-    $clientId = qbo_client_id();
-    $clientSecret = qbo_client_secret();
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    $clientId = qbo_client_id($env);
+    $clientSecret = qbo_client_secret($env);
     $redirectUri = qbo_redirect_uri();
 
     if ($clientId === '' || $clientSecret === '') {
-        if (qbo_environment() === 'production') {
-            return 'QuickBooks production OAuth is not configured. Set QBO_ENVIRONMENT=production and add QBO_CLIENT_ID_PROD plus QBO_CLIENT_SECRET_PROD from the Production keys section of your Intuit Developer app (NutraAxis_Operations).';
+        if ($env === QBO_ENV_PRODUCTION) {
+            return 'QuickBooks production OAuth is not configured. Add QBO_CLIENT_ID_PROD and QBO_CLIENT_SECRET_PROD from the Production keys section of your Intuit Developer app (NutraAxis_Operations).';
         }
 
-        return 'QuickBooks is not configured. Set QBO_CLIENT_ID, QBO_CLIENT_SECRET, and QBO_REDIRECT_URI in application settings.';
+        return 'QuickBooks sandbox OAuth is not configured. Set QBO_CLIENT_ID, QBO_CLIENT_SECRET, and QBO_REDIRECT_URI in application settings.';
     }
 
     if ($redirectUri === '') {
@@ -81,48 +111,63 @@ function qbo_config_error(): ?string
     return null;
 }
 
-function qbo_api_base_url(): string
+function qbo_api_base_url(?string $env = null): string
 {
-    return qbo_environment() === 'production'
+    return qbo_normalize_environment($env ?? qbo_environment()) === QBO_ENV_PRODUCTION
         ? 'https://quickbooks.api.intuit.com'
         : 'https://sandbox-quickbooks.api.intuit.com';
 }
 
-function qbo_get_connection(): ?array
+function qbo_get_connection(?string $env = null): ?array
 {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+
     try {
         $pdo = db();
     } catch (Throwable) {
         return null;
     }
 
-    $stmt = $pdo->query('SELECT TOP 1 * FROM dbo.QBOConnection ORDER BY ConnectionID DESC');
+    $stmt = $pdo->prepare('SELECT TOP 1 * FROM dbo.QBOConnection WHERE Environment = :env ORDER BY UpdatedAt DESC, ConnectionID DESC');
+    $stmt->execute(['env' => $env]);
     $row = $stmt->fetch();
 
-    if ($row === false) {
-        return null;
-    }
-
-    $configuredEnv = qbo_environment();
-    $storedEnv = strtolower(trim((string) ($row['Environment'] ?? '')));
-    if ($storedEnv !== '' && $storedEnv !== $configuredEnv) {
-        qbo_disconnect();
-
-        return null;
-    }
-
-    return $row;
+    return $row === false ? null : $row;
 }
 
-function qbo_is_connected(): bool
+function qbo_list_connections(): array
 {
-    return qbo_get_connection() !== null;
+    try {
+        $pdo = db();
+    } catch (Throwable) {
+        return [];
+    }
+
+    $rows = $pdo->query('SELECT * FROM dbo.QBOConnection ORDER BY Environment ASC')->fetchAll();
+    $byEnv = [
+        QBO_ENV_SANDBOX    => null,
+        QBO_ENV_PRODUCTION => null,
+    ];
+    foreach ($rows as $row) {
+        $env = qbo_normalize_environment((string) ($row['Environment'] ?? ''));
+        $byEnv[$env] = $row;
+    }
+
+    return $byEnv;
+}
+
+function qbo_is_connected(?string $env = null): bool
+{
+    return qbo_get_connection($env) !== null;
 }
 
 function qbo_save_connection(array $data): void
 {
     $pdo = db();
-    $pdo->exec('DELETE FROM dbo.QBOConnection');
+    $env = qbo_normalize_environment($data['environment'] ?? qbo_environment());
+
+    $delete = $pdo->prepare('DELETE FROM dbo.QBOConnection WHERE Environment = :env');
+    $delete->execute(['env' => $env]);
 
     $stmt = $pdo->prepare(<<<SQL
         INSERT INTO dbo.QBOConnection (
@@ -141,40 +186,61 @@ function qbo_save_connection(array $data): void
         'access'      => $data['access_token'],
         'refresh'     => $data['refresh_token'],
         'expires'     => $data['access_token_expires_at'],
-        'environment' => $data['environment'] ?? qbo_environment(),
+        'environment' => $env,
         'user'        => (int) ($data['connected_by_user'] ?? 0),
     ]);
 }
 
-function qbo_disconnect(): void
+function qbo_disconnect(?string $env = null): void
 {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
     $pdo = db();
-    $pdo->exec('DELETE FROM dbo.QBOConnection');
+    $stmt = $pdo->prepare('DELETE FROM dbo.QBOConnection WHERE Environment = :env');
+    $stmt->execute(['env' => $env]);
 }
 
-function qbo_start_oauth_state(): string
+function qbo_start_oauth_state(string $env): string
 {
     auth_start_session();
+    $env = qbo_normalize_environment($env);
     $state = bin2hex(random_bytes(16));
-    $_SESSION[QBO_OAUTH_STATE_KEY] = $state;
+    $_SESSION[QBO_OAUTH_STATE_KEY] = [
+        'token' => $state,
+        'env'   => $env,
+    ];
 
     return $state;
 }
 
-function qbo_validate_oauth_state(?string $state): bool
+/**
+ * @return array{ok:bool,env:?string}
+ */
+function qbo_validate_oauth_state(?string $state): array
 {
     auth_start_session();
     $expected = $_SESSION[QBO_OAUTH_STATE_KEY] ?? null;
     unset($_SESSION[QBO_OAUTH_STATE_KEY]);
 
-    return is_string($state) && is_string($expected) && hash_equals($expected, $state);
+    if (!is_string($state) || !is_array($expected)) {
+        return ['ok' => false, 'env' => null];
+    }
+
+    $token = (string) ($expected['token'] ?? '');
+    $env = qbo_normalize_environment((string) ($expected['env'] ?? ''));
+    if ($token === '' || !hash_equals($token, $state)) {
+        return ['ok' => false, 'env' => null];
+    }
+
+    return ['ok' => true, 'env' => $env];
 }
 
-function qbo_authorize_url(): string
+function qbo_authorize_url(string $env): string
 {
-    $state = qbo_start_oauth_state();
+    $env = qbo_normalize_environment($env);
+    qbo_use_environment($env);
+    $state = qbo_start_oauth_state($env);
     $params = http_build_query([
-        'client_id'     => qbo_client_id(),
+        'client_id'     => qbo_client_id($env),
         'response_type' => 'code',
         'scope'         => 'com.intuit.quickbooks.accounting',
         'redirect_uri'  => qbo_redirect_uri(),
@@ -184,10 +250,11 @@ function qbo_authorize_url(): string
     return 'https://appcenter.intuit.com/connect/oauth2?' . $params;
 }
 
-function qbo_token_request(array $fields): array
+function qbo_token_request(array $fields, ?string $env = null): array
 {
-    $clientId = qbo_client_id();
-    $clientSecret = qbo_client_secret();
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    $clientId = qbo_client_id($env);
+    $clientSecret = qbo_client_secret($env);
 
     if (!function_exists('curl_init')) {
         return ['ok' => false, 'error' => 'cURL is required for QuickBooks OAuth.', 'data' => null];
@@ -231,23 +298,29 @@ function qbo_token_request(array $fields): array
     return ['ok' => true, 'error' => null, 'data' => $data];
 }
 
-function qbo_exchange_code(string $code, string $realmId): array
+function qbo_exchange_code(string $code, string $realmId, ?string $env = null): array
 {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    qbo_use_environment($env);
+
     $result = qbo_token_request([
         'grant_type'   => 'authorization_code',
         'code'         => $code,
         'redirect_uri' => qbo_redirect_uri(),
-    ]);
+    ], $env);
 
     if (!$result['ok']) {
         return $result;
     }
 
-    return qbo_store_token_response($result['data'], $realmId);
+    return qbo_store_token_response($result['data'], $realmId, $env);
 }
 
-function qbo_store_token_response(array $data, ?string $realmId = null): array
+function qbo_store_token_response(array $data, ?string $realmId = null, ?string $env = null): array
 {
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    qbo_use_environment($env);
+
     $accessToken = (string) ($data['access_token'] ?? '');
     $refreshToken = (string) ($data['refresh_token'] ?? '');
     $expiresIn = (int) ($data['expires_in'] ?? 3600);
@@ -256,7 +329,7 @@ function qbo_store_token_response(array $data, ?string $realmId = null): array
         return ['ok' => false, 'error' => 'QuickBooks did not return connection tokens.'];
     }
 
-    $connection = qbo_get_connection();
+    $connection = qbo_get_connection($env);
     $realmId = $realmId ?? (string) ($connection['RealmID'] ?? '');
     if ($realmId === '') {
         return ['ok' => false, 'error' => 'QuickBooks company realm ID is missing.'];
@@ -268,7 +341,7 @@ function qbo_store_token_response(array $data, ?string $realmId = null): array
 
     $companyName = $connection['CompanyName'] ?? null;
     if ($companyName === null || $companyName === '') {
-        $info = qbo_fetch_company_name($realmId, $accessToken);
+        $info = qbo_fetch_company_name($realmId, $accessToken, $env);
         if ($info['ok']) {
             $companyName = $info['name'];
         }
@@ -280,16 +353,17 @@ function qbo_store_token_response(array $data, ?string $realmId = null): array
         'access_token'            => $accessToken,
         'refresh_token'           => $refreshToken,
         'access_token_expires_at' => $expiresAt,
-        'environment'             => qbo_environment(),
+        'environment'             => $env,
         'connected_by_user'       => auth_user()['UserID'] ?? 0,
     ]);
 
     return ['ok' => true, 'error' => null];
 }
 
-function qbo_fetch_company_name(string $realmId, string $accessToken): array
+function qbo_fetch_company_name(string $realmId, string $accessToken, ?string $env = null): array
 {
-    $url = qbo_api_base_url() . '/v3/company/' . rawurlencode($realmId) . '/companyinfo/' . rawurlencode($realmId) . '?minorversion=65';
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    $url = qbo_api_base_url($env) . '/v3/company/' . rawurlencode($realmId) . '/companyinfo/' . rawurlencode($realmId) . '?minorversion=65';
 
     if (!function_exists('curl_init')) {
         return ['ok' => false, 'name' => null];
@@ -324,9 +398,12 @@ function qbo_fetch_company_name(string $realmId, string $accessToken): array
     return ['ok' => $name !== '', 'name' => $name !== '' ? $name : null];
 }
 
-function qbo_refresh_access_token(): array
+function qbo_refresh_access_token(?string $env = null): array
 {
-    $connection = qbo_get_connection();
+    $env = qbo_normalize_environment($env ?? qbo_environment());
+    qbo_use_environment($env);
+
+    $connection = qbo_get_connection($env);
     if ($connection === null) {
         return ['ok' => false, 'error' => 'QuickBooks is not connected.'];
     }
@@ -334,13 +411,13 @@ function qbo_refresh_access_token(): array
     $result = qbo_token_request([
         'grant_type'    => 'refresh_token',
         'refresh_token' => (string) $connection['RefreshToken'],
-    ]);
+    ], $env);
 
     if (!$result['ok']) {
         return $result;
     }
 
-    return qbo_store_token_response($result['data'], (string) $connection['RealmID']);
+    return qbo_store_token_response($result['data'], (string) $connection['RealmID'], $env);
 }
 
 function qbo_ensure_access_token(): array

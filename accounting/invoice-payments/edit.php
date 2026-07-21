@@ -1,6 +1,8 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/page-data-profile.php';
 require dirname(__DIR__, 2) . '/includes/accounting.php';
+accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 require dirname(__DIR__, 2) . '/includes/po-payment-attachments.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
@@ -11,11 +13,11 @@ $paymentId = (int) ($_GET['id'] ?? 0);
 $payment = $paymentId > 0 ? po_payment_get($paymentId) : null;
 
 if ($payment === null || empty($payment['SupplierInvoiceID'])) {
-    header('Location: /accounting/invoice-payments/', true, 302);
+    header('Location: ' . accounting_path('/accounting/invoice-payments/'), true, 302);
     exit;
 }
 
-$activeSlug = 'accounting';
+$activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoice-payments';
 $error = null;
 $notice = $_GET['notice'] ?? null;
@@ -35,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = po_payment_save($_POST, $paymentId);
 
     if ($result['ok']) {
-        header('Location: /accounting/invoice-payments/?notice=updated', true, 302);
+        header('Location: ' . accounting_path('/accounting/invoice-payments/') . '?notice=updated', true, 302);
         exit;
     }
 
@@ -52,7 +54,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
     <div class="container page-inner page-inner--wide">
       <?php
       render_list_page_header([
-          'back_href'  => '/accounting/invoice-payments/',
+          'back_href'  => accounting_path('/accounting/invoice-payments/'),
           'back_label' => 'Back to Invoice Payments',
           'category'   => 'Finance',
           'title'      => 'Edit Invoice Payment',
@@ -79,14 +81,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($canSubmitPayment): ?>
       <div class="module-actions" style="margin-bottom: 16px;">
-        <form method="post" action="/accounting/invoice-payments/status.php" class="inline-form">
+        <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/status.php')) ?>" class="inline-form">
           <input type="hidden" name="payment_id" value="<?= $paymentId ?>" />
           <button type="submit" name="action" value="submit" class="btn-primary">Submit for Payment Approval</button>
         </form>
       </div>
       <?php elseif ($canResubmitPayment): ?>
       <div class="module-actions" style="margin-bottom: 16px;">
-        <form method="post" action="/accounting/invoice-payments/status.php" class="inline-form">
+        <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/invoice-payments/status.php')) ?>" class="inline-form">
           <input type="hidden" name="payment_id" value="<?= $paymentId ?>" />
           <button type="submit" name="action" value="resubmit" class="btn-secondary">Resubmit to Approvers</button>
         </form>
@@ -102,7 +104,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         $isEdit = true;
         $invoiceOnly = true;
         $poOptions = [];
-        $formAction = '/accounting/invoice-payments/edit.php?id=' . $paymentId;
+        $formAction = accounting_path('/accounting/invoice-payments/edit.php') . '?id=' . $paymentId;
         require dirname(__DIR__, 2) . '/includes/po-payment-form.php';
       ?>
       <?php else: ?>
@@ -141,8 +143,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php
         $showUploadForm = accounting_can_update();
         $uploadNotice = $notice;
-        $attachmentBasePath = '/accounting/invoice-payments/attachment.php';
-        $uploadActionPath = '/accounting/invoice-payments/upload-attachment.php';
+        $attachmentBasePath = accounting_path('/accounting/invoice-payments/attachment.php');
+        $uploadActionPath = accounting_path('/accounting/invoice-payments/upload-attachment.php');
         require dirname(__DIR__, 2) . '/includes/po-payment-attachments-section.php';
       ?>
     </div>
