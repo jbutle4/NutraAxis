@@ -616,16 +616,34 @@ function approval_pending_href(string $approvalType, int $entityId, array $row =
 function approval_format_log_row_for_display(array $row): array
 {
     $approvalType = (string) ($row['ApprovalType'] ?? '');
+    $entityType = (string) ($row['EntityType'] ?? '');
     $entityId = (int) ($row['EntityID'] ?? 0);
     $reference = approval_type_label($approvalType) . ' #' . $entityId;
+    $supplier = '—';
+    $amount = '—';
 
     if ($approvalType === 'PO') {
         $pdo = db();
-        $stmt = $pdo->prepare('SELECT PONumber FROM dbo.PurchaseOrder WHERE POID = :id');
+        $stmt = $pdo->prepare(
+            'SELECT po.PONumber, s.SupplierName, ISNULL(po.TotalDue, po.Subtotal) AS Amount
+             FROM dbo.PurchaseOrder po
+             LEFT JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
+             WHERE po.POID = :id'
+        );
         $stmt->execute(['id' => $entityId]);
-        $poNumber = $stmt->fetchColumn();
-        if ($poNumber !== false && $poNumber !== '') {
-            $reference = (string) $poNumber;
+        $entity = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($entity)) {
+            $poNumber = trim((string) ($entity['PONumber'] ?? ''));
+            if ($poNumber !== '') {
+                $reference = $poNumber;
+            }
+            $name = trim((string) ($entity['SupplierName'] ?? ''));
+            if ($name !== '') {
+                $supplier = $name;
+            }
+            if ($entity['Amount'] !== null && $entity['Amount'] !== '') {
+                $amount = '$' . number_format((float) $entity['Amount'], 2);
+            }
         }
     } elseif ($approvalType === 'TE') {
         $pdo = db();
@@ -635,19 +653,65 @@ function approval_format_log_row_for_display(array $row): array
         if ($reportNumber !== false && $reportNumber !== '') {
             $reference = (string) $reportNumber;
         }
+    } elseif ($approvalType === 'Payment' && $entityType === 'POPayment') {
+        $pdo = db();
+        $secondaryId = (int) ($row['SecondaryEntityID'] ?? 0);
+        $stmt = $pdo->prepare(
+            'SELECT si.DocNumber, s.SupplierName, p.PaymentAmount AS Amount
+             FROM dbo.POPayment p
+             LEFT JOIN dbo.PurchaseOrder po ON po.POID = p.POID
+             LEFT JOIN dbo.SupplierInvoice si ON si.SupplierInvoiceID = COALESCE(p.SupplierInvoiceID, :secondary_id)
+             LEFT JOIN dbo.Supplier s ON s.SupplierID = COALESCE(po.SupplierID, si.SupplierID)
+             WHERE p.PaymentID = :id'
+        );
+        $stmt->execute([
+            'id'           => $entityId,
+            'secondary_id' => $secondaryId > 0 ? $secondaryId : null,
+        ]);
+        $entity = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($entity)) {
+            $docNumber = trim((string) ($entity['DocNumber'] ?? ''));
+            if ($docNumber !== '') {
+                $reference = $docNumber;
+            }
+            $name = trim((string) ($entity['SupplierName'] ?? ''));
+            if ($name !== '') {
+                $supplier = $name;
+            }
+            if ($entity['Amount'] !== null && $entity['Amount'] !== '') {
+                $amount = '$' . number_format((float) $entity['Amount'], 2);
+            }
+        }
     } elseif ($approvalType === 'Payment' || $approvalType === 'QBOInsert') {
         $pdo = db();
-        $stmt = $pdo->prepare('SELECT DocNumber FROM dbo.SupplierInvoice WHERE SupplierInvoiceID = :id');
         $invoiceId = (int) ($row['SecondaryEntityID'] ?? $entityId);
+        $stmt = $pdo->prepare(
+            'SELECT si.DocNumber, s.SupplierName, si.TotalAmt AS Amount
+             FROM dbo.SupplierInvoice si
+             LEFT JOIN dbo.Supplier s ON s.SupplierID = si.SupplierID
+             WHERE si.SupplierInvoiceID = :id'
+        );
         $stmt->execute(['id' => $invoiceId]);
-        $docNumber = $stmt->fetchColumn();
-        if ($docNumber !== false && trim((string) $docNumber) !== '') {
-            $reference = (string) $docNumber;
+        $entity = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($entity)) {
+            $docNumber = trim((string) ($entity['DocNumber'] ?? ''));
+            if ($docNumber !== '') {
+                $reference = $docNumber;
+            }
+            $name = trim((string) ($entity['SupplierName'] ?? ''));
+            if ($name !== '') {
+                $supplier = $name;
+            }
+            if ($entity['Amount'] !== null && $entity['Amount'] !== '') {
+                $amount = '$' . number_format((float) $entity['Amount'], 2);
+            }
         }
     }
 
     return [
         'reference' => $reference,
+        'supplier'  => $supplier,
+        'amount'    => $amount,
         'href'      => approval_entity_href($approvalType, $entityId, $row),
     ];
 }
