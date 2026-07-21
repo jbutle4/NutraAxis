@@ -784,6 +784,70 @@ body.marketing-site .na-providers ul {
   margin-bottom: 32px;
 }
 
+.na-providers .policy-ack-page__intro {
+  margin: 0 0 20px;
+}
+
+.na-providers .policy-ack-page__title {
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0 0 10px;
+}
+
+.na-providers .policy-ack-page__intro p {
+  margin: 0 0 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.na-providers .policy-ack-page__viewer {
+  margin: 0 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f3f6f6;
+  min-height: 520px;
+}
+
+.na-providers .policy-ack-page__frame {
+  display: block;
+  width: 100%;
+  height: min(72vh, 820px);
+  border: 0;
+  background: var(--white);
+}
+
+.na-providers .policy-ack-form {
+  display: grid;
+  gap: 18px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.na-providers .policy-ack-form__label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.na-providers .policy-ack-form__label input[type="checkbox"] {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--teal);
+}
+
+.na-providers .policy-ack-page__actions {
+  margin: 0;
+}
+
 .na-providers .signup-meta {
   display: flex;
   flex-wrap: wrap;

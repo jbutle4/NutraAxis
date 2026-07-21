@@ -14,6 +14,21 @@ const PO_STATUS_VIEWED = 'Viewed by Approver';
 const PO_STATUS_ACCOUNTING = 'Submitted to Accounting for Payment';
 const PO_STATUS_PAID = 'Paid';
 
+function po_is_legacy_accounting_po_status(string $status): bool
+{
+    return in_array($status, [PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true);
+}
+
+function po_view_status_label(string $status): string
+{
+    return po_is_legacy_accounting_po_status($status) ? PO_STATUS_APPROVED : $status;
+}
+
+function po_view_status_class(string $status): string
+{
+    return po_status_class(po_view_status_label($status));
+}
+
 const PO_APPROVAL_ACTIONS = [
     'approve'   => [
         'label'            => 'Approve PO',
@@ -102,6 +117,7 @@ function po_list_pending_approvals(array $filters = []): array
             po.Subtotal,
             po.TotalDue,
             po.CreateDate,
+            po.ModifiedDate,
             s.SupplierName,
             cu.UserName AS CreatedByName
         FROM dbo.PurchaseOrder po
@@ -121,16 +137,9 @@ function po_list_pending_approvals(array $filters = []): array
 
 function po_list_approval_log(int $poId): array
 {
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        SELECT ApprovalID, POID, ApproverName, ApproverResult, ApproverComments, LogDate
-        FROM dbo.POApprovalLog
-        WHERE POID = :id
-        ORDER BY LogDate DESC
-    SQL);
-    $stmt->execute(['id' => $poId]);
+    require_once __DIR__ . '/approval.php';
 
-    return $stmt->fetchAll();
+    return approval_list_log('PO', $poId);
 }
 
 function po_can_submit_for_approval(array $order): bool
@@ -277,18 +286,15 @@ function po_process_approval_action(int $poId, string $action, string $comments 
             'id'          => $poId,
         ], $approveParams));
 
-        $log = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.POApprovalLog (POID, ApproverName, ApproverResult, ApproverComments)
-            OUTPUT INSERTED.ApprovalID AS inserted_id
-            VALUES (:po, :name, :result, :comments)
-        SQL);
-        $log->execute([
-            'po'       => $poId,
-            'name'     => $approverName,
-            'result'   => $config['result'],
-            'comments' => $comments !== '' ? $comments : null,
-        ]);
-        $approvalId = db_fetch_inserted_int($log, 'inserted_id');
+        require_once __DIR__ . '/approval.php';
+        $approvalId = approval_append_log(
+            'PO',
+            $poId,
+            $approverName,
+            $config['result'],
+            $comments !== '' ? $comments : null,
+            $approverId
+        );
 
         $pdo->commit();
 
@@ -297,7 +303,7 @@ function po_process_approval_action(int $poId, string $action, string $comments 
         require_once __DIR__ . '/audit.php';
         audit_log_po_approval_action($poId, PO_STATUS_SUBMITTED, $config['status'], [
             'ApprovalID'       => $approvalId,
-            'POID'             => $poId,
+            'EntityID'         => $poId,
             'ApproverName'     => $approverName,
             'ApproverResult'   => $config['result'],
             'ApproverComments' => $comments !== '' ? $comments : null,
@@ -313,61 +319,6 @@ function po_process_approval_action(int $poId, string $action, string $comments 
 
         return ['ok' => false, 'error' => po_format_exception_message($e, 'process this approval action')];
     }
-}
-
-function po_advance_accounting_status(int $poId, string $newStatus): array
-{
-    if (!in_array($newStatus, [PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true)) {
-        return ['ok' => false, 'error' => 'Invalid accounting status.'];
-    }
-
-    $order = po_get_order($poId);
-    if ($order === null) {
-        return ['ok' => false, 'error' => 'Purchase order not found.'];
-    }
-
-    $allowed = match ($newStatus) {
-        PO_STATUS_ACCOUNTING => $order['POStatus'] === PO_STATUS_APPROVED,
-        PO_STATUS_PAID       => $order['POStatus'] === PO_STATUS_ACCOUNTING,
-        default              => false,
-    };
-
-    if (!$allowed) {
-        return ['ok' => false, 'error' => "Cannot change status from {$order['POStatus']} to {$newStatus}."];
-    }
-
-    if ($newStatus === PO_STATUS_ACCOUNTING && po_requires_reapproval($order)) {
-        return [
-            'ok'    => false,
-            'error' => 'Total due changed after approval. Resubmit this purchase order for approval before sending to accounting.',
-        ];
-    }
-
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        UPDATE dbo.PurchaseOrder
-        SET POStatus = :status,
-            ModifiedDate = SYSUTCDATETIME(),
-            ModifiedbyUser = :modified_by
-        WHERE POID = :id
-    SQL);
-    $oldStatus = $order['POStatus'];
-    $stmt->execute([
-        'status'      => $newStatus,
-        'modified_by' => auth_user()['UserID'] ?? null,
-        'id'          => $poId,
-    ]);
-
-    require_once __DIR__ . '/audit.php';
-    audit_log_po_status_change($poId, $oldStatus, $newStatus);
-
-    po_notify_po_users_of_status_change($order, [
-        'result'         => $newStatus,
-        'status'         => $newStatus,
-        'viewed_message' => false,
-    ], (string) (auth_user()['UserName'] ?? 'System'), '');
-
-    return ['ok' => true, 'error' => null];
 }
 
 function po_recipient_emails_for_approvers(): array
@@ -412,7 +363,7 @@ function po_merge_approval_notify_results(array ...$results): array
     $merged['recipients'] = array_values(array_unique($merged['recipients']));
     $merged['sent'] = array_values(array_unique($merged['sent']));
 
-    if ($merged['sent'] !== []) {
+    if ($merged['sent'] !== [] || $merged['failed'] !== []) {
         $merged['skipped_reason'] = null;
     }
 
@@ -435,7 +386,7 @@ function po_notify_approval_watchers(array $order, bool $isResubmit, string $sub
         return $result;
     }
 
-    $alertRecipients = alert_message_recipients(ALERT_NAME_PO_APPROVAL_REQUEST);
+    $alertRecipients = alert_message_recipients(ALERT_NAME_PO_APPROVAL_NOTICE);
     $approverEmails = array_keys(po_recipient_emails_for_approvers());
     $watchers = $alertRecipients['cc'];
 
@@ -450,8 +401,6 @@ function po_notify_approval_watchers(array $order, bool $isResubmit, string $sub
     }
 
     if ($watchers === []) {
-        $result['skipped_reason'] = 'no_subscribers';
-
         return $result;
     }
 
@@ -514,9 +463,13 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
         : "PO {$poNumber} submitted for approval";
 
     if ($approvers === []) {
-        error_log('po_notify_approvers_of_submission skipped (no IsPOApprover users) for PO ' . $poNumber);
+        error_log('po_notify_approvers_of_submission skipped (no users with PO Approval Update) for PO ' . $poNumber);
         $result['skipped_reason'] = 'no_subscribers';
     } else {
+        $attachments = approval_collect_po_pdf_attachments($poId);
+        $intro = approval_submission_intro_text($isResubmit);
+        $attachmentNote = approval_plain_attachment_note($attachments);
+
         foreach ($approvers as $approver) {
             $email = strtolower(trim((string) $approver['UserLogin']));
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -540,9 +493,7 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
 
             $htmlBody = po_approval_build_action_email_html($order, $submitter, $isResubmit, $actionUrls);
             $plainBody = implode("\n", [
-                $isResubmit
-                    ? 'A purchase order has been resubmitted for your approval.'
-                    : 'A purchase order has been submitted for your approval.',
+                $intro,
                 '',
                 "PO Number: {$poNumber}",
                 'Supplier: ' . ($order['SupplierName'] ?? ''),
@@ -552,14 +503,16 @@ function po_notify_approvers_of_submission(array $order, bool $isResubmit = fals
                 'Approve: ' . $actionUrls['approve'],
                 'Reject: ' . $actionUrls['reject'],
                 'Return for comment: ' . $actionUrls['send_back'],
-                'Review PO: ' . $actionUrls['review'],
+                'Revise PO: ' . $actionUrls['review'],
                 '',
                 'These links expire in ' . PO_APPROVAL_TOKEN_EXPIRY_DAYS . ' days.',
-            ]);
+            ]) . $attachmentNote;
 
             $result['recipients'][] = $email;
             $greeting = 'Hello ' . ((string) ($approver['UserName'] ?? $email)) . ',';
-            $send = mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody);
+            $send = $attachments === []
+                ? mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody)
+                : mail_send_multi_attachments_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody, $attachments);
             if ($send['ok']) {
                 $result['sent'][] = $email;
             } else {
@@ -584,7 +537,7 @@ function po_format_approval_notify_message(array $notify): string
 {
     return alert_format_notify_message(
         $notify,
-        'No designated PO approvers are configured. No approval email was sent.'
+        'No users with PO Approval Update access are configured. No approval email was sent.'
     );
 }
 

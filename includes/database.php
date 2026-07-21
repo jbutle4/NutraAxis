@@ -4,12 +4,54 @@ require_once __DIR__ . '/env.php';
 
 function db_fetch_inserted_int(PDOStatement $stmt, string $column): int
 {
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!is_array($row) || !array_key_exists($column, $row)) {
-        throw new RuntimeException("Insert did not return {$column}.");
+    // sqlsrv often returns OUTPUT rows on a later result set, and column aliases may differ by case.
+    do {
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            continue;
+        }
+
+        if (array_key_exists($column, $row)) {
+            return (int) $row[$column];
+        }
+
+        foreach ($row as $key => $value) {
+            if (strcasecmp((string) $key, $column) === 0) {
+                return (int) $value;
+            }
+        }
+    } while ($stmt->nextRowset());
+
+    throw new RuntimeException("Insert did not return {$column}.");
+}
+
+function db_bind_value(PDOStatement $stmt, string $param, mixed $value, ?int $type = null): void
+{
+    if ($value === null) {
+        $stmt->bindValue($param, null, PDO::PARAM_NULL);
+
+        return;
     }
 
-    return (int) $row[$column];
+    if ($type !== null) {
+        $stmt->bindValue($param, $value, $type);
+
+        return;
+    }
+
+    if (is_int($value)) {
+        $stmt->bindValue($param, $value, PDO::PARAM_INT);
+
+        return;
+    }
+
+    if (is_bool($value)) {
+        $stmt->bindValue($param, $value, PDO::PARAM_BOOL);
+
+        return;
+    }
+
+    $stmt->bindValue($param, $value);
 }
 
 function db_apply_sql_server_options(PDO $pdo): void
@@ -44,7 +86,7 @@ function db(): PDO
 
     $connectionTimeout = 5;
     $drivers = [
-        'sqlsrv' => "sqlsrv:Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout}",
+        'sqlsrv' => "sqlsrv:Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;LoginTimeout={$connectionTimeout}",
         'dblib'  => "dblib:host={$host}:{$port};dbname={$name};charset=UTF-8",
         'odbc18' => "odbc:Driver={ODBC Driver 18 for SQL Server};Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout};",
         'odbc17' => "odbc:Driver={ODBC Driver 17 for SQL Server};Server=tcp:{$host},{$port};Database={$name};Encrypt=yes;TrustServerCertificate=no;Connection Timeout={$connectionTimeout};",

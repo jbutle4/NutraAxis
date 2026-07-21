@@ -16,5 +16,5 @@ if (!$result['ok'] || !is_array($result['application'])) {
 }
 
 $token = (string) ($result['application']['AccessToken'] ?? '');
-header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=started', true, 302);
+header('Location: /provider-signup/policy.php?token=' . rawurlencode($token) . '&notice=started', true, 302);
 exit;

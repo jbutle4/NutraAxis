@@ -2,6 +2,7 @@
 /** @var string $accountingSection */
 $accountingSection = $accountingSection ?? 'overview';
 
+require_once __DIR__ . '/accounting.php';
 $approvalPending = 0;
 $approvalNavAvailable = is_file(__DIR__ . '/approval.php');
 if ($approvalNavAvailable) {
@@ -9,7 +10,7 @@ if ($approvalNavAvailable) {
     $approvalPending = approval_count_pending_for_user();
 }
 ?>
-<nav class="admin-nav" aria-label="QuickBooks Online">
+<nav class="admin-nav" aria-label="Accounting">
   <?php foreach (ACCOUNTING_SECTIONS as $slug => $section): ?>
   <a href="<?= htmlspecialchars($section['href']) ?>" class="<?= $accountingSection === $slug ? 'is-active' : '' ?>"><?= htmlspecialchars($section['title']) ?></a>
   <?php endforeach; ?>

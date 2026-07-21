@@ -28,6 +28,18 @@ if ($application === null) {
     exit;
 }
 
+if (
+    provider_signup_provider_can_edit($application)
+    && !provider_signup_has_current_policy_ack($application)
+) {
+    header(
+        'Location: /provider-signup/policy.php?token=' . rawurlencode($token),
+        true,
+        302
+    );
+    exit;
+}
+
 $form = provider_signup_form_from_row($application);
 $error = null;
 $notice = null;
@@ -43,6 +55,8 @@ if (($_GET['notice'] ?? '') === 'started') {
     $notice = 'Your Clinic Store has been activated.';
 } elseif (($_GET['notice'] ?? '') === 'certificate_uploaded') {
     $notice = 'Reseller certificate uploaded successfully.';
+} elseif (($_GET['notice'] ?? '') === 'policy_acknowledged') {
+    $notice = 'Policy acknowledgement recorded. You may continue your application.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

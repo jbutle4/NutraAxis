@@ -342,6 +342,110 @@ function provider_signup_render_apply_page_open(): void
     <?php
 }
 
+function provider_signup_render_policy_page_open(): void
+{
+    $heroImage = provider_signup_landing_hero_image_url();
+    ?>
+<div class="na-providers">
+  <section class="hero apply-hero apply-hero--compact" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <div class="section-label">For Practitioners</div>
+          <h1>Practitioner Reseller <span>Policy</span></h1>
+          <p>Review the NutraAxis Practitioner Reseller &amp; Advertising Policy, then acknowledge it to continue your application.</p>
+        </div>
+        <div class="hero-visual">
+          <?php provider_signup_render_quality_card(); ?>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="apply-section apply-section--form">
+    <div class="container">
+    <?php
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_render_policy_page(array $application, ?string $error = null, ?string $notice = null): void
+{
+    $token = (string) ($application['AccessToken'] ?? '');
+    $pdfUrl = provider_signup_policy_pdf_url();
+    $alreadyAcked = provider_signup_has_current_policy_ack($application);
+    $editable = provider_signup_provider_can_edit($application);
+    ?>
+    <div class="signup-form-page policy-ack-page">
+      <?php if ($notice !== null && $notice !== ''): ?>
+      <div class="signup-alert signup-alert--success" role="status"><?= htmlspecialchars($notice) ?></div>
+      <?php endif; ?>
+      <?php if ($error !== null && $error !== ''): ?>
+      <div class="signup-alert signup-alert--error" role="alert"><?= htmlspecialchars($error) ?></div>
+      <?php endif; ?>
+
+      <div class="signup-meta">
+        <span><strong>Status:</strong> <?= htmlspecialchars((string) ($application['Status'] ?? '')) ?></span>
+        <span><strong>Application ID:</strong> <?= (int) ($application['ApplicationID'] ?? 0) ?></span>
+        <span><strong>Policy version:</strong> <?= htmlspecialchars(PROVIDER_SIGNUP_POLICY_VERSION) ?></span>
+      </div>
+
+      <div class="policy-ack-page__intro">
+        <h2 class="policy-ack-page__title">Practitioner Reseller &amp; Advertising Policy</h2>
+        <p>Please review the full policy document below. Acknowledgement is required before you can continue your Clinic Store application.</p>
+        <p>
+          <a class="btn-secondary" href="<?= htmlspecialchars($pdfUrl) ?>" target="_blank" rel="noopener noreferrer">
+            Download PDF
+          </a>
+        </p>
+      </div>
+
+      <div class="policy-ack-page__viewer">
+        <iframe
+          class="policy-ack-page__frame"
+          title="NutraAxis Practitioner Reseller and Advertising Policy"
+          src="<?= htmlspecialchars($pdfUrl) ?>#view=FitH"
+        ></iframe>
+      </div>
+
+      <?php if ($alreadyAcked): ?>
+      <div class="signup-alert signup-alert--success" role="status">
+        Policy acknowledged
+        <?php if (!empty($application['PolicyAcknowledgedByEmail'])): ?>
+          by <?= htmlspecialchars((string) $application['PolicyAcknowledgedByEmail']) ?>
+        <?php endif; ?>
+        <?php if (!empty($application['PolicyAcknowledgedAt'])): ?>
+          on <?= htmlspecialchars(provider_signup_format_datetime($application['PolicyAcknowledgedAt'])) ?>.
+        <?php else: ?>
+          .
+        <?php endif; ?>
+      </div>
+      <p class="policy-ack-page__actions">
+        <a class="btn-cta" href="/provider-signup/apply.php?token=<?= htmlspecialchars(rawurlencode($token)) ?>">Continue to application</a>
+      </p>
+      <?php elseif ($editable): ?>
+      <form class="policy-ack-form" method="post" action="/provider-signup/policy.php">
+        <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
+        <input type="hidden" name="action" value="acknowledge_policy" />
+        <label class="policy-ack-form__label">
+          <input type="checkbox" name="policy_acknowledged" value="1" required />
+          <span><?= htmlspecialchars(PROVIDER_SIGNUP_POLICY_ACK_STATEMENT) ?></span>
+        </label>
+        <div class="policy-ack-page__actions">
+          <button class="btn-cta" type="submit">Acknowledge and continue</button>
+        </div>
+      </form>
+      <?php else: ?>
+      <div class="signup-alert signup-alert--warn" role="status">
+        This application can no longer be edited online. Contact
+        <a href="<?= htmlspecialchars(provider_signup_support_mailto_url()) ?>"><?= htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) ?></a>
+        if you need help.
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php
+}
+
 function provider_signup_render_apply_page_close(): void
 {
     ?>

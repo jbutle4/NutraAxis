@@ -190,6 +190,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>Status</dt><dd><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $application['Status'])) ?>"><?= htmlspecialchars((string) $application['Status']) ?></span></dd></div>
             <div><dt>Activated</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></dd></div>
             <div><dt>Last saved</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></dd></div>
+            <div><dt>Policy acknowledged</dt><dd><?php
+              if (!empty($application['PolicyAcknowledgedAt'])) {
+                  echo htmlspecialchars(provider_signup_format_datetime($application['PolicyAcknowledgedAt']));
+                  if (!empty($application['PolicyAcknowledgedByEmail'])) {
+                      echo ' · ' . htmlspecialchars((string) $application['PolicyAcknowledgedByEmail']);
+                  }
+                  if (!empty($application['PolicyVersion'])) {
+                      echo ' · v' . htmlspecialchars((string) $application['PolicyVersion']);
+                  }
+              } else {
+                  echo '—';
+              }
+            ?></dd></div>
             <div><dt>NPI validation</dt><dd><?= htmlspecialchars((string) ($application['NpiValidationStatus'] ?? '—')) ?><?= !empty($application['NpiValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['NpiValidationSummary']) : '' ?></dd></div>
             <div><dt>Banking validation</dt><dd><?= htmlspecialchars((string) ($application['BankingValidationStatus'] ?? '—')) ?><?= !empty($application['BankingValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['BankingValidationSummary']) : '' ?></dd></div>
             <div><dt>ACCS company ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCompanyId'] ?? '—')) ?></dd></div>
