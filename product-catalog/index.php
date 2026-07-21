@@ -20,6 +20,7 @@ $skus = catalog_list_skus([
 ]);
 $notice = $_GET['notice'] ?? null;
 $actionHeader = table_actions_header(catalog_can_update() ? ['View', 'Edit'] : ['View']);
+$pageContainerClass = 'page-inner--full';
 
 $pageTitle = 'Product SKU Master | Inventory Management';
 $pageDescription = 'View and manage the master product catalog and SKU reference data.';
@@ -27,8 +28,8 @@ $pageDescription = 'View and manage the master product catalog and SKU reference
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
-  <main class="page-main">
-    <div class="container page-inner">
+  <main class="page-main page-main--fluid">
+    <div class="container page-inner <?= htmlspecialchars($pageContainerClass) ?>">
       <a class="breadcrumb" href="/">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
@@ -98,8 +99,8 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </form>
 
-      <div class="admin-table-wrap">
-        <table class="admin-table">
+      <div class="admin-table-wrap admin-table-wrap--catalog">
+        <table class="admin-table admin-table--catalog">
           <thead>
             <tr>
               <?php foreach (CATALOG_LIST_SORT_COLUMNS as $column => $label): ?>

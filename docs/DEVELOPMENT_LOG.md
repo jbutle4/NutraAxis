@@ -194,3 +194,16 @@ Example:
 - Bullet describing change
 - `sql/00N_script_name.sql` — description
 ```
+
+---
+
+## 2026-07-21 — Land Approvals Queue + Contacts List; stop session overwrites
+
+- Merged **PR #15** (`feature/procurement-invoices-and-bids`) into `main` — Approvals Queue (`/procurement-approvals/`) + procurement invoice/bid hub wiring.
+- Ported **Contacts List** from commit `e8a75f3` (PR #12 tip was too conflicted to force-merge) onto `main` as `57afc22`; resolved `includes/admin.php` to keep Payment/QBO/Provider permissions **and** `ContactsList`.
+- Merged clean open PRs: **#13** (FTP `.tmp` hygiene + orphan cleanup script), **#10** (portal pages data sources CSV), **#9** (SKU recommended/web description SQL — note parallel `sql/067_*` filenames with Contacts).
+- Ported PR **#11** catalog full-width markup onto `product-catalog/index.php` (CSS already on `main`); PR remains open for manual close (integration token cannot close PRs).
+- PR **#12** Contacts extracted; full UAT branch still conflicts — leave for manual close. **PR #17** QBO inventory draft left **WIP** (do not merge).
+- Added root [`AGENTS.md`](../AGENTS.md): **deploy-then-merge** + **pre-merge open-branch conflict scan**.
+- SQL: apply `sql/067_create_contacts_list.sql` + `sql/068_add_contacts_list_permission.sql` on Azure if not already applied (`node scripts/run-sql-file.js …`).
+- Deploy: FTP Approvals Queue, Contacts List, and hub/auth includes to `nutraaxisweb` when `.vscode/sftp.json` is available (cloud agent session lacked FTP/DB secrets; live already auth-redirects `/procurement-approvals/` and `/contacts-list/`).
