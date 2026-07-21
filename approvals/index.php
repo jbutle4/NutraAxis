@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/includes/admin.php';
 approval_require_any();
 
 $activeSlug = 'approvals';
+$hubBack = app_module_hub_back_link('approvals');
 $approvalType = isset($_GET['type']) ? (string) $_GET['type'] : '';
 $statusFilter = isset($_GET['status']) ? (string) $_GET['status'] : 'all';
 $allowedTypes = approval_types_for_user();
@@ -41,9 +42,9 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/',
-          'back_label' => 'Back to Operations',
-          'category'   => 'Workflow',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Accounting',
           'title'      => 'Approvals',
           'lead'       => 'All pending requests and approval history in one place. Filter by type or status to focus on what you need.',
       ]); ?>

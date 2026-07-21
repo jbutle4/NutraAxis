@@ -242,6 +242,99 @@ $procurementSubModules = [
     ],
 ];
 
+$accountingSubModules = [
+    [
+        'slug'  => 'supplier-invoices',
+        'title' => 'Supplier Invoices',
+        'desc'  => 'Create vendor invoices, attach source documents, and prepare bills for QuickBooks sync.',
+        'href'  => '/accounting/supplier-invoices/',
+        'icon'  => 'document',
+        'tier'  => 'production',
+        'sort'  => 10,
+    ],
+    [
+        'slug'  => 'invoice-payments',
+        'title' => 'Invoice Payments',
+        'desc'  => 'Record payments against supplier invoices that are not tied to a purchase order.',
+        'href'  => '/accounting/invoice-payments/',
+        'icon'  => 'payment',
+        'tier'  => 'production',
+        'sort'  => 20,
+    ],
+    [
+        'slug'  => 'qbo-accounts-payable',
+        'title' => 'Accounts Payable',
+        'desc'  => 'Open bills and vendor balances from QuickBooks.',
+        'href'  => '/accounting/ap.php',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 30,
+    ],
+    [
+        'slug'  => 'qbo-accounts-receivable',
+        'title' => 'Accounts Receivable',
+        'desc'  => 'Customer invoices and outstanding balances from QuickBooks.',
+        'href'  => '/accounting/ar.php',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 40,
+    ],
+    [
+        'slug'  => 'qbo-purchase-orders',
+        'title' => 'Purchase Orders',
+        'desc'  => 'QuickBooks purchase orders and status.',
+        'href'  => '/accounting/pos.php',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 50,
+    ],
+    [
+        'slug'  => 'qbo-sku-master',
+        'title' => 'QBO SKU Master',
+        'desc'  => 'QuickBooks inventory items — SKU, pricing, quantity on hand, and NutraAxis link.',
+        'href'  => '/accounting/inventory.php',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 60,
+    ],
+    [
+        'slug'  => 'qbo-suppliers',
+        'title' => 'Suppliers',
+        'desc'  => 'QuickBooks vendor directory and balances.',
+        'href'  => '/accounting/suppliers.php',
+        'icon'  => 'supplier',
+        'tier'  => 'production',
+        'sort'  => 70,
+    ],
+    [
+        'slug'  => 'qbo-chart-of-accounts',
+        'title' => 'Chart of Accounts',
+        'desc'  => 'General ledger accounts and current balances from QuickBooks.',
+        'href'  => '/accounting/chart-of-accounts.php',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 80,
+    ],
+    [
+        'slug'  => 'procurement-approvals',
+        'title' => 'Approvals Queue',
+        'desc'  => 'Pending and completed PO and supplier invoice approvals (Payment + QBO Insert recovery).',
+        'href'  => '/procurement-approvals/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+        'sort'  => 90,
+    ],
+    [
+        'slug'  => 'approvals',
+        'title' => 'Approvals',
+        'desc'  => 'All pending requests and approval history across PO, payment, and QBO insert workflows.',
+        'href'  => '/approvals/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+        'sort'  => 100,
+    ],
+];
+
 $inboundReceivingSubModules = [
     [
         'slug'  => 'po-receiving',
@@ -394,8 +487,8 @@ $appFunctions = [
     ],
     [
         'slug'  => 'accounting',
-        'title' => 'QuickBooks Online',
-        'desc'  => 'QuickBooks Online views plus supplier invoices and invoice payments for AP, AR, POs, inventory, suppliers, and chart of accounts.',
+        'title' => 'Accounting',
+        'desc'  => 'QuickBooks Online, supplier invoices and payments, and approval queues for PO, payment, and QBO insert workflows.',
         'href'  => '/accounting/',
         'icon'  => 'accounting',
         'group' => 'admin',
@@ -765,17 +858,15 @@ $modulePages = [
         ],
     ],
     'accounting' => [
-        'label'       => 'Finance',
-        'headline'    => 'QuickBooks Online',
-        'lead'        => 'Connect QuickBooks Online, manage supplier invoices and invoice payments, and browse AP, AR, purchase orders, inventory, suppliers, and the chart of accounts.',
+        'label'       => 'Administration',
+        'headline'    => 'Accounting',
+        'lead'        => 'QuickBooks Online views, supplier invoices and invoice payments, plus approval queues for purchase orders, payments, and QBO insert recovery.',
         'capabilities' => [
             ['title' => 'Supplier Invoices', 'desc' => 'Create vendor invoices with line detail, attachments, and QuickBooks Bill sync status.'],
             ['title' => 'Invoice Payments', 'desc' => 'Record check, ACH, and card payments against supplier invoices without a PO.'],
-            ['title' => 'Accounts Payable', 'desc' => 'View vendor bills and outstanding balances from QuickBooks.'],
-            ['title' => 'Accounts Receivable', 'desc' => 'View customer invoices and open balances.'],
-            ['title' => 'Purchase Orders', 'desc' => 'Browse QuickBooks purchase orders; create and update from Operations is planned.'],
-            ['title' => 'Inventory & Suppliers', 'desc' => 'Read inventory items and vendor directory; supplier create/update from Operations is planned.'],
-            ['title' => 'Chart of Accounts', 'desc' => 'Browse general ledger accounts and current balances.'],
+            ['title' => 'QuickBooks Views', 'desc' => 'Browse AP, AR, purchase orders, inventory items, suppliers, and the chart of accounts.'],
+            ['title' => 'Approvals Queue', 'desc' => 'Pending and completed PO and supplier invoice approvals (Payment + QBO Insert).'],
+            ['title' => 'Approvals', 'desc' => 'Combined approval history across PO, payment, and QBO insert workflows.'],
             ['title' => 'QuickBooks Connection', 'desc' => 'Users with Update access connect and disconnect the QuickBooks Online company.'],
         ],
     ],
@@ -789,6 +880,7 @@ function app_hub_slugs(): array
         'procurement',
         'inbound-receiving',
         'sales-reporting',
+        'accounting',
     ];
 }
 
@@ -851,6 +943,13 @@ function app_inbound_receiving_submodules(): array
     return $inboundReceivingSubModules;
 }
 
+function app_accounting_submodules(): array
+{
+    global $accountingSubModules;
+
+    return $accountingSubModules;
+}
+
 function app_hub_submodules(string $hubSlug): array
 {
     return match ($hubSlug) {
@@ -859,6 +958,7 @@ function app_hub_submodules(string $hubSlug): array
         'procurement'           => app_procurement_submodules(),
         'inbound-receiving'     => app_inbound_receiving_submodules(),
         'sales-reporting'       => app_sales_submodules(),
+        'accounting'            => app_accounting_submodules(),
         default                 => [],
     };
 }
@@ -871,6 +971,7 @@ function app_all_leaf_module_definitions(): array
         app_procurement_submodules(),
         app_inbound_receiving_submodules(),
         app_sales_submodules(),
+        app_accounting_submodules(),
     );
 }
 
@@ -932,7 +1033,7 @@ function app_function_groups(): array
         ],
         'admin' => [
             'title' => 'Administration',
-            'desc'  => 'Finance, legal, operations shortcuts, support, and system monitoring.',
+            'desc'  => 'Accounting, legal, operations shortcuts, support, and system monitoring.',
         ],
     ];
 }

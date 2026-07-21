@@ -25,16 +25,16 @@ function nav_accounting_children(): array
 {
     require_once __DIR__ . '/accounting.php';
 
-    if (auth_is_logged_in() && !accounting_can_read()) {
-        return [];
-    }
-
     $children = [];
-    foreach (ACCOUNTING_SECTIONS as $section) {
+    foreach (app_accounting_submodules() as $item) {
+        if (auth_is_logged_in() && !auth_can_read_leaf_module((string) ($item['slug'] ?? ''))) {
+            continue;
+        }
+
         $children[] = [
-            'slug'  => 'accounting',
-            'title' => $section['title'],
-            'href'  => $section['href'],
+            'slug'  => (string) ($item['slug'] ?? 'accounting'),
+            'title' => (string) ($item['title'] ?? ''),
+            'href'  => (string) ($item['href'] ?? '#'),
         ];
     }
 

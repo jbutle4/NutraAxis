@@ -5,15 +5,16 @@ require_once __DIR__ . '/auth.php';
 const ACCOUNTING_PERMISSION_COLUMN = 'Accounting';
 
 const ACCOUNTING_SECTIONS = [
-    'overview'          => ['title' => 'Overview', 'href' => '/accounting/'],
-    'invoices'          => ['title' => 'Supplier Invoices', 'href' => '/accounting/supplier-invoices/'],
-    'invoice-payments'  => ['title' => 'Invoice Payments', 'href' => '/accounting/invoice-payments/'],
-    'ap'                => ['title' => 'Accounts Payable', 'href' => '/accounting/ap.php'],
-    'ar'                => ['title' => 'Accounts Receivable', 'href' => '/accounting/ar.php'],
-    'pos'               => ['title' => 'Purchase Orders', 'href' => '/accounting/pos.php'],
-    'inventory'         => ['title' => 'QBO SKU Master', 'href' => '/accounting/inventory.php'],
-    'suppliers'         => ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
-    'accounts'          => ['title' => 'Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
+    'overview'              => ['title' => 'Overview', 'href' => '/accounting/'],
+    'invoices'              => ['title' => 'Supplier Invoices', 'href' => '/accounting/supplier-invoices/'],
+    'invoice-payments'      => ['title' => 'Invoice Payments', 'href' => '/accounting/invoice-payments/'],
+    'ap'                    => ['title' => 'Accounts Payable', 'href' => '/accounting/ap.php'],
+    'ar'                    => ['title' => 'Accounts Receivable', 'href' => '/accounting/ar.php'],
+    'pos'                   => ['title' => 'Purchase Orders', 'href' => '/accounting/pos.php'],
+    'inventory'             => ['title' => 'QBO SKU Master', 'href' => '/accounting/inventory.php'],
+    'suppliers'             => ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
+    'accounts'              => ['title' => 'Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
+    'procurement-approvals' => ['title' => 'Approvals Queue', 'href' => '/procurement-approvals/'],
 ];
 
 function accounting_permission_value(): ?string

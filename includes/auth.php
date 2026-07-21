@@ -44,6 +44,9 @@ const MODULE_PERMISSION_COLUMNS = [
     'qbo-inventory'          => 'Accounting',
     'qbo-purchase-orders'    => 'Accounting',
     'qbo-suppliers'          => 'Accounting',
+    'qbo-accounts-payable'   => 'Accounting',
+    'qbo-accounts-receivable'=> 'Accounting',
+    'qbo-chart-of-accounts'  => 'Accounting',
     'supplier-management'    => 'POManagement',
     'procurement-bids'       => 'POManagement',
     'po-payments'            => 'POManagement',
@@ -265,8 +268,12 @@ function auth_can_read_leaf_module(string $slug): bool
         return te_can_access_pages();
     }
 
-    if ($slug === 'procurement-approvals') {
+    if ($slug === 'procurement-approvals' || $slug === 'approvals') {
         require_once __DIR__ . '/approval.php';
+
+        if ($slug === 'approvals') {
+            return approval_types_for_user() !== [];
+        }
 
         return approval_can_read_type('PO')
             || approval_can_read_type('Payment')

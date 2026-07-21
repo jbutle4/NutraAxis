@@ -1,16 +1,23 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/accounting.php';
+require dirname(__DIR__) . '/includes/module-hub.php';
 require dirname(__DIR__) . '/includes/quickbooks.php';
+require dirname(__DIR__) . '/includes/accounting.php';
 
-accounting_require_read();
+auth_require_module_read('accounting');
 
 $activeSlug = 'accounting';
-$accountingSection = 'overview';
+$hub = get_module('accounting');
+if ($hub === null) {
+    http_response_code(404);
+    exit('Module hub not found.');
+}
+
+$areas = auth_filter_hub_submodules(app_hub_submodules('accounting'));
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'Accounting | NutraAxis Operations';
-$pageDescription = 'QuickBooks Online views plus supplier invoices and invoice payments for accounts payable.';
+$pageTitle = ($hub['title'] ?? 'Accounting') . ' | NutraAxis Operations';
+$pageDescription = (string) ($hub['desc'] ?? '');
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -20,13 +27,10 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php render_list_page_header([
           'back_href'  => '/',
           'back_label' => 'Back to Operations Home',
-          'category'   => 'Finance',
-          'title'      => 'Accounting',
-          'lead'       => 'Manage supplier invoices and invoice payments in Operations, and browse QuickBooks Online for AP, AR, purchase orders, inventory, suppliers, and the chart of accounts.',
-          'permission' => permission_label(accounting_permission_value()),
+          'category'   => (string) ($hub['label'] ?? 'Administration'),
+          'title'      => (string) ($hub['headline'] ?? $hub['title'] ?? 'Accounting'),
+          'lead'       => (string) ($hub['lead'] ?? $hub['desc'] ?? ''),
       ]); ?>
-
-      <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
 
       <?php if ($notice === 'connected'): ?>
       <div class="admin-notice is-success" role="status">QuickBooks connected successfully.</div>
@@ -34,35 +38,20 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">QuickBooks disconnected.</div>
       <?php endif; ?>
 
+      <?php if (accounting_can_read()): ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>
+      <?php endif; ?>
 
-      <div class="functions">
-        <?php
-          $cards = [
-              ['invoices', 'Supplier Invoices', 'Create vendor invoices, attach source documents, and prepare bills for QuickBooks sync.', 'Manage Invoices'],
-              ['invoice-payments', 'Invoice Payments', 'Record payments against supplier invoices that are not tied to a purchase order.', 'View Payments'],
-              ['ap', 'Accounts Payable', 'Open bills and vendor balances from QuickBooks.', 'View AP'],
-              ['ar', 'Accounts Receivable', 'Customer invoices and outstanding balances.', 'View AR'],
-              ['pos', 'Purchase Orders', 'QuickBooks purchase orders and status.', 'View POs'],
-              ['inventory', 'QBO SKU Master', 'QuickBooks inventory items — SKU, pricing, quantity on hand, and NutraAxis link.', 'View QBO SKUs'],
-              ['suppliers', 'Suppliers', 'QuickBooks vendor directory and balances.', 'View Suppliers'],
-              ['accounts', 'Chart of Accounts', 'General ledger accounts and current balances.', 'View Accounts'],
-          ];
-          foreach ($cards as [$slug, $title, $desc, $cta]):
-              $href = ACCOUNTING_SECTIONS[$slug]['href'];
-        ?>
-        <a class="function-card" href="<?= htmlspecialchars($href) ?>">
-          <h3><?= htmlspecialchars($title) ?></h3>
-          <p><?= htmlspecialchars($desc) ?></p>
-          <span class="function-link">
-            <?= htmlspecialchars($cta) ?>
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </span>
-        </a>
-        <?php endforeach; ?>
+      <?php if ($areas === []): ?>
+      <div class="status-banner">
+        <div>
+          <strong>No applications assigned</strong>
+          <p>Your role does not include access to any modules in this area. Contact a site administrator.</p>
+        </div>
       </div>
+      <?php else: ?>
+      <?php hub_render_capability_cards($areas, 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
+      <?php endif; ?>
     </div>
   </main>
 <?php
