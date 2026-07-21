@@ -206,4 +206,15 @@ Example:
 - PR **#12** Contacts extracted; full UAT branch still conflicts — leave for manual close. **PR #17** QBO inventory draft left **WIP** (do not merge).
 - Added root [`AGENTS.md`](../AGENTS.md): **deploy-then-merge** + **pre-merge open-branch conflict scan**.
 - SQL: apply `sql/067_create_contacts_list.sql` + `sql/068_add_contacts_list_permission.sql` on Azure if not already applied (`node scripts/run-sql-file.js …`).
-- Deploy: FTP Approvals Queue, Contacts List, and hub/auth includes to `nutraaxisweb` when `.vscode/sftp.json` is available (cloud agent session lacked FTP/DB secrets; live already auth-redirects `/procurement-approvals/` and `/contacts-list/`).
+- Deploy: Cloud agent session had no `.vscode/sftp.json` / `.env`. Verified live already auth-redirects `/procurement-approvals/` and `/contacts-list/` (page trees present). Hub card wiring still needs a local FTP of `includes/app.php` (+ auth/admin/contacts includes) via:
+
+  ```bash
+  node scripts/ftp-upload-files.js \
+    procurement-approvals/index.php \
+    contacts-list/index.php contacts-list/new.php contacts-list/edit.php \
+    contacts-list/view.php contacts-list/delete.php \
+    includes/contacts.php includes/contact-form.php \
+    includes/app.php includes/auth.php includes/admin.php \
+    includes/site-documentation.php \
+    operations-dashboard/index.php my-account/index.php
+  ```
