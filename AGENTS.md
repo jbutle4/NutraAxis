@@ -42,6 +42,10 @@ Before merging any branch or PR into `main`:
 - SQL migrations: `node scripts/run-sql-file.js sql/<file>` with local `.env` (`DB_*`)
 - Do **not** deploy `.env`, `.vscode/`, `node_modules/`, or `Archive Sites/`
 
+## Active handoffs
+
+- Dual QBO + Accounting UAT: see **`docs/AGENT_HANDOFF_DUAL_QBO.md`** before touching QBO/Accounting. Prefer **Local** agent for the remaining SQL migration.
+
 ## Out of scope / leave alone unless asked
 
 - Draft QBO inventory work (e.g. PR #17 / `jbutle4/cursor/qbo-inventory-cycle-dee4`) — WIP; do not merge by default
