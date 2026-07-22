@@ -36,7 +36,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <div>
           <div class="section-label">QuickBooks Production</div>
           <h1>Sync with QuickBooks</h1>
-          <p class="page-lead">Bidirectional reconcile for suppliers, purchase orders, and bills against the Production company.</p>
+          <p class="page-lead">Bidirectional reconcile for suppliers, purchase orders, and bills against the Production company. To copy Production QBO data into Sandbox for UAT, use <a href="/accounting/sync-sandbox-mirror.php">Sandbox Mirror</a>.</p>
         </div>
       </div>
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
