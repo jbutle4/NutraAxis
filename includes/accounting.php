@@ -103,11 +103,21 @@ function accounting_module_base(string $module): string
 
 /**
  * Profile-aware Accounting URL (Production path in, UAT twin out when on a UAT page).
+ * Absolute routes outside /accounting/ (e.g. /procurement-approvals/) are left unchanged.
  */
 function accounting_path(string $path): string
 {
     $path = '/' . ltrim(str_replace('\\', '/', $path), '/');
-    if (!str_starts_with($path, '/accounting/') && $path !== '/accounting') {
+    if ($path !== '/accounting' && !str_starts_with($path, '/accounting/')) {
+        // Top-level app folders must not be rewritten under /accounting/.
+        $top = explode('/', trim($path, '/'), 2)[0] ?? '';
+        if ($top !== '' && is_dir(dirname(__DIR__) . '/' . $top)) {
+            if (!function_exists('data_profile_page_path')) {
+                return $path;
+            }
+
+            return data_profile_page_path($path);
+        }
         $path = '/accounting/' . ltrim($path, '/');
     }
     if (!function_exists('data_profile_page_path')) {
