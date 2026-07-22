@@ -261,13 +261,14 @@ function enhancement_log_list(array $filters = []): array
 
     $search = trim((string) ($filters['q'] ?? ''));
     if ($search !== '') {
-        $sql .= ' AND (
-            EnhancementTitle LIKE :q
-            OR EnhDesc LIKE :q
-            OR RequestedBy LIKE :q
-            OR ReqNotes LIKE :q
-        )';
-        $params['q'] = '%' . $search . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'EnhancementTitle',
+            'EnhDesc',
+            'RequestedBy',
+            'ReqNotes'
+        ], (string) $search);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(ENHANCEMENT_LOG_LIST_SORT_COLUMNS, 'request_date', 'desc', $filters);

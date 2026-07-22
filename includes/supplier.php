@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/admin.php';
+require_once __DIR__ . '/supplier-qbo.php';
 
 const SUPPLIER_PERMISSION_COLUMN = 'POManagement';
 
@@ -25,6 +26,7 @@ const SUPPLIER_LIST_SORT_COLUMNS = [
     'type'     => 'Type',
     'contact'  => 'Contact',
     'status'   => 'Status',
+    'qbo'      => 'QBO',
     'pos'      => 'POs',
 ];
 
@@ -34,6 +36,7 @@ const SUPPLIER_LIST_SORT_SQL = [
     'type'    => 's.SupplierType',
     'contact' => 's.ContactName',
     'status'  => 's.IsActive',
+    'qbo'     => 's.QBO_SyncStatus',
     'pos'     => 'POCount',
 ];
 
@@ -168,6 +171,8 @@ function supplier_list(array $filters = []): array
             s.ContactPhone,
             s.SupplierType,
             s.IsActive,
+            s.QBO_SyncStatus,
+            s.QBO_SupplierID,
             (SELECT COUNT(*) FROM dbo.PurchaseOrder po WHERE po.SupplierID = s.SupplierID) AS POCount
         FROM dbo.Supplier s
         WHERE 1 = 1
@@ -182,13 +187,14 @@ function supplier_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            s.SupplierName LIKE :q OR
-            s.SupplierCode LIKE :q OR
-            s.ContactName LIKE :q OR
-            s.ContactEmail LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            's.SupplierName',
+            's.SupplierCode',
+            's.ContactName',
+            's.ContactEmail'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(SUPPLIER_LIST_SORT_COLUMNS, 'name', 'asc', $filters);

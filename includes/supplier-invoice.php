@@ -341,14 +341,15 @@ function supplier_invoice_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            si.DocNumber LIKE :q OR
-            s.SupplierName LIKE :q OR
-            po.PONumber LIKE :q OR
-            si.Memo LIKE :q OR
-            si.PrivateNote LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'si.DocNumber',
+            's.SupplierName',
+            'po.PONumber',
+            'si.Memo',
+            'si.PrivateNote'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(SUPPLIER_INVOICE_LIST_SORT_COLUMNS, 'txn_date', 'desc', $filters);

@@ -199,13 +199,14 @@ function bid_initiative_list(array $filters = []): array
         $params['status'] = $filters['status'];
     }
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            i.InitiativeNumber LIKE :q
-            OR i.Title LIKE :q
-            OR i.Description LIKE :q
-            OR i.Category LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'i.InitiativeNumber',
+            'i.Title',
+            'i.Description',
+            'i.Category'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(BID_INITIATIVE_LIST_SORT_COLUMNS, 'modified', 'desc', $filters);

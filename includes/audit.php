@@ -163,8 +163,14 @@ function audit_list_logs(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (l.ChangeSQL LIKE :q OR l.ReverseSQL LIKE :q OR u.UserName LIKE :q OR u.UserLogin LIKE :q)';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'l.ChangeSQL',
+            'l.ReverseSQL',
+            'u.UserName',
+            'u.UserLogin'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     if (($filters['rolled_back'] ?? '') === 'yes') {

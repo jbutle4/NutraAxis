@@ -278,14 +278,15 @@ function po_payment_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            po.PONumber LIKE :q OR
-            si.DocNumber LIKE :q OR
-            s.SupplierName LIKE :q OR
-            p.PaymentConfNumber LIKE :q OR
-            p.PaymentMadeBy LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'po.PONumber',
+            'si.DocNumber',
+            's.SupplierName',
+            'p.PaymentConfNumber',
+            'p.PaymentMadeBy'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(PO_PAYMENT_LIST_SORT_COLUMNS, 'payment_date', 'desc', $filters);

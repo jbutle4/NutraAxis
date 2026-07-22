@@ -254,13 +254,14 @@ function legal_list_contracts(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            c.ContractNumber LIKE :q OR
-            c.ContractName LIKE :q OR
-            c.Counterparty LIKE :q OR
-            c.RelatedSupplier LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'c.ContractNumber',
+            'c.ContractName',
+            'c.Counterparty',
+            'c.RelatedSupplier'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(LEGAL_LIST_SORT_COLUMNS, 'contract_id', 'asc', $filters);

@@ -394,13 +394,14 @@ function catalog_list_skus(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            s.SKUCode LIKE :q OR
-            s.ProductName LIKE :q OR
-            s.GTIN14 LIKE :q OR
-            s.UPC LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            's.SKUCode',
+            's.ProductName',
+            's.GTIN14',
+            's.UPC'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = catalog_list_sort_state($filters);

@@ -451,8 +451,13 @@ function product_enrichment_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (e.SKUCode LIKE :q OR e.ProductName LIKE :q OR e.PdfLinkText LIKE :q)';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'e.SKUCode',
+            'e.ProductName',
+            'e.PdfLinkText'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(PRODUCT_ENRICHMENT_LIST_SORT_COLUMNS, 'sku', 'asc', $filters);

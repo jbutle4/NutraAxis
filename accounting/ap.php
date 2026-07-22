@@ -50,8 +50,11 @@ require dirname(__DIR__) . '/includes/header.php';
         <div>
           <div class="section-label">QuickBooks</div>
           <h1>Accounts Payable</h1>
-          <p class="page-lead">Vendor bills from QuickBooks Online. Read-only.</p>
+          <p class="page-lead">Vendor bills from QuickBooks Online. Use <a href="/accounting/sync-production.php">Production sync</a> to link and import bills.</p>
         </div>
+        <?php if (accounting_can_update()): ?>
+        <a class="btn-primary" href="/accounting/sync-production.php?entity=bills">Sync bills</a>
+        <?php endif; ?>
       </div>
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>

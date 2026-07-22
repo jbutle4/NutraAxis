@@ -25,6 +25,33 @@ function db_fetch_inserted_int(PDOStatement $stmt, string $column): int
     throw new RuntimeException("Insert did not return {$column}.");
 }
 
+/**
+ * Build OR'd LIKE predicates with unique parameter names.
+ * PDO ODBC rejects reused names like multiple ":q" placeholders (COUNT field incorrect).
+ *
+ * @param list<string> $columns SQL column/expression list
+ * @return array{0: string, 1: array<string, string>}
+ */
+function db_like_or(array $columns, string $term, string $paramPrefix = 'q'): array
+{
+    $parts = [];
+    $params = [];
+    $index = 0;
+
+    foreach ($columns as $column) {
+        $index++;
+        $name = $paramPrefix . $index;
+        $parts[] = "{$column} LIKE :{$name}";
+        $params[$name] = '%' . $term . '%';
+    }
+
+    if ($parts === []) {
+        return ['(1 = 0)', []];
+    }
+
+    return ['(' . implode(' OR ', $parts) . ')', $params];
+}
+
 function db_bind_value(PDOStatement $stmt, string $param, mixed $value, ?int $type = null): void
 {
     if ($value === null) {

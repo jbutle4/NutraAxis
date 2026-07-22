@@ -208,13 +208,14 @@ function por_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            r.PONumber LIKE :q OR
-            r.JazzASN LIKE :q OR
-            s.SupplierName LIKE :q OR
-            r.DeliveryAddress LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'r.PONumber',
+            'r.JazzASN',
+            's.SupplierName',
+            'r.DeliveryAddress'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(POR_LIST_SORT_COLUMNS, 'scheduled', 'desc', $filters);

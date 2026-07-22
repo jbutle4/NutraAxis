@@ -312,15 +312,16 @@ function das_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            po.PONumber LIKE :q OR
-            a.CompanyName LIKE :q OR
-            a.ContactName LIKE :q OR
-            a.ContactEmail LIKE :q OR
-            a.AppointmentASNNumber LIKE :q OR
-            a.AppointmentAddress LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'po.PONumber',
+            'a.CompanyName',
+            'a.ContactName',
+            'a.ContactEmail',
+            'a.AppointmentASNNumber',
+            'a.AppointmentAddress'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(DAS_LIST_SORT_COLUMNS, 'appointment', 'desc', $filters);

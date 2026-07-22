@@ -273,15 +273,16 @@ function contacts_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            c.ContactFirstName LIKE :q OR
-            c.ContactLastName LIKE :q OR
-            c.ContactCompany LIKE :q OR
-            c.ContactEmail LIKE :q OR
-            c.ContactPhone LIKE :q OR
-            s.SupplierName LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'c.ContactFirstName',
+            'c.ContactLastName',
+            'c.ContactCompany',
+            'c.ContactEmail',
+            'c.ContactPhone',
+            's.SupplierName'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(CONTACTS_LIST_SORT_COLUMNS, 'last_name', 'asc', $filters);

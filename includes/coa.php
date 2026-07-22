@@ -319,8 +319,12 @@ function coa_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (c.ProductName LIKE :q OR c.LotNumber LIKE :q)';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'c.ProductName',
+            'c.LotNumber'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(COA_LIST_SORT_COLUMNS, 'product', 'asc', $filters);

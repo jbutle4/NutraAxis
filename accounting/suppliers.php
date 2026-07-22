@@ -41,8 +41,11 @@ require dirname(__DIR__) . '/includes/header.php';
         <div>
           <div class="section-label">QuickBooks</div>
           <h1>Suppliers</h1>
-          <p class="page-lead">QuickBooks vendors. Read-only today; create and update from Operations is planned.</p>
+          <p class="page-lead">QuickBooks vendors. Use <a href="/accounting/sync-production.php">Production sync</a> to link and create vendors bidirectionally.</p>
         </div>
+        <?php if (accounting_can_update()): ?>
+        <a class="btn-primary" href="/accounting/sync-production.php?entity=suppliers">Sync suppliers</a>
+        <?php endif; ?>
       </div>
       <?php require dirname(__DIR__) . '/includes/accounting-nav.php'; ?>
       <?php require dirname(__DIR__) . '/includes/accounting-connection-banner.php'; ?>

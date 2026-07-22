@@ -44,6 +44,10 @@ require dirname(__DIR__) . '/includes/header.php';
         <div class="admin-actions">
           <?php if (supplier_can_update()): ?>
           <a class="btn-primary" href="/supplier-management/edit.php?id=<?= $supplierId ?>">Edit</a>
+          <form method="post" action="/supplier-management/sync-qbo.php" class="inline-form">
+            <input type="hidden" name="supplier_id" value="<?= $supplierId ?>" />
+            <button type="submit" class="btn-secondary">Sync to QuickBooks Production</button>
+          </form>
           <?php endif; ?>
           <?php if (supplier_can_delete()): ?>
           <form method="post" action="/supplier-management/status.php" class="inline-form" onsubmit="return confirm('<?= $isActive ? 'Deactivate this supplier? It will no longer appear in new PO supplier lists.' : 'Reactivate this supplier?' ?>');">
@@ -57,6 +61,13 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Supplier saved successfully.</div>
+      <?php elseif ($notice === 'qbo_synced'): ?>
+      <div class="admin-notice is-success" role="status">Supplier synced to QuickBooks Production.</div>
+      <?php elseif ($notice === 'qbo_reconciled'): ?>
+      <div class="admin-notice is-success" role="status">Supplier linked to an existing QuickBooks Production vendor.</div>
+      <?php endif; ?>
+      <?php if (!empty($_GET['warning'])): ?>
+      <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warning']) ?></div>
       <?php endif; ?>
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -70,6 +81,11 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Supplier type</dt><dd><?= htmlspecialchars($supplier['SupplierType'] ?? '—') ?></dd></div>
             <div><dt>Address</dt><dd><?= htmlspecialchars($supplier['Address'] ?? '—') ?></dd></div>
             <div><dt>Purchase orders</dt><dd><?= (int) $supplier['POCount'] ?></dd></div>
+            <div><dt>QuickBooks vendor ID</dt><dd><?= htmlspecialchars($supplier['QBO_SupplierID'] ?? '—') ?></dd></div>
+            <div><dt>QBO sync</dt><dd><span class="status-badge <?= supplier_qbo_sync_status_class((string) ($supplier['QBO_SyncStatus'] ?? 'NotSynced')) ?>"><?= htmlspecialchars(supplier_qbo_sync_status_label((string) ($supplier['QBO_SyncStatus'] ?? 'NotSynced'))) ?></span><?php if (!empty($supplier['QBO_SyncedAt'])): ?> · <?= htmlspecialchars(admin_format_datetime($supplier['QBO_SyncedAt'])) ?><?php endif; ?></dd></div>
+            <?php if (!empty($supplier['QBO_SyncError'])): ?>
+            <div><dt>QBO sync error</dt><dd><?= htmlspecialchars((string) $supplier['QBO_SyncError']) ?></dd></div>
+            <?php endif; ?>
             <div><dt>Last modified</dt><dd><?= htmlspecialchars(admin_format_datetime($supplier['ModifiedDate'])) ?><?= !empty($supplier['ModifiedByName']) ? ' by ' . htmlspecialchars($supplier['ModifiedByName']) : '' ?></dd></div>
           </dl>
         </section>

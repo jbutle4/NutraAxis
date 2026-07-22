@@ -14,6 +14,7 @@ const ACCOUNTING_SECTIONS = [
     'inventory'             => ['title' => 'QBO SKU Master', 'href' => '/accounting/inventory.php'],
     'suppliers'             => ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
     'accounts'              => ['title' => 'Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
+    'sync-production'       => ['title' => 'QBO Sync', 'href' => '/accounting/sync-production.php'],
     'procurement-approvals' => ['title' => 'Approvals Queue', 'href' => '/procurement-approvals/'],
 ];
 

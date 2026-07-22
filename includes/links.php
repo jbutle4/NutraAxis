@@ -178,12 +178,13 @@ function links_list(array $filters = []): array
     }
 
     if (!empty($filters['q'])) {
-        $sql .= ' AND (
-            LinkName LIKE :q OR
-            LinkDescription LIKE :q OR
-            LinkURL LIKE :q
-        )';
-        $params['q'] = '%' . $filters['q'] . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            'LinkName',
+            'LinkDescription',
+            'LinkURL'
+        ], (string) $filters['q']);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(LINKS_LIST_SORT_COLUMNS, 'category', 'asc', $filters);

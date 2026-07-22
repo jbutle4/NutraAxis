@@ -911,6 +911,53 @@ function qbo_load_fresh_vendor_for_supplier(array $supplier): ?array
     return $fetch['ok'] ? ($fetch['vendor'] ?? null) : null;
 }
 
+function qbo_find_bill_by_doc_number(string $docNumber, ?string $vendorId = null): ?array
+{
+    $docNumber = trim($docNumber);
+    if ($docNumber === '') {
+        return null;
+    }
+
+    $escaped = str_replace("'", "\\'", $docNumber);
+    $sql = "SELECT * FROM Bill WHERE DocNumber = '" . $escaped . "'";
+    if ($vendorId !== null && trim($vendorId) !== '') {
+        $sql .= " AND VendorRef = '" . str_replace("'", "\\'", trim($vendorId)) . "'";
+    }
+    $sql .= ' MAXRESULTS 5';
+
+    $result = qbo_query($sql);
+    if (!$result['ok']) {
+        return null;
+    }
+
+    $rows = qbo_extract_rows($result['data'], ['Bill']);
+
+    return is_array($rows[0] ?? null) ? $rows[0] : null;
+}
+
+function qbo_apply_bill_link_to_invoice(int $invoiceId, array $bill): void
+{
+    $connection = qbo_get_connection();
+    db()->prepare(<<<SQL
+        UPDATE dbo.SupplierInvoice
+        SET QBO_BillId = :bill_id,
+            QBO_SyncToken = :sync_token,
+            QBO_RealmId = :realm_id,
+            Balance = :balance,
+            SyncStatus = N'Posted',
+            LastSyncError = NULL,
+            LastSyncAt = SYSUTCDATETIME(),
+            ModifiedDate = SYSUTCDATETIME()
+        WHERE SupplierInvoiceID = :id
+    SQL)->execute([
+        'bill_id'    => (string) ($bill['Id'] ?? ''),
+        'sync_token' => (string) ($bill['SyncToken'] ?? ''),
+        'realm_id'   => (string) ($connection['RealmID'] ?? ''),
+        'balance'    => isset($bill['Balance']) ? (float) $bill['Balance'] : null,
+        'id'         => $invoiceId,
+    ]);
+}
+
 function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
 {
     require_once __DIR__ . '/supplier-invoice.php';
@@ -918,6 +965,21 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
     $invoice = supplier_invoice_get($invoiceId);
     if ($invoice === null) {
         return ['ok' => false, 'error' => 'Supplier invoice not found.'];
+    }
+
+    $existingBillId = trim((string) ($invoice['QBO_BillId'] ?? ''));
+    if ($existingBillId !== '') {
+        return ['ok' => true, 'error' => null, 'skipped' => true, 'bill_id' => $existingBillId];
+    }
+
+    $docNumber = trim((string) ($invoice['DocNumber'] ?? ''));
+    if ($docNumber !== '') {
+        $existingBill = qbo_find_bill_by_doc_number($docNumber, (string) ($invoice['VendorRefValue'] ?? ''));
+        if (is_array($existingBill) && !empty($existingBill['Id'])) {
+            qbo_apply_bill_link_to_invoice($invoiceId, $existingBill);
+
+            return ['ok' => true, 'error' => null, 'linked' => true, 'bill_id' => (string) $existingBill['Id']];
+        }
     }
 
     $lines = supplier_invoice_get_lines($invoiceId);

@@ -313,8 +313,13 @@ function label_list_templates(array $filters = []): array
 
     $search = $filters['q'] ?? null;
     if ($search !== null && $search !== '') {
-        $sql .= ' AND (t.CustomerName LIKE :q OR t.SKU LIKE :q OR t.LabelName LIKE :q)';
-        $params['q'] = '%' . $search . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            't.CustomerName',
+            't.SKU',
+            't.LabelName'
+        ], (string) $search);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(LABEL_TEMPLATE_LIST_SORT_COLUMNS, 'scope', 'asc', $filters);
@@ -489,8 +494,14 @@ function label_list_versions(array $filters = []): array
 
     $search = $filters['q'] ?? null;
     if ($search !== null && $search !== '') {
-        $sql .= ' AND (t.CustomerName LIKE :q OR t.SKU LIKE :q OR t.LabelName LIKE :q OR v.VersionNumber LIKE :q)';
-        $params['q'] = '%' . $search . '%';
+        [$likeSql, $likeParams] = db_like_or([
+            't.CustomerName',
+            't.SKU',
+            't.LabelName',
+            'v.VersionNumber'
+        ], (string) $search);
+        $sql .= ' AND ' . $likeSql;
+        $params = array_merge($params, $likeParams);
     }
 
     $sortState = table_sort_state(LABEL_VERSION_LIST_SORT_COLUMNS, 'created', 'desc', $filters);

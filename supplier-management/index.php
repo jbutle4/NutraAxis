@@ -91,7 +91,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($suppliers === []): ?>
-            <tr><td colspan="7">No suppliers match your filters.</td></tr>
+            <tr><td colspan="8">No suppliers match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($suppliers as $supplier): ?>
             <tr>
@@ -105,6 +105,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 <?php endif; ?>
               </td>
               <td><span class="status-badge <?= supplier_status_class(!empty($supplier['IsActive'])) ?>"><?= htmlspecialchars(supplier_status_label(!empty($supplier['IsActive']))) ?></span></td>
+              <td><span class="status-badge <?= supplier_qbo_sync_status_class((string) ($supplier['QBO_SyncStatus'] ?? 'NotSynced')) ?>"><?= htmlspecialchars(supplier_qbo_sync_status_label((string) ($supplier['QBO_SyncStatus'] ?? 'NotSynced'))) ?></span></td>
               <td><?= (int) $supplier['POCount'] ?></td>
               <?php table_view_edit_cell(
                   '/supplier-management/view.php?id=' . (int) $supplier['SupplierID'],
