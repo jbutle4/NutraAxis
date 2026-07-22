@@ -388,6 +388,15 @@ $accountingSubModules = [
         'sort'  => 81,
     ],
     [
+        'slug'  => 'qbo-sync-bills',
+        'title' => 'QBO Bill Sync',
+        'desc'  => 'Link and import Production QuickBooks bills with Operations supplier invoices.',
+        'href'  => '/accounting/sync-production.php?entity=bills',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 82,
+    ],
+    [
         'slug'  => 'procurement-approvals',
         'title' => 'Approvals Queue',
         'desc'  => 'Pending and completed PO and supplier invoice approvals (Payment + QBO Insert recovery).',

@@ -51,6 +51,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'qbo-purchase-orders-uat'=> 'Accounting',
     'qbo-suppliers'          => 'Accounting',
     'qbo-suppliers-uat'      => 'Accounting',
+    'qbo-sync-bills'         => 'Accounting',
     'supplier-invoices'      => 'Accounting',
     'supplier-invoices-uat'  => 'Accounting',
     'invoice-payments'       => 'Accounting',
