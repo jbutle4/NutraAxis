@@ -510,6 +510,14 @@ $appFunctions = [
         'group' => 'supply-chain',
     ],
     [
+        'slug'  => 'product-enrichment',
+        'title' => 'Product Enrichment',
+        'desc'  => 'Manage PDP HTML and information sheet PDFs for nutraaxislabs.com product pages.',
+        'href'  => '/product-enrichment/',
+        'icon'  => 'document',
+        'group' => 'supply-chain',
+    ],
+    [
         'slug'  => 'inventory-management',
         'title' => 'Inventory Management',
         'desc'  => 'Stock visibility, reconciliation, and demand forecasting across facilities.',
@@ -612,6 +620,7 @@ $modulePages = [
         'lead'        => 'Define and maintain NutraAxis SKU master data and Jazz OMS item references.',
         'capabilities' => [
             ['title' => 'Product SKU Master', 'desc' => 'Canonical SKU codes, attributes, pricing, and QuickBooks sync settings.'],
+            ['title' => 'Product Page Enrichment', 'desc' => 'PDP HTML and information sheet PDFs for nutraaxislabs.com product pages.'],
             ['title' => 'Jazz Item Master', 'desc' => 'Read-only Jazz OMS item reference for reconciliation.'],
             ['title' => 'QBO Product Master', 'desc' => 'QuickBooks inventory items — SKU, pricing, quantity on hand, and NutraAxis link.'],
         ],
