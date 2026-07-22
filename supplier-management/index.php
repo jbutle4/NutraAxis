@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/includes/supplier.php';
 supplier_require_read();
 
 $activeSlug = 'supplier-management';
+$hubBack = app_module_hub_back_link('supplier-management');
 $statusFilter = $_GET['status'] ?? 'active';
 $search = trim($_GET['q'] ?? '');
 $listFilters = [
@@ -14,7 +15,7 @@ $listFilters = [
 $suppliers = supplier_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'Supplier Management | NutraAxis Operations';
+$pageTitle = 'Supplier Management | Procurement';
 $pageDescription = 'View and manage supplier profiles used across purchase orders.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -22,16 +23,16 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Inventory Management
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">
         <div>
-          <div class="section-label">Inventory</div>
+          <div class="section-label">Procurement</div>
           <h1>Supplier Management</h1>
           <p class="page-lead">Maintain supplier profiles, contacts, and addresses used when creating purchase orders.</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(supplier_permission_value())) ?></p>

@@ -45,7 +45,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </a>
 
       <div class="page-hero">
-        <div class="section-label">Inventory</div>
+        <div class="section-label">Procurement</div>
         <h1>Edit <?= htmlspecialchars($supplier['SupplierName']) ?></h1>
         <p class="page-lead">Update supplier profile and contact details.</p>
       </div>

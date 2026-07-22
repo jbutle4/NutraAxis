@@ -10,13 +10,15 @@ const PRODUCT_ENRICHMENT_ALLOWED_EXTENSIONS = ['pdf'];
 const PRODUCT_ENRICHMENT_LIST_SORT_COLUMNS = [
     'sku'      => 'SKU',
     'product'  => 'Product',
+    'pdf_link' => 'PDF link text',
     'publish'  => 'Publish',
-    'modified' => 'Modified',
+    'modified' => 'Date|Time Modified',
 ];
 
 const PRODUCT_ENRICHMENT_LIST_SORT_SQL = [
     'sku'      => 'e.SKUCode',
     'product'  => 'e.ProductName',
+    'pdf_link' => 'e.PdfLinkText',
     'publish'  => 'e.Publish',
     'modified' => 'e.ModifiedDate',
 ];
@@ -392,8 +394,16 @@ function product_enrichment_validate_upload(?array $file, bool $required): ?stri
         return $required ? 'PDF file is required.' : null;
     }
 
-    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-        return 'Unable to upload the PDF file.';
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_OK);
+    if ($error !== UPLOAD_ERR_OK) {
+        return match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'PDF is too large for the server upload limit (max 15 MB).',
+            UPLOAD_ERR_PARTIAL => 'PDF upload was interrupted. Please try again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server temporary upload folder is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'Server could not write the uploaded PDF.',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension blocked the PDF upload.',
+            default => 'Unable to upload the PDF file.',
+        };
     }
 
     $size = (int) ($file['size'] ?? 0);
@@ -663,7 +673,7 @@ function product_enrichment_save_upload(int $productEnrichmentId, array $file, s
 {
     $content = file_get_contents((string) ($file['tmp_name'] ?? ''));
     if ($content === false || $content === '') {
-        return ['ok' => false, 'error' => 'Unable to read uploaded PDF.'];
+        return ['ok' => false, 'error' => 'Unable to read uploaded PDF.', 'blob_path' => null];
     }
 
     $fileName = product_enrichment_build_file_name($productName);
@@ -682,8 +692,14 @@ function product_enrichment_save_upload(int $productEnrichmentId, array $file, s
     );
 
     if (!$stored['ok']) {
-        return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save PDF to blob storage.'];
+        return [
+            'ok'        => false,
+            'error'     => $stored['error'] ?? 'Unable to save PDF to blob storage.',
+            'blob_path' => null,
+        ];
     }
+
+    $blobPath = (string) ($stored['blob_path'] ?? '');
 
     db()->prepare(<<<SQL
         UPDATE dbo.ProductEnrichment
@@ -698,11 +714,11 @@ function product_enrichment_save_upload(int $productEnrichmentId, array $file, s
         'file_name'    => $fileName,
         'content_type' => $contentType,
         'file_size'    => strlen($content),
-        'blob_path'    => (string) ($stored['blob_path'] ?? ''),
+        'blob_path'    => $blobPath,
         'id'           => $productEnrichmentId,
     ]);
 
-    return ['ok' => true, 'error' => null];
+    return ['ok' => true, 'error' => null, 'blob_path' => $blobPath];
 }
 
 function product_enrichment_save(array $input, ?array $file = null): array
@@ -813,7 +829,9 @@ function product_enrichment_save(array $input, ?array $file = null): array
                 return ['ok' => false, 'error' => $upload['error'] ?? 'Unable to save PDF.', 'id' => 0];
             }
 
-            if ($oldBlob !== '') {
+            // Canonical filenames keep the same blob path on replace — do not delete the file we just wrote.
+            $newBlob = trim((string) ($upload['blob_path'] ?? ''));
+            if ($oldBlob !== '' && $newBlob !== '' && $oldBlob !== $newBlob) {
                 attachment_storage_delete($oldBlob);
             }
         }

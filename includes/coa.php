@@ -260,8 +260,16 @@ function coa_validate_upload(?array $file, bool $required): ?string
         return $required ? 'PDF file is required.' : null;
     }
 
-    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-        return 'Unable to upload the PDF file.';
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_OK);
+    if ($error !== UPLOAD_ERR_OK) {
+        return match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'PDF is too large for the server upload limit (max 15 MB).',
+            UPLOAD_ERR_PARTIAL => 'PDF upload was interrupted. Please try again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server temporary upload folder is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'Server could not write the uploaded PDF.',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension blocked the PDF upload.',
+            default => 'Unable to upload the PDF file.',
+        };
     }
 
     $size = (int) ($file['size'] ?? 0);
@@ -383,7 +391,7 @@ function coa_save_upload(int $coaDocumentId, array $file, string $productName, s
 {
     $content = file_get_contents((string) ($file['tmp_name'] ?? ''));
     if ($content === false || $content === '') {
-        return ['ok' => false, 'error' => 'Unable to read uploaded PDF.'];
+        return ['ok' => false, 'error' => 'Unable to read uploaded PDF.', 'blob_path' => null];
     }
 
     $fileName = coa_build_file_name($productName, $lotNumber);
@@ -402,8 +410,14 @@ function coa_save_upload(int $coaDocumentId, array $file, string $productName, s
     );
 
     if (!$stored['ok']) {
-        return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save PDF to blob storage.'];
+        return [
+            'ok'        => false,
+            'error'     => $stored['error'] ?? 'Unable to save PDF to blob storage.',
+            'blob_path' => null,
+        ];
     }
+
+    $blobPath = (string) ($stored['blob_path'] ?? '');
 
     $pdo = db();
     $pdo->prepare(<<<SQL
@@ -419,11 +433,11 @@ function coa_save_upload(int $coaDocumentId, array $file, string $productName, s
         'file_name'    => $fileName,
         'content_type' => $contentType,
         'file_size'    => strlen($content),
-        'blob_path'    => (string) ($stored['blob_path'] ?? ''),
+        'blob_path'    => $blobPath,
         'id'           => $coaDocumentId,
     ]);
 
-    return ['ok' => true, 'error' => null];
+    return ['ok' => true, 'error' => null, 'blob_path' => $blobPath];
 }
 
 function coa_save(array $input, ?array $file = null): array
@@ -521,7 +535,9 @@ function coa_save(array $input, ?array $file = null): array
                 return ['ok' => false, 'error' => $upload['error'] ?? 'Unable to save PDF.', 'id' => 0];
             }
 
-            if ($oldBlob !== '') {
+            // Same canonical path on replace — do not delete the file we just wrote.
+            $newBlob = trim((string) ($upload['blob_path'] ?? ''));
+            if ($oldBlob !== '' && $newBlob !== '' && $oldBlob !== $newBlob) {
                 attachment_storage_delete($oldBlob);
             }
         }
