@@ -49,9 +49,6 @@ function qbo_uses_sandbox_oauth(?string $env = null): bool
     return qbo_normalize_environment($env ?? qbo_environment()) !== QBO_ENV_PRODUCTION;
 }
 
-<<<<<<< HEAD
-function qbo_client_id(?string $env = null): string
-=======
 /**
  * Resolve an inventory COA account setting for the active QBO_ENVIRONMENT.
  * Prefer env-specific keys so sandbox + production Ids can both live in App Settings:
@@ -72,8 +69,7 @@ function qbo_inv_account_setting(string $baseKey): string
     return trim((string) env_first([$baseKey . '_SANDBOX', $baseKey], ''));
 }
 
-function qbo_client_id(): string
->>>>>>> be3f7cf (Support sandbox and production QBO inventory account settings side by side)
+function qbo_client_id(?string $env = null): string
 {
     $env = qbo_normalize_environment($env ?? qbo_environment());
     if ($env === QBO_ENV_PRODUCTION) {
