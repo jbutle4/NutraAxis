@@ -43,6 +43,10 @@ $lines = supplier_invoice_get_lines($invoiceId);
 $form = supplier_invoice_to_form($invoice, $lines);
 $suppliers = supplier_invoice_list_suppliers();
 $poOptions = supplier_invoice_po_options((int) $invoice['SupplierID']);
+$accountPicklists = supplier_invoice_account_picklists();
+$apAccounts = $accountPicklists['ap_accounts'] ?? [];
+$expenseAccounts = $accountPicklists['expense_accounts'] ?? [];
+$accountPicklistsError = $accountPicklists['ok'] ? null : ($accountPicklists['error'] ?? 'Unable to load QuickBooks accounts.');
 $attachments = supplier_invoice_list_attachments($invoiceId);
 $notice = $_GET['notice'] ?? null;
 
@@ -81,6 +85,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-detail" role="status">This invoice is <?= htmlspecialchars(strtolower((string) $invoice['SyncStatus'])) ?> and cannot be edited.</div>
       <?php elseif (supplier_invoice_posted_is_reopenable($invoice)): ?>
       <div class="admin-notice" role="status">This invoice was payment-approved<?= payment_approval_is_stub_mode() ? ' in test mode' : '' ?> and can be edited before resubmitting for payment approval from the invoice view page. Use Submit for QBO Insert there if you only need accounting posting recovery.</div>
+      <?php endif; ?>
+
+      <?php if ($accountPicklistsError !== null && !supplier_invoice_is_qbo_stub_mode()): ?>
+      <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($accountPicklistsError) ?> Connect QuickBooks and ensure chart of accounts is available before editing invoice accounts.</div>
       <?php endif; ?>
 
       <?php if ($error !== null): ?>

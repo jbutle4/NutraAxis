@@ -89,6 +89,131 @@ function supplier_invoice_is_qbo_stub_mode(): bool
     return filter_var(env('QBO_INSERT_STUB', '1'), FILTER_VALIDATE_BOOLEAN);
 }
 
+function supplier_invoice_account_option_label(array $account): string
+{
+    $name = trim((string) ($account['Name'] ?? ''));
+    $number = trim((string) ($account['AcctNum'] ?? ''));
+    $id = trim((string) ($account['Id'] ?? ''));
+
+    if ($number !== '' && $name !== '') {
+        return $number . ' — ' . $name;
+    }
+
+    if ($name !== '') {
+        return $name;
+    }
+
+    return $id !== '' ? 'Account ' . $id : 'Account';
+}
+
+function supplier_invoice_account_is_ap(array $account): bool
+{
+    $type = strtolower(trim((string) ($account['AccountType'] ?? '')));
+
+    return $type === 'accounts payable' || str_contains($type, 'payable');
+}
+
+function supplier_invoice_account_is_expense(array $account): bool
+{
+    $type = strtolower(trim((string) ($account['AccountType'] ?? '')));
+    $subtype = strtolower(trim((string) ($account['AccountSubType'] ?? '')));
+
+    return in_array($type, ['expense', 'other expense', 'cost of goods sold'], true)
+        || str_contains($subtype, 'expense');
+}
+
+/**
+ * @return array{
+ *   ok:bool,
+ *   error:?string,
+ *   ap_accounts:array<int,array>,
+ *   expense_accounts:array<int,array>
+ * }
+ */
+function supplier_invoice_account_picklists(): array
+{
+    require_once __DIR__ . '/quickbooks.php';
+
+    $accounts = qbo_list_accounts();
+    if (!$accounts['ok']) {
+        return [
+            'ok'               => false,
+            'error'            => (string) ($accounts['error'] ?? 'Unable to load QuickBooks accounts.'),
+            'ap_accounts'      => [],
+            'expense_accounts' => [],
+        ];
+    }
+
+    $apAccounts = [];
+    $expenseAccounts = [];
+    foreach ($accounts['rows'] ?? [] as $account) {
+        if (!is_array($account)) {
+            continue;
+        }
+        if (array_key_exists('Active', $account) && empty($account['Active'])) {
+            continue;
+        }
+
+        if (supplier_invoice_account_is_ap($account)) {
+            $apAccounts[] = $account;
+        }
+        if (supplier_invoice_account_is_expense($account)) {
+            $expenseAccounts[] = $account;
+        }
+    }
+
+    usort($apAccounts, static fn(array $a, array $b): int => strcasecmp(
+        supplier_invoice_account_option_label($a),
+        supplier_invoice_account_option_label($b)
+    ));
+    usort($expenseAccounts, static fn(array $a, array $b): int => strcasecmp(
+        supplier_invoice_account_option_label($a),
+        supplier_invoice_account_option_label($b)
+    ));
+
+    return [
+        'ok'               => true,
+        'error'            => null,
+        'ap_accounts'      => $apAccounts,
+        'expense_accounts' => $expenseAccounts,
+    ];
+}
+
+function supplier_invoice_account_select_options(array $accounts, ?string $selectedId, string $blankLabel = 'Select account'): string
+{
+    $html = '<option value="">' . htmlspecialchars($blankLabel) . '</option>';
+    foreach ($accounts as $account) {
+        $id = trim((string) ($account['Id'] ?? ''));
+        if ($id === '') {
+            continue;
+        }
+
+        $name = (string) ($account['Name'] ?? '');
+        $selected = $selectedId === $id ? ' selected' : '';
+        $html .= '<option value="' . htmlspecialchars($id, ENT_QUOTES) . '" data-name="' . htmlspecialchars($name, ENT_QUOTES) . '"' . $selected . '>'
+            . htmlspecialchars(supplier_invoice_account_option_label($account))
+            . '</option>';
+    }
+
+    return $html;
+}
+
+function supplier_invoice_resolve_account_name(string $accountId, array $accounts): string
+{
+    $accountId = trim($accountId);
+    if ($accountId === '') {
+        return '';
+    }
+
+    foreach ($accounts as $account) {
+        if (trim((string) ($account['Id'] ?? '')) === $accountId) {
+            return trim((string) ($account['Name'] ?? ''));
+        }
+    }
+
+    return '';
+}
+
 function supplier_invoice_require_read(): void
 {
     accounting_require_read();
@@ -514,10 +639,20 @@ function supplier_invoice_parse_lines(array $input): array
 
         if ($detailType === 'AccountBasedExpenseLineDetail' && $accountRefValue === '') {
             if (!supplier_invoice_is_qbo_stub_mode()) {
-                return ['error' => 'Account-based lines require a QuickBooks account ID.'];
+                return ['error' => 'Account-based lines require a QuickBooks expense account.'];
             }
             $accountRefValue = 'STUB-ACCT';
             $accountRefName = $accountRefName !== '' ? $accountRefName : 'Stub expense account';
+        }
+
+        if ($detailType === 'AccountBasedExpenseLineDetail' && $accountRefValue !== '' && $accountRefName === '') {
+            $picklists = supplier_invoice_account_picklists();
+            if ($picklists['ok']) {
+                $accountRefName = supplier_invoice_resolve_account_name(
+                    $accountRefValue,
+                    $picklists['expense_accounts']
+                );
+            }
         }
 
         if ($detailType === 'ItemBasedExpenseLineDetail' && $itemRefValue === '') {
@@ -597,6 +732,16 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
     $parsedLines = supplier_invoice_parse_lines($input);
     if (isset($parsedLines['error'])) {
         return ['ok' => false, 'error' => $parsedLines['error']];
+    }
+
+    if ($data['ap_account_ref_value'] !== '' && $data['ap_account_ref_name'] === '') {
+        $picklists = supplier_invoice_account_picklists();
+        if ($picklists['ok']) {
+            $data['ap_account_ref_name'] = supplier_invoice_resolve_account_name(
+                $data['ap_account_ref_value'],
+                $picklists['ap_accounts']
+            );
+        }
     }
 
     $lines = $parsedLines['lines'];

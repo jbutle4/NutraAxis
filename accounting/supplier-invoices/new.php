@@ -47,6 +47,10 @@ $suppliers = supplier_invoice_list_suppliers();
 $poOptions = supplier_invoice_po_options(
     !empty($form['supplier_id']) ? (int) $form['supplier_id'] : null
 );
+$accountPicklists = supplier_invoice_account_picklists();
+$apAccounts = $accountPicklists['ap_accounts'] ?? [];
+$expenseAccounts = $accountPicklists['expense_accounts'] ?? [];
+$accountPicklistsError = $accountPicklists['ok'] ? null : ($accountPicklists['error'] ?? 'Unable to load QuickBooks accounts.');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = array_merge($form, supplier_invoice_from_input($_POST), ['lines' => $_POST['lines'] ?? []]);
@@ -82,6 +86,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       ?>
 
       <?php require dirname(__DIR__, 2) . '/includes/accounting-nav.php'; ?>
+
+      <?php if ($accountPicklistsError !== null && !supplier_invoice_is_qbo_stub_mode()): ?>
+      <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($accountPicklistsError) ?> Connect QuickBooks and ensure chart of accounts is available before creating invoices.</div>
+      <?php endif; ?>
 
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>

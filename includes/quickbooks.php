@@ -1440,7 +1440,26 @@ function qbo_coa_list_accounts(bool $activeOnly = true): array
 
 function qbo_list_accounts(): array
 {
-    return qbo_coa_list_accounts();
+    $cached = qbo_coa_list_accounts();
+    if ($cached['ok'] && ($cached['rows'] ?? []) !== []) {
+        return $cached;
+    }
+
+    if (!qbo_is_connected()) {
+        return $cached;
+    }
+
+    $result = qbo_query('SELECT * FROM Account ORDERBY Name');
+    if (!$result['ok']) {
+        return $cached['ok'] ? $cached : $result;
+    }
+
+    return [
+        'ok'     => true,
+        'error'  => null,
+        'rows'   => qbo_extract_rows($result['data'], ['Account']),
+        'source' => 'api',
+    ];
 }
 
 function qbo_extract_vendor(?array $data): ?array

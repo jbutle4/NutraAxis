@@ -2251,6 +2251,54 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   grid-column: 1 / -1;
 }
 
+.form-grid-compact {
+  gap: 10px 16px;
+}
+
+.form-group-inline {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 7.75rem) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  margin: 0;
+}
+
+.form-group-inline--wide {
+  grid-column: 1 / -1;
+}
+
+.form-group-inline > label {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.form-group-inline .form-input,
+.form-group-inline select.form-input,
+.form-group-inline textarea.form-input {
+  width: 100%;
+}
+
+.form-group-inline-field {
+  min-width: 0;
+}
+
+.form-group-inline .form-hint,
+.form-group-inline .form-static {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+}
+
+.supplier-invoice-header-grid .form-group-inline--wide > .form-hint {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.supplier-invoice-form .admin-table .form-input {
+  min-width: 8rem;
+}
+
 .production-status-card {
   margin-top: 20px;
 }
@@ -2699,6 +2747,10 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   .form-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+  .form-group-inline {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
   .ops-badge,
   .header-dashboard-title { display: none; }
