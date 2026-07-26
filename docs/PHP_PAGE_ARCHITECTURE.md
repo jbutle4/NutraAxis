@@ -24,7 +24,8 @@ There is **no** front controller or router.
 5. Register card/href in `includes/app.php` (hub submodule array and/or `$appFunctions`).
 6. Set `$pageTitle`, `$activeSlug`; render `head` → `header` → `<main>` → `footer`.
 7. Prefer `render_list_page_header()` over hand-rolled breadcrumbs.
-8. Use Post/Redirect/Get with `?notice=created|updated|…` for success flash.
+8. Run `php scripts/audit-portal-nav.php` before merge (CI enforces on PRs to `main`).
+9. Use Post/Redirect/Get with `?notice=created|updated|…` for success flash.
 
 ## Add a hub
 

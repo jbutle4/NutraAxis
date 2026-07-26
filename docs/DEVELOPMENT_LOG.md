@@ -234,3 +234,11 @@ Example:
 - Home **Operations** cards come from `includes/operations-dashboard.php` (not the dedicated dashboard page). Added missing **Contacts List** card after Supplier Management so it appears on `/`.
 - Selective FTP to `nutraaxisweb`: Approvals Queue, Contacts List pages, hub/auth/admin/contacts includes, `operations-dashboard` + home shared sections, `my-account`. Live URLs still auth-redirect (302).
 - `AGENTS.md` already documents deploy-then-merge + pre-merge open-branch conflict scan; no further rule edits required.
+
+---
+
+## 2026-07-26 — Portal nav audit + git-push deploy path
+
+- Added `scripts/audit-portal-nav.php` — fails when hub/auth/Operations-home wiring drifts (duplicate dashboard arrays, stale `/operations-dashboard/` breadcrumbs, missing auth slugs, etc.). Runs in GitHub Actions `portal-ci.yml` on PR/push to `main`.
+- Added `scripts/build-deploy-package.js` + `azure-deploy.yml` workflow for zip deploy to `nutraaxisweb` (requires `AZURE_WEBAPP_PUBLISH_PROFILE` secret). See `docs/DEPLOY_GIT_PUSH.md`.
+- `npm run audit:nav` / `npm run build:deploy` for local use.

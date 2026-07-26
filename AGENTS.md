@@ -37,7 +37,9 @@ Before merging any branch or PR into `main`:
 
 ## Deploy notes
 
-- Credentials: local `.vscode/sftp.json` (gitignored). Scripts: `npm run upload`, `node scripts/ftp-upload-files.js <paths…>`
+- **Target:** git-push deploy via GitHub Actions — see [`docs/DEPLOY_GIT_PUSH.md`](docs/DEPLOY_GIT_PUSH.md). FTP remains for emergencies until `AZURE_WEBAPP_PUBLISH_PROFILE` is configured.
+- Credentials (FTP fallback): local `.vscode/sftp.json` (gitignored). Scripts: `npm run upload`, `node scripts/ftp-upload-files.js <paths…>`
+- **Nav guard:** `php scripts/audit-portal-nav.php` (also runs in CI on every PR/push to `main`)
 - Host/user documented in `docs/SYSTEM_APPRECIATION.md` §7
 - SQL migrations: `node scripts/run-sql-file.js sql/<file>` with local `.env` (`DB_*`)
 - Do **not** deploy `.env`, `.vscode/`, `node_modules/`, or `Archive Sites/`
@@ -91,6 +93,11 @@ Home cards, left nav, hub pages, and “Back to …” links all come from **`in
 6. Confirm table headers match body columns one-for-one (sort column maps in the module include).
 7. For Accounting URLs, use `accounting_path()` only for `/accounting/…` routes — top-level folders like `/procurement-approvals/` must not be rewritten under `/accounting/`.
 8. Smoke the hub card, left nav entry, and back link after deploy.
+9. Run `php scripts/audit-portal-nav.php` before merge — CI enforces this on PRs to `main`.
+
+### Operations home cards
+
+Internal shortcuts on `/` come from **`includes/operations-dashboard.php`** only. Do **not** add link arrays to `operations-dashboard/index.php` (redirect stub). Legacy URL `operations-dashboard.php` must redirect to `/`.
 
 ### Related helpers
 

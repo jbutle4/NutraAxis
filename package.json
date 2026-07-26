@@ -6,6 +6,8 @@
   "scripts": {
     "upload": "node scripts/ftp-upload.js",
     "upload:files": "node scripts/ftp-upload-files.js",
+    "audit:nav": "php scripts/audit-portal-nav.php",
+    "build:deploy": "node scripts/build-deploy-package.js",
     "jazz-snapshot": "php scripts/jazz-inventory-snapshot.php",
     "daily-sales-summary": "php scripts/daily-sales-summary.php",
     "monthly-sales-summary": "php scripts/monthly-sales-summary.php",

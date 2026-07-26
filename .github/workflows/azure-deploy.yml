@@ -1,0 +1,42 @@
+name: Deploy to Azure App Service
+
+# Manual deploy from main (or enable push trigger after AZURE_WEBAPP_PUBLISH_PROFILE is set).
+# See docs/DEPLOY_GIT_PUSH.md
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'sql/**'
+      - '*.md'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Portal navigation audit
+        run: php scripts/audit-portal-nav.php
+
+      - name: Build deployment package
+        run: node scripts/build-deploy-package.js deploy-package.zip
+
+      - name: Deploy to nutraaxisweb
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: nutraaxisweb
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy-package.zip
