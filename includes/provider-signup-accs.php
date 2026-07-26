@@ -5,6 +5,7 @@ require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/provider-signup-crypto.php';
 
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
+const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 
 function provider_signup_accs_target_environment(): string
@@ -17,6 +18,16 @@ function provider_signup_accs_customer_group_id(): int
     $configured = (int) env('PROVIDER_SIGNUP_ACCS_USER_GROUP_ID', (string) PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT);
 
     return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT;
+}
+
+function provider_signup_accs_sales_representative_id(): int
+{
+    $configured = (int) env(
+        'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
+        (string) PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT
+    );
+
+    return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT;
 }
 
 function provider_signup_accs_website_id(): int
@@ -354,14 +365,14 @@ function provider_signup_accs_set_customer_group(int $customerId, int $groupId, 
 }
 
 /**
- * Force company customer_group_id to Practitioner after create/update.
+ * Force company customer_group_id and sales_representative_id after create/update.
  *
  * @return array{ok: bool, error: ?string}
  */
-function provider_signup_accs_set_company_customer_group(int $companyId, int $groupId): array
+function provider_signup_accs_set_company_defaults(int $companyId, int $groupId, int $salesRepresentativeId): array
 {
-    if ($companyId <= 0 || $groupId <= 0) {
-        return ['ok' => false, 'error' => 'Company ID and group ID are required.'];
+    if ($companyId <= 0 || $groupId <= 0 || $salesRepresentativeId <= 0) {
+        return ['ok' => false, 'error' => 'Company ID, group ID, and sales representative ID are required.'];
     }
 
     $current = provider_signup_accs_api_request('GET', '/company/' . $companyId);
@@ -370,11 +381,22 @@ function provider_signup_accs_set_company_customer_group(int $companyId, int $gr
     }
 
     $company = $current['data'];
-    if ((int) ($company['customer_group_id'] ?? 0) === $groupId) {
+    $needsUpdate = false;
+
+    if ((int) ($company['customer_group_id'] ?? 0) !== $groupId) {
+        $company['customer_group_id'] = $groupId;
+        $needsUpdate = true;
+    }
+
+    if ((int) ($company['sales_representative_id'] ?? 0) !== $salesRepresentativeId) {
+        $company['sales_representative_id'] = $salesRepresentativeId;
+        $needsUpdate = true;
+    }
+
+    if (!$needsUpdate) {
         return ['ok' => true, 'error' => null];
     }
 
-    $company['customer_group_id'] = $groupId;
     $result = provider_signup_accs_api_request('PUT', '/company/' . $companyId, null, [
         'company' => $company,
     ]);
@@ -405,21 +427,22 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
 
     return [
         'company' => [
-            'status'            => 1,
-            'company_name'      => trim((string) ($application['CompanyName'] ?? '')),
-            'legal_name'        => trim((string) ($application['CompanyLegalName'] ?? '')),
-            'company_email'     => trim((string) ($application['CompanyEmail'] ?? '')),
-            'vat_tax_id'        => $taxId !== '' ? $taxId : null,
-            'reseller_id'       => $npi !== '' ? $npi : null,
-            'comment'           => implode("\n", $commentParts),
-            'street'            => $street !== '' ? [$street] : [''],
-            'city'              => trim((string) ($application['City'] ?? '')),
-            'country_id'        => $countryId,
-            'region_id'         => $regionId,
-            'postcode'          => trim((string) ($application['PostalCode'] ?? '')),
-            'telephone'         => trim((string) ($application['CompanyPhone'] ?? '')),
-            'customer_group_id' => $groupId,
-            'super_user_id'     => $superUserId,
+            'status'                   => 1,
+            'company_name'             => trim((string) ($application['CompanyName'] ?? '')),
+            'legal_name'               => trim((string) ($application['CompanyLegalName'] ?? '')),
+            'company_email'            => trim((string) ($application['CompanyEmail'] ?? '')),
+            'vat_tax_id'               => $taxId !== '' ? $taxId : null,
+            'reseller_id'              => $npi !== '' ? $npi : null,
+            'comment'                  => implode("\n", $commentParts),
+            'street'                   => $street !== '' ? [$street] : [''],
+            'city'                     => trim((string) ($application['City'] ?? '')),
+            'country_id'               => $countryId,
+            'region_id'                => $regionId,
+            'postcode'                 => trim((string) ($application['PostalCode'] ?? '')),
+            'telephone'                => trim((string) ($application['CompanyPhone'] ?? '')),
+            'customer_group_id'        => $groupId,
+            'sales_representative_id'  => provider_signup_accs_sales_representative_id(),
+            'super_user_id'            => $superUserId,
         ],
     ];
 }
@@ -518,11 +541,15 @@ function provider_signup_accs_provision(array $application): array
     }
 
     $companyId = (int) $company['company_id'];
-    $groupSync = provider_signup_accs_set_company_customer_group($companyId, $groupId);
-    if (!$groupSync['ok']) {
+    $companyDefaults = provider_signup_accs_set_company_defaults(
+        $companyId,
+        $groupId,
+        provider_signup_accs_sales_representative_id()
+    );
+    if (!$companyDefaults['ok']) {
         return [
             'ok'    => false,
-            'error' => $groupSync['error'] ?? 'Unable to set Practitioner customer group on ACCS company.',
+            'error' => $companyDefaults['error'] ?? 'Unable to set Practitioner group / Sales_Support on ACCS company.',
         ];
     }
 

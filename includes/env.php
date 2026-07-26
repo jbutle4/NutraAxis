@@ -92,6 +92,7 @@ function env(string $key, ?string $default = null): ?string
             'PROVIDER_ACCS_LOGIN_URL',
             'PROVIDER_SIGNUP_ACCS_ENVIRONMENT',
             'PROVIDER_SIGNUP_ACCS_USER_GROUP_ID',
+            'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
             'PROVIDER_SIGNUP_ACCS_WEBSITE_ID',
             'PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD',
             'NUTRAAXIS_STORE_URL',
