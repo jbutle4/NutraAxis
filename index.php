@@ -24,23 +24,6 @@ if (auth_is_logged_in() && auth_can_read_module('operations-dashboard')) {
             $links[] = $normalized;
         }
 
-        if (($section['title'] ?? '') === 'IT & Ecommerce Management Systems') {
-            foreach (operations_dashboard_action_cards() as $actionCard) {
-                if (($actionCard['action'] ?? '') !== 'accs_test_orders') {
-                    continue;
-                }
-
-                $links[] = operations_dashboard_normalize_link([
-                    'title'    => (string) ($actionCard['title'] ?? 'ACCS Test Order Creation'),
-                    'desc'     => (string) ($actionCard['desc'] ?? 'Open the test order creation tool.'),
-                    'href'     => '/operations-dashboard/#accs-test-orders-form',
-                    'icon'     => (string) ($actionCard['icon'] ?? 'chart'),
-                    'internal' => true,
-                    'tier'     => $actionCard['tier'] ?? ENVIRONMENT_TIER_UAT,
-                ]);
-            }
-        }
-
         if ($links !== []) {
             $dashboardGroups[] = [
                 'key'     => preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($section['title'] ?? 'dashboard'))),

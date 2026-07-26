@@ -104,7 +104,7 @@ function nav_nested_group_is_active(array $group): bool
 
 function nav_operations_dashboard_is_active(?string $activeSlug): bool
 {
-    if (($activeSlug ?? '') === 'operations-dashboard' && nav_href_is_active('/operations-dashboard/')) {
+    if (($activeSlug ?? '') === 'operations-dashboard' && nav_href_is_active('/')) {
         return true;
     }
 

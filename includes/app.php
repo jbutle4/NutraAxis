@@ -594,7 +594,7 @@ $appFunctions = [
         'slug'  => 'operations-dashboard',
         'title' => 'Operations Dashboard',
         'desc'  => 'Shortcuts to Microsoft 365, QuickBooks, Adobe Commerce, and support tools.',
-        'href'  => '/operations-dashboard/',
+        'href'  => '/',
         'icon'  => 'dashboard',
         'group' => 'admin',
     ],

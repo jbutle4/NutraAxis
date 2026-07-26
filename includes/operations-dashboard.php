@@ -104,7 +104,7 @@ function operations_dashboard_sections(): array
                 [
                     'title'    => 'Other Links',
                     'desc'     => 'Open the full Links Index shortcut page currently maintained from Manage Links.',
-                    'href'     => '/operations-dashboard/other-links.php',
+                    'href'     => '/links-index/',
                     'icon'     => 'links',
                     'internal' => true,
                     'module'   => 'links-index',

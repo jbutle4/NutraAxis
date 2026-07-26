@@ -21,7 +21,6 @@ const CONFIG_PATH = path.join(ROOT, '.vscode', 'sftp.json');
 const ORPHAN_ROOT_FILES = [
   'product-catalog.php',
   'legal-agreements.php',
-  'operations-dashboard.php',
   'dash.php',
   'ops-dashboard.php',
   'planner.php',

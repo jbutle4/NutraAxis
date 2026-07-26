@@ -27,11 +27,11 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner page-inner--wide">
-      <a class="breadcrumb" href="/operations-dashboard/">
+      <a class="breadcrumb" href="/">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Operations Dashboard
+        Back to Operations Home
       </a>
 
       <div class="page-hero">

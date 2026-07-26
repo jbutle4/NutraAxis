@@ -17,11 +17,11 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/operations-dashboard/">
+      <a class="breadcrumb" href="/">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Operations Dashboard
+        Back to Operations Home
       </a>
 
       <div class="page-hero">
@@ -38,8 +38,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <h2>Getting started</h2>
         <p>NutraAxis Operations is the internal PHP portal hosted on Azure App Service. Background jobs run on Azure Function App <strong>Nutra-forecast-tool</strong>; this site provides the UI, Process Log, and manual reruns. Sign in with your NutraAxis email to access modules assigned to your role. Permissions are managed under Site Admin → Roles.</p>
         <ul class="site-doc-list">
-          <li><strong>Home:</strong> <a href="/">/</a> — application launcher filtered by your role</li>
-          <li><strong>Operations Dashboard:</strong> <a href="/operations-dashboard/">/operations-dashboard/</a> — shortcuts to Microsoft 365, commerce tools, and internal utilities</li>
+          <li><strong>Home:</strong> <a href="/">/</a> — application launcher and Operations shortcuts (expandable sections), filtered by your role</li>
           <li><strong>Process Log:</strong> <a href="/process-log/">/process-log/</a> — scheduled job history and manual reruns</li>
         </ul>
       </section>
@@ -140,7 +139,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <div class="module-actions">
         <a class="btn-secondary" href="/process-log/">Open Process Log</a>
-        <a class="btn-secondary" href="/operations-dashboard/">Operations Dashboard</a>
+        <a class="btn-secondary" href="/">Operations Home</a>
       </div>
     </div>
   </main>
