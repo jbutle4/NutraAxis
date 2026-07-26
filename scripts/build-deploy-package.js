@@ -11,7 +11,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const OUTPUT = process.argv[2] || path.join(ROOT, 'deploy-package.zip');
+const OUTPUT = path.resolve(process.argv[2] || path.join(ROOT, 'deploy-package.zip'));
 
 const IGNORE_DIRS = new Set([
   '.git',
