@@ -276,10 +276,22 @@ function provider_signup_accs_ensure_company_admin(array $application, int $grou
     }
 
     if (is_array($existing['customer']) && !empty($existing['customer']['id'])) {
+        $customerId = (int) $existing['customer']['id'];
+        $groupSync = provider_signup_accs_set_customer_group($customerId, $groupId, $existing['customer']);
+        if (!$groupSync['ok']) {
+            return [
+                'ok'          => false,
+                'error'       => $groupSync['error'] ?? 'Unable to set Practitioner customer group on admin user.',
+                'customer_id' => null,
+                'created'     => false,
+                'password'    => null,
+            ];
+        }
+
         return [
             'ok'          => true,
             'error'       => null,
-            'customer_id' => (int) $existing['customer']['id'],
+            'customer_id' => $customerId,
             'created'     => false,
             'password'    => null,
         ];
@@ -303,6 +315,75 @@ function provider_signup_accs_ensure_company_admin(array $application, int $grou
         'created'     => true,
         'password'    => $created['password'] ?? null,
     ];
+}
+
+/**
+ * Ensure an existing ACCS customer is on the Practitioner group.
+ *
+ * @param array<string, mixed> $customer
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_accs_set_customer_group(int $customerId, int $groupId, array $customer): array
+{
+    if ($customerId <= 0 || $groupId <= 0) {
+        return ['ok' => false, 'error' => 'Customer ID and group ID are required.'];
+    }
+
+    if ((int) ($customer['group_id'] ?? 0) === $groupId) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $payloadCustomer = [
+        'id'         => $customerId,
+        'email'      => (string) ($customer['email'] ?? ''),
+        'firstname'  => (string) ($customer['firstname'] ?? ''),
+        'lastname'   => (string) ($customer['lastname'] ?? ''),
+        'website_id' => (int) ($customer['website_id'] ?? provider_signup_accs_website_id()),
+        'group_id'   => $groupId,
+    ];
+
+    $result = provider_signup_accs_api_request('PUT', '/customers/' . $customerId, null, [
+        'customer' => $payloadCustomer,
+    ]);
+
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($result)];
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
+ * Force company customer_group_id to Practitioner after create/update.
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_accs_set_company_customer_group(int $companyId, int $groupId): array
+{
+    if ($companyId <= 0 || $groupId <= 0) {
+        return ['ok' => false, 'error' => 'Company ID and group ID are required.'];
+    }
+
+    $current = provider_signup_accs_api_request('GET', '/company/' . $companyId);
+    if (!$current['ok'] || !is_array($current['data'] ?? null)) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($current)];
+    }
+
+    $company = $current['data'];
+    if ((int) ($company['customer_group_id'] ?? 0) === $groupId) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $company['customer_group_id'] = $groupId;
+    $result = provider_signup_accs_api_request('PUT', '/company/' . $companyId, null, [
+        'company' => $company,
+    ]);
+
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($result)];
+    }
+
+    return ['ok' => true, 'error' => null];
 }
 
 function provider_signup_accs_build_company_payload(array $application, int $groupId, int $superUserId): array
@@ -436,7 +517,16 @@ function provider_signup_accs_provision(array $application): array
         return ['ok' => false, 'error' => $company['error'] ?? 'Unable to create ACCS company.'];
     }
 
-    $attribute = provider_signup_accs_set_clinic_type((int) $company['company_id'], $clinicType);
+    $companyId = (int) $company['company_id'];
+    $groupSync = provider_signup_accs_set_company_customer_group($companyId, $groupId);
+    if (!$groupSync['ok']) {
+        return [
+            'ok'    => false,
+            'error' => $groupSync['error'] ?? 'Unable to set Practitioner customer group on ACCS company.',
+        ];
+    }
+
+    $attribute = provider_signup_accs_set_clinic_type($companyId, $clinicType);
     if (!$attribute['ok']) {
         return ['ok' => false, 'error' => $attribute['error'] ?? 'Unable to set clinic-type on ACCS company.'];
     }
@@ -444,9 +534,9 @@ function provider_signup_accs_provision(array $application): array
     return [
         'ok'                => true,
         'error'             => null,
-        'company_id'        => (int) $company['company_id'],
+        'company_id'        => $companyId,
         'customer_id'       => (int) $admin['customer_id'],
-        'clinic_id'         => (string) $company['company_id'],
+        'clinic_id'         => (string) $companyId,
         'temporary_password'=> $admin['password'] ?? null,
         'admin_created'     => (bool) ($admin['created'] ?? false),
     ];
