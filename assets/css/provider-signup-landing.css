@@ -196,6 +196,19 @@ body.marketing-site .na-providers ul {
   align-items: center;
 }
 
+.na-providers .provider-photo-card {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(28, 95, 110, 0.16), 0 4px 20px rgba(28, 95, 110, 0.08);
+  overflow: hidden;
+}
+
+.na-providers .provider-photo-card img {
+  width: 100%;
+  height: auto;
+}
+
 .na-providers .quality-card {
   width: 100%;
   max-width: 460px;
@@ -908,6 +921,13 @@ body.marketing-site .na-providers ul {
   font-weight: 700;
   color: var(--teal-dark);
   font-size: 1rem;
+}
+
+.na-providers .signup-fieldset__hint {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+  padding: 0 8px;
 }
 
 .na-providers .signup-grid {

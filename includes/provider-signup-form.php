@@ -33,7 +33,7 @@ $token = (string) ($application['AccessToken'] ?? '');
 
   <?php if (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
   <div class="signup-alert signup-alert--info" role="status">
-    Your application is approved. Our operations team is creating your Clinic Store in ACCS. You will receive email when your account is ready.
+    Your application is approved. Our operations team is creating your Clinic Store. You will receive email when your account is ready.
   </div>
   <?php elseif (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
   <div class="signup-alert signup-alert--success" role="status">
@@ -49,7 +49,7 @@ $token = (string) ($application['AccessToken'] ?? '');
     <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
 
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
-      <legend>ACCS company information</legend>
+      <legend>Company information</legend>
       <div class="signup-grid">
         <label>Practice / company name *
           <input type="text" name="company_name" value="<?= htmlspecialchars($form['company_name']) ?>" required />
@@ -92,9 +92,9 @@ $token = (string) ($application['AccessToken'] ?? '');
     </fieldset>
 
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
-      <legend>Provider admin user (ACCS)</legend>
+      <legend>Practitioner admin user</legend>
       <div class="signup-grid">
-        <label>Provider email
+        <label>Practitioner email
           <input type="email" value="<?= htmlspecialchars($form['provider_email']) ?>" readonly />
         </label>
         <label>Admin first name *
@@ -113,7 +113,8 @@ $token = (string) ($application['AccessToken'] ?? '');
     </fieldset>
 
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
-      <legend>Compliance and payouts</legend>
+      <legend>Qualifications for Wholesale</legend>
+      <p class="signup-fieldset__hint">Provide credentials required for wholesale pricing and tax-exempt status.</p>
       <div class="signup-grid">
         <label>NPI number *
           <input type="text" name="npi_number" inputmode="numeric" maxlength="10" value="<?= htmlspecialchars($form['npi_number']) ?>" required />
@@ -129,6 +130,13 @@ $token = (string) ($application['AccessToken'] ?? '');
         <label>Tax ID (SSN or EIN) *
           <input type="password" name="tax_id" autocomplete="off" placeholder="<?= trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Required for submit' ?>" />
         </label>
+      </div>
+    </fieldset>
+
+    <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
+      <legend>Payouts</legend>
+      <p class="signup-fieldset__hint">Banking details for monthly sales proceeds payouts. All practitioners receive a Clinic Store.</p>
+      <div class="signup-grid">
         <label>ACH routing number *
           <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" required />
         </label>
@@ -163,19 +171,19 @@ $token = (string) ($application['AccessToken'] ?? '');
     <?php
     $uploadFieldId = 'reseller_certificate';
     $uploadFieldName = 'reseller_certificate';
-    $uploadLabel = 'State reseller certificate (PDF or image) *';
+    $uploadLabel = 'State reseller certificate and Business License (PDF or image) *';
     $uploadTitle = 'Drop, paste, or choose certificate';
     $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
     $uploadAccept = '.pdf,image/*,application/pdf';
     $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
     $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
-    $uploadSuccessMessage = 'Certificate selected';
-    $uploadOnSelectHint = 'Click Upload certificate to send %s.';
+    $uploadSuccessMessage = 'Document selected';
+    $uploadOnSelectHint = 'Click Upload document to send %s.';
     $uploadGridClass = 'signup-upload__field';
     require dirname(__DIR__) . '/includes/file-upload-dropzone-field.php';
     ?>
     <div class="signup-upload__actions">
-      <button class="btn-secondary" type="submit" name="action" value="upload_certificate">Upload certificate</button>
+      <button class="btn-secondary" type="submit" name="action" value="upload_certificate">Upload document</button>
     </div>
   </form>
 
@@ -190,5 +198,5 @@ $token = (string) ($application['AccessToken'] ?? '');
   </div>
   <?php endif; ?>
 
-  <p class="signup-back-link"><a href="/provider-signup/">← Back to For Providers</a></p>
+  <p class="signup-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
 </div>

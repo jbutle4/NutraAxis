@@ -97,7 +97,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <tbody>
             <?php if ($applications === []): ?>
             <tr>
-              <td colspan="6">No provider applications found.</td>
+              <td colspan="7">No provider applications found.</td>
             </tr>
             <?php else: ?>
             <?php foreach ($applications as $row): ?>
@@ -106,6 +106,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><?= htmlspecialchars((string) ($row['CompanyName'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['ProviderEmail'] ?? '')) ?></td>
               <td><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $row['Status'])) ?>"><?= htmlspecialchars((string) $row['Status']) ?></span></td>
+              <td><?= htmlspecialchars(provider_signup_format_datetime($row['CreatedAt'] ?? null)) ?></td>
               <td><?= htmlspecialchars(provider_signup_format_datetime($row['SubmittedAt'] ?? null)) ?></td>
               <td><a href="/operations-dashboard/signup-review/view.php?id=<?= (int) $row['ApplicationID'] ?>">View</a></td>
             </tr>
