@@ -13,7 +13,7 @@ function provider_signup_landing_css_version(): string
 
     $path = dirname(__DIR__) . '/assets/css/provider-signup-landing.css';
 
-    return $version = (is_readable($path) ? (string) filemtime($path) : '1') . '-pub5';
+    return $version = (is_readable($path) ? (string) filemtime($path) : '1') . '-pub6';
 }
 
 function provider_signup_render_provider_photo_card(): void

@@ -354,7 +354,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <div class="module-actions">
           <button class="btn-secondary" type="submit" name="action" value="comment">Add comment</button>
           <button class="btn-secondary" type="submit" name="action" value="validate_npi">Re-run NPI validation</button>
-          <button class="btn-secondary" type="submit" name="action" value="return" <?= $canRevert ? '' : 'disabled title="Only submitted, approved, or rejected applications can be sent back to the provider"' ?>>Return to provider</button>
+          <button class="btn-secondary" type="submit" name="action" value="return" <?= $canRevert ? '' : 'disabled title="Only applications that are submitted for review, approved, or rejected can be sent back to the provider"' ?>>Return to provider</button>
           <button class="btn-secondary" type="submit" name="action" value="reject">Reject</button>
           <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve application</button>
           <button class="btn-primary" type="submit" name="action" value="provision" <?= $canProvision ? '' : 'disabled title="Approve the application before creating the ACCS company"' ?>>Create ACCS company</button>

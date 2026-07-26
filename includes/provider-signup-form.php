@@ -13,9 +13,11 @@ $canSubmit = $canSubmit ?? provider_signup_provider_can_submit($application);
 $attachments = $attachments ?? provider_signup_list_attachments((int) $application['ApplicationID']);
 $checklist = $checklist ?? provider_signup_submit_checklist($form, (int) $application['ApplicationID']);
 $token = (string) ($application['AccessToken'] ?? '');
+$status = (string) ($application['Status'] ?? '');
+$isSubmittedForReview = $status === PROVIDER_SIGNUP_STATUS_SUBMITTED;
 ?>
 <div class="signup-form-page">
-  <?php if (!empty($notice)): ?>
+  <?php if (!empty($notice) && !$isSubmittedForReview): ?>
   <div class="signup-alert signup-alert--success" role="status"><?= htmlspecialchars($notice) ?></div>
   <?php endif; ?>
   <?php if (!empty($warn)): ?>
@@ -25,17 +27,34 @@ $token = (string) ($application['AccessToken'] ?? '');
   <div class="signup-alert signup-alert--error" role="alert"><?= htmlspecialchars($error) ?></div>
   <?php endif; ?>
 
+  <?php if ($isSubmittedForReview): ?>
+  <div class="signup-submitted">
+    <div class="section-label">Application Submitted</div>
+    <h2 class="section-heading">Thank you for submitting your application</h2>
+    <div class="signup-meta">
+      <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
+      <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
+      <span><strong>Submitted:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></span>
+    </div>
+    <div class="signup-submitted__body">
+      <p>Thank you for submitting your application. Your application will be validated for completeness and eligibility for Tax Exemption status. Your store will be provisioned and you will receive further instruction on the next steps. Please note that your store will not be provisioned before August 3, 2026. You will be able, however, to log in and purchase at wholesale prices plus applicable state sales tax. Once your application has been validated for tax exemption, you will no longer be charged any state tax for purchases for resale. If you are operating in a state with existing tax exemptions on food and dietary supplements, that will already be applied at checkout.</p>
+    </div>
+    <?php provider_signup_render_support_link('provider-support-link provider-support-link--submitted'); ?>
+    <p class="signup-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
+  </div>
+  <?php else: ?>
+
   <div class="signup-meta">
-    <span><strong>Status:</strong> <?= htmlspecialchars((string) $application['Status']) ?></span>
+    <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
     <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
     <span><strong>Last saved:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></span>
   </div>
 
-  <?php if (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
+  <?php if (!$editable && $status === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
   <div class="signup-alert signup-alert--info" role="status">
     Your application is approved. Our operations team is creating your Clinic Store. You will receive email when your account is ready.
   </div>
-  <?php elseif (!$editable && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
+  <?php elseif (!$editable && $status === PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
   <div class="signup-alert signup-alert--success" role="status">
     Your Clinic Store has been created. Check your email for sign-in details.
   </div>
@@ -51,25 +70,25 @@ $token = (string) ($application['AccessToken'] ?? '');
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
       <legend>Company information</legend>
       <div class="signup-grid">
-        <label>Practice / company name *
+        <label><span>Practice / company name *</span>
           <input type="text" name="company_name" value="<?= htmlspecialchars($form['company_name']) ?>" required />
         </label>
-        <label>Legal company name *
+        <label><span>Legal company name *</span>
           <input type="text" name="company_legal_name" value="<?= htmlspecialchars($form['company_legal_name']) ?>" required />
         </label>
-        <label>Company email *
+        <label><span>Company email *</span>
           <input type="email" name="company_email" value="<?= htmlspecialchars($form['company_email']) ?>" required />
         </label>
-        <label>Company phone *
+        <label><span>Company phone *</span>
           <input type="tel" name="company_phone" value="<?= htmlspecialchars($form['company_phone']) ?>" required />
         </label>
-        <label class="signup-grid--full">Street address *
+        <label class="signup-grid--full"><span>Street address *</span>
           <input type="text" name="street_address" value="<?= htmlspecialchars($form['street_address']) ?>" required />
         </label>
-        <label>City *
+        <label><span>City *</span>
           <input type="text" name="city" value="<?= htmlspecialchars($form['city']) ?>" required />
         </label>
-        <label>State *
+        <label><span>State *</span>
           <select name="state_code" required>
             <option value="">Select state</option>
             <?php foreach (PROVIDER_SIGNUP_US_STATES as $code => $name): ?>
@@ -77,10 +96,10 @@ $token = (string) ($application['AccessToken'] ?? '');
             <?php endforeach; ?>
           </select>
         </label>
-        <label>Postal code *
+        <label><span>Postal code *</span>
           <input type="text" name="postal_code" value="<?= htmlspecialchars($form['postal_code']) ?>" required />
         </label>
-        <label>Clinic type *
+        <label class="signup-grid--full"><span>Clinic type *</span>
           <select name="clinic_type" required>
             <option value="">Select clinic type</option>
             <?php foreach (PROVIDER_SIGNUP_CLINIC_TYPES as $clinicType): ?>
@@ -94,19 +113,19 @@ $token = (string) ($application['AccessToken'] ?? '');
     <fieldset class="signup-fieldset" <?= $editable ? '' : 'disabled' ?>>
       <legend>Practitioner admin user</legend>
       <div class="signup-grid">
-        <label>Practitioner email
+        <label><span>Practitioner email</span>
           <input type="email" value="<?= htmlspecialchars($form['provider_email']) ?>" readonly />
         </label>
-        <label>Admin first name *
+        <label><span>Admin first name *</span>
           <input type="text" name="admin_first_name" value="<?= htmlspecialchars($form['admin_first_name']) ?>" required />
         </label>
-        <label>Admin last name *
+        <label><span>Admin last name *</span>
           <input type="text" name="admin_last_name" value="<?= htmlspecialchars($form['admin_last_name']) ?>" required />
         </label>
-        <label>Admin email *
+        <label><span>Admin email *</span>
           <input type="email" name="admin_email" value="<?= htmlspecialchars($form['admin_email']) ?>" required />
         </label>
-        <label>Admin phone
+        <label><span>Admin phone</span>
           <input type="tel" name="admin_phone" value="<?= htmlspecialchars($form['admin_phone']) ?>" />
         </label>
       </div>
@@ -116,10 +135,10 @@ $token = (string) ($application['AccessToken'] ?? '');
       <legend>Qualifications for Wholesale</legend>
       <p class="signup-fieldset__hint">Provide credentials required for wholesale pricing and tax-exempt status.</p>
       <div class="signup-grid">
-        <label>NPI number *
+        <label><span>NPI # *</span>
           <input type="text" name="npi_number" inputmode="numeric" maxlength="10" value="<?= htmlspecialchars($form['npi_number']) ?>" required />
         </label>
-        <label>Tax ID type *
+        <label><span>Tax ID type *</span>
           <select name="tax_id_type" required>
             <option value="">Select type</option>
             <?php foreach (PROVIDER_SIGNUP_TAX_ID_TYPES as $type): ?>
@@ -127,7 +146,7 @@ $token = (string) ($application['AccessToken'] ?? '');
             <?php endforeach; ?>
           </select>
         </label>
-        <label>Tax ID (SSN or EIN) *
+        <label><span>Tax ID (SSN or EIN) *</span>
           <input type="password" name="tax_id" autocomplete="off" placeholder="<?= trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Required for submit' ?>" />
         </label>
       </div>
@@ -137,13 +156,13 @@ $token = (string) ($application['AccessToken'] ?? '');
       <legend>Payouts</legend>
       <p class="signup-fieldset__hint">Banking details for monthly sales proceeds payouts. All practitioners receive a Clinic Store.</p>
       <div class="signup-grid">
-        <label>ACH routing number *
+        <label><span>ACH routing # *</span>
           <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" required />
         </label>
-        <label>ACH account number *
+        <label><span>ACH account # *</span>
           <input type="password" name="ach_account_number" autocomplete="off" placeholder="<?= trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Required for submit' ?>" />
         </label>
-        <label>ACH account type *
+        <label><span>ACH account type *</span>
           <select name="ach_account_type" required>
             <?php foreach (PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES as $type): ?>
             <option value="<?= htmlspecialchars($type) ?>" <?= $form['ach_account_type'] === $type ? 'selected' : '' ?>><?= htmlspecialchars($type) ?></option>
@@ -156,6 +175,9 @@ $token = (string) ($application['AccessToken'] ?? '');
     <?php if ($editable): ?>
     <div class="signup-form__actions">
       <button class="btn-secondary" type="submit" name="action" value="save_draft">Save draft</button>
+      <?php if ($canSubmit): ?>
+      <button class="btn-cta" type="submit" name="action" value="submit_application">Submit</button>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
   </form>
@@ -199,4 +221,5 @@ $token = (string) ($application['AccessToken'] ?? '');
   <?php endif; ?>
 
   <p class="signup-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
+  <?php endif; ?>
 </div>

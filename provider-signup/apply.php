@@ -50,7 +50,7 @@ if (($_GET['notice'] ?? '') === 'started') {
 } elseif (($_GET['notice'] ?? '') === 'draft_saved') {
     $notice = 'Draft saved successfully.';
 } elseif (($_GET['notice'] ?? '') === 'submitted') {
-    $notice = 'Your Clinic Store activation request has been received.';
+    $notice = null; // confirmation page is shown from application status
 } elseif (($_GET['notice'] ?? '') === 'activated') {
     $notice = 'Your Clinic Store has been activated.';
 } elseif (($_GET['notice'] ?? '') === 'certificate_uploaded') {
@@ -73,16 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $form = provider_signup_form_from_post($_POST);
 
         if ($action === 'submit_application') {
-            $submitForm = provider_signup_provider_can_submit($application)
-                ? provider_signup_form_from_row($application)
-                : provider_signup_form_from_post($_POST);
-            $result = provider_signup_submit($token, $submitForm);
+            $result = provider_signup_submit($token, $form);
             if ($result['ok']) {
-                $query = provider_signup_provider_can_submit($application) ? 'notice=activated' : 'notice=submitted';
-                if (!empty($result['warn'])) {
-                    $query .= '&warn=' . rawurlencode((string) $result['warn']);
-                }
-                header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&' . $query, true, 302);
+                header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=submitted', true, 302);
                 exit;
             }
             $error = $result['error'];

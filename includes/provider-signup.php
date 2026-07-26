@@ -19,7 +19,7 @@ const PROVIDER_SIGNUP_POLICY_PDF_PATH = '/assets/docs/NutraAxis_Practitioner_Res
 const PROVIDER_SIGNUP_POLICY_ACK_STATEMENT = 'I acknowledge that I have received and will comply with the NutraAxis Labs, LLC Practitioner and Reseller Policies, including but not limited to the iMAP Policy.';
 
 const PROVIDER_SIGNUP_STATUS_DRAFT = 'Draft';
-const PROVIDER_SIGNUP_STATUS_SUBMITTED = 'Submitted';
+const PROVIDER_SIGNUP_STATUS_SUBMITTED = 'Submitted for Review';
 const PROVIDER_SIGNUP_STATUS_RETURNED = 'Returned';
 const PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION = 'Pending Validation';
 const PROVIDER_SIGNUP_STATUS_APPROVED = 'Approved';
@@ -285,7 +285,7 @@ function provider_signup_ops_can_edit(array $application): bool
 
 function provider_signup_provider_can_submit(array $application): bool
 {
-    return false;
+    return provider_signup_provider_can_edit($application);
 }
 
 function provider_signup_ops_can_provision(array $application): bool
@@ -399,8 +399,8 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         'admin_first_name'   => 'Admin first name',
         'admin_last_name'    => 'Admin last name',
         'admin_email'        => 'Admin email',
-        'npi_number'         => 'NPI number',
-        'ach_routing_number' => 'ACH routing number',
+        'npi_number'         => 'NPI #',
+        'ach_routing_number' => 'ACH routing #',
         'ach_account_type'   => 'ACH account type',
     ];
 
@@ -427,7 +427,7 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
     $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
     $hasStoredAccount = provider_signup_get($applicationId)['AchAccountNumberEncrypted'] ?? null;
     if ($account === '' && trim((string) $hasStoredAccount) === '') {
-        $missing[] = 'ACH account number';
+        $missing[] = 'ACH account #';
     }
 
     if (!provider_signup_has_reseller_certificate($applicationId)) {
@@ -441,12 +441,12 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
 
     $npi = preg_replace('/\D+/', '', (string) ($form['npi_number'] ?? '')) ?? '';
     if ($npi !== '' && strlen($npi) !== 10) {
-        $missing[] = 'Valid 10-digit NPI number';
+        $missing[] = 'Valid 10-digit NPI #';
     }
 
     $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
     if ($routing !== '' && strlen($routing) !== 9) {
-        $missing[] = 'Valid 9-digit ACH routing number';
+        $missing[] = 'Valid 9-digit ACH routing #';
     }
 
     return [
@@ -552,10 +552,65 @@ function provider_signup_save_draft(string $accessToken, array $form): array
 
 function provider_signup_submit(string $accessToken, array $form): array
 {
-    return [
-        'ok'    => false,
-        'error' => 'Clinic Store creation is handled by the NutraAxis operations team after approval. You will receive email when your account is ready.',
-    ];
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_provider_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer be edited online.'];
+    }
+
+    $applicationId = (int) $application['ApplicationID'];
+    $persist = provider_signup_persist_form($applicationId, $form, true);
+    if (!$persist['ok']) {
+        return $persist;
+    }
+
+    $fresh = provider_signup_get($applicationId);
+    if ($fresh === null) {
+        return ['ok' => false, 'error' => 'Unable to load application after save.'];
+    }
+
+    $checklist = provider_signup_submit_checklist(provider_signup_form_from_row($fresh), $applicationId);
+    if (!$checklist['complete']) {
+        return [
+            'ok'      => false,
+            'error'   => 'Please complete the following before submitting: ' . implode(', ', $checklist['missing']) . '.',
+            'missing' => $checklist['missing'],
+        ];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET Status = :status,
+                SubmittedAt = COALESCE(SubmittedAt, SYSUTCDATETIME()),
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'status' => PROVIDER_SIGNUP_STATUS_SUBMITTED,
+            'id'     => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_submit: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to submit the application.'];
+    }
+
+    try {
+        provider_signup_add_review_log(
+            $applicationId,
+            null,
+            'Submitted',
+            'Application submitted for review by provider.'
+        );
+    } catch (Throwable $e) {
+        error_log('provider_signup_submit review log: ' . $e->getMessage());
+    }
+
+    return ['ok' => true, 'error' => null];
 }
 
 /**
