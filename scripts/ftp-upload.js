@@ -2,10 +2,17 @@
 /**
  * Upload production files to Azure App Service via FTPS.
  * Usage: node scripts/ftp-upload.js
+ *
+ * SAFETY: Full-tree sync can wipe newer hub/nav wiring if run from a stale
+ * branch. By default this script only runs on an up-to-date local `main`.
+ * Override (rare): ALLOW_FULL_FTP_UPLOAD=1 npm run upload
+ *
+ * Prefer selective deploys: node scripts/ftp-upload-files.js <paths…>
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const CONFIG_PATH = path.join(ROOT, '.vscode', 'sftp.json');
@@ -146,7 +153,87 @@ function collectFiles(dir, baseDir = dir) {
   return files.sort();
 }
 
+function git(args) {
+  return execFileSync('git', args, {
+    cwd: ROOT,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+/**
+ * Block full-tree production sync from feature / detached / behind-main trees.
+ * Those uploads previously wiped Supply Chain hub + UAT/Test cards on live.
+ */
+function assertSafeFullUpload() {
+  if (process.env.ALLOW_FULL_FTP_UPLOAD === '1') {
+    console.warn('ALLOW_FULL_FTP_UPLOAD=1 set — skipping branch safety checks.');
+    return;
+  }
+
+  let branch = '';
+  let head = '';
+  try {
+    branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+    head = git(['rev-parse', '--short', 'HEAD']);
+  } catch (err) {
+    throw new Error(
+      'Full FTP upload requires a git checkout. Use selective upload instead:\n' +
+        '  node scripts/ftp-upload-files.js <paths…>\n' +
+        'Or set ALLOW_FULL_FTP_UPLOAD=1 only if you intend a full sync.'
+    );
+  }
+
+  if (branch === 'HEAD' || branch !== 'main') {
+    throw new Error(
+      `Refusing full FTP upload from "${branch}" (${head}).\n` +
+        'Full sync must run from an up-to-date local `main` so hub/nav files are not overwritten by a stale tree.\n' +
+        'Deploy only changed paths:\n' +
+        '  node scripts/ftp-upload-files.js <paths…>\n' +
+        'Or checkout main, pull, then retry. Override (rare): ALLOW_FULL_FTP_UPLOAD=1'
+    );
+  }
+
+  try {
+    git(['fetch', 'origin', 'main']);
+  } catch (_) {
+    // Offline / no remote — continue with local origin/main if present.
+  }
+
+  let behind = '0';
+  try {
+    behind = git(['rev-list', '--count', 'HEAD..origin/main']);
+  } catch (_) {
+    behind = '0';
+  }
+
+  if (Number(behind) > 0) {
+    throw new Error(
+      `Refusing full FTP upload: local main is ${behind} commit(s) behind origin/main.\n` +
+        'Run: git pull origin main\n' +
+        'Then retry, or use: node scripts/ftp-upload-files.js <paths…>'
+    );
+  }
+
+  const hubCardsPath = path.join(ROOT, 'includes', 'hub-cards.php');
+  const appPath = path.join(ROOT, 'includes', 'app.php');
+  if (!fs.existsSync(hubCardsPath)) {
+    throw new Error('Refusing full FTP upload: includes/hub-cards.php is missing (stale tree).');
+  }
+
+  const appSource = fs.readFileSync(appPath, 'utf8');
+  if (!appSource.includes("'tier'  => 'uat'") && !appSource.includes('ENVIRONMENT_TIER_UAT')) {
+    throw new Error(
+      'Refusing full FTP upload: includes/app.php has no UAT-tier hub cards (stale tree).'
+    );
+  }
+
+  console.log(`Full FTP upload allowed from main @ ${head} (not behind origin/main).`);
+}
+
 async function main() {
+  assertSafeFullUpload();
+
   const cfg = loadConfig();
   const files = collectFiles(ROOT);
 

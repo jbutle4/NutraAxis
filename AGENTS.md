@@ -42,6 +42,24 @@ Before merging any branch or PR into `main`:
 - SQL migrations: `node scripts/run-sql-file.js sql/<file>` with local `.env` (`DB_*`)
 - Do **not** deploy `.env`, `.vscode/`, `node_modules/`, or `Archive Sites/`
 
+### Full-site FTP is restricted (mandatory)
+
+`npm run upload` / `scripts/ftp-upload.js` syncs the **entire** wwwroot tree. A full sync from a feature branch or old tip has wiped Supply Chain hub cards and UAT/Test System cards on live.
+
+**Default deploy path:** selective upload only:
+
+```bash
+node scripts/ftp-upload-files.js path/to/file1 path/to/file2 …
+```
+
+**Full sync rules:**
+
+1. Prefer never. Use selective upload for feature work.
+2. If a full sync is truly needed, it must run from local **`main`** after `git pull origin main`.
+3. The upload script **refuses** full sync unless HEAD is `main` and not behind `origin/main` (also sanity-checks hub/UAT card files).
+4. Override only when intentional: `ALLOW_FULL_FTP_UPLOAD=1 npm run upload`
+5. Cloud / feature-branch agents must **not** run `npm run upload`. Deploy via Local agent with selective paths, or land on `main` first.
+
 ## Portal navigation & breadcrumbs (mandatory)
 
 Home cards, left nav, hub pages, and “Back to …” links all come from **`includes/app.php`**. Do not invent parallel nav. When adding or moving a module, update every layer in the same change.
