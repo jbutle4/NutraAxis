@@ -2,6 +2,55 @@
 
 require_once __DIR__ . '/env.php';
 
+function process_functions_prod_base_url(): string
+{
+    $configured = trim((string) env(
+        'NUTRA_FUNCTIONS_PROD_BASE_URL',
+        env('AZURE_FUNCTION_APP_URL_PRODUCTION', '')
+    ));
+
+    return rtrim($configured, '/');
+}
+
+function process_functions_prod_key(): string
+{
+    return trim((string) env(
+        'NUTRA_FUNCTIONS_PROD_KEY',
+        env('AZURE_FUNCTION_APP_KEY', '')
+    ));
+}
+
+function process_functions_prod_is_configured(): bool
+{
+    return process_functions_prod_base_url() !== '' && process_functions_prod_key() !== '';
+}
+
+/** Process codes that must execute on Nutra-forecast-tool-prod. */
+function process_functions_prod_codes(): array
+{
+    return [
+        'accs-sales-order-sync',
+        'accs-employee-customer-create',
+    ];
+}
+
+function process_functions_resolve_target(string $code): array
+{
+    if (in_array($code, process_functions_prod_codes(), true) && process_functions_prod_is_configured()) {
+        return [
+            'base_url' => process_functions_prod_base_url(),
+            'key'      => process_functions_prod_key(),
+            'app'      => 'Nutra-forecast-tool-prod',
+        ];
+    }
+
+    return [
+        'base_url' => process_functions_base_url(),
+        'key'      => process_functions_key(),
+        'app'      => 'Nutra-forecast-tool',
+    ];
+}
+
 function process_functions_base_url(): string
 {
     $configured = trim((string) env(
@@ -24,16 +73,22 @@ function process_functions_is_configured(): bool
 
 function process_functions_request(array $payload): array
 {
-    $key = process_functions_key();
+    $code = (string) ($payload['code'] ?? '');
+    $target = process_functions_resolve_target($code);
+    $key = $target['key'];
     if ($key === '') {
+        $missing = $target['app'] === 'Nutra-forecast-tool-prod'
+            ? 'NUTRA_FUNCTIONS_PROD_KEY'
+            : 'NUTRA_FUNCTIONS_KEY';
+
         return [
             'ok'    => false,
-            'error' => 'NUTRA_FUNCTIONS_KEY is not configured in Azure App Service application settings.',
+            'error' => $missing . ' is not configured in Azure App Service application settings.',
             'log_id' => null,
         ];
     }
 
-    $url = process_functions_base_url() . '/api/process-execute?code=' . rawurlencode($key);
+    $url = $target['base_url'] . '/api/process-execute?code=' . rawurlencode($key);
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if ($body === false) {
         return [
@@ -121,7 +176,13 @@ function process_functions_execute(
 
 function process_functions_rerun(int $logId, ?int $triggeredByUserId = null): array
 {
+    require_once __DIR__ . '/process-log.php';
+
+    $log = process_log_get($logId);
     $payload = ['log_id' => $logId];
+    if ($log !== null && !empty($log['ProcessCode'])) {
+        $payload['code'] = (string) $log['ProcessCode'];
+    }
 
     if ($triggeredByUserId !== null && $triggeredByUserId > 0) {
         $payload['triggered_by_user_id'] = $triggeredByUserId;

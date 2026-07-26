@@ -1,17 +1,20 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
 
 inventory_transfers_require_read();
+inventory_ims_bind_page_environments();
 
 $transferId = (int) ($_GET['id'] ?? 0);
 $transfer = $transferId > 0 ? inventory_transfers_get($transferId) : null;
 if ($transfer === null) {
-    header('Location: /inventory-transfers/', true, 302);
+    header('Location: ' . inventory_ims_page_path('/inventory-transfers/'), true, 302);
     exit;
 }
 
-$activeSlug = 'inventory-transfers';
+$activeSlug = $activeSlug ?? 'inventory-transfers';
+$viewPath = inventory_ims_page_path('/inventory-transfers/view.php?id=' . $transferId);
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 $userId = auth_user()['UserID'] ?? null;
@@ -24,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
     if ($action === 'ship') {
         $result = inventory_transfers_ship($transferId, $userId !== null ? (int) $userId : null);
         header(
-            'Location: /inventory-transfers/view.php?id=' . $transferId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($result['ok']
                     ? ['notice' => 'shipped']
                     : ['error' => $result['error'] ?? 'Ship failed.']),
@@ -36,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
     if ($action === 'receive') {
         $result = inventory_transfers_receive($transferId, $userId !== null ? (int) $userId : null);
         header(
-            'Location: /inventory-transfers/view.php?id=' . $transferId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($result['ok']
                     ? ['notice' => 'received']
                     : ['error' => $result['error'] ?? 'Receive failed.']),
@@ -49,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
         $result = inventory_transfers_maybe_post_qbo_journal($transferId);
         $ok = !empty($result['ok']) || !empty($result['skipped']);
         header(
-            'Location: /inventory-transfers/view.php?id=' . $transferId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($ok
                     ? ['notice' => !empty($result['skipped']) ? 'qbo_skipped' : 'qbo_synced']
                     : ['error' => $result['error'] ?? 'QuickBooks journal entry failed.']),
@@ -71,7 +74,7 @@ require dirname(__DIR__) . '/includes/header.php';
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/inventory-transfers/',
+          'back_href'  => inventory_ims_page_path('/inventory-transfers/'),
           'back_label' => 'Back to Transfers',
           'category'   => 'Inventory',
           'title'      => 'Transfer #' . $transferId,

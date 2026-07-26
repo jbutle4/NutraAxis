@@ -198,6 +198,7 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
 function facility_insert_transfer(array $input): array
 {
     require_once __DIR__ . '/auth.php';
+    require_once __DIR__ . '/inventory-ledger.php';
 
     $fromCode = trim((string) ($input['from_facility_code'] ?? ''));
     $toCode = trim((string) ($input['to_facility_code'] ?? ''));
@@ -246,7 +247,8 @@ function facility_insert_transfer(array $input): array
                 ReasonCodeID,
                 TransferStatus,
                 Notes,
-                RequestedByUser
+                RequestedByUser,
+                LedgerProfile
             )
             OUTPUT INSERTED.TransferID AS inserted_id
             VALUES (
@@ -259,7 +261,8 @@ function facility_insert_transfer(array $input): array
                 :reason_code_id,
                 N'Pending',
                 :notes,
-                :requested_by
+                :requested_by,
+                :ledger_profile
             )
         SQL);
         $stmt->execute([
@@ -272,6 +275,7 @@ function facility_insert_transfer(array $input): array
             'reason_code_id'  => $reasonCodeId > 0 ? $reasonCodeId : null,
             'notes'           => $notes !== '' ? $notes : null,
             'requested_by'    => $userId,
+            'ledger_profile'  => inventory_ledger_profile(),
         ]);
 
         return [

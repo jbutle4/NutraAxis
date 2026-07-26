@@ -4,6 +4,7 @@ require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-ledger.php';
 
 inventory_ledger_require_read();
+inventory_ims_bind_page_environments();
 
 $activeSlug = $activeSlug ?? 'inventory-balances';
 $module = get_module('inventory-balances');
@@ -31,7 +32,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_href'  => $hubBack['href'],
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
-          'title'      => $module['headline'] ?? 'Inventory Balances',
+          'title'      => ($module['headline'] ?? 'Inventory Balances') . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => $module['lead'] ?? 'Operational stock on hand by SKU, facility, and status bucket from the IMS ledger.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]); ?>

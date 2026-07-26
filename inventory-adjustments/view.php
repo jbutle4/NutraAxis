@@ -1,17 +1,20 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-adjustments.php';
 
 inventory_adjustments_require_read();
+inventory_ims_bind_page_environments();
 
 $adjustmentId = (int) ($_GET['id'] ?? 0);
 $adjustment = $adjustmentId > 0 ? inventory_adjustments_get($adjustmentId) : null;
 if ($adjustment === null) {
-    header('Location: /inventory-adjustments/', true, 302);
+    header('Location: ' . inventory_ims_page_path('/inventory-adjustments/'), true, 302);
     exit;
 }
 
-$activeSlug = 'inventory-adjustments';
+$activeSlug = $activeSlug ?? 'inventory-adjustments';
+$viewPath = inventory_ims_page_path('/inventory-adjustments/view.php?id=' . $adjustmentId);
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 $userId = auth_user()['UserID'] ?? null;
@@ -22,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_adjustments_can_update())
         $result = inventory_adjustments_approve($adjustmentId, $userId !== null ? (int) $userId : null);
         if ($result['ok'] && isset($result['qbo_ok']) && $result['qbo_ok'] === false) {
             header(
-                'Location: /inventory-adjustments/view.php?id=' . $adjustmentId . '&'
+                'Location: ' . $viewPath . '&'
                     . http_build_query([
                         'notice' => 'approved',
                         'error' => 'IMS posted, but QBO failed: ' . ($result['qbo_error'] ?? 'unknown error'),
@@ -33,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_adjustments_can_update())
             exit;
         }
         header(
-            'Location: /inventory-adjustments/view.php?id=' . $adjustmentId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($result['ok']
                     ? ['notice' => 'approved']
                     : ['error' => $result['error'] ?? 'Approve failed.']),
@@ -45,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_adjustments_can_update())
     if ($action === 'reject') {
         $result = inventory_adjustments_reject($adjustmentId, $userId !== null ? (int) $userId : null);
         header(
-            'Location: /inventory-adjustments/view.php?id=' . $adjustmentId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($result['ok']
                     ? ['notice' => 'rejected']
                     : ['error' => $result['error'] ?? 'Reject failed.']),
@@ -57,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_adjustments_can_update())
     if ($action === 'retry_qbo') {
         $result = inventory_adjustments_post_qbo($adjustmentId);
         header(
-            'Location: /inventory-adjustments/view.php?id=' . $adjustmentId . '&'
+            'Location: ' . $viewPath . '&'
                 . http_build_query($result['ok']
                     ? ['notice' => 'approved']
                     : ['error' => $result['error'] ?? 'QBO retry failed.']),
@@ -80,7 +83,7 @@ require dirname(__DIR__) . '/includes/header.php';
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/inventory-adjustments/',
+          'back_href'  => inventory_ims_page_path('/inventory-adjustments/'),
           'back_label' => 'Back to Adjustments',
           'category'   => 'Inventory',
           'title'      => 'Adjustment #' . $adjustmentId,

@@ -65,6 +65,7 @@ function env(string $key, ?string $default = null): ?string
         $runtimeKeys = [
             'DB_HOST', 'DB_SERVER', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD', 'DB_PORT',
             'NUTRA_FUNCTIONS_BASE_URL', 'NUTRA_FUNCTIONS_KEY',
+            'NUTRA_FUNCTIONS_PROD_BASE_URL', 'NUTRA_FUNCTIONS_PROD_KEY',
             'AZURE_FUNCTION_APP_URL', 'AZURE_FUNCTION_APP_URL_PRODUCTION', 'AZURE_FUNCTION_APP_KEY',
             'MAIL_FROM', 'MAIL_FROM_NAME', 'MAIL_REPLY_TO', 'SITE_URL',
             'PO_TEAM_EMAIL', 'PO_TEAM_EMAIL_REPLACE',

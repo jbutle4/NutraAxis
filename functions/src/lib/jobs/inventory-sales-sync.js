@@ -1,6 +1,7 @@
 const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const qboConfig = require('../qbo-config');
 const qboInventory = require('../qbo-inventory-adjustment');
+const { imsLedgerProfile, accsSourceEnvironment, imsEnvironmentSummary } = require('../ims-ledger-profile');
 
 function inventoryDatabase() {
   return process.env.DB_NAME_INVENTORY_SYNC
@@ -39,6 +40,7 @@ async function hasSyncedLog(pool, docNumber) {
 }
 
 async function writeLog(pool, row) {
+  const ledgerProfile = row.ledger_profile || imsLedgerProfile();
   await pool.request()
     .input('doc', sql.NVarChar(50), row.doc_number)
     .input('syncType', sql.NVarChar(30), row.sync_type)
@@ -52,6 +54,7 @@ async function writeLog(pool, row) {
     .input('syncToken', sql.NVarChar(32), row.qbo_sync_token ?? null)
     .input('status', sql.NVarChar(20), row.sync_status)
     .input('error', sql.NVarChar(500), row.sync_error ?? null)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       MERGE dbo.QBOInventorySyncLog AS target
       USING (SELECT @doc AS DocNumber) AS source
@@ -69,49 +72,56 @@ async function writeLog(pool, row) {
           QBO_SyncToken = @syncToken,
           SyncStatus = @status,
           SyncError = @error,
+          LedgerProfile = @ledgerProfile,
           SyncedAt = CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
       WHEN NOT MATCHED THEN
         INSERT (
           DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
           SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
-          SyncStatus, SyncError, SyncedAt
+          SyncStatus, SyncError, SyncedAt, LedgerProfile
         )
         VALUES (
           @doc, @syncType, @refType, @refId, @lineKey,
           @sku, @qty, @facility, @txnId, @syncToken,
-          @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+          @status, @error, CASE WHEN @status = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END,
+          @ledgerProfile
         );
     `);
 }
 
-async function ensureBalance(pool, sku, facility) {
+async function ensureBalance(pool, sku, facility, ledgerProfile) {
   await pool.request()
     .input('sku', sql.NVarChar(100), sku)
     .input('facility', sql.NVarChar(50), facility)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       IF NOT EXISTS (
-        SELECT 1 FROM dbo.InvCurrentBalance WHERE SKUCode = @sku AND FacilityCode = @facility
+        SELECT 1 FROM dbo.InvCurrentBalance
+        WHERE SKUCode = @sku AND FacilityCode = @facility AND LedgerProfile = @ledgerProfile
       )
-      INSERT INTO dbo.InvCurrentBalance (SKUCode, FacilityCode) VALUES (@sku, @facility)
+      INSERT INTO dbo.InvCurrentBalance (SKUCode, FacilityCode, LedgerProfile)
+      VALUES (@sku, @facility, @ledgerProfile)
     `);
 }
 
-async function findExistingSaleTxn(pool, referenceId) {
+async function findExistingSaleTxn(pool, referenceId, ledgerProfile) {
   const result = await pool.request()
     .input('refId', sql.Int, referenceId)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       SELECT TOP (1) TransactionID
       FROM dbo.InvTransaction
       WHERE ReferenceType = N'AccsSalesOrderHeader'
         AND ReferenceID = @refId
         AND TransactionType = N'Sale'
+        AND LedgerProfile = @ledgerProfile
       ORDER BY TransactionID DESC
     `);
   return Number(result.recordset[0]?.TransactionID || 0);
 }
 
-async function postImsSale(pool, referenceId, facility, lines, note) {
-  const existingTxnId = await findExistingSaleTxn(pool, referenceId);
+async function postImsSale(pool, referenceId, facility, lines, note, ledgerProfile) {
+  const existingTxnId = await findExistingSaleTxn(pool, referenceId, ledgerProfile);
   if (existingTxnId > 0) {
     return existingTxnId;
   }
@@ -119,10 +129,13 @@ async function postImsSale(pool, referenceId, facility, lines, note) {
   const header = await pool.request()
     .input('refId', sql.Int, referenceId)
     .input('notes', sql.NVarChar(500), note)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
-      INSERT INTO dbo.InvTransaction (TransactionType, ReferenceType, ReferenceID, Notes)
+      INSERT INTO dbo.InvTransaction (
+        TransactionType, ReferenceType, ReferenceID, Notes, LedgerProfile
+      )
       OUTPUT INSERTED.TransactionID
-      VALUES (N'Sale', N'AccsSalesOrderHeader', @refId, @notes)
+      VALUES (N'Sale', N'AccsSalesOrderHeader', @refId, @notes, @ledgerProfile)
     `);
   const txnId = Number(header.recordset[0]?.TransactionID || 0);
   if (!txnId) {
@@ -132,14 +145,15 @@ async function postImsSale(pool, referenceId, facility, lines, note) {
   let lineNumber = 0;
   for (const line of lines) {
     lineNumber += 1;
-    await ensureBalance(pool, line.sku, facility);
+    await ensureBalance(pool, line.sku, facility, ledgerProfile);
     const balance = await pool.request()
       .input('sku', sql.NVarChar(100), line.sku)
       .input('facility', sql.NVarChar(50), facility)
+      .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
       .query(`
         SELECT BalanceID, QtyOK
         FROM dbo.InvCurrentBalance WITH (UPDLOCK, HOLDLOCK)
-        WHERE SKUCode = @sku AND FacilityCode = @facility
+        WHERE SKUCode = @sku AND FacilityCode = @facility AND LedgerProfile = @ledgerProfile
       `);
     const row = balance.recordset[0];
     const before = Number(row?.QtyOK || 0);
@@ -181,9 +195,11 @@ async function postImsSale(pool, referenceId, facility, lines, note) {
   return txnId;
 }
 
-async function loadShippedOrderLines(pool) {
+async function loadShippedOrderLines(pool, sourceEnvironment) {
   // Prefer shipped/complete statuses when present; fall back to recent closed orders.
-  const result = await pool.request().query(`
+  const result = await pool.request()
+    .input('sourceEnvironment', sql.NVarChar(20), sourceEnvironment)
+    .query(`
     SELECT TOP (500)
       h.AccsSalesOrderHeaderID,
       h.IncrementId,
@@ -196,7 +212,8 @@ async function loadShippedOrderLines(pool) {
       d.FulfillmentAttr
     FROM dbo.AccsSalesOrderHeader h
     INNER JOIN dbo.AccsSalesOrderDetail d ON d.AccsSalesOrderHeaderID = h.AccsSalesOrderHeaderID
-    WHERE (
+    WHERE h.SourceEnvironment = @sourceEnvironment
+      AND (
         LOWER(COALESCE(h.OrderStatus, N'')) LIKE N'%complete%'
         OR LOWER(COALESCE(h.OrderStatus, N'')) LIKE N'%ship%'
         OR LOWER(COALESCE(h.OrderStatus, N'')) LIKE N'%closed%'
@@ -239,6 +256,9 @@ async function run() {
   }
 
   const pool = await connectPool(inventoryDatabase());
+  const ledgerProfile = imsLedgerProfile();
+  const sourceEnvironment = accsSourceEnvironment();
+  const environment = imsEnvironmentSummary();
   let processed = 0;
   let posted = 0;
   let skipped = 0;
@@ -246,7 +266,7 @@ async function run() {
   const failures = [];
 
   try {
-    const lines = await loadShippedOrderLines(pool);
+    const lines = await loadShippedOrderLines(pool, sourceEnvironment);
     // Group by header for IMS posting once per order, but QBO lines per detail.
     const byHeader = new Map();
     for (const line of lines) {
@@ -297,7 +317,8 @@ async function run() {
           headerId,
           facility,
           qboLines.map((line) => ({ sku: line.sku, qty: line.qty })),
-          `inventory-sales-sync order ${headerLines[0].increment_id || headerId}`
+          `inventory-sales-sync order ${headerLines[0].increment_id || headerId}`,
+          ledgerProfile
         );
 
         const adj = await qboInventory.postInventoryAdjustment({
@@ -343,6 +364,7 @@ async function run() {
     return {
       ok: failed === 0,
       error: failed === 0 ? null : `${failed} sales sync failure(s).`,
+      environment,
       processed,
       posted,
       skipped,

@@ -1,10 +1,11 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
 
 inventory_transfers_require_read();
 
-$activeSlug = 'inventory-transfers';
+$activeSlug = $activeSlug ?? 'inventory-transfers';
 $statusFilter = trim($_GET['status'] ?? '');
 $rows = inventory_transfers_list(['status' => $statusFilter]);
 $notice = $_GET['notice'] ?? null;
@@ -29,7 +30,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'permission' => permission_label(inventory_transfers_permission_value()),
       ]);
       if (inventory_transfers_can_update()) {
-          render_list_page_toolbar('<a class="btn-primary" href="/inventory-transfers/new.php">New transfer</a>');
+          render_list_page_toolbar('<a class="btn-primary" href="' . htmlspecialchars(inventory_ims_page_path('/inventory-transfers/new.php')) . '">New transfer</a>');
       }
       ?>
 
@@ -44,7 +45,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form class="admin-filter-bar" method="get" action="/inventory-transfers/">
+      <form class="admin-filter-bar" method="get" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/')) ?>">
         <div class="form-field">
           <label for="status">Status</label>
           <select class="form-input" id="status" name="status">
@@ -87,7 +88,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars((string) $row['TransferStatus']) ?></td>
               <td><?= htmlspecialchars((string) ($row['CreateDate'] ?? '')) ?></td>
               <td class="table-actions">
-                <a class="btn-text" href="/inventory-transfers/view.php?id=<?= (int) $row['TransferID'] ?>">View</a>
+                <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $row['TransferID'])) ?>">View</a>
               </td>
             </tr>
             <?php endforeach; ?>

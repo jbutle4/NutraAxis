@@ -24,6 +24,8 @@ function inventory_qbo_recon_require_read(): void
  */
 function inventory_qbo_recon_build_rows(): array
 {
+    inventory_ims_bind_page_environments();
+
     $pdo = db();
     $emptySummary = [
         'ims_sku_count' => 0,
@@ -39,7 +41,7 @@ function inventory_qbo_recon_build_rows(): array
     ];
 
     try {
-        $imsStmt = $pdo->query(<<<SQL
+        $imsStmt = $pdo->prepare(<<<SQL
             SELECT
                 b.SKUCode,
                 SUM(b.QtyOK + b.QtyQuarantine + b.QtyOnHold) AS ImsQty,
@@ -47,8 +49,10 @@ function inventory_qbo_recon_build_rows(): array
                 MAX(m.SKUStatus) AS SKUStatus
             FROM dbo.InvCurrentBalance b
             LEFT JOIN dbo.SKUMaster m ON m.SKUCode = b.SKUCode
+            WHERE b.LedgerProfile = :ledger_profile
             GROUP BY b.SKUCode
         SQL);
+        $imsStmt->execute(['ledger_profile' => inventory_ledger_profile()]);
         $imsBySku = [];
         foreach ($imsStmt->fetchAll() as $row) {
             $sku = strtoupper(trim((string) ($row['SKUCode'] ?? '')));

@@ -2,33 +2,43 @@
 
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/facility.php';
+require_once __DIR__ . '/inventory-ledger.php';
 
 const INV_STATUS_BUCKETS = ['OK', 'Quarantine', 'OnHold', 'Destroy'];
 
 /**
  * Ensure an InvCurrentBalance row exists and return it (locked when in a transaction).
  */
-function inventory_posting_get_or_create_balance(PDO $pdo, string $skuCode, string $facilityCode): array
+function inventory_posting_get_or_create_balance(PDO $pdo, string $skuCode, string $facilityCode, ?string $ledgerProfile = null): array
 {
+    $ledgerProfile = $ledgerProfile ?? inventory_ledger_profile();
     $stmt = $pdo->prepare(<<<SQL
         SELECT BalanceID, SKUCode, FacilityCode, QtyOK, QtyQuarantine, QtyOnHold, QtyDestroy, QtyReserved
         FROM dbo.InvCurrentBalance WITH (UPDLOCK, HOLDLOCK)
-        WHERE SKUCode = :sku AND FacilityCode = :facility
+        WHERE SKUCode = :sku AND FacilityCode = :facility AND LedgerProfile = :ledger_profile
     SQL);
-    $stmt->execute(['sku' => $skuCode, 'facility' => $facilityCode]);
+    $stmt->execute([
+        'sku' => $skuCode,
+        'facility' => $facilityCode,
+        'ledger_profile' => $ledgerProfile,
+    ]);
     $row = $stmt->fetch();
     if ($row !== false) {
         return $row;
     }
 
     $insert = $pdo->prepare(<<<SQL
-        INSERT INTO dbo.InvCurrentBalance (SKUCode, FacilityCode)
+        INSERT INTO dbo.InvCurrentBalance (SKUCode, FacilityCode, LedgerProfile)
         OUTPUT INSERTED.BalanceID, INSERTED.SKUCode, INSERTED.FacilityCode,
                INSERTED.QtyOK, INSERTED.QtyQuarantine, INSERTED.QtyOnHold,
                INSERTED.QtyDestroy, INSERTED.QtyReserved
-        VALUES (:sku, :facility)
+        VALUES (:sku, :facility, :ledger_profile)
     SQL);
-    $insert->execute(['sku' => $skuCode, 'facility' => $facilityCode]);
+    $insert->execute([
+        'sku' => $skuCode,
+        'facility' => $facilityCode,
+        'ledger_profile' => $ledgerProfile,
+    ]);
 
     $created = $insert->fetch();
     if ($created === false) {
@@ -60,11 +70,14 @@ function inventory_posting_create_transaction(
     int $referenceId,
     array $lines,
     ?string $notes = null,
-    ?int $createdByUserId = null
+    ?int $createdByUserId = null,
+    ?string $ledgerProfile = null
 ): array {
     if ($lines === []) {
         return ['ok' => false, 'error' => 'At least one inventory line is required.', 'transaction_id' => null];
     }
+
+    $ledgerProfile = $ledgerProfile ?? inventory_ledger_profile();
 
     $allowedTypes = [
         'OpeningBalance', 'POReceipt', 'Sale', 'AdjustmentGain', 'AdjustmentLoss',
@@ -85,11 +98,11 @@ function inventory_posting_create_transaction(
 
         $header = $pdo->prepare(<<<SQL
             INSERT INTO dbo.InvTransaction (
-                TransactionType, ReferenceType, ReferenceID, Notes, CreatedByUser
+                TransactionType, ReferenceType, ReferenceID, Notes, CreatedByUser, LedgerProfile
             )
             OUTPUT INSERTED.TransactionID AS inserted_id
             VALUES (
-                :type, :ref_type, :ref_id, :notes, :user_id
+                :type, :ref_type, :ref_id, :notes, :user_id, :ledger_profile
             )
         SQL);
         $header->execute([
@@ -98,6 +111,7 @@ function inventory_posting_create_transaction(
             'ref_id'   => $referenceId,
             'notes'    => $notes !== null && $notes !== '' ? $notes : null,
             'user_id'  => $createdByUserId,
+            'ledger_profile' => $ledgerProfile,
         ]);
         $transactionId = db_fetch_inserted_int($header, 'inserted_id');
         if ($transactionId <= 0) {
@@ -123,7 +137,7 @@ function inventory_posting_create_transaction(
                 throw new RuntimeException('Inventory line quantity change cannot be zero.');
             }
 
-            $balance = inventory_posting_get_or_create_balance($pdo, $skuCode, $facilityCode);
+            $balance = inventory_posting_get_or_create_balance($pdo, $skuCode, $facilityCode, $ledgerProfile);
             $column = inventory_posting_bucket_column($bucket);
             $qtyBefore = (float) ($balance[$column] ?? 0);
             $qtyAfter = $qtyBefore + $qtyChange;

@@ -1,10 +1,12 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-adjustments.php';
 
 inventory_adjustments_require_update();
+inventory_ims_bind_page_environments();
 
-$activeSlug = 'inventory-adjustments';
+$activeSlug = $activeSlug ?? 'inventory-adjustments';
 $facilities = inventory_adjustments_list_facilities();
 $reasons = inventory_adjustments_reason_codes();
 $error = null;
@@ -31,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes'          => $_POST['notes'] ?? '',
     ]);
     if ($result['ok']) {
-        header('Location: /inventory-adjustments/view.php?id=' . (int) $result['adjustment_id'] . '&notice=created', true, 302);
+        header('Location: ' . inventory_ims_page_path('/inventory-adjustments/view.php?id=' . (int) $result['adjustment_id'] . '&notice=created'), true, 302);
         exit;
     }
     $error = $result['error'] ?? 'Unable to create adjustment.';
@@ -45,7 +47,7 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-adjustments/',
+          'back_href'  => inventory_ims_page_path('/inventory-adjustments/'),
           'back_label' => 'Back to Adjustments',
           'category'   => 'Inventory',
           'title'      => 'New Inventory Adjustment',
@@ -56,7 +58,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form method="post" class="admin-form" action="/inventory-adjustments/new.php">
+      <form method="post" class="admin-form" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-adjustments/new.php')) ?>">
         <div class="form-grid">
           <div class="form-field">
             <label for="sku_code">SKU</label>
@@ -115,7 +117,7 @@ require dirname(__DIR__) . '/includes/header.php';
         render_form_actions(capture_form_actions(static function (): void {
             ?>
             <button type="submit" class="btn-primary">Create pending adjustment</button>
-            <a class="btn-secondary" href="/inventory-adjustments/">Cancel</a>
+            <a class="btn-secondary" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-adjustments/')) ?>">Cancel</a>
             <?php
         }));
         ?>

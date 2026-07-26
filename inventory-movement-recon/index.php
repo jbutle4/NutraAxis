@@ -1,11 +1,13 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-movement-recon.php';
 
 inventory_movement_recon_require_read();
 
-$activeSlug = 'inventory-movement-recon';
+$activeSlug = $activeSlug ?? 'inventory-movement-recon';
 $hubBack = app_module_hub_back_link($activeSlug);
+$listPath = inventory_ims_page_path('/inventory-movement-recon/');
 $movement = trim((string) ($_GET['movement'] ?? ''));
 $severity = trim((string) ($_GET['severity'] ?? ''));
 $runId = (int) ($_GET['run_id'] ?? 0);
@@ -31,7 +33,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_href'  => $hubBack['href'],
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
-          'title'      => 'Inventory Movement Completeness',
+          'title'      => 'Inventory Movement Completeness' . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => 'Layer 1 recon: find movements that should have posted to IMS and/or QBO but did not. Run via Process Log → Inventory Movement Completeness Recon.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]); ?>
@@ -57,7 +59,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <div>
           <a class="btn-secondary" href="/process-log/">Process Log</a>
           <?php if ($run !== null): ?>
-          <a class="btn-secondary" href="/inventory-movement-recon/?run_id=<?= (int) $run['ReconRunID'] ?>">Clear filters</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath . '?run_id=' . (int) $run['ReconRunID']) ?>">Clear filters</a>
           <?php endif; ?>
         </div>
       </div>
@@ -80,7 +82,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <tbody>
             <?php foreach ($recentRuns as $r): ?>
             <tr<?= $run && (int) $r['ReconRunID'] === (int) $run['ReconRunID'] ? ' class="is-warning"' : '' ?>>
-              <td><a href="/inventory-movement-recon/?run_id=<?= (int) $r['ReconRunID'] ?>">#<?= (int) $r['ReconRunID'] ?></a></td>
+              <td><a href="<?= htmlspecialchars($listPath . '?run_id=' . (int) $r['ReconRunID']) ?>">#<?= (int) $r['ReconRunID'] ?></a></td>
               <td><?= htmlspecialchars((string) ($r['StartedAt'] ?? '')) ?></td>
               <td><?= htmlspecialchars((string) ($r['Status'] ?? '')) ?></td>
               <td><?= (int) ($r['ReceiptExceptions'] ?? 0) ?></td>

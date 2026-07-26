@@ -63,6 +63,7 @@
     "QBO_CLIENT_ID": "paste-sandbox-client-id",
     "QBO_CLIENT_SECRET": "paste-sandbox-client-secret",
     "QBO_ENVIRONMENT": "sandbox",
+    "IMS_LEDGER_PROFILE": "uat",
     "QBO_REDIRECT_URI": "https://nutra-forecast-tool-czaxf0eydta6aeeg.eastus2-01.azurewebsites.net/api/qbo-sandbox-oauth-callback",
     "QBO_ORDER_TEST_SUFFIX": "03",
     "SMTP_ENCRYPTION": "tls"

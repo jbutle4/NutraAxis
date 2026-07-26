@@ -127,6 +127,20 @@ function data_profile_page_path(string $productionPath): string
         '/accounting/supplier-invoices/'    => '/accounting/supplier-invoices-uat/',
         '/accounting/invoice-payments'      => '/accounting/invoice-payments-uat',
         '/accounting/invoice-payments/'     => '/accounting/invoice-payments-uat/',
+        '/inventory-balances'               => '/inventory-balances-uat',
+        '/inventory-balances/'              => '/inventory-balances-uat/',
+        '/inventory-transfers'              => '/inventory-transfers-uat',
+        '/inventory-transfers/'             => '/inventory-transfers-uat/',
+        '/inventory-adjustments'            => '/inventory-adjustments-uat',
+        '/inventory-adjustments/'           => '/inventory-adjustments-uat/',
+        '/inventory-jazz-ims-recon'         => '/inventory-jazz-ims-recon-uat',
+        '/inventory-jazz-ims-recon/'        => '/inventory-jazz-ims-recon-uat/',
+        '/inventory-jazz-ims-align'         => '/inventory-jazz-ims-align-uat',
+        '/inventory-jazz-ims-align/'        => '/inventory-jazz-ims-align-uat/',
+        '/inventory-qbo-recon'              => '/inventory-qbo-recon-uat',
+        '/inventory-qbo-recon/'             => '/inventory-qbo-recon-uat/',
+        '/inventory-movement-recon'         => '/inventory-movement-recon-uat',
+        '/inventory-movement-recon/'        => '/inventory-movement-recon-uat/',
     ];
 
     if (isset($map[$productionPath])) {

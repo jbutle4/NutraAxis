@@ -94,7 +94,37 @@ On **Nutra-forecast-tool** (test), all timer schedules are disabled (`0 0 0 1 1 
 | `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 | `INVENTORY_MOVEMENT_RECON_SCHEDULE` | `0 0 0 1 1 2099` |
 
-Process Log reruns for `accs-sales-order-sync` route to the prod Function App via `NUTRA_FUNCTIONS_PROD_BASE_URL` / `NUTRA_FUNCTIONS_PROD_KEY` on the PHP App Service.
+Process Log reruns for `accs-sales-order-sync` and `accs-employee-customer-create` route to the prod Function App when `NUTRA_FUNCTIONS_PROD_BASE_URL` / `NUTRA_FUNCTIONS_PROD_KEY` are set on the PHP App Service. All other Process Log runs (including inventory UAT jobs) use `NUTRA_FUNCTIONS_BASE_URL` / `NUTRA_FUNCTIONS_KEY` → **Nutra-forecast-tool**.
+
+## Production vs Test/UAT Function Apps
+
+Two deployed apps share the same `functions/` codebase but **must** use different application settings so IMS, QBO, ACCS, and Jazz stay aligned.
+
+| Setting | **Nutra-forecast-tool** (Test/UAT) | **Nutra-forecast-tool-prod** (Production) |
+|---------|-------------------------------------|-------------------------------------------|
+| `IMS_LEDGER_PROFILE` | `uat` | `production` |
+| `QBO_ENVIRONMENT` | `sandbox` | `production` |
+| `ADOBE_COMMERCE_ENVIRONMENT` | `stage` | `production` |
+| `DB_NAME_PRODUCTION` | `nutraaxis` | `nutraaxis` |
+| `DB_NAME_INVENTORY_SYNC` | `nutraaxis` (optional) | `nutraaxis` |
+| QBO inventory account Ids | `QBO_INV_*_SANDBOX` (+ unsuffixed fallback) | `QBO_INV_*_PROD` |
+| `QBO_CLIENT_ID` / `SECRET` | Sandbox OAuth app | Production OAuth app (`*_PROD` if split) |
+| Jazz credentials | `JAZZ_UAT_*` or `JAZZ_*` pointing at UAT | Production Jazz (`JAZZ_*_PROD` when wired) |
+| Inventory timers | **Disabled** (`0 0 0 1 1 2099`) — manual via Process Log | **Enabled** when production cutover (2:30 / 3:00 / 4:00 AM) |
+| `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 0 1 1 2099` (skipped in code) | `0 0 */2 * * *` |
+
+`IMS_LEDGER_PROFILE` is the source of truth for which `Inv*` rows jobs read/write. If unset, it is derived from `QBO_ENVIRONMENT` (sandbox → `uat`, production → `production`) or `ADOBE_COMMERCE_ENVIRONMENT` (stage → `uat`).
+
+Inventory jobs also filter ACCS sales by `AccsSalesOrderHeader.SourceEnvironment` (`stage` for UAT ledger, `production` for production ledger).
+
+### PHP App Service (`nutraaxisweb`)
+
+| Name | Value |
+|------|--------|
+| `NUTRA_FUNCTIONS_BASE_URL` | `https://nutra-forecast-tool-….azurewebsites.net` — UAT/manual jobs |
+| `NUTRA_FUNCTIONS_KEY` | Function key for test app `process-execute` |
+| `NUTRA_FUNCTIONS_PROD_BASE_URL` | `https://nutra-forecast-tool-prod.azurewebsites.net` |
+| `NUTRA_FUNCTIONS_PROD_KEY` | Function key for prod app `process-execute` |
 
 Production app settings for ACCS order sync:
 

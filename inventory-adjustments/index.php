@@ -1,10 +1,12 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-adjustments.php';
 
 inventory_adjustments_require_read();
+inventory_ims_bind_page_environments();
 
-$activeSlug = 'inventory-adjustments';
+$activeSlug = $activeSlug ?? 'inventory-adjustments';
 $statusFilter = trim($_GET['status'] ?? '');
 $rows = inventory_adjustments_list(['status' => $statusFilter]);
 $notice = $_GET['notice'] ?? null;
@@ -29,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'permission' => permission_label(inventory_adjustments_permission_value()),
       ]);
       if (inventory_adjustments_can_update()) {
-          render_list_page_toolbar('<a class="btn-primary" href="/inventory-adjustments/new.php">New adjustment</a>');
+          render_list_page_toolbar('<a class="btn-primary" href="' . htmlspecialchars(inventory_ims_page_path('/inventory-adjustments/new.php')) . '">New adjustment</a>');
       }
       ?>
 
@@ -44,7 +46,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form class="admin-filter-bar" method="get" action="/inventory-adjustments/">
+      <form class="admin-filter-bar" method="get" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-adjustments/')) ?>">
         <div class="form-field">
           <label for="status">Status</label>
           <select class="form-input" id="status" name="status">
@@ -88,7 +90,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= htmlspecialchars((string) ($row['ReasonCode'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) $row['AdjStatus']) ?></td>
               <td><?= htmlspecialchars((string) ($row['CreateDate'] ?? '')) ?></td>
-              <td><a href="/inventory-adjustments/view.php?id=<?= (int) $row['AdjustmentID'] ?>">View</a></td>
+              <td><a href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-adjustments/view.php?id=' . (int) $row['AdjustmentID'])) ?>">View</a></td>
             </tr>
             <?php endforeach; ?>
             <?php endif; ?>

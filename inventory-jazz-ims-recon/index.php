@@ -1,19 +1,24 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-jazz-ims-recon.php';
 
 inventory_jazz_ims_recon_require_read();
+inventory_ims_bind_page_environments();
 
-$activeSlug = 'inventory-jazz-ims-recon';
+$activeSlug = $activeSlug ?? 'inventory-jazz-ims-recon';
 $hubBack = app_module_hub_back_link($activeSlug);
 $mismatchesOnly = ($_GET['mismatches'] ?? '') === '1';
-$jazzEnv = strtolower(trim((string) ($_GET['env'] ?? 'production'))) === 'uat' ? 'uat' : 'production';
+$jazzEnv = inventory_ledger_profile();
 
 $result = inventory_jazz_ims_recon_build_rows($jazzEnv);
 $rows = $result['rows'] ?? [];
 if ($mismatchesOnly) {
     $rows = array_values(array_filter($rows, static fn(array $row): bool => !empty($row['mismatch'])));
 }
+
+$listPath = inventory_ims_page_path('/inventory-jazz-ims-recon/');
+$alignPath = inventory_ims_page_path('/inventory-jazz-ims-align/');
 
 $pageTitle = 'Jazz vs IMS CART Reconciliation | Inventory Management';
 $pageDescription = 'Compare Jazz mothership on-hand quantity with IMS CART ledger balances.';
@@ -27,7 +32,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_href'  => $hubBack['href'],
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
-          'title'      => 'Jazz vs IMS CART',
+          'title'      => 'Jazz vs IMS CART' . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => 'Layer 2 mothership pair: Jazz on-hand (facility resolved to CART, e.g. FBF09) versus IMS CART OK + quarantine + on hold.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]); ?>
@@ -39,23 +44,19 @@ require dirname(__DIR__) . '/includes/header.php';
         <div>
           <strong><?= (int) ($result['mismatch_count'] ?? 0) ?> mismatch<?= (int) ($result['mismatch_count'] ?? 0) === 1 ? '' : 'es' ?></strong>
           <p>
-            Jazz <?= htmlspecialchars(strtoupper((string) ($result['jazz_env'] ?? 'production'))) ?>
+            Jazz <?= htmlspecialchars(strtoupper((string) ($result['jazz_env'] ?? $jazzEnv))) ?>
+            · IMS ledger <?= htmlspecialchars(strtoupper(inventory_ledger_profile())) ?>
             · facilities <?= htmlspecialchars(($result['jazz_facility_codes'] ?? []) === [] ? '—' : implode(', ', $result['jazz_facility_codes'])) ?>
             · <?= count($result['rows'] ?? []) ?> SKU row<?= count($result['rows'] ?? []) === 1 ? '' : 's' ?> compared
             <?= $mismatchesOnly ? ' · mismatches only' : '' ?>
           </p>
         </div>
         <div>
-          <?php if ($jazzEnv === 'uat'): ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=production<?= $mismatchesOnly ? '&mismatches=1' : '' ?>">Use Jazz Production</a>
-          <?php else: ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=uat<?= $mismatchesOnly ? '&mismatches=1' : '' ?>">Use Jazz UAT</a>
-          <?php endif; ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-align/?env=<?= htmlspecialchars($jazzEnv) ?>">Align IMS CART</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($alignPath) ?>">Align IMS CART</a>
           <?php if ($mismatchesOnly): ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=<?= htmlspecialchars($jazzEnv) ?>">Show all</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath) ?>">Show all</a>
           <?php else: ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=<?= htmlspecialchars($jazzEnv) ?>&mismatches=1">Mismatches only</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath . '?mismatches=1') ?>">Mismatches only</a>
           <?php endif; ?>
         </div>
       </div>

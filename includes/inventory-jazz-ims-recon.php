@@ -35,16 +35,18 @@ function inventory_jazz_ims_recon_is_cart_jazz_facility(?string $jazzFacilityCod
 /**
  * @return array{ok:bool,error:?string,rows:array<int,array<string,mixed>>,mismatch_count:int,jazz_env:string,jazz_facility_codes:array<int,string>}
  */
-function inventory_jazz_ims_recon_build_rows(string $jazzEnvironment = 'production'): array
+function inventory_jazz_ims_recon_build_rows(?string $jazzEnvironment = null): array
 {
-    $jazzEnvironment = strtolower(trim($jazzEnvironment)) === 'uat' ? 'uat' : 'production';
+    $jazzEnvironment = strtolower(trim((string) ($jazzEnvironment ?? inventory_ledger_profile()))) === 'uat'
+        ? 'uat'
+        : 'production';
     jazz_oms_use_environment($jazzEnvironment);
 
     $pdo = db();
     $imsBySku = [];
 
     try {
-        $imsStmt = $pdo->query(<<<SQL
+        $imsStmt = $pdo->prepare(<<<SQL
             SELECT
                 SKUCode,
                 SUM(QtyOK) AS QtyOK,
@@ -53,8 +55,10 @@ function inventory_jazz_ims_recon_build_rows(string $jazzEnvironment = 'producti
                 SUM(QtyOK + QtyQuarantine + QtyOnHold) AS ImsQty
             FROM dbo.InvCurrentBalance
             WHERE FacilityCode = N'CART'
+              AND LedgerProfile = :ledger_profile
             GROUP BY SKUCode
         SQL);
+        $imsStmt->execute(['ledger_profile' => inventory_ledger_profile()]);
         foreach ($imsStmt->fetchAll() as $row) {
             $sku = strtoupper(trim((string) ($row['SKUCode'] ?? '')));
             if ($sku === '') {

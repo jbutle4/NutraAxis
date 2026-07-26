@@ -1,11 +1,13 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-qbo-recon.php';
 
 inventory_qbo_recon_require_read();
 
-$activeSlug = 'inventory-qbo-recon';
+$activeSlug = $activeSlug ?? 'inventory-qbo-recon';
 $hubBack = app_module_hub_back_link($activeSlug);
+$listPath = inventory_ims_page_path('/inventory-qbo-recon/');
 $mismatchesOnly = ($_GET['mismatches'] ?? '') === '1';
 $result = inventory_qbo_recon_build_rows();
 $rows = $result['rows'] ?? [];
@@ -26,7 +28,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_href'  => $hubBack['href'],
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
-          'title'      => 'QBO Inventory Reconciliation',
+          'title'      => 'QBO Inventory Reconciliation' . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => 'IMS company total (OK + quarantine + on hold) versus QuickBooks Inventory QtyOnHand.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]); ?>
@@ -59,9 +61,9 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div>
           <?php if ($mismatchesOnly): ?>
-          <a class="btn-secondary" href="/inventory-qbo-recon/">Show all</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath) ?>">Show all</a>
           <?php else: ?>
-          <a class="btn-secondary" href="/inventory-qbo-recon/?mismatches=1">Mismatches only</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath . '?mismatches=1') ?>">Mismatches only</a>
           <?php endif; ?>
         </div>
       </div>

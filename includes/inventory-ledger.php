@@ -1,7 +1,42 @@
 <?php
 
+require_once __DIR__ . '/data-profile.php';
 require_once __DIR__ . '/inventory-reporting.php';
 require_once __DIR__ . '/jazz-oms.php';
+
+const INVENTORY_LEDGER_PROFILE_PRODUCTION = 'production';
+const INVENTORY_LEDGER_PROFILE_UAT = 'uat';
+
+function inventory_ledger_profile(): string
+{
+    return data_profile_is_uat()
+        ? INVENTORY_LEDGER_PROFILE_UAT
+        : INVENTORY_LEDGER_PROFILE_PRODUCTION;
+}
+
+function inventory_ledger_profile_is_uat(): bool
+{
+    return inventory_ledger_profile() === INVENTORY_LEDGER_PROFILE_UAT;
+}
+
+/**
+ * Bind Jazz OMS and QuickBooks to the active page data profile.
+ */
+function inventory_ims_bind_page_environments(): void
+{
+    require_once __DIR__ . '/accounting.php';
+
+    jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+    accounting_bind_qbo_environment();
+}
+
+/**
+ * Profile-aware IMS module path (production path in, UAT twin out when on a UAT page).
+ */
+function inventory_ims_page_path(string $productionPath): string
+{
+    return data_profile_page_path($productionPath);
+}
 
 const INVENTORY_LEDGER_LIST_SORT_COLUMNS = [
     'sku'           => 'SKU',
@@ -98,9 +133,10 @@ function inventory_ledger_list_balances(array $filters = []): array
             b.LastUpdated
         FROM dbo.InvCurrentBalance b
         INNER JOIN dbo.Facility f ON f.FacilityCode = b.FacilityCode
+        WHERE b.LedgerProfile = :ledger_profile
     SQL;
 
-    $params = [];
+    $params = ['ledger_profile' => inventory_ledger_profile()];
     $where = [];
 
     $facility = trim((string) ($filters['facility'] ?? ''));
@@ -116,7 +152,7 @@ function inventory_ledger_list_balances(array $filters = []): array
     }
 
     if ($where !== []) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
+        $sql .= ' AND ' . implode(' AND ', $where);
     }
 
     $sortState = table_sort_state(
@@ -178,8 +214,12 @@ function inventory_ledger_qbo_qty_for_sku(string $skuCode): float
             SUM(b.QtyOK + b.QtyQuarantine + b.QtyOnHold) AS QtyForQbo
         FROM dbo.InvCurrentBalance b
         WHERE b.SKUCode = :sku
+          AND b.LedgerProfile = :ledger_profile
     SQL);
-    $stmt->execute(['sku' => $skuCode]);
+    $stmt->execute([
+        'sku' => $skuCode,
+        'ledger_profile' => inventory_ledger_profile(),
+    ]);
     $row = $stmt->fetch();
 
     $qty = $row === false ? 0.0 : (float) ($row['QtyForQbo'] ?? 0);

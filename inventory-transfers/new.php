@@ -1,11 +1,12 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
 require dirname(__DIR__) . '/includes/catalog.php';
 
 inventory_transfers_require_update();
 
-$activeSlug = 'inventory-transfers';
+$activeSlug = $activeSlug ?? 'inventory-transfers';
 $facilities = inventory_transfers_list_facilities();
 $reasons = inventory_transfers_reason_codes();
 $error = null;
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'notes'              => $_POST['notes'] ?? '',
     ]);
     if ($result['ok']) {
-        header('Location: /inventory-transfers/view.php?id=' . (int) $result['transfer_id'] . '&notice=created', true, 302);
+        header('Location: ' . inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $result['transfer_id'] . '&notice=created'), true, 302);
         exit;
     }
     $error = $result['error'] ?? 'Unable to create transfer.';
@@ -35,7 +36,7 @@ require dirname(__DIR__) . '/includes/header.php';
   <main class="page-main">
     <div class="container page-inner">
       <?php render_list_page_header([
-          'back_href'  => '/inventory-transfers/',
+          'back_href'  => inventory_ims_page_path('/inventory-transfers/'),
           'back_label' => 'Back to Transfers',
           'category'   => 'Inventory',
           'title'      => 'New Facility Transfer',
@@ -46,7 +47,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form method="post" class="admin-form" action="/inventory-transfers/new.php">
+      <form method="post" class="admin-form" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/new.php')) ?>">
         <div class="form-grid">
           <div class="form-field">
             <label for="from_facility_code">From facility</label>
@@ -95,7 +96,7 @@ require dirname(__DIR__) . '/includes/header.php';
         render_form_actions(capture_form_actions(static function (): void {
             ?>
             <button type="submit" class="btn-primary">Create transfer</button>
-            <a class="btn-secondary" href="/inventory-transfers/">Cancel</a>
+            <a class="btn-secondary" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/')) ?>">Cancel</a>
             <?php
         }));
         ?>

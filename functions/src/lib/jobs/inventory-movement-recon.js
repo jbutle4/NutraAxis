@@ -1,4 +1,5 @@
 const { sql, connectPool, getProductionDatabase } = require('../db-config');
+const { imsLedgerProfile, accsSourceEnvironment, imsEnvironmentSummary } = require('../ims-ledger-profile');
 
 function inventoryDatabase() {
   return process.env.DB_NAME_INVENTORY_SYNC
@@ -14,17 +15,18 @@ function lookbackDays(params = {}) {
   return Math.min(Math.floor(raw), 365);
 }
 
-async function insertRun(pool, triggerType, lookback, userId) {
+async function insertRun(pool, triggerType, lookback, userId, ledgerProfile) {
   const result = await pool.request()
     .input('trigger', sql.NVarChar(20), triggerType)
     .input('lookback', sql.Int, lookback)
     .input('userId', sql.Int, userId)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       INSERT INTO dbo.InventoryMovementReconRun (
-        TriggerType, LookbackDays, Status, TriggeredByUserID
+        TriggerType, LookbackDays, Status, TriggeredByUserID, LedgerProfile
       )
       OUTPUT INSERTED.ReconRunID
-      VALUES (@trigger, @lookback, N'Running', @userId)
+      VALUES (@trigger, @lookback, N'Running', @userId, @ledgerProfile)
     `);
   return Number(result.recordset[0]?.ReconRunID || 0);
 }
@@ -223,9 +225,12 @@ async function collectReceiptExceptions(pool, lookback) {
   return lines;
 }
 
-async function collectSaleExceptions(pool, lookback) {
+async function collectSaleExceptions(pool, lookback, ledgerProfile) {
+  const sourceEnvironment = ledgerProfile === 'production' ? 'production' : 'stage';
   const result = await pool.request()
     .input('days', sql.Int, lookback)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
+    .input('sourceEnvironment', sql.NVarChar(20), sourceEnvironment)
     .query(`
       SELECT TOP (2000)
         h.AccsSalesOrderHeaderID,
@@ -250,7 +255,9 @@ async function collectSaleExceptions(pool, lookback) {
         ON ims.ReferenceType = N'AccsSalesOrderHeader'
        AND ims.ReferenceID = h.AccsSalesOrderHeaderID
        AND ims.TransactionType = N'Sale'
+       AND ims.LedgerProfile = @ledgerProfile
       WHERE h.OrderCreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())
+        AND h.SourceEnvironment = @sourceEnvironment
         AND (
           LOWER(COALESCE(h.OrderStatus, N'')) LIKE N'%complete%'
           OR LOWER(COALESCE(h.OrderStatus, N'')) LIKE N'%ship%'
@@ -342,9 +349,10 @@ async function collectSaleExceptions(pool, lookback) {
   return lines;
 }
 
-async function collectTransferExceptions(pool, lookback) {
+async function collectTransferExceptions(pool, lookback, ledgerProfile) {
   const result = await pool.request()
     .input('days', sql.Int, lookback)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       SELECT
         t.TransferID,
@@ -365,6 +373,7 @@ async function collectTransferExceptions(pool, lookback) {
       LEFT JOIN dbo.QBOInventorySyncLog l
         ON l.DocNumber = CONCAT(N'NA-TRF-', t.TransferID)
       WHERE t.CreateDate >= DATEADD(DAY, -@days, SYSUTCDATETIME())
+        AND t.LedgerProfile = @ledgerProfile
       ORDER BY t.TransferID DESC
     `);
 
@@ -437,9 +446,10 @@ async function collectTransferExceptions(pool, lookback) {
   return lines;
 }
 
-async function collectAdjustmentExceptions(pool, lookback) {
+async function collectAdjustmentExceptions(pool, lookback, ledgerProfile) {
   const result = await pool.request()
     .input('days', sql.Int, lookback)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       SELECT
         a.AdjustmentID,
@@ -459,6 +469,7 @@ async function collectAdjustmentExceptions(pool, lookback) {
         ON l.DocNumber = CONCAT(N'NA-ADJ-', a.AdjustmentID)
       WHERE a.CreateDate >= DATEADD(DAY, -@days, SYSUTCDATETIME())
         AND a.AdjStatus IN (N'Pending', N'Approved')
+        AND a.LedgerProfile = @ledgerProfile
       ORDER BY a.AdjustmentID DESC
     `);
 
@@ -556,18 +567,20 @@ async function run(params = {}) {
   const triggerType = String(params.trigger_type || params.triggerType || 'Scheduled');
   const userId = Number(params.triggered_by_user_id || params.triggeredByUserId || 0) || null;
   const pool = await connectPool(inventoryDatabase());
+  const ledgerProfile = imsLedgerProfile();
+  const environment = imsEnvironmentSummary();
   let runId = 0;
 
   try {
-    runId = await insertRun(pool, triggerType === 'Manual' ? 'Manual' : 'Scheduled', lookback, userId);
+    runId = await insertRun(pool, triggerType === 'Manual' ? 'Manual' : 'Scheduled', lookback, userId, ledgerProfile);
     if (!runId) {
       return { ok: false, error: 'Unable to create recon run.', processed: 0 };
     }
 
     const receiptLines = await collectReceiptExceptions(pool, lookback);
-    const saleLines = await collectSaleExceptions(pool, lookback);
-    const transferLines = await collectTransferExceptions(pool, lookback);
-    const adjustmentLines = await collectAdjustmentExceptions(pool, lookback);
+    const saleLines = await collectSaleExceptions(pool, lookback, ledgerProfile);
+    const transferLines = await collectTransferExceptions(pool, lookback, ledgerProfile);
+    const adjustmentLines = await collectAdjustmentExceptions(pool, lookback, ledgerProfile);
     const all = [...receiptLines, ...saleLines, ...transferLines, ...adjustmentLines];
 
     for (const line of all) {
@@ -589,6 +602,7 @@ async function run(params = {}) {
     return {
       ok: true,
       error: null,
+      environment,
       recon_run_id: runId,
       lookback_days: lookback,
       ...counts,

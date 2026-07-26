@@ -44,8 +44,8 @@ function inventory_adjustments_require_update(): void
 function inventory_adjustments_list(array $filters = []): array
 {
     $pdo = db();
-    $where = ['1 = 1'];
-    $params = [];
+    $where = ['a.LedgerProfile = :ledger_profile'];
+    $params = ['ledger_profile' => inventory_ledger_profile()];
 
     $status = trim((string) ($filters['status'] ?? ''));
     if ($status !== '') {
@@ -96,8 +96,12 @@ function inventory_adjustments_get(int $adjustmentId): ?array
         FROM dbo.InvAdjustment a
         LEFT JOIN dbo.InvReasonCode rc ON rc.ReasonCodeID = a.ReasonCodeID
         WHERE a.AdjustmentID = :id
+          AND a.LedgerProfile = :ledger_profile
     SQL);
-    $stmt->execute(['id' => $adjustmentId]);
+    $stmt->execute([
+        'id' => $adjustmentId,
+        'ledger_profile' => inventory_ledger_profile(),
+    ]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $row === false ? null : $row;
@@ -312,13 +316,13 @@ function inventory_adjustments_create(array $input): array
             INSERT INTO dbo.InvAdjustment (
                 SKUCode, FacilityCode, StatusBucket,
                 QtyAdjusted, QtyBefore, QtyAfter,
-                ReasonCodeID, Notes, AdjStatus, CreatedByUser
+                ReasonCodeID, Notes, AdjStatus, CreatedByUser, LedgerProfile
             )
             OUTPUT INSERTED.AdjustmentID AS inserted_id
             VALUES (
                 :sku, :facility, :bucket,
                 :qty_adj, :qty_before, :qty_after,
-                :reason_id, :notes, N'Pending', :user_id
+                :reason_id, :notes, N'Pending', :user_id, :ledger_profile
             )
         SQL);
         $insert->execute([
@@ -331,6 +335,7 @@ function inventory_adjustments_create(array $input): array
             'reason_id' => $reasonCodeId,
             'notes' => $notes !== '' ? $notes : null,
             'user_id' => (int) $userId,
+            'ledger_profile' => inventory_ledger_profile(),
         ]);
         $adjustmentId = db_fetch_inserted_int($insert, 'inserted_id');
 

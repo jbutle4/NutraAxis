@@ -2187,6 +2187,24 @@ function qbo_post_inventory_transfer_journal_entry(
     return ['ok' => true, 'error' => null, 'txn' => is_array($txn) ? $txn : null];
 }
 
+function qbo_inventory_sync_ledger_profile(array $row): string
+{
+    $profile = strtolower(trim((string) ($row['ledger_profile'] ?? '')));
+    if ($profile === 'uat' || $profile === 'production') {
+        return $profile;
+    }
+
+    if (function_exists('inventory_ledger_profile')) {
+        return inventory_ledger_profile();
+    }
+
+    if (function_exists('data_profile_is_uat') && data_profile_is_uat()) {
+        return 'uat';
+    }
+
+    return 'production';
+}
+
 function qbo_inventory_sync_log_exists(string $docNumber): bool
 {
     $pdo = db();
@@ -2207,6 +2225,7 @@ function qbo_inventory_sync_log_write(array $row): void
 function qbo_inventory_sync_log_upsert(array $row): void
 {
     $pdo = db();
+    $ledgerProfile = qbo_inventory_sync_ledger_profile($row);
     $pdo->prepare(<<<SQL
         MERGE dbo.QBOInventorySyncLog AS target
         USING (SELECT :doc AS DocNumber) AS source
@@ -2224,18 +2243,20 @@ function qbo_inventory_sync_log_upsert(array $row): void
                 QBO_SyncToken = :sync_token,
                 SyncStatus = :status,
                 SyncError = :error,
+                LedgerProfile = :ledger_profile,
                 SyncedAt = CASE WHEN :status2 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
         WHEN NOT MATCHED THEN
             INSERT (
                 DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
                 SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
-                SyncStatus, SyncError, SyncedAt
+                SyncStatus, SyncError, SyncedAt, LedgerProfile
             )
             VALUES (
                 :doc2, :sync_type2, :ref_type2, :ref_id2, :line_key2,
                 :sku2, :qty2, :facility2, :txn_id2, :sync_token2,
                 :status3, :error2,
-                CASE WHEN :status4 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+                CASE WHEN :status4 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END,
+                :ledger_profile2
             );
     SQL)->execute([
         'doc' => $row['doc_number'],
@@ -2251,6 +2272,7 @@ function qbo_inventory_sync_log_upsert(array $row): void
         'status' => $row['sync_status'],
         'status2' => $row['sync_status'],
         'error' => $row['sync_error'] ?? null,
+        'ledger_profile' => $ledgerProfile,
         'doc2' => $row['doc_number'],
         'sync_type2' => $row['sync_type'],
         'ref_type2' => $row['reference_type'],
@@ -2264,6 +2286,7 @@ function qbo_inventory_sync_log_upsert(array $row): void
         'status3' => $row['sync_status'],
         'error2' => $row['sync_error'] ?? null,
         'status4' => $row['sync_status'],
+        'ledger_profile2' => $ledgerProfile,
     ]);
 }
 

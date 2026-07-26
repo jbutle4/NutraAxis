@@ -23,14 +23,20 @@ function inventory_movement_recon_latest(array $filters = []): array
                 SELECT TOP (1) *
                 FROM dbo.InventoryMovementReconRun
                 WHERE ReconRunID = :runId
+                  AND LedgerProfile = :ledger_profile
             SQL);
-            $runStmt->execute(['runId' => $runId]);
+            $runStmt->execute([
+                'runId' => $runId,
+                'ledger_profile' => inventory_ledger_profile(),
+            ]);
         } else {
-            $runStmt = $pdo->query(<<<SQL
+            $runStmt = $pdo->prepare(<<<SQL
                 SELECT TOP (1) *
                 FROM dbo.InventoryMovementReconRun
+                WHERE LedgerProfile = :ledger_profile
                 ORDER BY ReconRunID DESC
             SQL);
+            $runStmt->execute(['ledger_profile' => inventory_ledger_profile()]);
         }
         $run = $runStmt->fetch(PDO::FETCH_ASSOC);
         if (!$run) {
@@ -87,7 +93,7 @@ function inventory_movement_recon_recent_runs(int $limit = 10): array
     $limit = max(1, min($limit, 50));
 
     try {
-        $stmt = $pdo->query(<<<SQL
+        $stmt = $pdo->prepare(<<<SQL
             SELECT TOP ($limit)
                 ReconRunID,
                 StartedAt,
@@ -102,8 +108,10 @@ function inventory_movement_recon_recent_runs(int $limit = 10): array
                 TotalExceptions,
                 SummaryMessage
             FROM dbo.InventoryMovementReconRun
+            WHERE LedgerProfile = :ledger_profile
             ORDER BY ReconRunID DESC
         SQL);
+        $stmt->execute(['ledger_profile' => inventory_ledger_profile()]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {

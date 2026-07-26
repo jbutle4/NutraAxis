@@ -42,8 +42,8 @@ function inventory_transfers_require_update(): void
 function inventory_transfers_list(array $filters = []): array
 {
     $pdo = db();
-    $where = ['1 = 1'];
-    $params = [];
+    $where = ['t.LedgerProfile = :ledger_profile'];
+    $params = ['ledger_profile' => inventory_ledger_profile()];
 
     $status = trim((string) ($filters['status'] ?? ''));
     if ($status !== '') {
@@ -80,8 +80,11 @@ function inventory_transfers_list(array $filters = []): array
 function inventory_transfers_get(int $transferId): ?array
 {
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT * FROM dbo.InvTransfer WHERE TransferID = :id');
-    $stmt->execute(['id' => $transferId]);
+    $stmt = $pdo->prepare('SELECT * FROM dbo.InvTransfer WHERE TransferID = :id AND LedgerProfile = :ledger_profile');
+    $stmt->execute([
+        'id' => $transferId,
+        'ledger_profile' => inventory_ledger_profile(),
+    ]);
     $row = $stmt->fetch();
 
     return $row === false ? null : $row;

@@ -46,7 +46,7 @@ function inventory_jazz_ims_align_sku_master_set(): array
  *
  * @return array{ok:bool,error:?string,lines:array<int,array<string,mixed>>,jazz_env:string,jazz_facility_codes:array<int,string>}
  */
-function inventory_jazz_ims_align_preview(string $jazzEnvironment = 'production', bool $zeroMissingJazz = false): array
+function inventory_jazz_ims_align_preview(?string $jazzEnvironment = null, bool $zeroMissingJazz = false): array
 {
     $recon = inventory_jazz_ims_recon_build_rows($jazzEnvironment);
     if (!$recon['ok']) {
@@ -117,7 +117,7 @@ function inventory_jazz_ims_align_preview(string $jazzEnvironment = 'production'
  * @return array{ok:bool,error:?string,align_run_id:?int,dry_run:bool,posted:int,skipped:int,transaction_id:?int,summary:?string}
  */
 function inventory_jazz_ims_align_run(
-    string $jazzEnvironment = 'production',
+    ?string $jazzEnvironment = null,
     bool $dryRun = true,
     bool $zeroMissingJazz = false,
     ?int $userId = null
@@ -143,12 +143,12 @@ function inventory_jazz_ims_align_run(
     $insert = $pdo->prepare(<<<SQL
         INSERT INTO dbo.InventoryJazzImsAlignRun (
             JazzEnvironment, DryRun, ZeroMissingJazz, Status,
-            CandidateCount, TriggeredByUserID
+            CandidateCount, TriggeredByUserID, LedgerProfile
         )
         OUTPUT INSERTED.AlignRunID AS inserted_id
         VALUES (
             :env, :dry, :zero, N'Running',
-            :candidates, :user_id
+            :candidates, :user_id, :ledger_profile
         )
     SQL);
     $insert->execute([
@@ -157,6 +157,7 @@ function inventory_jazz_ims_align_run(
         'zero' => $zeroMissingJazz ? 1 : 0,
         'candidates' => count($lines),
         'user_id' => $userId,
+        'ledger_profile' => inventory_ledger_profile(),
     ]);
     $runId = db_fetch_inserted_int($insert, 'inserted_id');
 
@@ -302,11 +303,13 @@ function inventory_jazz_ims_align_recent_runs(int $limit = 10): array
     $limit = max(1, min($limit, 50));
     try {
         $pdo = db();
-        $stmt = $pdo->query(<<<SQL
+        $stmt = $pdo->prepare(<<<SQL
             SELECT TOP ($limit) *
             FROM dbo.InventoryJazzImsAlignRun
+            WHERE LedgerProfile = :ledger_profile
             ORDER BY AlignRunID DESC
         SQL);
+        $stmt->execute(['ledger_profile' => inventory_ledger_profile()]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {

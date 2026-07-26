@@ -1,16 +1,20 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-jazz-ims-align.php';
 
 inventory_jazz_ims_align_require_read();
+inventory_ims_bind_page_environments();
 
-$activeSlug = 'inventory-jazz-ims-align';
+$activeSlug = $activeSlug ?? 'inventory-jazz-ims-align';
 $hubBack = app_module_hub_back_link($activeSlug);
-$jazzEnv = strtolower(trim((string) ($_GET['env'] ?? $_POST['env'] ?? 'production'))) === 'uat' ? 'uat' : 'production';
+$jazzEnv = inventory_ledger_profile();
 $zeroMissing = (($_GET['zero_missing'] ?? $_POST['zero_missing'] ?? '') === '1');
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 $userId = auth_user()['UserID'] ?? null;
+$listPath = inventory_ims_page_path('/inventory-jazz-ims-align/');
+$reconPath = inventory_ims_page_path('/inventory-jazz-ims-recon/');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_jazz_ims_align_can_update()) {
     $action = (string) ($_POST['action'] ?? '');
@@ -18,9 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_jazz_ims_align_can_update
     $dryRun = $action !== 'apply';
     if ($action === 'apply' && strtoupper($confirm) !== 'ALIGN') {
         header(
-            'Location: /inventory-jazz-ims-align/?env=' . rawurlencode($jazzEnv)
-                . ($zeroMissing ? '&zero_missing=1' : '')
-                . '&error=' . rawurlencode('Type ALIGN to confirm a live IMS CART update.'),
+            'Location: ' . $listPath
+                . ($zeroMissing ? '?zero_missing=1&' : '?')
+                . 'error=' . rawurlencode('Type ALIGN to confirm a live IMS CART update.'),
             true,
             302
         );
@@ -35,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_jazz_ims_align_can_update
     );
 
     $query = [
-        'env' => $jazzEnv,
         'notice' => $result['ok'] ? ($dryRun ? 'dry_run' : 'applied') : null,
         'error' => $result['ok'] ? null : ($result['error'] ?? 'Align failed.'),
         'run_id' => $result['align_run_id'] ?? null,
@@ -43,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_jazz_ims_align_can_update
     if ($zeroMissing) {
         $query['zero_missing'] = '1';
     }
-    header('Location: /inventory-jazz-ims-align/?' . http_build_query(array_filter($query, static fn($v) => $v !== null && $v !== '')), true, 302);
+    header('Location: ' . $listPath . '?' . http_build_query(array_filter($query, static fn($v) => $v !== null && $v !== '')), true, 302);
     exit;
 }
 
@@ -64,7 +67,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_href'  => $hubBack['href'],
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
-          'title'      => 'Jazz → IMS CART Align',
+          'title'      => 'Jazz → IMS CART Align' . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => 'Bring IMS CART OK+Q+H in line with Jazz on-hand. Posts JazzSyncReconcile to IMS only — does not change QuickBooks QtyOnHand.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]);
@@ -73,7 +76,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if ($notice === 'dry_run'): ?>
       <div class="admin-notice is-success" role="status">Dry run recorded<?= isset($_GET['run_id']) ? ' (run #' . (int) $_GET['run_id'] . ')' : '' ?>.</div>
       <?php elseif ($notice === 'applied'): ?>
-      <div class="admin-notice is-success" role="status">IMS CART align applied<?= isset($_GET['run_id']) ? ' (run #' . (int) $_GET['run_id'] . ')' : '' ?>. Re-check <a href="/inventory-jazz-ims-recon/?env=<?= htmlspecialchars($jazzEnv) ?>">Jazz vs IMS CART</a>.</div>
+      <div class="admin-notice is-success" role="status">IMS CART align applied<?= isset($_GET['run_id']) ? ' (run #' . (int) $_GET['run_id'] . ')' : '' ?>. Re-check <a href="<?= htmlspecialchars($reconPath) ?>">Jazz vs IMS CART</a>.</div>
       <?php endif; ?>
       <?php if ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -87,22 +90,17 @@ require dirname(__DIR__) . '/includes/header.php';
           <strong><?= count($lines) ?> SKU delta<?= count($lines) === 1 ? '' : 's' ?></strong>
           <p>
             Jazz <?= htmlspecialchars(strtoupper($jazzEnv)) ?>
+            · IMS ledger <?= htmlspecialchars(strtoupper(inventory_ledger_profile())) ?>
             · facilities <?= htmlspecialchars(($preview['jazz_facility_codes'] ?? []) === [] ? '—' : implode(', ', $preview['jazz_facility_codes'])) ?>
             · IMS-only align (QBO untouched)
           </p>
         </div>
         <div>
-          <a class="btn-secondary" href="/inventory-jazz-ims-recon/?env=<?= htmlspecialchars($jazzEnv) ?>">Open recon</a>
-          <?php if ($jazzEnv === 'uat'): ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-align/?env=production<?= $zeroMissing ? '&zero_missing=1' : '' ?>">Jazz Production</a>
-          <?php else: ?>
-          <a class="btn-secondary" href="/inventory-jazz-ims-align/?env=uat<?= $zeroMissing ? '&zero_missing=1' : '' ?>">Jazz UAT</a>
-          <?php endif; ?>
+          <a class="btn-secondary" href="<?= htmlspecialchars($reconPath) ?>">Open recon</a>
         </div>
       </div>
 
-      <form method="get" class="admin-filter-bar" action="/inventory-jazz-ims-align/" style="margin-bottom:1rem;">
-        <input type="hidden" name="env" value="<?= htmlspecialchars($jazzEnv) ?>">
+      <form method="get" class="admin-filter-bar" action="<?= htmlspecialchars($listPath) ?>" style="margin-bottom:1rem;">
         <label class="form-field" style="flex-direction:row;align-items:center;gap:0.5rem;">
           <input type="checkbox" name="zero_missing" value="1"<?= $zeroMissing ? ' checked' : '' ?> onchange="this.form.submit()">
           Also zero IMS CART for SKUs missing from Jazz
@@ -112,13 +110,11 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php if (inventory_jazz_ims_align_can_update()): ?>
       <div class="form-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
         <form method="post">
-          <input type="hidden" name="env" value="<?= htmlspecialchars($jazzEnv) ?>">
           <input type="hidden" name="zero_missing" value="<?= $zeroMissing ? '1' : '0' ?>">
           <input type="hidden" name="action" value="dry_run">
           <button type="submit" class="btn-secondary">Record dry run</button>
         </form>
         <form method="post" onsubmit="return confirm('Post JazzSyncReconcile to IMS CART for <?= count($lines) ?> SKU(s)? QuickBooks will not change.');" style="display:flex;gap:0.5rem;align-items:end;flex-wrap:wrap;">
-          <input type="hidden" name="env" value="<?= htmlspecialchars($jazzEnv) ?>">
           <input type="hidden" name="zero_missing" value="<?= $zeroMissing ? '1' : '0' ?>">
           <input type="hidden" name="action" value="apply">
           <div class="form-field">
