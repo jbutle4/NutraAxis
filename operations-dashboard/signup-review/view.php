@@ -138,7 +138,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif (($_GET['notice'] ?? '') === 'reopened'): ?>
       <div class="admin-notice is-success" role="status">Application reopened as draft. The provider was emailed and can edit again.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'approved'): ?>
-      <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create ACCS company</strong> when you are ready to provision the Clinic Store. The provider is not emailed until provisioning completes.</div>
+      <div class="admin-notice is-success" role="status">Application approved. Use <strong>Create Clinic Store</strong> when you are ready to provision. The provider is not emailed until provisioning completes.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'provisioned'): ?>
       <div class="admin-notice is-success" role="status">ACCS company creation completed. The provider has been notified by email.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'already_provisioned'): ?>
@@ -159,7 +159,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <?php if ($canProvision): ?>
-      <div class="admin-notice" role="status">This application is <strong>Approved</strong> and ready for ACCS company creation.</div>
+      <div class="admin-notice" role="status">This application is <strong>Approved</strong> and ready for Clinic Store creation.</div>
       <?php endif; ?>
 
       <?php if ($providerCanEdit): ?>
@@ -357,7 +357,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <button class="btn-secondary" type="submit" name="action" value="return" <?= $canRevert ? '' : 'disabled title="Only applications that are submitted for review, approved, or rejected can be sent back to the provider"' ?>>Return to provider</button>
           <button class="btn-secondary" type="submit" name="action" value="reject">Reject</button>
           <button class="btn-primary" type="submit" name="action" value="approve" <?= $canApprove ? '' : 'disabled title="This application cannot be approved in its current status"' ?>>Approve application</button>
-          <button class="btn-primary" type="submit" name="action" value="provision" <?= $canProvision ? '' : 'disabled title="Approve the application before creating the ACCS company"' ?>>Create ACCS company</button>
+          <button class="btn-primary" type="submit" name="action" value="provision" <?= $canProvision ? '' : 'disabled title="Approve the application before creating the Clinic Store"' ?>>Create Clinic Store</button>
         </div>
 
         <?php if ($canRevert): ?>
