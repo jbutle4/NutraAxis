@@ -224,3 +224,13 @@ Example:
 - Deployed Approvals Queue + Contacts List + hub/auth includes to `nutraaxisweb` via **Kudu VFS** (`$nutraaxisweb` publishing credentials). Verified remote files contain `procurement-approvals` / `contacts-list` / `ContactsList`.
 - Live URLs `/procurement-approvals/` and `/contacts-list/` return auth redirect (302).
 - Azure SQL from this cloud IP is firewalled — could not re-run `067`/`068` here; App Service can still use existing Contacts schema if already applied. Whitelist agent IP or run migrations from an allowed network if ContactsList column/table is missing.
+
+---
+
+## 2026-07-26 — Reconfirm merge plan; home Operations Contacts card
+
+- Pre-merge scan: **PR #15**, **#13**, **#10**, **#9** already merged; **#12** / **#11** closed; only open PR is draft **#17** QBO inventory (left WIP). `merge-tree` of #17 tip into `main` is clean but not merged per plan.
+- Confirmed on `main`: `procurement-approvals/`, `contacts-list/`, hub slug in `includes/app.php`, `ContactsList` auth mapping; Azure SQL has `dbo.ContactsList` + Admin `ContactsList=CRUD`.
+- Home **Operations** cards come from `includes/operations-dashboard.php` (not the dedicated dashboard page). Added missing **Contacts List** card after Supplier Management so it appears on `/`.
+- Selective FTP to `nutraaxisweb`: Approvals Queue, Contacts List pages, hub/auth/admin/contacts includes, `operations-dashboard` + home shared sections, `my-account`. Live URLs still auth-redirect (302).
+- `AGENTS.md` already documents deploy-then-merge + pre-merge open-branch conflict scan; no further rule edits required.
