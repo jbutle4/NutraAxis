@@ -1075,6 +1075,29 @@ button.btn-danger {
 
 .btn-secondary:hover { background: var(--teal-dark); color: var(--white); }
 
+button.btn-primary:disabled,
+button.btn-secondary:disabled,
+button.btn-danger:disabled,
+a.btn-primary[aria-disabled="true"],
+a.btn-secondary[aria-disabled="true"],
+a.btn-danger[aria-disabled="true"] {
+  background: #c5cdcc;
+  color: #6b7877;
+  border: 2px solid #c5cdcc;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 1;
+  pointer-events: none;
+}
+
+button.btn-primary:disabled:hover,
+button.btn-secondary:disabled:hover,
+button.btn-danger:disabled:hover {
+  background: #c5cdcc;
+  color: #6b7877;
+  transform: none;
+}
+
 button.btn-danger,
 a.btn-danger {
   background: var(--danger);
