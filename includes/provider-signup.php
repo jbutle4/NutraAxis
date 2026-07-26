@@ -96,6 +96,7 @@ const PROVIDER_SIGNUP_LIST_SORT_COLUMNS = [
     'practice'  => 'Practice',
     'provider'  => 'Provider Email',
     'status'    => 'Status',
+    'created'   => 'Date Created',
     'submitted' => 'Submitted',
 ];
 
@@ -104,6 +105,7 @@ const PROVIDER_SIGNUP_LIST_SORT_SQL = [
     'practice'  => 'a.CompanyName',
     'provider'  => 'a.ProviderEmail',
     'status'    => 'a.Status',
+    'created'   => 'a.CreatedAt',
     'submitted' => 'a.SubmittedAt',
 ];
 
@@ -1270,9 +1272,13 @@ function provider_signup_format_datetime(DateTimeInterface|string|null $value): 
     }
 
     try {
-        $dt = $value instanceof DateTimeInterface ? $value : new DateTimeImmutable((string) $value);
+        // DB timestamps are UTC (SYSUTCDATETIME); display in US Central.
+        $raw = $value instanceof DateTimeInterface
+            ? $value->format('Y-m-d H:i:s')
+            : (string) $value;
+        $dt = new DateTimeImmutable($raw, new DateTimeZone('UTC'));
 
-        return $dt->format('M j, Y g:i A');
+        return $dt->setTimezone(new DateTimeZone('America/Chicago'))->format('M j, Y g:i A T');
     } catch (Throwable) {
         return is_scalar($value) ? (string) $value : '—';
     }

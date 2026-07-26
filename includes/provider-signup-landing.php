@@ -13,7 +13,23 @@ function provider_signup_landing_css_version(): string
 
     $path = dirname(__DIR__) . '/assets/css/provider-signup-landing.css';
 
-    return $version = (is_readable($path) ? (string) filemtime($path) : '1') . '-pub4';
+    return $version = (is_readable($path) ? (string) filemtime($path) : '1') . '-pub5';
+}
+
+function provider_signup_render_provider_photo_card(): void
+{
+    $photoUrl = marketing_site_asset_url('/images/nutraaxis-image-option-3.png');
+    ?>
+        <div class="provider-photo-card">
+          <img
+            src="<?= htmlspecialchars($photoUrl) ?>"
+            alt="A practitioner reviewing NutraAxis product recommendations with a patient"
+            width="1024"
+            height="576"
+            fetchpriority="high"
+          />
+        </div>
+    <?php
 }
 
 function provider_signup_landing_hero_image_url(): string
@@ -123,7 +139,7 @@ function provider_signup_render_landing_page(): void
           </div>
         </div>
         <div class="hero-visual">
-          <?php provider_signup_render_quality_card(); ?>
+          <?php provider_signup_render_provider_photo_card(); ?>
         </div>
       </div>
     </div>
@@ -328,11 +344,11 @@ function provider_signup_render_apply_page_open(): void
       <div class="hero-inner">
         <div class="hero-text">
           <div class="section-label">For Practitioners</div>
-          <h1>Complete your <span>Provider Application</span></h1>
-          <p>Save your progress at any time. Operations will review your information and create your Clinic Store in ACCS after approval.</p>
+          <h1>Complete your <span>Practitioner Application</span></h1>
+          <p>Save your progress at any time. Operations will review your information and create your Clinic Store after approval.</p>
         </div>
         <div class="hero-visual">
-          <?php provider_signup_render_quality_card(); ?>
+          <?php provider_signup_render_provider_photo_card(); ?>
         </div>
       </div>
     </div>
@@ -356,7 +372,7 @@ function provider_signup_render_policy_page_open(): void
           <p>Review the NutraAxis Practitioner Reseller &amp; Advertising Policy, then acknowledge it to continue your application.</p>
         </div>
         <div class="hero-visual">
-          <?php provider_signup_render_quality_card(); ?>
+          <?php provider_signup_render_provider_photo_card(); ?>
         </div>
       </div>
     </div>
@@ -455,7 +471,7 @@ function provider_signup_render_apply_page_close(): void
   <section class="disclaimer">
     <div class="container">
       <?php provider_signup_render_support_link('provider-support-link provider-support-link--apply'); ?>
-      <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Provider participation is subject to application review and program terms.</p>
+      <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Practitioner participation is subject to application review and program terms.</p>
     </div>
   </section>
 </div>
@@ -472,15 +488,15 @@ function provider_signup_render_application_start_page(string $startError = ''):
       <div class="hero-inner">
         <div class="hero-text">
           <div class="section-label">For Practitioners</div>
-          <h1>Apply for <span>Provider Access</span></h1>
+          <h1>Apply for <span>Practitioner Access</span></h1>
           <p>Start your co-branded Clinic Store application in minutes. We will email you a secure link to save progress and return whenever you are ready to submit.</p>
           <div class="apply-form-card">
-            <p class="apply-form-card__lead">Enter your provider email to begin a draft application. Already started? Use the link from your confirmation email.</p>
+            <p class="apply-form-card__lead">Enter your practitioner email to begin a draft application. Already started? Use the link from your confirmation email.</p>
             <?php if ($startError !== ''): ?>
             <div class="apply-alert" role="alert"><?= htmlspecialchars($startError) ?></div>
             <?php endif; ?>
             <form class="apply-form" method="post" action="/provider-signup/start.php">
-              <label>Provider email address
+              <label>Practitioner email address
                 <input type="email" name="provider_email" required autocomplete="email" placeholder="you@yourpractice.com" />
               </label>
               <button class="btn-cta" type="submit">Start application</button>
@@ -488,10 +504,10 @@ function provider_signup_render_application_start_page(string $startError = ''):
             <p class="apply-note">Your application stays in draft until operations approves it. We will email you when your Clinic Store is ready.</p>
           </div>
           <?php provider_signup_render_support_link('provider-support-link provider-support-link--start'); ?>
-          <p class="apply-back-link"><a href="/provider-signup/">← Back to For Providers</a></p>
+          <p class="apply-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
         </div>
         <div class="hero-visual">
-          <?php provider_signup_render_quality_card(); ?>
+          <?php provider_signup_render_provider_photo_card(); ?>
         </div>
       </div>
     </div>
@@ -517,7 +533,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
         <div class="process-step">
           <div class="process-num filled">3</div>
           <h3>Launch Your Store</h3>
-          <p>Get your co-branded Clinic Store with provider-set pricing.</p>
+          <p>Get your co-branded Clinic Store with practitioner-set pricing.</p>
         </div>
       </div>
     </div>
@@ -526,7 +542,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
   <section class="disclaimer">
     <div class="container">
       <?php provider_signup_render_support_link('provider-support-link provider-support-link--start-footer'); ?>
-      <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Provider participation is subject to application review and program terms.</p>
+      <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Practitioner participation is subject to application review and program terms.</p>
     </div>
   </section>
 </div>

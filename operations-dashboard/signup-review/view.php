@@ -188,6 +188,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <h2>Status</h2>
           <dl class="detail-list detail-list-inline">
             <div><dt>Status</dt><dd><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $application['Status'])) ?>"><?= htmlspecialchars((string) $application['Status']) ?></span></dd></div>
+            <div><dt>Date created</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['CreatedAt'] ?? null)) ?></dd></div>
             <div><dt>Activated</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></dd></div>
             <div><dt>Last saved</dt><dd><?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></dd></div>
             <div><dt>Policy acknowledged</dt><dd><?php

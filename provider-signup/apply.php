@@ -103,8 +103,8 @@ if (!empty($_GET['warn'])) {
     $warn = (string) $_GET['warn'];
 }
 
-$pageTitle = 'Provider Application | NutraAxis';
-$pageDescription = 'Complete your NutraAxis provider signup application.';
+$pageTitle = 'Practitioner Application | NutraAxis';
+$pageDescription = 'Complete your NutraAxis practitioner signup application.';
 
 require dirname(__DIR__) . '/includes/marketing-head.php';
 echo '<link rel="stylesheet" href="/assets/css/provider-signup-landing.css?v='
