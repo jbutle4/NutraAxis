@@ -49,6 +49,26 @@ function qbo_uses_sandbox_oauth(?string $env = null): bool
     return qbo_normalize_environment($env ?? qbo_environment()) !== QBO_ENV_PRODUCTION;
 }
 
+/**
+ * Resolve an inventory COA account setting for the active QBO_ENVIRONMENT.
+ * Prefer env-specific keys so sandbox + production Ids can both live in App Settings:
+ *   QBO_INV_ASSET_ACCOUNT_CART_SANDBOX / QBO_INV_ASSET_ACCOUNT_CART_PROD
+ * Legacy unsuffixed keys remain a fallback for the active environment.
+ */
+function qbo_inv_account_setting(string $baseKey): string
+{
+    $baseKey = trim($baseKey);
+    if ($baseKey === '') {
+        return '';
+    }
+
+    if (qbo_environment() === 'production') {
+        return trim((string) env_first([$baseKey . '_PROD', $baseKey], ''));
+    }
+
+    return trim((string) env_first([$baseKey . '_SANDBOX', $baseKey], ''));
+}
+
 function qbo_client_id(?string $env = null): string
 {
     $env = qbo_normalize_environment($env ?? qbo_environment());
@@ -728,7 +748,7 @@ function qbo_error_is_stale_object(string $message): bool
 
 function qbo_sku_item_type(): string
 {
-    $type = trim((string) env('QBO_SKU_ITEM_TYPE', 'NonInventory'));
+    $type = trim((string) env('QBO_SKU_ITEM_TYPE', 'Inventory'));
 
     return strcasecmp($type, 'NonInventory') === 0 ? 'NonInventory' : 'Inventory';
 }
@@ -2029,4 +2049,230 @@ function qbo_sync_sku_to_quickbooks(int $skuId): array
 
         return ['ok' => false, 'error' => $errorMsg];
     }
+}
+
+function qbo_create_inventory_adjustment(array $payload): array
+{
+    return qbo_api_request('POST', '/inventoryadjustment', ['minorversion' => 65], $payload);
+}
+
+/**
+ * Build and post a QBO InventoryAdjustment.
+ *
+ * @param array<int, array{qbo_item_id:string,qty_change:float|int|string,sku_code?:string}> $lines
+ */
+function qbo_post_inventory_adjustment_qty(
+    string $docNumber,
+    array $lines,
+    string $adjustAccountId,
+    ?string $privateNote = null
+): array {
+    $docNumber = trim($docNumber);
+    if ($docNumber === '') {
+        return ['ok' => false, 'error' => 'DocNumber is required for inventory adjustments.', 'txn' => null];
+    }
+    if ($lines === []) {
+        return ['ok' => false, 'error' => 'At least one adjustment line is required.', 'txn' => null];
+    }
+    $adjustAccountId = trim($adjustAccountId);
+    if ($adjustAccountId === '') {
+        return ['ok' => false, 'error' => 'Inventory adjustment account Id is required.', 'txn' => null];
+    }
+
+    $detailLines = [];
+    $lineId = 0;
+    foreach ($lines as $line) {
+        $itemId = trim((string) ($line['qbo_item_id'] ?? ''));
+        $qty = (float) ($line['qty_change'] ?? 0);
+        if ($itemId === '' || abs($qty) < 0.0000001) {
+            continue;
+        }
+        $lineId++;
+        $detailLines[] = [
+            'Id' => (string) $lineId,
+            'DetailType' => 'ItemAdjustmentLineDetail',
+            'ItemAdjustmentLineDetail' => [
+                'ItemRef' => ['value' => $itemId],
+                'QtyDiff' => $qty,
+            ],
+        ];
+    }
+
+    if ($detailLines === []) {
+        return ['ok' => false, 'error' => 'No valid inventory adjustment lines to post.', 'txn' => null];
+    }
+
+    $payload = [
+        'DocNumber' => $docNumber,
+        'TxnDate' => (new DateTimeImmutable('today'))->format('Y-m-d'),
+        'AdjustAccountRef' => ['value' => $adjustAccountId],
+        'Line' => $detailLines,
+    ];
+    if ($privateNote !== null && trim($privateNote) !== '') {
+        $payload['PrivateNote'] = trim($privateNote);
+    }
+
+    $result = qbo_create_inventory_adjustment($payload);
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => $result['error'] ?? 'Inventory adjustment failed.', 'txn' => null, 'data' => $result['data'] ?? null];
+    }
+
+    $txn = $result['data']['InventoryAdjustment'] ?? null;
+
+    return ['ok' => true, 'error' => null, 'txn' => is_array($txn) ? $txn : null, 'data' => $result['data'] ?? null];
+}
+
+function qbo_create_journal_entry(array $payload): array
+{
+    return qbo_api_request('POST', '/journalentry', ['minorversion' => 65], $payload);
+}
+
+/**
+ * Post a two-sided Journal Entry moving value between inventory asset accounts.
+ */
+function qbo_post_inventory_transfer_journal_entry(
+    string $docNumber,
+    string $debitAccountId,
+    string $creditAccountId,
+    float $amount,
+    ?string $privateNote = null
+): array {
+    $docNumber = trim($docNumber);
+    $debitAccountId = trim($debitAccountId);
+    $creditAccountId = trim($creditAccountId);
+    if ($docNumber === '' || $debitAccountId === '' || $creditAccountId === '') {
+        return ['ok' => false, 'error' => 'DocNumber and both account Ids are required.', 'txn' => null];
+    }
+    if ($amount <= 0) {
+        return ['ok' => false, 'error' => 'Journal entry amount must be greater than zero.', 'txn' => null];
+    }
+
+    $payload = [
+        'DocNumber' => $docNumber,
+        'TxnDate' => (new DateTimeImmutable('today'))->format('Y-m-d'),
+        'Line' => [
+            [
+                'Id' => '0',
+                'Description' => $privateNote ?? 'Inventory facility transfer',
+                'Amount' => round($amount, 2),
+                'DetailType' => 'JournalEntryLineDetail',
+                'JournalEntryLineDetail' => [
+                    'PostingType' => 'Debit',
+                    'AccountRef' => ['value' => $debitAccountId],
+                ],
+            ],
+            [
+                'Id' => '1',
+                'Description' => $privateNote ?? 'Inventory facility transfer',
+                'Amount' => round($amount, 2),
+                'DetailType' => 'JournalEntryLineDetail',
+                'JournalEntryLineDetail' => [
+                    'PostingType' => 'Credit',
+                    'AccountRef' => ['value' => $creditAccountId],
+                ],
+            ],
+        ],
+    ];
+    if ($privateNote !== null && trim($privateNote) !== '') {
+        $payload['PrivateNote'] = trim($privateNote);
+    }
+
+    $result = qbo_create_journal_entry($payload);
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => $result['error'] ?? 'Journal entry failed.', 'txn' => null];
+    }
+
+    $txn = $result['data']['JournalEntry'] ?? null;
+
+    return ['ok' => true, 'error' => null, 'txn' => is_array($txn) ? $txn : null];
+}
+
+function qbo_inventory_sync_log_exists(string $docNumber): bool
+{
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT 1 FROM dbo.QBOInventorySyncLog WHERE DocNumber = :doc');
+    $stmt->execute(['doc' => $docNumber]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+function qbo_inventory_sync_log_write(array $row): void
+{
+    qbo_inventory_sync_log_upsert($row);
+}
+
+/**
+ * Insert or update a QBO inventory sync-log row by DocNumber (allows Error retries).
+ */
+function qbo_inventory_sync_log_upsert(array $row): void
+{
+    $pdo = db();
+    $pdo->prepare(<<<SQL
+        MERGE dbo.QBOInventorySyncLog AS target
+        USING (SELECT :doc AS DocNumber) AS source
+            ON target.DocNumber = source.DocNumber
+        WHEN MATCHED THEN
+            UPDATE SET
+                SyncType = :sync_type,
+                ReferenceType = :ref_type,
+                ReferenceID = :ref_id,
+                ReferenceLineKey = :line_key,
+                SKUCode = :sku,
+                QtyChange = :qty,
+                FacilityCode = :facility,
+                QBO_TxnId = :txn_id,
+                QBO_SyncToken = :sync_token,
+                SyncStatus = :status,
+                SyncError = :error,
+                SyncedAt = CASE WHEN :status2 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+        WHEN NOT MATCHED THEN
+            INSERT (
+                DocNumber, SyncType, ReferenceType, ReferenceID, ReferenceLineKey,
+                SKUCode, QtyChange, FacilityCode, QBO_TxnId, QBO_SyncToken,
+                SyncStatus, SyncError, SyncedAt
+            )
+            VALUES (
+                :doc2, :sync_type2, :ref_type2, :ref_id2, :line_key2,
+                :sku2, :qty2, :facility2, :txn_id2, :sync_token2,
+                :status3, :error2,
+                CASE WHEN :status4 = N'Synced' THEN SYSUTCDATETIME() ELSE NULL END
+            );
+    SQL)->execute([
+        'doc' => $row['doc_number'],
+        'sync_type' => $row['sync_type'],
+        'ref_type' => $row['reference_type'],
+        'ref_id' => (int) $row['reference_id'],
+        'line_key' => $row['reference_line_key'] ?? null,
+        'sku' => $row['sku_code'],
+        'qty' => (float) $row['qty_change'],
+        'facility' => $row['facility_code'] ?? null,
+        'txn_id' => $row['qbo_txn_id'] ?? null,
+        'sync_token' => $row['qbo_sync_token'] ?? null,
+        'status' => $row['sync_status'],
+        'status2' => $row['sync_status'],
+        'error' => $row['sync_error'] ?? null,
+        'doc2' => $row['doc_number'],
+        'sync_type2' => $row['sync_type'],
+        'ref_type2' => $row['reference_type'],
+        'ref_id2' => (int) $row['reference_id'],
+        'line_key2' => $row['reference_line_key'] ?? null,
+        'sku2' => $row['sku_code'],
+        'qty2' => (float) $row['qty_change'],
+        'facility2' => $row['facility_code'] ?? null,
+        'txn_id2' => $row['qbo_txn_id'] ?? null,
+        'sync_token2' => $row['qbo_sync_token'] ?? null,
+        'status3' => $row['sync_status'],
+        'error2' => $row['sync_error'] ?? null,
+        'status4' => $row['sync_status'],
+    ]);
+}
+
+function qbo_inventory_sync_log_status(string $docNumber): ?string
+{
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT SyncStatus FROM dbo.QBOInventorySyncLog WHERE DocNumber = :doc');
+    $stmt->execute(['doc' => $docNumber]);
+    $status = $stmt->fetchColumn();
+
+    return $status === false || $status === null ? null : (string) $status;
 }

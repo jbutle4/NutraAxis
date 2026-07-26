@@ -13,7 +13,7 @@ const ACCOUNTING_SECTIONS = [
     'pos'                   => ['title' => 'Purchase Orders', 'href' => '/accounting/pos.php'],
     'inventory'             => ['title' => 'QBO SKU Master', 'href' => '/accounting/inventory.php'],
     'suppliers'             => ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
-    'accounts'              => ['title' => 'Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
+    'accounts'              => ['title' => 'QBO Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
     'sync-production'       => ['title' => 'QBO Sync', 'href' => '/accounting/sync-production.php'],
     'sync-sandbox-mirror'   => ['title' => 'Sandbox Mirror', 'href' => '/accounting/sync-sandbox-mirror.php'],
     'procurement-approvals' => ['title' => 'Approvals Queue', 'href' => '/procurement-approvals/'],
