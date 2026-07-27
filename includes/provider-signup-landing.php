@@ -481,6 +481,9 @@ function provider_signup_render_apply_page_close(): void
 function provider_signup_render_application_start_page(string $startError = ''): void
 {
     $heroImage = provider_signup_landing_hero_image_url();
+    require_once dirname(__DIR__) . '/includes/provider-signup-recaptcha.php';
+    $recaptchaSiteKey = provider_signup_recaptcha_site_key();
+    $showRecaptcha = $recaptchaSiteKey !== '';
     ?>
 <div class="na-providers">
   <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">
@@ -489,9 +492,9 @@ function provider_signup_render_application_start_page(string $startError = ''):
         <div class="hero-text">
           <div class="section-label">For Practitioners</div>
           <h1>Apply for <span>Practitioner Access</span></h1>
-          <p>Start your co-branded Clinic Store application in minutes. We will email you a secure link to save progress and return whenever you are ready to submit.</p>
+          <p>Start your co-branded Clinic Store application in minutes. We will email you a secure link to confirm your address and continue.</p>
           <div class="apply-form-card">
-            <p class="apply-form-card__lead">Enter your practitioner email to begin a draft application. Already started? Use the link from your confirmation email.</p>
+            <p class="apply-form-card__lead">Enter your practitioner email to begin. We will send a confirmation link — you must open that email before the application starts. Already started? Use the link from your confirmation email.</p>
             <?php if ($startError !== ''): ?>
             <div class="apply-alert" role="alert"><?= htmlspecialchars($startError) ?></div>
             <?php endif; ?>
@@ -499,6 +502,11 @@ function provider_signup_render_application_start_page(string $startError = ''):
               <label>Practitioner email address
                 <input type="email" name="provider_email" required autocomplete="email" placeholder="you@yourpractice.com" />
               </label>
+              <?php if ($showRecaptcha): ?>
+              <div class="apply-recaptcha">
+                <div class="g-recaptcha" data-sitekey="<?= htmlspecialchars($recaptchaSiteKey) ?>"></div>
+              </div>
+              <?php endif; ?>
               <button class="btn-cta" type="submit">Start application</button>
             </form>
             <p class="apply-note">Your application stays in draft until operations approves it. We will email you when your Clinic Store is ready.</p>
@@ -523,7 +531,7 @@ function provider_signup_render_application_start_page(string $startError = ''):
         <div class="process-step">
           <div class="process-num filled">1</div>
           <h3>Start Your Application</h3>
-          <p>Save a draft with your practice, compliance, and banking details.</p>
+          <p>Confirm your email, then save a draft with your practice, compliance, and banking details.</p>
         </div>
         <div class="process-step">
           <div class="process-num">2</div>
@@ -543,6 +551,39 @@ function provider_signup_render_application_start_page(string $startError = ''):
     <div class="container">
       <?php provider_signup_render_support_link('provider-support-link provider-support-link--start-footer'); ?>
       <p>These statements have not been evaluated by the Food and Drug Administration. NutraAxis supplements are not intended to diagnose, treat, cure, or prevent any disease. Products are intended to support general wellness. Practitioner participation is subject to application review and program terms.</p>
+    </div>
+  </section>
+</div>
+<?php if ($showRecaptcha): ?>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<?php endif; ?>
+    <?php
+}
+
+function provider_signup_render_check_email_page(string $email = ''): void
+{
+    $heroImage = provider_signup_landing_hero_image_url();
+    $emailLabel = $email !== '' ? $email : 'the address you entered';
+    ?>
+<div class="na-providers">
+  <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <div class="section-label">For Practitioners</div>
+          <h1>Check your <span>email</span></h1>
+          <div class="apply-form-card">
+            <p class="apply-form-card__lead">We sent a confirmation link to <strong><?= htmlspecialchars($emailLabel) ?></strong>.</p>
+            <p>Open that email and click <strong>Confirm email and continue</strong> to verify you own the address and start your application. The link expires in one hour.</p>
+            <p class="apply-note">Didn’t get it? Check spam/junk, wait a minute, then <a href="/provider-signup/application.php">try again</a>.</p>
+          </div>
+          <?php provider_signup_render_support_link('provider-support-link provider-support-link--start'); ?>
+          <p class="apply-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
+        </div>
+        <div class="hero-visual">
+          <?php provider_signup_render_provider_photo_card(); ?>
+        </div>
+      </div>
     </div>
   </section>
 </div>

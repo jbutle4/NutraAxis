@@ -96,6 +96,9 @@ function env(string $key, ?string $default = null): ?string
             'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
             'PROVIDER_SIGNUP_ACCS_WEBSITE_ID',
             'PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD',
+            'PROVIDER_SIGNUP_RECAPTCHA_SITE_KEY',
+            'PROVIDER_SIGNUP_RECAPTCHA_SECRET_KEY',
+            'PROVIDER_SIGNUP_E2E_START_SECRET',
             'NUTRAAXIS_STORE_URL',
         ];
 

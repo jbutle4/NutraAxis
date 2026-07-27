@@ -4,7 +4,9 @@ End-to-end UAT for the practitioner application flow through ACCS company and us
 
 ## Happy path covered
 
-1. Start application (`/provider-signup/application.php` → `start.php`)
+1. Start application (`/provider-signup/application.php` → `start.php` → email confirm → `confirm-email.php`)
+   - Optional reCAPTCHA when `PROVIDER_SIGNUP_RECAPTCHA_*` keys are set
+   - E2E may POST `e2e_start_secret` matching `PROVIDER_SIGNUP_E2E_START_SECRET` to skip captcha
 2. Acknowledge Practitioner Reseller Policy (`/provider-signup/policy.php`)
 3. Save draft with company, admin, qualifications, ACH
 4. Upload reseller certificate PDF

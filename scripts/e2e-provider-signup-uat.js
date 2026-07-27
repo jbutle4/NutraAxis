@@ -308,6 +308,47 @@ function shouldRun(through, step) {
   return stepRank(step) <= stepRank(through);
 }
 
+async function fetchLatestEmailChallengeToken(providerEmail) {
+  let sql;
+  try {
+    sql = require('mssql');
+  } catch (err) {
+    fail('mssql package is required to resolve email challenge tokens for E2E. Run npm install.', {
+      error: String(err && err.message ? err.message : err),
+    });
+  }
+
+  const config = {
+    server: process.env.DB_HOST || process.env.DB_SERVER || '',
+    database: process.env.DB_NAME || '',
+    user: process.env.DB_USER || '',
+    password: process.env.DB_PASS || process.env.DB_PASSWORD || '',
+    port: Number(process.env.DB_PORT || 1433),
+    options: {
+      encrypt: true,
+      trustServerCertificate: false,
+    },
+  };
+  if (!config.server || !config.database || !config.user || !config.password) {
+    fail('DB_HOST/DB_NAME/DB_USER/DB_PASS required in .env to resolve email challenge tokens.');
+  }
+
+  const pool = await sql.connect(config);
+  try {
+    const result = await pool.request()
+      .input('email', sql.NVarChar(255), String(providerEmail).toLowerCase())
+      .query(`
+        SELECT TOP 1 ChallengeToken
+        FROM dbo.ProviderSignupEmailChallenge
+        WHERE ProviderEmail = @email
+        ORDER BY ChallengeID DESC
+      `);
+    return result.recordset[0] ? String(result.recordset[0].ChallengeToken || '') : '';
+  } finally {
+    await pool.close();
+  }
+}
+
 async function run() {
   loadDotEnv();
   const args = parseArgs(process.argv.slice(2));
@@ -368,20 +409,38 @@ async function run() {
       record('public_application_page', true, { status: res.status });
     }
 
-    // 1) Start application
+    // 1) Start application — email challenge (no app token in redirect)
     {
-      const res = await http.postForm('/provider-signup/start.php', {
+      const startFields = {
         provider_email: form.provider_email,
-      });
-      token = extractToken(res.url) || extractToken(res.text);
-      if (!token) {
-        fail('Could not capture application access token after start.', {
+      };
+      if (process.env.PROVIDER_SIGNUP_E2E_START_SECRET) {
+        startFields.e2e_start_secret = process.env.PROVIDER_SIGNUP_E2E_START_SECRET;
+      }
+      const res = await http.postForm('/provider-signup/start.php', startFields);
+      if (!/check-email\.php/i.test(res.url)) {
+        fail('Start did not redirect to check-email page.', {
           status: res.status,
           url: res.url,
           snippet: res.text.slice(0, 400),
         });
       }
-      if (!/policy\.php/i.test(res.url) && !/policy-ack|Practitioner Reseller/i.test(res.text)) {
+
+      const challengeToken = await fetchLatestEmailChallengeToken(form.provider_email);
+      if (!challengeToken) {
+        fail('Could not load email challenge token from database after start.');
+      }
+
+      const confirm = await http.get(`/provider-signup/confirm-email.php?token=${encodeURIComponent(challengeToken)}`);
+      token = extractToken(confirm.url) || extractToken(confirm.text);
+      if (!token) {
+        fail('Could not capture application access token after email confirm.', {
+          status: confirm.status,
+          url: confirm.url,
+          snippet: confirm.text.slice(0, 400),
+        });
+      }
+      if (!/policy\.php/i.test(confirm.url) && !/policy-ack|Practitioner Reseller/i.test(confirm.text)) {
         // Soft check — apply gate will still enforce acknowledgement.
       }
       const policy = await http.get(`/provider-signup/policy.php?token=${encodeURIComponent(token)}`);
