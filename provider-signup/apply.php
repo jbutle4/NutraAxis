@@ -55,6 +55,8 @@ if (($_GET['notice'] ?? '') === 'started') {
     $notice = 'Your Clinic Store has been activated.';
 } elseif (($_GET['notice'] ?? '') === 'certificate_uploaded') {
     $notice = 'Reseller certificate uploaded successfully.';
+} elseif (($_GET['notice'] ?? '') === 'documents_saved') {
+    $notice = 'ACH payout details saved successfully.';
 } elseif (($_GET['notice'] ?? '') === 'policy_acknowledged') {
     $notice = 'Policy acknowledgement recorded. You may continue your application.';
 }
@@ -69,6 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = $upload['error'];
+    } elseif ($action === 'save_documents') {
+        $form = provider_signup_form_from_post($_POST);
+        $result = provider_signup_save_documents($token, $form);
+        if ($result['ok']) {
+            header('Location: /provider-signup/apply.php?token=' . rawurlencode($token) . '&notice=documents_saved', true, 302);
+            exit;
+        }
+        $error = $result['error'];
     } else {
         $form = provider_signup_form_from_post($_POST);
 
@@ -109,8 +119,10 @@ require dirname(__DIR__) . '/includes/marketing-header.php';
     <?php
     $editable = provider_signup_provider_can_edit($application);
     $canSubmit = provider_signup_provider_can_submit($application);
+    $canCompleteDocuments = provider_signup_provider_can_complete_documents($application);
     $attachments = provider_signup_list_attachments((int) $application['ApplicationID']);
     $checklist = provider_signup_submit_checklist($form, (int) $application['ApplicationID']);
+    $documentWarnings = provider_signup_optional_documents_warnings($form, (int) $application['ApplicationID']);
     require dirname(__DIR__) . '/includes/provider-signup-form.php';
     provider_signup_render_apply_page_close();
     ?>
