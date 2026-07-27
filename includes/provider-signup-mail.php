@@ -4,6 +4,7 @@ require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/env.php';
 
 const PROVIDER_SIGNUP_SUPPORT_EMAIL = 'sales@nutraaxislabs.com';
+const PROVIDER_SIGNUP_PROVISIONED_SUPPORT_EMAIL = 'support@nutraaxislabs.com';
 const PROVIDER_SIGNUP_OPS_SILENT_EMAIL = 'NutraAxis@nfcllc.com';
 
 function provider_signup_mail_base_url(): string
@@ -42,6 +43,16 @@ function provider_signup_accs_login_url(): string
 function provider_signup_support_mailto_url(string $subject = 'Provider application help'): string
 {
     return 'mailto:' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '?subject=' . rawurlencode($subject);
+}
+
+function provider_signup_provisioned_support_mailto_url(string $subject = 'Clinic Store help'): string
+{
+    return 'mailto:' . PROVIDER_SIGNUP_PROVISIONED_SUPPORT_EMAIL . '?subject=' . rawurlencode($subject);
+}
+
+function provider_signup_mail_logo_url(): string
+{
+    return provider_signup_mail_base_url() . '/assets/logos/nutraaxis-logo-email.png';
 }
 
 /**
@@ -355,13 +366,33 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
     $loginUrl = provider_signup_accs_login_url();
     $clinicId = trim((string) ($application['AccsClinicId'] ?? ''));
     $signInEmail = (string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? '');
-    $subject = 'Your NutraAxis Clinic Store is ready';
+    $company = trim((string) ($application['CompanyName'] ?? ''));
+    $label = $company !== '' ? $company : 'your practice';
+    $subject = 'Welcome to NutraAxis — your Clinic Store account is ready';
     $temporaryPassword = trim((string) $temporaryPassword);
+    $logoUrl = provider_signup_mail_logo_url();
+    $supportEmail = PROVIDER_SIGNUP_PROVISIONED_SUPPORT_EMAIL;
+    $supportMailto = provider_signup_provisioned_support_mailto_url();
 
     $plainLines = [
-        'Your NutraAxis provider account has been created and your Clinic Store is ready.',
+        'Welcome and congratulations!',
         '',
-        'Sign in at: ' . $loginUrl,
+        'Your NutraAxis provider account has been created for ' . $label . '. We are excited to have you with us.',
+        '',
+        'WHAT YOU CAN DO NOW',
+        '- You can buy products today at wholesale pricing, with applicable state sales tax applied.',
+        '- Once your reseller certificate is validated, tax exemption will be applied and your account will be updated accordingly.',
+        '',
+        'YOUR CLINIC STORE',
+        '- Your co-branded clinic storefront will be provisioned after August 3, 2026. As clinic admin, you will be able to set your own retail pricing for patients.',
+        '- You can invite patients with your clinic QR code or shareable store link (available in your Clinic Store admin after the storefront is live).',
+        '- You can add your own clinic logo to the storefront.',
+        '',
+        'COMMISSIONS',
+        '- Commission transfers are sent monthly after reporting summaries are completed.',
+        '',
+        'SIGN IN TO GET STARTED',
+        'Sign in: ' . $loginUrl,
         'Sign in email: ' . $signInEmail,
     ];
 
@@ -373,32 +404,74 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
 
     if ($temporaryPassword !== '') {
         $plainLines[] = 'Temporary password: ' . $temporaryPassword;
-        $plainLines[] = 'Change this password after your first sign-in.';
+        $plainLines[] = 'Please change this password after your first sign-in.';
     } else {
         $plainLines[] = 'Use your existing NutraAxis Labs password, or reset it from the sign-in page if needed.';
     }
 
     $plainLines[] = '';
-    $plainLines[] = 'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.';
+    $plainLines[] = 'Questions or issues? Contact us anytime at ' . $supportEmail . '.';
     $plainLines[] = '';
-    $plainLines[] = '— NutraAxis';
+    $plainLines[] = '— The NutraAxis Team';
 
     $plain = implode("\n", $plainLines);
 
-    $html = '<p>Your NutraAxis provider account has been created and your Clinic Store is ready.</p>'
-        . '<p><a href="' . htmlspecialchars($loginUrl) . '">Sign in to NutraAxis Labs</a><br>'
-        . '<strong>Sign in email:</strong> ' . htmlspecialchars($signInEmail) . '<br>'
-        . '<strong>Clinic ID:</strong> ' . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>';
+    $passwordHtml = $temporaryPassword !== ''
+        ? '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Temporary password:</strong> '
+            . htmlspecialchars($temporaryPassword)
+            . '</p><p style="margin:0;font-size:14px;line-height:1.5;color:#5a7170;">Please change this password after your first sign-in.</p>'
+        : '<p style="margin:0;font-size:14px;line-height:1.5;color:#5a7170;">Use your existing NutraAxis Labs password, or reset it from the sign-in page if needed.</p>';
 
-    if ($temporaryPassword !== '') {
-        $html .= '<p><strong>Temporary password:</strong> ' . htmlspecialchars($temporaryPassword)
-            . '<br>Change this password after your first sign-in.</p>';
-    } else {
-        $html .= '<p>Use your existing NutraAxis Labs password, or reset it from the sign-in page if needed.</p>';
-    }
-
-    $html .= '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url('Clinic Store login help')) . '">'
-        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
+    $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>' . htmlspecialchars($subject) . '</title></head>'
+        . '<body style="margin:0;padding:0;background-color:#f5fafa;font-family:Inter,Arial,Helvetica,sans-serif;color:#1a2e2d;">'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5fafa;">'
+        . '<tr><td align="center" style="padding:24px 16px;">'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;">'
+        . '<tr><td style="background-color:#e8f5f4;border-radius:12px 12px 0 0;padding:28px 32px 24px;text-align:center;">'
+        . '<img src="' . htmlspecialchars($logoUrl) . '" alt="NutraAxis" width="220" height="40" style="display:block;margin:0 auto;max-width:220px;height:auto;border:0;" />'
+        . '</td></tr>'
+        . '<tr><td style="background-color:#ffffff;padding:32px;border-left:1px solid #d6ecea;border-right:1px solid #d6ecea;">'
+        . '<h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1a2e2d;">Welcome and congratulations!</h1>'
+        . '<p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#5a7170;">Your NutraAxis provider account has been created for <strong style="color:#1a2e2d;">'
+        . htmlspecialchars($label)
+        . '</strong>. We&rsquo;re excited to have you with us.</p>'
+        . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">What you can do now</h2>'
+        . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
+        . '<li style="margin-bottom:8px;">You can buy products today at wholesale pricing, with applicable state sales tax applied.</li>'
+        . '<li>Once your reseller certificate is validated, tax exemption will be applied and your account will be updated accordingly.</li>'
+        . '</ul>'
+        . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">Your Clinic Store</h2>'
+        . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
+        . '<li style="margin-bottom:8px;">Your co-branded clinic storefront will be provisioned after <strong>August 3, 2026</strong>. As clinic admin, you&rsquo;ll be able to set your own retail pricing for patients.</li>'
+        . '<li style="margin-bottom:8px;">You can invite patients with your clinic&rsquo;s <strong>QR code</strong> or shareable store link (available in your Clinic Store admin after the storefront is live).</li>'
+        . '<li>You can add your own clinic logo to the storefront.</li>'
+        . '</ul>'
+        . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">Commissions</h2>'
+        . '<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1a2e2d;">Commission transfers are sent monthly after reporting summaries are completed.</p>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">'
+        . '<tr><td align="center">'
+        . '<a href="' . htmlspecialchars($loginUrl) . '" style="display:inline-block;background-color:#3d8b85;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;line-height:1;padding:14px 28px;border-radius:8px;">Sign in to NutraAxis Labs</a>'
+        . '</td></tr></table>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5fafa;border:1px solid #d6ecea;border-radius:8px;">'
+        . '<tr><td style="padding:20px 22px;">'
+        . '<p style="margin:0 0 12px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;font-weight:700;">Sign in to get started</p>'
+        . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Sign in email:</strong> '
+        . htmlspecialchars($signInEmail) . '</p>'
+        . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Clinic ID:</strong> '
+        . htmlspecialchars($clinicId !== '' ? $clinicId : '(pending)') . '</p>'
+        . $passwordHtml
+        . '</td></tr></table>'
+        . '</td></tr>'
+        . '<tr><td style="background-color:#ffffff;border:1px solid #d6ecea;border-top:0;border-radius:0 0 12px 12px;padding:0 32px 32px;">'
+        . '<p style="margin:0;font-size:15px;line-height:1.6;color:#5a7170;">Questions or issues? Contact us anytime at '
+        . '<a href="' . htmlspecialchars($supportMailto) . '" style="color:#3d8b85;text-decoration:none;font-weight:600;">'
+        . htmlspecialchars($supportEmail) . '</a>.</p>'
+        . '</td></tr>'
+        . '<tr><td style="padding:20px 8px 0;text-align:center;">'
+        . '<p style="margin:0;font-size:13px;line-height:1.5;color:#5a7170;">&mdash; The NutraAxis Team</p>'
+        . '</td></tr>'
+        . '</table></td></tr></table></body></html>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
 }
