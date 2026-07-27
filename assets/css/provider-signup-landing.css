@@ -1233,6 +1233,10 @@ body.marketing-site .na-providers ul {
   outline-offset: 1px;
 }
 
+.na-providers .apply-recaptcha {
+  margin: 4px 0 8px;
+}
+
 .na-providers .apply-note {
   margin-top: 18px;
   font-size: 0.88rem;

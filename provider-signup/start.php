@@ -8,13 +8,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $providerEmail = trim((string) ($_POST['provider_email'] ?? ''));
-$result = provider_signup_create_application($providerEmail);
+$recaptcha = (string) ($_POST['g-recaptcha-response'] ?? '');
+$result = provider_signup_request_email_challenge($providerEmail, $recaptcha);
 
-if (!$result['ok'] || !is_array($result['application'])) {
-    header('Location: /provider-signup/application.php?error=' . rawurlencode($result['error'] ?? 'Unable to start application.'), true, 302);
+if (!$result['ok']) {
+    header(
+        'Location: /provider-signup/application.php?error=' . rawurlencode($result['error'] ?? 'Unable to start application.'),
+        true,
+        302
+    );
     exit;
 }
 
-$token = (string) ($result['application']['AccessToken'] ?? '');
-header('Location: /provider-signup/policy.php?token=' . rawurlencode($token) . '&notice=started', true, 302);
+header(
+    'Location: /provider-signup/check-email.php?email=' . rawurlencode(provider_signup_normalize_email($providerEmail)),
+    true,
+    302
+);
 exit;

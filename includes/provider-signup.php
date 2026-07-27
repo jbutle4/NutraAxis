@@ -8,6 +8,7 @@ require_once __DIR__ . '/provider-signup-npi.php';
 require_once __DIR__ . '/provider-signup-mail.php';
 require_once __DIR__ . '/provider-signup-npi-snapshot.php';
 require_once __DIR__ . '/provider-signup-accs.php';
+require_once __DIR__ . '/provider-signup-recaptcha.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
 
@@ -17,6 +18,10 @@ const PROVIDER_SIGNUP_POLICY_VERSION = '2026-07-14';
 const PROVIDER_SIGNUP_POLICY_PDF_PATH = '/assets/docs/NutraAxis_Practitioner_Reseller_Policy_20260714.pdf';
 
 const PROVIDER_SIGNUP_POLICY_ACK_STATEMENT = 'I acknowledge that I have received and will comply with the NutraAxis Labs, LLC Practitioner and Reseller Policies, including but not limited to the iMAP Policy.';
+
+const PROVIDER_SIGNUP_EMAIL_CHALLENGE_TTL_MINUTES = 60;
+const PROVIDER_SIGNUP_EMAIL_CHALLENGE_MAX_PER_EMAIL_HOUR = 5;
+const PROVIDER_SIGNUP_EMAIL_CHALLENGE_MAX_PER_IP_HOUR = 20;
 
 const PROVIDER_SIGNUP_STATUS_DRAFT = 'Draft';
 const PROVIDER_SIGNUP_STATUS_SUBMITTED = 'Submitted for Review';
@@ -576,11 +581,16 @@ function provider_signup_banking_validate_format(array $form, int $applicationId
     ];
 }
 
-function provider_signup_create_application(string $providerEmail): array
+function provider_signup_create_application(string $providerEmail, bool $sendProviderContinueEmail = true): array
 {
     $providerEmail = provider_signup_normalize_email($providerEmail);
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'A valid provider email address is required.', 'application' => null];
+    }
+
+    $existing = provider_signup_find_resumable_by_email($providerEmail);
+    if ($existing !== null) {
+        return ['ok' => true, 'error' => null, 'application' => $existing, 'resumed' => true];
     }
 
     try {
@@ -611,18 +621,223 @@ function provider_signup_create_application(string $providerEmail): array
     }
 
     try {
-        provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', 'Application started by provider.');
+        provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', 'Application started by provider after email confirmation.');
     } catch (Throwable $e) {
         error_log('provider_signup_create_application review log: ' . $e->getMessage());
     }
 
     try {
-        provider_signup_mail_application_started($application);
+        if ($sendProviderContinueEmail) {
+            provider_signup_mail_application_started($application);
+        } else {
+            provider_signup_mail_application_started_ops($application);
+        }
     } catch (Throwable $e) {
         error_log('provider_signup_create_application mail: ' . $e->getMessage());
     }
 
-    return ['ok' => true, 'error' => null, 'application' => $application];
+    return ['ok' => true, 'error' => null, 'application' => $application, 'resumed' => false];
+}
+
+function provider_signup_request_ip(): string
+{
+    $candidates = [
+        (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''),
+        (string) ($_SERVER['HTTP_X_REAL_IP'] ?? ''),
+        (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+    ];
+    foreach ($candidates as $candidate) {
+        $parts = preg_split('/\s*,\s*/', $candidate) ?: [];
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part !== '' && filter_var($part, FILTER_VALIDATE_IP)) {
+                return $part;
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * @return ?array<string, mixed>
+ */
+function provider_signup_find_resumable_by_email(string $providerEmail): ?array
+{
+    $providerEmail = provider_signup_normalize_email($providerEmail);
+    if ($providerEmail === '') {
+        return null;
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT TOP 1 *
+        FROM dbo.ProviderSignupApplication
+        WHERE ProviderEmail = :email
+          AND Status IN (:draft, :returned)
+        ORDER BY ApplicationID DESC
+    SQL);
+    $stmt->execute([
+        'email'    => $providerEmail,
+        'draft'    => PROVIDER_SIGNUP_STATUS_DRAFT,
+        'returned' => PROVIDER_SIGNUP_STATUS_RETURNED,
+    ]);
+    $row = $stmt->fetch();
+
+    return $row === false ? null : $row;
+}
+
+/**
+ * Begin signup: captcha + email ownership challenge. Does not create an application yet.
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_request_email_challenge(string $providerEmail, ?string $recaptchaResponse): array
+{
+    $providerEmail = provider_signup_normalize_email($providerEmail);
+    if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'A valid provider email address is required.'];
+    }
+
+    $captcha = provider_signup_recaptcha_verify($recaptchaResponse, provider_signup_request_ip());
+    if (!$captcha['ok']) {
+        $e2eSecret = trim((string) env('PROVIDER_SIGNUP_E2E_START_SECRET', ''));
+        $provided = (string) ($_POST['e2e_start_secret'] ?? '');
+        $bypassOk = $e2eSecret !== '' && $provided !== '' && hash_equals($e2eSecret, $provided);
+        if (!$bypassOk) {
+            return ['ok' => false, 'error' => $captcha['error'] ?? 'Captcha verification failed.'];
+        }
+    }
+
+    $ip = provider_signup_request_ip();
+    try {
+        $pdo = db();
+
+        $emailCountStmt = $pdo->prepare(<<<SQL
+            SELECT COUNT(*) FROM dbo.ProviderSignupEmailChallenge
+            WHERE ProviderEmail = :email
+              AND CreatedAt >= DATEADD(HOUR, -1, SYSUTCDATETIME())
+        SQL);
+        $emailCountStmt->execute(['email' => $providerEmail]);
+        if ((int) $emailCountStmt->fetchColumn() >= PROVIDER_SIGNUP_EMAIL_CHALLENGE_MAX_PER_EMAIL_HOUR) {
+            return [
+                'ok'    => false,
+                'error' => 'Too many start attempts for this email. Please wait and check your inbox, or try again later.',
+            ];
+        }
+
+        if ($ip !== '') {
+            $ipCountStmt = $pdo->prepare(<<<SQL
+                SELECT COUNT(*) FROM dbo.ProviderSignupEmailChallenge
+                WHERE RequestIp = :ip
+                  AND CreatedAt >= DATEADD(HOUR, -1, SYSUTCDATETIME())
+            SQL);
+            $ipCountStmt->execute(['ip' => $ip]);
+            if ((int) $ipCountStmt->fetchColumn() >= PROVIDER_SIGNUP_EMAIL_CHALLENGE_MAX_PER_IP_HOUR) {
+                return [
+                    'ok'    => false,
+                    'error' => 'Too many start attempts from this network. Please try again later.',
+                ];
+            }
+        }
+
+        $token = provider_signup_generate_token();
+        $pdo->prepare(<<<SQL
+            INSERT INTO dbo.ProviderSignupEmailChallenge (
+                ChallengeToken, ProviderEmail, RequestIp, ExpiresAt
+            )
+            VALUES (
+                :token,
+                :email,
+                :ip,
+                DATEADD(MINUTE, :ttl, SYSUTCDATETIME())
+            )
+        SQL)->execute([
+            'token' => $token,
+            'email' => $providerEmail,
+            'ip'    => $ip !== '' ? $ip : null,
+            'ttl'   => PROVIDER_SIGNUP_EMAIL_CHALLENGE_TTL_MINUTES,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_request_email_challenge: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to start the application right now. Please try again.'];
+    }
+
+    try {
+        provider_signup_mail_email_challenge($providerEmail, $token);
+    } catch (Throwable $e) {
+        error_log('provider_signup_request_email_challenge mail: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to send the confirmation email. Please try again.'];
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
+ * Consume emailed challenge token and create (or resume) the application.
+ *
+ * @return array{ok: bool, error: ?string, application: ?array}
+ */
+function provider_signup_confirm_email_challenge(string $challengeToken): array
+{
+    $challengeToken = trim($challengeToken);
+    if ($challengeToken === '' || !preg_match('/^[a-f0-9]{64}$/', $challengeToken)) {
+        return ['ok' => false, 'error' => 'This confirmation link is invalid.', 'application' => null];
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(<<<SQL
+            SELECT TOP 1 *
+            FROM dbo.ProviderSignupEmailChallenge
+            WHERE ChallengeToken = :token
+        SQL);
+        $stmt->execute(['token' => $challengeToken]);
+        $challenge = $stmt->fetch();
+        if ($challenge === false) {
+            return ['ok' => false, 'error' => 'This confirmation link is invalid or has already been used.', 'application' => null];
+        }
+
+        if (!empty($challenge['ConsumedAt'])) {
+            // Already used — if an app exists, resume it instead of erroring harshly.
+            $email = provider_signup_normalize_email((string) ($challenge['ProviderEmail'] ?? ''));
+            $existing = provider_signup_find_resumable_by_email($email);
+            if ($existing !== null) {
+                return ['ok' => true, 'error' => null, 'application' => $existing];
+            }
+
+            return ['ok' => false, 'error' => 'This confirmation link has already been used.', 'application' => null];
+        }
+
+        $expiresAt = strtotime((string) ($challenge['ExpiresAt'] ?? ''));
+        if ($expiresAt !== false && $expiresAt < time()) {
+            return ['ok' => false, 'error' => 'This confirmation link has expired. Please start again.', 'application' => null];
+        }
+
+        $email = provider_signup_normalize_email((string) ($challenge['ProviderEmail'] ?? ''));
+        $created = provider_signup_create_application($email, false);
+        if (!$created['ok'] || !is_array($created['application'])) {
+            return [
+                'ok'          => false,
+                'error'       => $created['error'] ?? 'Unable to create provider application.',
+                'application' => null,
+            ];
+        }
+
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupEmailChallenge
+            SET ConsumedAt = SYSUTCDATETIME()
+            WHERE ChallengeID = :id AND ConsumedAt IS NULL
+        SQL)->execute(['id' => (int) $challenge['ChallengeID']]);
+
+        return ['ok' => true, 'error' => null, 'application' => $created['application']];
+    } catch (Throwable $e) {
+        error_log('provider_signup_confirm_email_challenge: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to confirm your email right now.', 'application' => null];
+    }
 }
 
 function provider_signup_save_draft(string $accessToken, array $form): array

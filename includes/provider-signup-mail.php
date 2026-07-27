@@ -91,6 +91,45 @@ function provider_signup_mail_ops_silent(string $subject, string $plainBody, str
     mail_send_html_multi_result($recipients, [], $subject, $htmlBody, $plainBody);
 }
 
+function provider_signup_confirm_email_url(string $challengeToken): string
+{
+    return provider_signup_mail_base_url() . '/provider-signup/confirm-email.php?token=' . rawurlencode($challengeToken);
+}
+
+/**
+ * Email ownership challenge — sent before an application row exists.
+ */
+function provider_signup_mail_email_challenge(string $providerEmail, string $challengeToken): void
+{
+    $providerEmail = strtolower(trim($providerEmail));
+    if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
+        return;
+    }
+
+    $confirmUrl = provider_signup_confirm_email_url($challengeToken);
+    $subject = 'Confirm your email to continue your NutraAxis provider application';
+    $plain = implode("\n", [
+        'Confirm your email address to start (or resume) your NutraAxis provider application.',
+        '',
+        'This link expires in 60 minutes:',
+        $confirmUrl,
+        '',
+        'If you did not request this, you can ignore this email.',
+        '',
+        'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
+        '— NutraAxis',
+    ]);
+    $html = '<p>Confirm your email address to start (or resume) your NutraAxis provider application.</p>'
+        . '<p><a href="' . htmlspecialchars($confirmUrl) . '">Confirm email and continue</a></p>'
+        . '<p>This link expires in 60 minutes.</p>'
+        . '<p>If you did not request this, you can ignore this email.</p>'
+        . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
+
+    mail_send_html_result($providerEmail, $subject, $html, $plain);
+}
+
 /**
  * @param array<string, mixed> $application
  */
@@ -124,7 +163,15 @@ function provider_signup_mail_application_started(array $application): void
         . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);
+    provider_signup_mail_application_started_ops($application);
+}
 
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_mail_application_started_ops(array $application): void
+{
+    $company = trim((string) ($application['CompanyName'] ?? ''));
     $id = (int) ($application['ApplicationID'] ?? 0);
     $mgmtUrl = provider_signup_mail_base_url() . '/operations-dashboard/signup-review/view.php?id=' . $id;
     $plainOps = implode("\n", [
