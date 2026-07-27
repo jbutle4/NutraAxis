@@ -435,7 +435,7 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . '<h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1a2e2d;">Welcome and congratulations!</h1>'
         . '<p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#5a7170;">Your NutraAxis provider account has been created for <strong style="color:#1a2e2d;">'
         . htmlspecialchars($label)
-        . '</strong>. We&rsquo;re excited to have you with us.</p>'
+        . '</strong>. We\'re excited to have you with us.</p>'
         . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">What you can do now</h2>'
         . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
         . '<li style="margin-bottom:8px;">You can buy products today at wholesale pricing, with applicable state sales tax applied.</li>'
@@ -443,8 +443,8 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . '</ul>'
         . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">Your Clinic Store</h2>'
         . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
-        . '<li style="margin-bottom:8px;">Your co-branded clinic storefront will be provisioned after <strong>August 3, 2026</strong>. As clinic admin, you&rsquo;ll be able to set your own retail pricing for patients.</li>'
-        . '<li style="margin-bottom:8px;">You can invite patients with your clinic&rsquo;s <strong>QR code</strong> or shareable store link (available in your Clinic Store admin after the storefront is live).</li>'
+        . '<li style="margin-bottom:8px;">Your co-branded clinic storefront will be provisioned after <strong>August 3, 2026</strong>. As clinic admin, you\'ll be able to set your own retail pricing for patients.</li>'
+        . '<li style="margin-bottom:8px;">You can invite patients with your clinic\'s <strong>QR code</strong> or shareable store link (available in your Clinic Store admin after the storefront is live).</li>'
         . '<li>You can add your own clinic logo to the storefront.</li>'
         . '</ul>'
         . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">Commissions</h2>'
@@ -469,7 +469,7 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . htmlspecialchars($supportEmail) . '</a>.</p>'
         . '</td></tr>'
         . '<tr><td style="padding:20px 8px 0;text-align:center;">'
-        . '<p style="margin:0;font-size:13px;line-height:1.5;color:#5a7170;">&mdash; The NutraAxis Team</p>'
+        . '<p style="margin:0;font-size:13px;line-height:1.5;color:#5a7170;">- The NutraAxis Team</p>'
         . '</td></tr>'
         . '</table></td></tr></table></body></html>';
 
