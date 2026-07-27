@@ -182,10 +182,11 @@ body.marketing-site img {
   justify-self: center;
 }
 
-.marketing-nav__brand img {
+body.marketing-site .marketing-nav__brand img {
   display: block;
   height: 28px;
   width: auto;
+  max-width: none;
 }
 
 .marketing-nav__sections {
@@ -378,7 +379,7 @@ body.marketing-site img {
   min-height: 4rem;
 }
 
-.marketing-feature-grid__image img {
+body.marketing-site .marketing-feature-grid__image img {
   display: block;
   width: auto;
   height: auto;
@@ -530,11 +531,13 @@ body.marketing-site img {
   border-bottom: none;
 }
 
-.marketing-footer__certification img {
+/* Beat body.marketing-site img { max-width:100%; height:auto } or large cert PNGs blow up */
+body.marketing-site .marketing-footer__certification img {
   flex-shrink: 0;
   width: auto;
   height: clamp(2.75rem, 9vw, 3.75rem);
   max-width: 4.75rem;
+  max-height: 3.75rem;
   object-fit: contain;
 }
 
@@ -589,10 +592,11 @@ body.marketing-site img {
   text-align: center;
 }
 
-.marketing-footer__payments img {
+body.marketing-site .marketing-footer__payments img {
   flex-shrink: 0;
   height: 24px;
   width: auto;
+  max-width: none;
 }
 
 @media (min-width: 744px) {
@@ -613,7 +617,7 @@ body.marketing-site img {
     flex: 0 1 auto;
   }
 
-  .marketing-nav__brand img {
+  body.marketing-site .marketing-nav__brand img {
     height: 40px;
   }
 
@@ -688,7 +692,7 @@ body.marketing-site img {
     min-height: 4.5rem;
   }
 
-  .marketing-feature-grid__image img {
+  body.marketing-site .marketing-feature-grid__image img {
     max-width: 4.5rem;
     max-height: 4.5rem;
   }
@@ -753,7 +757,7 @@ body.marketing-site img {
     max-width: 12rem;
   }
 
-  .marketing-footer__payments img {
+  body.marketing-site .marketing-footer__payments img {
     height: 26px;
   }
 }
@@ -777,7 +781,7 @@ body.marketing-site img {
     min-height: 5rem;
   }
 
-  .marketing-feature-grid__image img {
+  body.marketing-site .marketing-feature-grid__image img {
     max-width: 5rem;
     max-height: 5rem;
   }
@@ -799,7 +803,7 @@ body.marketing-site img {
     grid-column: span 12;
   }
 
-  .marketing-footer__payments img {
+  body.marketing-site .marketing-footer__payments img {
     height: 28px;
   }
 }
@@ -813,7 +817,7 @@ body.marketing-site img {
     min-height: 5.5rem;
   }
 
-  .marketing-feature-grid__image img {
+  body.marketing-site .marketing-feature-grid__image img {
     max-width: 5.5rem;
     max-height: 5.5rem;
   }
