@@ -914,6 +914,18 @@ function provider_signup_submit(string $accessToken, array $form): array
         error_log('provider_signup_submit review log: ' . $e->getMessage());
     }
 
+    $submitted = provider_signup_get($applicationId) ?? $fresh;
+    $documentWarnings = provider_signup_optional_documents_warnings(
+        provider_signup_form_from_row($submitted),
+        $applicationId
+    );
+
+    try {
+        provider_signup_mail_application_submitted($submitted, $documentWarnings);
+    } catch (Throwable $e) {
+        error_log('provider_signup_submit mail: ' . $e->getMessage());
+    }
+
     return ['ok' => true, 'error' => null];
 }
 

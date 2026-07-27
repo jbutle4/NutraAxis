@@ -43,6 +43,7 @@ $documentsOnly = !$editable && $canCompleteDocuments;
     </div>
     <div class="signup-submitted__body">
       <p>Thank you for submitting your application. Your application will be validated for completeness and eligibility for Tax Exemption status. Your store will be provisioned and you will receive further instruction on the next steps. Please note that your store will not be provisioned before August 3, 2026. You will be able, however, to log in and purchase at wholesale prices plus applicable state sales tax. Once your application has been validated for tax exemption, you will no longer be charged any state tax for purchases for resale. If you are operating in a state with existing tax exemptions on food and dietary supplements, that will already be applied at checkout.</p>
+      <p>We also emailed you a secure return link<?= $canCompleteDocuments ? ' so you can upload your reseller certificate and/or add ACH payout details later' : '' ?>.</p>
     </div>
     <?php provider_signup_render_support_link('provider-support-link provider-support-link--submitted'); ?>
   </div>
