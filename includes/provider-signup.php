@@ -31,6 +31,14 @@ const PROVIDER_SIGNUP_PROVIDER_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_RETURNED,
 ];
 
+/** Statuses where providers may upload certificates / ACH after submit (not full form edit). */
+const PROVIDER_SIGNUP_PROVIDER_DOCUMENTS_STATUSES = [
+    PROVIDER_SIGNUP_STATUS_SUBMITTED,
+    PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
+    PROVIDER_SIGNUP_STATUS_APPROVED,
+    PROVIDER_SIGNUP_STATUS_PROVISIONED,
+];
+
 const PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_DRAFT,
     PROVIDER_SIGNUP_STATUS_RETURNED,
@@ -188,7 +196,7 @@ function provider_signup_default_form(): array
         'tax_id'              => '',
         'ach_routing_number'  => '',
         'ach_account_number'  => '',
-        'ach_account_type'    => 'Checking',
+        'ach_account_type'    => '',
     ];
 }
 
@@ -226,7 +234,7 @@ function provider_signup_form_from_row(array $row): array
         'tax_id'              => '',
         'ach_routing_number'  => (string) ($row['AchRoutingNumber'] ?? ''),
         'ach_account_number'  => '',
-        'ach_account_type'    => (string) ($row['AchAccountType'] ?? 'Checking'),
+        'ach_account_type'    => (string) ($row['AchAccountType'] ?? ''),
     ];
 }
 
@@ -267,6 +275,22 @@ function provider_signup_get(int $applicationId): ?array
 function provider_signup_provider_can_edit(array $application): bool
 {
     return in_array((string) ($application['Status'] ?? ''), PROVIDER_SIGNUP_PROVIDER_EDITABLE_STATUSES, true);
+}
+
+/**
+ * Provider may upload reseller certificate and/or ACH after the application is submitted.
+ */
+function provider_signup_provider_can_complete_documents(array $application): bool
+{
+    if (provider_signup_provider_can_edit($application)) {
+        return true;
+    }
+
+    return in_array(
+        (string) ($application['Status'] ?? ''),
+        PROVIDER_SIGNUP_PROVIDER_DOCUMENTS_STATUSES,
+        true
+    );
 }
 
 function provider_signup_ops_can_approve(array $application): bool
@@ -400,8 +424,6 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         'admin_last_name'    => 'Admin last name',
         'admin_email'        => 'Admin email',
         'npi_number'         => 'NPI #',
-        'ach_routing_number' => 'ACH routing #',
-        'ach_account_type'   => 'ACH account type',
     ];
 
     foreach ($requiredStrings as $field => $label) {
@@ -424,16 +446,6 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         $missing[] = 'Tax ID (SSN or EIN)';
     }
 
-    $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
-    $hasStoredAccount = provider_signup_get($applicationId)['AchAccountNumberEncrypted'] ?? null;
-    if ($account === '' && trim((string) $hasStoredAccount) === '') {
-        $missing[] = 'ACH account #';
-    }
-
-    if (!provider_signup_has_reseller_certificate($applicationId)) {
-        $missing[] = 'State reseller certificate upload';
-    }
-
     $application = provider_signup_get($applicationId);
     if ($application === null || !provider_signup_has_current_policy_ack($application)) {
         $missing[] = 'Practitioner Reseller Policy acknowledgement';
@@ -444,9 +456,15 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
         $missing[] = 'Valid 10-digit NPI #';
     }
 
+    // ACH format checks only when the provider started filling payout fields.
     $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
     if ($routing !== '' && strlen($routing) !== 9) {
         $missing[] = 'Valid 9-digit ACH routing #';
+    }
+
+    $type = (string) ($form['ach_account_type'] ?? '');
+    if ($type !== '' && !in_array($type, PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES, true)) {
+        $missing[] = 'ACH account type';
     }
 
     return [
@@ -455,13 +473,76 @@ function provider_signup_submit_checklist(array $form, int $applicationId): arra
     ];
 }
 
+function provider_signup_has_ach_info(array $form, int $applicationId): bool
+{
+    $stored = provider_signup_get($applicationId) ?? [];
+    $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
+    if ($routing === '') {
+        $routing = preg_replace('/\D+/', '', (string) ($stored['AchRoutingNumber'] ?? '')) ?? '';
+    }
+
+    $type = trim((string) ($form['ach_account_type'] ?? ''));
+    if ($type === '') {
+        $type = (string) ($stored['AchAccountType'] ?? '');
+    }
+
+    $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
+    if ($account === '') {
+        $account = preg_replace(
+            '/\D+/',
+            '',
+            provider_signup_decrypt($stored['AchAccountNumberEncrypted'] ?? null)
+        ) ?? '';
+    }
+
+    return strlen($routing) === 9
+        && $account !== ''
+        && in_array($type, PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES, true);
+}
+
+/**
+ * Optional post-submit documents: reseller certificate and ACH.
+ * These do not block submit, but the provider is warned about taxable status / no payouts.
+ *
+ * @return list<string>
+ */
+function provider_signup_optional_documents_warnings(array $form, int $applicationId): array
+{
+    $warnings = [];
+
+    if (!provider_signup_has_reseller_certificate($applicationId)) {
+        $warnings[] = 'No state reseller certificate was uploaded. Your account will default to taxable status until a certificate is uploaded and validated.';
+    }
+
+    if (!provider_signup_has_ach_info($form, $applicationId)) {
+        $warnings[] = 'ACH payout details are incomplete. Your clinic can still be provisioned, but you cannot receive a payout until ACH information is received and validated.';
+    }
+
+    return $warnings;
+}
+
 function provider_signup_banking_validate_format(array $form, int $applicationId): array
 {
     $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
     $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
+    $type = (string) ($form['ach_account_type'] ?? '');
+    $stored = provider_signup_get($applicationId);
     if ($account === '') {
-        $stored = provider_signup_get($applicationId);
         $account = preg_replace('/\D+/', '', provider_signup_decrypt($stored['AchAccountNumberEncrypted'] ?? null)) ?? '';
+    }
+    if ($routing === '') {
+        $routing = preg_replace('/\D+/', '', (string) ($stored['AchRoutingNumber'] ?? '')) ?? '';
+    }
+    if ($type === '') {
+        $type = (string) ($stored['AchAccountType'] ?? '');
+    }
+
+    if ($routing === '' && $account === '' && $type === '') {
+        return [
+            'ok'      => true,
+            'status'  => 'NotProvided',
+            'summary' => 'ACH details not provided. Payouts cannot be issued until banking information is received and validated.',
+        ];
     }
 
     if (strlen($routing) !== 9) {
@@ -477,6 +558,14 @@ function provider_signup_banking_validate_format(array $form, int $applicationId
             'ok'      => false,
             'status'  => 'Invalid',
             'summary' => 'ACH account number is required.',
+        ];
+    }
+
+    if (!in_array($type, PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES, true)) {
+        return [
+            'ok'      => false,
+            'status'  => 'Invalid',
+            'summary' => 'ACH account type is required.',
         ];
     }
 
@@ -789,6 +878,95 @@ function provider_signup_persist_form(int $applicationId, array $form, bool $sub
     return ['ok' => true, 'error' => null];
 }
 
+/**
+ * Save ACH payout fields after submit (complete-documents mode).
+ *
+ * @param array<string, mixed> $form
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_save_documents(string $accessToken, array $form): array
+{
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_provider_can_complete_documents($application)) {
+        return ['ok' => false, 'error' => 'Documents can no longer be updated for this application.'];
+    }
+
+    $applicationId = (int) $application['ApplicationID'];
+    $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
+    $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
+    $type = (string) ($form['ach_account_type'] ?? '');
+    $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '';
+
+    $anyProvided = $routing !== '' || $account !== '' || $type !== '';
+    if (!$anyProvided && !$hasStoredAccount) {
+        return ['ok' => false, 'error' => 'Enter ACH routing #, account #, and account type to save payout details.'];
+    }
+
+    if ($routing !== '' && strlen($routing) !== 9) {
+        return ['ok' => false, 'error' => 'ACH routing number must be 9 digits.'];
+    }
+
+    if ($type !== '' && !in_array($type, PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES, true)) {
+        return ['ok' => false, 'error' => 'Select a valid ACH account type.'];
+    }
+
+    if ($account === '' && !$hasStoredAccount) {
+        return ['ok' => false, 'error' => 'ACH account number is required.'];
+    }
+
+    // If updating any ACH field, require a complete set (stored account may satisfy account #).
+    $effectiveRouting = $routing !== '' ? $routing : preg_replace('/\D+/', '', (string) ($application['AchRoutingNumber'] ?? '')) ?? '';
+    $effectiveType = $type !== '' ? $type : (string) ($application['AchAccountType'] ?? '');
+    if (strlen($effectiveRouting) !== 9) {
+        return ['ok' => false, 'error' => 'ACH routing number must be 9 digits.'];
+    }
+    if (!in_array($effectiveType, PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES, true)) {
+        return ['ok' => false, 'error' => 'Select a valid ACH account type.'];
+    }
+
+    $accountEncrypted = $account !== ''
+        ? provider_signup_encrypt($account)
+        : (string) ($application['AchAccountNumberEncrypted'] ?? '');
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET AchRoutingNumber = :ach_routing_number,
+                AchAccountNumberEncrypted = :ach_account_encrypted,
+                AchAccountType = :ach_account_type,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'ach_routing_number'    => $effectiveRouting,
+            'ach_account_encrypted' => $accountEncrypted !== '' ? $accountEncrypted : null,
+            'ach_account_type'      => $effectiveType,
+            'id'                    => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_save_documents: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to save ACH details.'];
+    }
+
+    try {
+        provider_signup_add_review_log(
+            $applicationId,
+            null,
+            'DocumentsUpdated',
+            'Provider updated ACH payout details.'
+        );
+    } catch (Throwable $e) {
+        error_log('provider_signup_save_documents review log: ' . $e->getMessage());
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
 function provider_signup_nullable_string(string $value): ?string
 {
     $value = trim($value);
@@ -803,8 +981,8 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    if (!provider_signup_provider_can_edit($application)) {
-        return ['ok' => false, 'error' => 'This application can no longer be edited online.'];
+    if (!provider_signup_provider_can_complete_documents($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.'];
     }
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {

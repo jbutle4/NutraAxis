@@ -109,16 +109,17 @@ $opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/
       <input class="form-input" type="password" id="tax_id" name="tax_id" autocomplete="off" placeholder="<?= $hasStoredTaxId ? 'Saved — enter to replace' : 'Leave blank to keep empty' ?>" />
     </div>
     <div class="form-group">
-      <label for="ach_routing_number">ACH routing number *</label>
-      <input class="form-input" type="text" id="ach_routing_number" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" required />
+      <label for="ach_routing_number">ACH routing number</label>
+      <input class="form-input" type="text" id="ach_routing_number" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
     </div>
     <div class="form-group">
       <label for="ach_account_number">ACH account number</label>
       <input class="form-input" type="password" id="ach_account_number" name="ach_account_number" autocomplete="off" placeholder="<?= $hasStoredAccount ? 'Saved — enter to replace' : 'Leave blank to keep empty' ?>" />
     </div>
     <div class="form-group">
-      <label for="ach_account_type">ACH account type *</label>
-      <select class="form-input" id="ach_account_type" name="ach_account_type" required>
+      <label for="ach_account_type">ACH account type</label>
+      <select class="form-input" id="ach_account_type" name="ach_account_type">
+        <option value="">Select type</option>
         <?php foreach (PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES as $type): ?>
         <option value="<?= htmlspecialchars($type) ?>" <?= $form['ach_account_type'] === $type ? 'selected' : '' ?>><?= htmlspecialchars($type) ?></option>
         <?php endforeach; ?>

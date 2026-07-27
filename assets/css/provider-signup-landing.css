@@ -1012,6 +1012,14 @@ body.marketing-site .na-providers ul {
   font-size: 0.88rem;
 }
 
+.na-providers .signup-complete-documents {
+  margin-top: 28px;
+}
+
+.na-providers .signup-complete-documents .section-heading {
+  margin-bottom: 8px;
+}
+
 .na-providers .signup-upload {
   margin-top: 24px;
   padding: 22px 24px;
