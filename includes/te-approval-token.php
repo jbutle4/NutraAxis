@@ -28,6 +28,13 @@ function te_list_te_approvers(): array
 
 function te_list_po_processors(): array
 {
+    if (!function_exists('approval_uat_testing_role_routing_enabled')) {
+        require_once __DIR__ . '/approval.php';
+    }
+    if (approval_uat_testing_role_routing_enabled()) {
+        return approval_list_testing_role_users();
+    }
+
     require_once __DIR__ . '/admin.php';
 
     return admin_list_users_with_permission('TEProcessing', 'R');

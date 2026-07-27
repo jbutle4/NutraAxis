@@ -4,6 +4,107 @@ require_once __DIR__ . '/permissions.php';
 
 const APPROVAL_TOKEN_BYTES = 32;
 const APPROVAL_TOKEN_EXPIRY_DAYS = 14;
+const APPROVAL_UAT_TESTING_ROLE_NAME = 'Testing Approver';
+
+/**
+ * When enabled, all approval action + alert emails route only to users on Testing Approver.
+ * Active on UAT data-profile pages, when APPROVAL_UAT_TESTING_ROLE_ONLY=1, or when
+ * QBO_ENVIRONMENT=sandbox (unless explicitly disabled via APPROVAL_UAT_TESTING_ROLE_ONLY=0).
+ */
+function approval_uat_testing_role_routing_enabled(): bool
+{
+    if (!function_exists('data_profile_is_uat')) {
+        require_once __DIR__ . '/data-profile.php';
+    }
+    if (data_profile_is_uat()) {
+        return true;
+    }
+
+    $flag = strtolower(trim((string) env('APPROVAL_UAT_TESTING_ROLE_ONLY', '')));
+    if (in_array($flag, ['1', 'true', 'yes'], true)) {
+        return true;
+    }
+    if (in_array($flag, ['0', 'false', 'no'], true)) {
+        return false;
+    }
+
+    return strtolower(trim((string) env('QBO_ENVIRONMENT', ''))) === 'sandbox';
+}
+
+function approval_list_testing_role_users(): array
+{
+    static $cached = null;
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT
+            u.UserID,
+            u.UserName,
+            u.UserLogin,
+            r.RoleName
+        FROM dbo.[User] u
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE r.RoleName = :role_name
+          AND u.UserLogin IS NOT NULL
+          AND LTRIM(RTRIM(u.UserLogin)) <> ''
+        ORDER BY u.UserName
+    SQL);
+    $stmt->execute(['role_name' => APPROVAL_UAT_TESTING_ROLE_NAME]);
+    $cached = approval_filter_valid_email_users($stmt->fetchAll());
+
+    return $cached;
+}
+
+/**
+ * Alert TO/CC map for UAT approval routing (watchers, status updates, viewed-by).
+ *
+ * @return array{to: array<string, string>, cc: array<string, string>}
+ */
+function approval_uat_testing_role_alert_recipients(): array
+{
+    $to = [];
+    foreach (approval_list_testing_role_users() as $row) {
+        $email = strtolower(trim((string) ($row['UserLogin'] ?? '')));
+        if ($email === '') {
+            continue;
+        }
+        $name = trim((string) ($row['UserName'] ?? ''));
+        $to[$email] = $name !== '' ? $name : $email;
+    }
+
+    if (!function_exists('mail_normalize_recipient_map')) {
+        require_once __DIR__ . '/mail.php';
+    }
+
+    return [
+        'to' => mail_normalize_recipient_map($to),
+        'cc' => [],
+    ];
+}
+
+function approval_alert_is_uat_routed(string $alertName): bool
+{
+    static $names = [
+        'po-approval-request',
+        'po-approval-notice',
+        'po-status-update',
+        'po-viewed-by-approver',
+        'te-approval-request',
+        'te-status-update',
+        'te-viewed-by-approver',
+        'qbo-insert-approval-request',
+        'qbo-insert-status-update',
+        'qbo-insert-viewed-by-approver',
+        'payment-approval-request',
+        'payment-status-update',
+        'payment-viewed-by-approver',
+    ];
+
+    return in_array($alertName, $names, true);
+}
 
 const APPROVAL_TYPES = [
     'PO' => [
@@ -212,6 +313,10 @@ function approval_list_alert_subscriber_users(string $alertName): array
 
 function approval_list_users_for_type(string $approvalType, string $action = 'U'): array
 {
+    if (approval_uat_testing_role_routing_enabled()) {
+        return approval_list_testing_role_users();
+    }
+
     $column = approval_permission_column($approvalType);
     if ($column === null) {
         return [];

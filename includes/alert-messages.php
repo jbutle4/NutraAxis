@@ -225,6 +225,15 @@ function alert_message_recipients(string $alertName): array
         return $empty;
     }
 
+    if (!function_exists('approval_uat_testing_role_routing_enabled')) {
+        require_once __DIR__ . '/approval.php';
+    }
+    if (approval_uat_testing_role_routing_enabled()
+        && approval_alert_is_uat_routed($alertName)
+    ) {
+        return approval_uat_testing_role_alert_recipients();
+    }
+
     $pdo = db();
     $addressSelect = alert_subscription_has_address_type()
         ? 'sub.AddressType'
