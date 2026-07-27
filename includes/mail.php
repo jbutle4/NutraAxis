@@ -32,6 +32,15 @@ function mail_send_multi_result(array $toRecipients, array $ccRecipients, string
     $toRecipients = mail_normalize_recipient_map($toRecipients);
     $ccRecipients = mail_normalize_recipient_map($ccRecipients);
 
+    [$subject, $body, $htmlBody] = mail_apply_uat_approval_email_format(
+        $subject,
+        $body,
+        $htmlBody,
+        $toRecipients,
+        $ccRecipients
+    );
+    $ccRecipients = mail_normalize_recipient_map($ccRecipients);
+
     if ($toRecipients === [] && $ccRecipients === []) {
         return ['ok' => false, 'error' => 'No recipients specified.'];
     }
@@ -550,6 +559,54 @@ function mail_encode_subject(string $subject): string
     return '=?UTF-8?B?' . base64_encode($subject) . '?=';
 }
 
+function mail_apply_uat_approval_email_format(
+    string $subject,
+    string $body,
+    ?string $htmlBody,
+    array $toRecipients = [],
+    array $ccRecipients = []
+): array {
+    if (!function_exists('approval_uat_email_format')) {
+        require_once __DIR__ . '/approval.php';
+    }
+    if (!function_exists('approval_uat_testing_role_routing_enabled')
+        || !approval_uat_testing_role_routing_enabled()
+        || !mail_recipients_include_testing_approver($toRecipients, $ccRecipients)) {
+        return [$subject, $body, $htmlBody];
+    }
+
+    $formatted = approval_uat_email_format($subject, $body, $htmlBody);
+
+    return [$formatted['subject'], $formatted['plain'], $formatted['html']];
+}
+
+function mail_recipients_include_testing_approver(array $toRecipients, array $ccRecipients): bool
+{
+    if (!function_exists('approval_list_testing_role_users')) {
+        require_once __DIR__ . '/approval.php';
+    }
+
+    $testingEmails = [];
+    foreach (approval_list_testing_role_users() as $row) {
+        $email = strtolower(trim((string) ($row['UserLogin'] ?? '')));
+        if ($email !== '') {
+            $testingEmails[$email] = true;
+        }
+    }
+
+    if ($testingEmails === []) {
+        return false;
+    }
+
+    foreach (array_keys($toRecipients + $ccRecipients) as $email) {
+        if (isset($testingEmails[strtolower($email)])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function mail_send_multi_attachments_result(
     array $toRecipients,
     array $ccRecipients,
@@ -560,6 +617,14 @@ function mail_send_multi_attachments_result(
 ): array {
     $toRecipients = mail_normalize_recipient_map($toRecipients);
     $ccRecipients = mail_normalize_recipient_map($ccRecipients);
+
+    [$subject, $body, $htmlBody] = mail_apply_uat_approval_email_format(
+        $subject,
+        $body,
+        $htmlBody,
+        $toRecipients,
+        $ccRecipients
+    );
 
     if ($toRecipients === [] && $ccRecipients === []) {
         return ['ok' => false, 'error' => 'No recipients specified.'];

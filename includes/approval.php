@@ -106,6 +106,72 @@ function approval_alert_is_uat_routed(string $alertName): bool
     return in_array($alertName, $names, true);
 }
 
+const APPROVAL_UAT_EMAIL_SUBJECT_PREFIX = '[UAT TESTING] ';
+
+function approval_uat_email_plain_banner(): string
+{
+    return "*** UAT TESTING ***\n"
+        . "This email is for UAT/sandbox testing only — not a production approval or payment request.\n\n";
+}
+
+function approval_uat_email_html_banner(): string
+{
+    return '<div role="alert" style="margin:0 0 20px;padding:14px 16px;background:#fff3cd;'
+        . 'border:2px solid #b45309;color:#7c2d12;font-weight:bold;font-size:15px;text-align:center;">'
+        . '*** UAT TESTING ***<br>'
+        . '<span style="font-weight:normal;font-size:13px;">'
+        . 'This email is for UAT/sandbox testing only — not a production approval or payment request.'
+        . '</span></div>';
+}
+
+function approval_uat_email_subject(string $subject): string
+{
+    if (stripos($subject, '[UAT TESTING]') !== false || stripos($subject, '*** UAT TESTING ***') !== false) {
+        return $subject;
+    }
+
+    return APPROVAL_UAT_EMAIL_SUBJECT_PREFIX . $subject;
+}
+
+function approval_uat_email_insert_html_banner(string $htmlBody): string
+{
+    $banner = approval_uat_email_html_banner();
+    if (preg_match('/<body\b[^>]*>/i', $htmlBody, $matches, PREG_OFFSET_CAPTURE)) {
+        $insertAt = $matches[0][1] + strlen($matches[0][0]);
+
+        return substr($htmlBody, 0, $insertAt) . $banner . substr($htmlBody, $insertAt);
+    }
+
+    return $banner . $htmlBody;
+}
+
+/**
+ * Apply UAT testing banner + subject prefix to outbound approval emails.
+ *
+ * @return array{subject: string, plain: string, html: ?string}
+ */
+function approval_uat_email_format(string $subject, string $plainBody, ?string $htmlBody = null): array
+{
+    if (!approval_uat_testing_role_routing_enabled()) {
+        return [
+            'subject' => $subject,
+            'plain'   => $plainBody,
+            'html'    => $htmlBody,
+        ];
+    }
+
+    $plainBody = approval_uat_email_plain_banner() . $plainBody;
+    if ($htmlBody !== null && trim($htmlBody) !== '') {
+        $htmlBody = approval_uat_email_insert_html_banner($htmlBody);
+    }
+
+    return [
+        'subject' => approval_uat_email_subject($subject),
+        'plain'   => $plainBody,
+        'html'    => $htmlBody,
+    ];
+}
+
 const APPROVAL_TYPES = [
     'PO' => [
         'label'            => 'PO Approval',
