@@ -193,6 +193,76 @@ function provider_signup_mail_application_started_ops(array $application): void
 }
 
 /**
+ * Confirmation + return link after provider submits (includes complete-documents CTA when needed).
+ *
+ * @param array<string, mixed> $application
+ * @param list<string> $documentWarnings
+ */
+function provider_signup_mail_application_submitted(array $application, array $documentWarnings = []): void
+{
+    $company = trim((string) ($application['CompanyName'] ?? ''));
+    $label = $company !== '' ? $company : 'your practice';
+    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
+    $id = (int) ($application['ApplicationID'] ?? 0);
+    $needsDocuments = $documentWarnings !== [];
+    $subject = $needsDocuments
+        ? 'Complete your NutraAxis provider documents'
+        : 'We received your NutraAxis provider application';
+
+    $plainLines = [
+        'Thank you for submitting your NutraAxis provider application for ' . $label . '.',
+        '',
+        'Application ID: ' . $id,
+        'Status: Submitted for Review',
+        '',
+    ];
+
+    if ($needsDocuments) {
+        $plainLines[] = 'You can still upload your state reseller certificate and/or add ACH payout details using this secure link:';
+        $plainLines[] = $applyUrl;
+        $plainLines[] = '';
+        $plainLines[] = 'Outstanding items:';
+        foreach ($documentWarnings as $warning) {
+            $plainLines[] = '- ' . $warning;
+        }
+        $plainLines[] = '';
+        $plainLines[] = 'Your application is already under review. Completing these items helps with tax exemption and clinic payouts.';
+    } else {
+        $plainLines[] = 'Save this link if you need to return and review your application status or update documents:';
+        $plainLines[] = $applyUrl;
+    }
+
+    $plainLines[] = '';
+    $plainLines[] = 'If you need help, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.';
+    $plainLines[] = '';
+    $plainLines[] = '— NutraAxis';
+
+    $html = '<p>Thank you for submitting your NutraAxis provider application for <strong>'
+        . htmlspecialchars($label)
+        . '</strong>.</p>'
+        . '<p><strong>Application ID:</strong> ' . htmlspecialchars((string) $id) . '<br>'
+        . '<strong>Status:</strong> Submitted for Review</p>';
+
+    if ($needsDocuments) {
+        $html .= '<p>You can still upload your state reseller certificate and/or add ACH payout details:</p>'
+            . '<p><a href="' . htmlspecialchars($applyUrl) . '">Complete documents &amp; ACH details</a></p>'
+            . '<ul>';
+        foreach ($documentWarnings as $warning) {
+            $html .= '<li>' . htmlspecialchars($warning) . '</li>';
+        }
+        $html .= '</ul>'
+            . '<p>Your application is already under review. Completing these items helps with tax exemption and clinic payouts.</p>';
+    } else {
+        $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Return to your application</a></p>';
+    }
+
+    $html .= '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
+
+    provider_signup_mail_provider($application, $subject, implode("\n", $plainLines), $html);
+}
+
+/**
  * @param array<string, mixed> $application
  */
 function provider_signup_mail_commented(array $application, string $comments): void
