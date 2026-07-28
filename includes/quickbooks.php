@@ -214,9 +214,184 @@ function qbo_save_connection(array $data): void
 function qbo_disconnect(?string $env = null): void
 {
     $env = qbo_normalize_environment($env ?? qbo_environment());
+    if (qbo_get_connection($env) !== null) {
+        qbo_alert_connection_down(
+            $env,
+            'QuickBooks was disconnected from the Accounting hub.',
+            true
+        );
+    }
+
     $pdo = db();
     $stmt = $pdo->prepare('DELETE FROM dbo.QBOConnection WHERE Environment = :env');
     $stmt->execute(['env' => $env]);
+}
+
+const QBO_DISCONNECT_ALERT_COOLDOWN_HOURS = 6;
+
+function qbo_connection_has_disconnect_alert_column(): bool
+{
+    static $has = null;
+    if ($has !== null) {
+        return $has;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->query("SELECT COL_LENGTH('dbo.QBOConnection', 'LastDisconnectAlertAt') AS col_len");
+        $row = $stmt->fetch();
+        $has = $row !== false && $row['col_len'] !== null;
+    } catch (Throwable) {
+        $has = false;
+    }
+
+    return $has;
+}
+
+/**
+ * True when OAuth/token failure indicates the connection must be re-authorized (not a network blip).
+ */
+function qbo_oauth_failure_is_auth_error(array $result): bool
+{
+    if (!empty($result['ok'])) {
+        return false;
+    }
+
+    $status = (int) ($result['status'] ?? 0);
+    if ($status === 401) {
+        return true;
+    }
+
+    $data = $result['data'] ?? null;
+    $errorCode = '';
+    $errorDesc = '';
+    if (is_array($data)) {
+        $errorCode = strtolower(trim((string) ($data['error'] ?? '')));
+        $errorDesc = strtolower(trim((string) ($data['error_description'] ?? '')));
+    }
+
+    foreach (['invalid_grant', 'invalid_token', 'unauthorized_client', 'access_denied'] as $code) {
+        if ($errorCode === $code || str_contains($errorDesc, $code)) {
+            return true;
+        }
+    }
+
+    if ($status === 400 && $errorCode !== '') {
+        return true;
+    }
+
+    $message = strtolower(trim((string) ($result['error'] ?? '')));
+    foreach (['invalid_grant', 'invalid_token', 'refresh token', 'authorization', 'revoked', 'expired'] as $needle) {
+        if ($needle !== '' && str_contains($message, $needle)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Email Accounting Update users to reconnect QBO on /accounting/.
+ *
+ * @param bool $immediate When true (manual disconnect), send without cooldown. When false (auth refresh fail), respect 6h cooldown per environment.
+ */
+function qbo_alert_connection_down(string $env, string $reason, bool $immediate = false): void
+{
+    $env = qbo_normalize_environment($env);
+    $connection = qbo_get_connection($env);
+
+    if ($connection === null && !$immediate) {
+        return;
+    }
+
+    if (
+        !$immediate
+        && $connection !== null
+        && qbo_connection_has_disconnect_alert_column()
+    ) {
+        $last = trim((string) ($connection['LastDisconnectAlertAt'] ?? ''));
+        if ($last !== '') {
+            try {
+                $lastAt = new DateTimeImmutable($last, new DateTimeZone('UTC'));
+                $cooldownUntil = $lastAt->modify('+' . QBO_DISCONNECT_ALERT_COOLDOWN_HOURS . ' hours');
+                if ($cooldownUntil > new DateTimeImmutable('now', new DateTimeZone('UTC'))) {
+                    return;
+                }
+            } catch (Throwable) {
+                // proceed to send
+            }
+        }
+    }
+
+    require_once __DIR__ . '/approval.php';
+    require_once __DIR__ . '/mail.php';
+
+    $users = approval_filter_valid_email_users(
+        approval_query_users_with_role_permission('Accounting', 'U')
+    );
+    if ($users === []) {
+        error_log('qbo_alert_connection_down skipped: no Accounting Update users with email for ' . $env);
+
+        return;
+    }
+
+    if (!mail_smtp_is_configured()) {
+        error_log('qbo_alert_connection_down skipped: SMTP not configured for ' . $env);
+
+        return;
+    }
+
+    $toRecipients = [];
+    foreach ($users as $user) {
+        $email = trim((string) ($user['UserLogin'] ?? ''));
+        if ($email !== '') {
+            $toRecipients[$email] = (string) ($user['UserName'] ?? $email);
+        }
+    }
+    if ($toRecipients === []) {
+        return;
+    }
+
+    $label = qbo_environment_label($env);
+    $company = trim((string) ($connection['CompanyName'] ?? ''));
+    $siteUrl = rtrim(trim((string) env('SITE_URL', 'https://nutraaxisweb.azurewebsites.net')), '/');
+    $accountingUrl = $siteUrl . '/accounting/';
+
+    $subject = 'QuickBooks ' . $label . ' disconnected — reconnect required';
+    $lines = [
+        'QuickBooks Online (' . $label . ') is no longer connected to NutraAxis Operations.',
+        '',
+    ];
+    if ($company !== '') {
+        $lines[] = 'Company: ' . $company;
+        $lines[] = '';
+    }
+    $lines[] = 'Reason: ' . trim($reason);
+    $lines[] = 'Time (UTC): ' . gmdate('Y-m-d H:i:s');
+    $lines[] = 'Reconnect: ' . $accountingUrl;
+    $lines[] = '';
+    $lines[] = 'An Accounting user with Update access must sign in to QuickBooks again from the Accounting home page (Sandbox and/or Production cards).';
+
+    $body = implode("\n", $lines);
+    $send = mail_send_multi_result($toRecipients, [], $subject, 'Hello,' . "\n\n" . $body);
+    if (!($send['ok'] ?? false)) {
+        error_log('qbo_alert_connection_down email failed for ' . $env . ': ' . (string) ($send['error'] ?? 'unknown'));
+
+        return;
+    }
+
+    if (!$immediate && $connection !== null && qbo_connection_has_disconnect_alert_column()) {
+        try {
+            $pdo = db();
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.QBOConnection
+                SET LastDisconnectAlertAt = SYSUTCDATETIME()
+                WHERE Environment = :env
+            SQL)->execute(['env' => $env]);
+        } catch (Throwable $e) {
+            error_log('qbo_alert_connection_down could not update LastDisconnectAlertAt: ' . $e->getMessage());
+        }
+    }
 }
 
 function qbo_start_oauth_state(string $env): string
@@ -312,10 +487,15 @@ function qbo_token_request(array $fields, ?string $env = null): array
     if ($status >= 400) {
         $message = $data['error_description'] ?? $data['error'] ?? 'QuickBooks OAuth failed.';
 
-        return ['ok' => false, 'error' => is_string($message) ? $message : 'QuickBooks OAuth failed.', 'data' => $data];
+        return [
+            'ok'     => false,
+            'error'  => is_string($message) ? $message : 'QuickBooks OAuth failed.',
+            'data'   => $data,
+            'status' => $status,
+        ];
     }
 
-    return ['ok' => true, 'error' => null, 'data' => $data];
+    return ['ok' => true, 'error' => null, 'data' => $data, 'status' => $status];
 }
 
 function qbo_exchange_code(string $code, string $realmId, ?string $env = null): array
@@ -444,6 +624,14 @@ function qbo_refresh_access_token(?string $env = null): array
     ], $env);
 
     if (!$result['ok']) {
+        if (qbo_oauth_failure_is_auth_error($result)) {
+            qbo_alert_connection_down(
+                $env,
+                (string) ($result['error'] ?? 'QuickBooks token refresh failed.'),
+                false
+            );
+        }
+
         return $result;
     }
 
