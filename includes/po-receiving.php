@@ -2,8 +2,37 @@
 
 require_once __DIR__ . '/po.php';
 require_once __DIR__ . '/facility.php';
+require_once __DIR__ . '/data-profile.php';
+require_once __DIR__ . '/jazz-oms.php';
 
 const POR_STATUSES = ['Draft', 'Scheduled', 'Transmitted', 'Complete', 'Cancelled'];
+
+const POR_LEDGER_PROFILE_PRODUCTION = 'production';
+const POR_LEDGER_PROFILE_UAT = 'uat';
+
+/**
+ * Active PO Receiving ledger profile (production | uat), driven by page data profile.
+ */
+function por_ledger_profile(): string
+{
+    return data_profile_is_uat() ? POR_LEDGER_PROFILE_UAT : POR_LEDGER_PROFILE_PRODUCTION;
+}
+
+/**
+ * Bind Jazz OMS to the active PO Receiving page profile. Call on every leaf.
+ */
+function por_bind_page_environments(): void
+{
+    jazz_oms_use_environment(data_profile_is_uat() ? 'uat' : 'production');
+}
+
+/**
+ * Profile-aware path within PO Receiving (production path in → UAT twin when on UAT).
+ */
+function por_page_path(string $productionPath): string
+{
+    return data_profile_page_path($productionPath);
+}
 
 const POR_MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
@@ -194,9 +223,9 @@ function por_list(array $filters = []): array
         FROM dbo.POReceipt r
         INNER JOIN dbo.PurchaseOrder po ON po.POID = r.POID
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
-        WHERE 1 = 1
+        WHERE r.LedgerProfile = :ledger_profile
     SQL;
-    $params = [];
+    $params = ['ledger_profile' => por_ledger_profile()];
 
     if (!empty($filters['po_id'])) {
         $sql .= ' AND r.POID = :po_id';
@@ -241,8 +270,12 @@ function por_get(int $porId): ?array
         INNER JOIN dbo.PurchaseOrder po ON po.POID = r.POID
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
         WHERE r.PORID = :id
+          AND r.LedgerProfile = :ledger_profile
     SQL);
-    $stmt->execute(['id' => $porId]);
+    $stmt->execute([
+        'id' => $porId,
+        'ledger_profile' => por_ledger_profile(),
+    ]);
     $row = $stmt->fetch();
 
     return $row === false ? null : $row;
@@ -290,8 +323,12 @@ function por_scheduled_quantities_for_po(int $poId, ?int $excludePorId = null): 
         INNER JOIN dbo.POReceipt r ON r.PORID = d.PORID
         WHERE r.POID = :po
           AND r.PORStatus <> N'Cancelled'
+          AND r.LedgerProfile = :ledger_profile
     SQL;
-    $params = ['po' => $poId];
+    $params = [
+        'po' => $poId,
+        'ledger_profile' => por_ledger_profile(),
+    ];
 
     if ($excludePorId !== null) {
         $sql .= ' AND r.PORID <> :exclude';
@@ -749,6 +786,7 @@ function por_save(array $input, ?int $porId = null): array
             'shipping_method' => $data['shipping_method'] !== '' ? $data['shipping_method'] : null,
             'shipped_at'      => $shippedAt,
             'modified_by'     => $actor !== '' ? $actor : null,
+            'ledger_profile'  => por_ledger_profile(),
         ];
 
         if ($porId === null) {
@@ -758,7 +796,7 @@ function por_save(array $input, ?int $porId = null): array
                     POID, PONumber, ExpectedDate, ScheduledReceiptDate, ScheduledReceiptTime,
                     AppointmentMade, ActualReceiptDate, DeliveryAddress, PORStatus, JazzASN, PORNotes,
                     BusinessType, ShipmentNumber, Facility, CarrierNumber, SealNumber, LoadNumber,
-                    ShippingMethod, ShippedAt,
+                    ShippingMethod, ShippedAt, LedgerProfile,
                     CreatedBy, ModifiedBy
                 )
                 OUTPUT INSERTED.PORID AS inserted_id
@@ -766,7 +804,7 @@ function por_save(array $input, ?int $porId = null): array
                     :po, :po_number, :expected, :scheduled, :scheduled_tm,
                     :appointment, :actual, :address, :status, :jazz_asn, :notes,
                     :business_type, :shipment_number, :facility, :carrier_number, :seal_number, :load_number,
-                    :shipping_method, :shipped_at,
+                    :shipping_method, :shipped_at, :ledger_profile,
                     :created_by, :modified_by
                 )
             SQL);
@@ -802,6 +840,7 @@ function por_save(array $input, ?int $porId = null): array
                     ModifiedBy = :modified_by,
                     ModifiedDate = SYSUTCDATETIME()
                 WHERE PORID = :id
+                  AND LedgerProfile = :ledger_profile
             SQL)->execute($params);
 
             $pdo->prepare('DELETE FROM dbo.PORDetail WHERE PORID = :id')->execute(['id' => $porId]);
@@ -855,7 +894,10 @@ function por_delete(int $porId): array
     }
 
     $pdo = db();
-    $pdo->prepare('DELETE FROM dbo.POReceipt WHERE PORID = :id')->execute(['id' => $porId]);
+    $pdo->prepare('DELETE FROM dbo.POReceipt WHERE PORID = :id AND LedgerProfile = :ledger_profile')->execute([
+        'id' => $porId,
+        'ledger_profile' => por_ledger_profile(),
+    ]);
 
     return ['ok' => true, 'error' => null];
 }
@@ -912,9 +954,11 @@ function por_transmit(int $porId): array
             ModifiedBy = :modified_by,
             ModifiedDate = SYSUTCDATETIME()
         WHERE PORID = :id
+          AND LedgerProfile = :ledger_profile
     SQL)->execute([
         'modified_by' => por_actor_name() ?: null,
         'id'          => $porId,
+        'ledger_profile' => por_ledger_profile(),
     ]);
 
     return ['ok' => true, 'error' => null];

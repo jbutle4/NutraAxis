@@ -546,7 +546,7 @@ $inboundReceivingSubModules = [
     [
         'slug'  => 'po-receiving',
         'title' => 'PO Receiving',
-        'desc'  => 'Advanced shipping notices for inbound shipments, expected receipts, and PO receiving.',
+        'desc'  => 'Schedule and record inbound shipments against purchase orders (Production Jazz).',
         'href'  => '/po-receiving/',
         'icon'  => 'boxes',
         'tier'  => 'production',
@@ -569,6 +569,24 @@ $inboundReceivingSubModules = [
         'icon'  => 'document',
         'tier'  => 'production',
         'sort'  => 30,
+    ],
+    [
+        'slug'  => 'po-receiving-uat',
+        'title' => 'PO Receiving (UAT)',
+        'desc'  => 'UAT System — Schedule and transmit ASNs to Jazz OMS UAT only.',
+        'href'  => '/po-receiving-uat/',
+        'icon'  => 'boxes',
+        'tier'  => 'uat',
+        'sort'  => 200,
+    ],
+    [
+        'slug'  => 'delivery-scheduling-log-uat',
+        'title' => 'Delivery Schedule Log (UAT)',
+        'desc'  => 'UAT System — Delivery appointments linked to UAT PO receipts.',
+        'href'  => '/delivery-scheduling-log-uat/',
+        'icon'  => 'calendar',
+        'tier'  => 'uat',
+        'sort'  => 205,
     ],
     [
         'slug'  => 'jazz-asns-uat',

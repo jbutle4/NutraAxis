@@ -1,6 +1,9 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
+
+por_bind_page_environments();
 
 das_require_read();
 
@@ -10,11 +13,11 @@ $returnContext = das_return_context_from_query();
 $breadcrumb = das_breadcrumb($returnContext);
 
 if ($appointment === null) {
-    header('Location: /delivery-scheduling-log/', true, 302);
+    header('Location: ' . data_profile_page_path('/delivery-scheduling-log/'), true, 302);
     exit;
 }
 
-$activeSlug = 'delivery-scheduling-log';
+$activeSlug = $activeSlug ?? 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $emailNotice = $_GET['email_notice'] ?? null;
 $emailError = isset($_GET['email_error']) ? (string) $_GET['email_error'] : null;
@@ -47,7 +50,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="admin-actions">
           <?php if (das_can_update()): ?>
-          <a class="btn-primary" href="/delivery-scheduling-log/edit.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit</a>
+          <a class="btn-primary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/edit.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit</a>
           <a class="btn-secondary" href="<?= htmlspecialchars(das_send_reminder_url($apptId, $returnContext)) ?>">Send reminder</a>
           <?php endif; ?>
           <?php if (das_record_int($appointment, 'POReceiptID') > 0): ?>

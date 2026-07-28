@@ -142,8 +142,12 @@ function das_get(int $apptId): ?array
         INNER JOIN dbo.PurchaseOrder po ON po.POID = a.POID
         LEFT JOIN dbo.POReceipt r ON r.PORID = a.POReceiptID
         WHERE a.ApptID = :id
+          AND a.LedgerProfile = :ledger_profile
     SQL);
-    $stmt->execute(['id' => $apptId]);
+    $stmt->execute([
+        'id' => $apptId,
+        'ledger_profile' => por_ledger_profile(),
+    ]);
     $row = $stmt->fetch();
 
     return $row === false ? null : $row;
@@ -156,9 +160,13 @@ function das_get_by_por_id(int $porId): ?array
         SELECT TOP (1) ApptID
         FROM dbo.DeliveryAppointmentScheduling
         WHERE POReceiptID = :por_id
+          AND LedgerProfile = :ledger_profile
         ORDER BY ApptID DESC
     SQL);
-    $stmt->execute(['por_id' => $porId]);
+    $stmt->execute([
+        'por_id' => $porId,
+        'ledger_profile' => por_ledger_profile(),
+    ]);
     $apptId = $stmt->fetchColumn();
 
     return $apptId !== false ? das_get((int) $apptId) : null;
@@ -176,9 +184,13 @@ function das_por_id_for_jazz_asn(string $jazzAsn): ?int
         SELECT TOP (1) PORID
         FROM dbo.POReceipt
         WHERE JazzASN = :jazz_asn
+          AND LedgerProfile = :ledger_profile
         ORDER BY PORID DESC
     SQL);
-    $stmt->execute(['jazz_asn' => $jazzAsn]);
+    $stmt->execute([
+        'jazz_asn' => $jazzAsn,
+        'ledger_profile' => por_ledger_profile(),
+    ]);
     $porId = $stmt->fetchColumn();
 
     return $porId !== false ? (int) $porId : null;
@@ -292,9 +304,9 @@ function das_list(array $filters = []): array
             po.PONumber
         FROM dbo.DeliveryAppointmentScheduling a
         INNER JOIN dbo.PurchaseOrder po ON po.POID = a.POID
-        WHERE 1 = 1
+        WHERE a.LedgerProfile = :ledger_profile
     SQL;
-    $params = [];
+    $params = ['ledger_profile' => por_ledger_profile()];
 
     if (!empty($filters['status'])) {
         $sql .= ' AND a.AppointmentStatus = :status';
@@ -415,6 +427,7 @@ function das_save(array $input, ?int $apptId = null): array
         'appointment_asn_number'   => $data['appointment_asn_number'] !== '' ? $data['appointment_asn_number'] : null,
         'appointment_notes'        => $data['appointment_notes'] !== '' ? $data['appointment_notes'] : null,
         'modified_by'              => $actor !== '' ? $actor : null,
+        'ledger_profile'           => por_ledger_profile(),
     ];
 
     try {
@@ -430,6 +443,7 @@ function das_save(array $input, ?int $apptId = null): array
                     AppointmentDateTime, AppointmentAddress, AppointmentCompanyName,
                     ReceivingCompanyContact, ReceivingCompanyEmail, ReceivingCompanyPhone,
                     AppointmentStatus, AppointmentASNCreated, AppointmentASNNumber, AppointmentNotes,
+                    LedgerProfile,
                     CreatedBy, ModifiedBy
                 )
                 OUTPUT INSERTED.ApptID AS inserted_id
@@ -439,6 +453,7 @@ function das_save(array $input, ?int $apptId = null): array
                     :appointment_datetime, :appointment_address, :appointment_company_name,
                     :receiving_company_contact, :receiving_company_email, :receiving_company_phone,
                     :appointment_status, :appointment_asn_created, :appointment_asn_number, :appointment_notes,
+                    :ledger_profile,
                     :created_by, :modified_by
                 )
             SQL);
@@ -472,6 +487,7 @@ function das_save(array $input, ?int $apptId = null): array
                     ModifiedBy = :modified_by,
                     ModifiedDate = SYSUTCDATETIME()
                 WHERE ApptID = :id
+                  AND LedgerProfile = :ledger_profile
             SQL)->execute($params);
         }
 
@@ -511,13 +527,15 @@ function das_po_options(): array
 function das_por_options(): array
 {
     $pdo = db();
-    $stmt = $pdo->query(<<<SQL
+    $stmt = $pdo->prepare(<<<SQL
         SELECT r.PORID, r.POID, r.PONumber, r.PORStatus, r.JazzASN, s.SupplierName
         FROM dbo.POReceipt r
         INNER JOIN dbo.PurchaseOrder po ON po.POID = r.POID
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
+        WHERE r.LedgerProfile = :ledger_profile
         ORDER BY r.CreateDate DESC, r.PORID DESC
     SQL);
+    $stmt->execute(['ledger_profile' => por_ledger_profile()]);
 
     $options = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -593,22 +611,22 @@ function das_breadcrumb(array $context): array
     $jazzAsnId = trim((string) ($context['jazz_asn_id'] ?? ''));
 
     if ($returnTo === 'por' && $porId > 0) {
-        return ['href' => '/po-receiving/view.php?id=' . $porId, 'label' => 'Back to PO Receipt'];
+        return ['href' => por_page_path('/po-receiving/view.php') . '?id=' . $porId, 'label' => 'Back to PO Receipt'];
     }
 
     if ($returnTo === 'asn' && $porId > 0) {
-        return ['href' => '/po-receiving/asn.php?id=' . $porId, 'label' => 'Back to ASN Data'];
+        return ['href' => por_page_path('/po-receiving/asn.php') . '?id=' . $porId, 'label' => 'Back to ASN Data'];
     }
 
     if ($returnTo === 'jazz-asn' && $jazzAsnId !== '') {
-        return ['href' => '/po-receiving/jazz-asn.php?id=' . rawurlencode($jazzAsnId), 'label' => 'Back to Jazz ASN'];
+        return ['href' => por_page_path('/po-receiving/jazz-asn.php') . '?id=' . rawurlencode($jazzAsnId), 'label' => 'Back to Jazz ASN'];
     }
 
     if ($returnTo === 'jazz-asns') {
-        return ['href' => '/po-receiving/jazz-asns.php', 'label' => 'Back to Jazz ASNs'];
+        return ['href' => por_page_path('/po-receiving/jazz-asns.php'), 'label' => 'Back to Jazz ASNs'];
     }
 
-    return ['href' => '/delivery-scheduling-log/', 'label' => 'Back to Delivery Scheduling Log'];
+    return ['href' => data_profile_page_path('/delivery-scheduling-log/'), 'label' => 'Back to Delivery Scheduling Log'];
 }
 
 function das_appointment_url_for_por(int $porId, array $context = []): string
@@ -620,10 +638,10 @@ function das_appointment_url_for_por(int $porId, array $context = []): string
 
     $existing = das_get_by_por_id($porId);
     if ($existing !== null) {
-        return '/delivery-scheduling-log/edit.php?id=' . (int) $existing['ApptID'] . $query;
+        return data_profile_page_path('/delivery-scheduling-log/edit.php') . '?id=' . (int) $existing['ApptID'] . $query;
     }
 
-    return '/delivery-scheduling-log/new.php?por_id=' . $porId . $query;
+    return data_profile_page_path('/delivery-scheduling-log/new.php') . '?por_id=' . $porId . $query;
 }
 
 function das_appointment_url_for_jazz_asn(string $jazzAsnId): string
@@ -638,7 +656,7 @@ function das_appointment_url_for_jazz_asn(string $jazzAsnId): string
         ]);
     }
 
-    return '/delivery-scheduling-log/new.php?' . http_build_query([
+    return data_profile_page_path('/delivery-scheduling-log/new.php') . '?' . http_build_query([
         'return_to'   => 'jazz-asn',
         'jazz_asn_id' => $jazzAsnId,
         'appointment_asn_number' => $jazzAsnId,

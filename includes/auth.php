@@ -73,9 +73,11 @@ const MODULE_PERMISSION_COLUMNS = [
     'procurement-bids'       => 'POManagement',
     'po-payments'            => 'POManagement',
     'po-receiving'           => 'POManagement',
+    'po-receiving-uat'       => 'POManagement',
     'jazz-asns'              => 'POManagement',
     'jazz-asns-uat'          => 'POManagement',
     'delivery-scheduling-log'=> 'POManagement',
+    'delivery-scheduling-log-uat' => 'POManagement',
     'travel-expense'         => 'TEManagement',
     'signup-review'          => 'ProviderAccountReview',
 ];

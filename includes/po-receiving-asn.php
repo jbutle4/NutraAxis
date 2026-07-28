@@ -37,7 +37,7 @@ function por_transmit_token(int $porId): string
 
 function por_transmit_url(int $porId): string
 {
-    return '/po-receiving/asn.php?id=' . $porId
+    return por_page_path('/po-receiving/asn.php') . '?id=' . $porId
         . '&v=20260611'
         . '&transmit=1'
         . '&token=' . rawurlencode(por_transmit_token($porId));
@@ -188,11 +188,13 @@ function por_mark_receipt_transmitted(int $porId, ?string $jazzAsn, ?string $jaz
                 ModifiedBy = :modified_by,
                 ModifiedDate = SYSUTCDATETIME()
             WHERE PORID = :id
+              AND LedgerProfile = :ledger_profile
         SQL)->execute([
             'jazz_asn'         => $jazzAsn,
             'jazz_asn_status'  => $jazzAsnStatus !== '' ? $jazzAsnStatus : null,
             'modified_by'      => $modifiedBy,
             'id'               => $porId,
+            'ledger_profile'   => por_ledger_profile(),
         ]);
 
         return;
@@ -206,10 +208,12 @@ function por_mark_receipt_transmitted(int $porId, ?string $jazzAsn, ?string $jaz
             ModifiedBy = :modified_by,
             ModifiedDate = SYSUTCDATETIME()
         WHERE PORID = :id
+          AND LedgerProfile = :ledger_profile
     SQL)->execute([
         'jazz_asn_status' => $jazzAsnStatus !== '' ? $jazzAsnStatus : null,
         'modified_by'     => $modifiedBy,
         'id'              => $porId,
+        'ledger_profile'  => por_ledger_profile(),
     ]);
 }
 
@@ -946,11 +950,13 @@ function por_sync_jazz_asn_from_integration(int $porId): array
                 ModifiedBy = :modified_by,
                 ModifiedDate = SYSUTCDATETIME()
             WHERE PORID = :id
+              AND LedgerProfile = :ledger_profile
         SQL)->execute([
             'jazz_asn'        => $jazzAsnId,
             'jazz_asn_status' => $jazzStatus !== '' ? $jazzStatus : null,
             'modified_by'     => $modifiedBy,
             'id'              => $porId,
+            'ledger_profile'  => por_ledger_profile(),
         ]);
 
         if ($receivedBySku !== []) {

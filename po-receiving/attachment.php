@@ -1,7 +1,10 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
+require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-attachments.php';
 
+por_bind_page_environments();
 por_require_read();
 
 $id = (int) ($_GET['id'] ?? 0);

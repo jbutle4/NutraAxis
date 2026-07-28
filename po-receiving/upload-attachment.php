@@ -1,11 +1,14 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
+require dirname(__DIR__) . '/includes/po-receiving.php';
 require dirname(__DIR__) . '/includes/po-receiving-attachments.php';
 
+por_bind_page_environments();
 por_require_update();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /po-receiving/', true, 302);
+    header('Location: ' . por_page_path('/po-receiving/'), true, 302);
     exit;
 }
 
@@ -14,9 +17,9 @@ $kind = trim($_POST['attachment_kind'] ?? 'Other');
 $result = por_save_attachment($porId, $_FILES['attachment'] ?? [], $kind);
 
 if ($result['ok']) {
-    header('Location: /po-receiving/view.php?id=' . $porId . '&notice=attachment', true, 302);
+    header('Location: ' . por_page_path('/po-receiving/view.php') . '?id=' . $porId . '&notice=attachment', true, 302);
     exit;
 }
 
-header('Location: /po-receiving/view.php?id=' . $porId . '&error=' . rawurlencode((string) $result['error']), true, 302);
+header('Location: ' . por_page_path('/po-receiving/view.php') . '?id=' . $porId . '&error=' . rawurlencode((string) $result['error']), true, 302);
 exit;

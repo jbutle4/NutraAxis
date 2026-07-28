@@ -1,7 +1,10 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/admin.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+
+por_bind_page_environments();
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 require dirname(__DIR__) . '/includes/po-receiving-attachments.php';
@@ -19,7 +22,7 @@ $warning = isset($_GET['warning']) ? (string) $_GET['warning'] : null;
 $receipt = $porId > 0 ? por_get($porId) : null;
 
 if ($receipt === null) {
-    header('Location: /po-receiving/', true, 302);
+    header('Location: ' . por_page_path('/po-receiving/'), true, 302);
     exit;
 }
 
@@ -33,7 +36,7 @@ if (!$syncResult['ok'] && !empty($syncResult['error'])) {
     $syncWarning = (string) $syncResult['warning'];
 }
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'po-receiving';
 $attachments = por_list_attachments($porId);
 
 $pageTitle = $receipt['PONumber'] . ' Receipt | PO Receiving';
@@ -43,7 +46,7 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
+      <a class="breadcrumb" href="<?= htmlspecialchars(por_page_path('/po-receiving/')) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
@@ -65,16 +68,16 @@ require dirname(__DIR__) . '/includes/header.php';
           ?>
           <a class="btn-secondary" href="<?= htmlspecialchars($dasUrl) ?>">Delivery appointment</a>
           <?php if (por_can_transmit($receipt)): ?>
-          <a class="btn-primary" href="/po-receiving/asn.php?id=<?= $porId ?>&amp;v=20260611">View ASN &amp; Transmit to Jazz</a>
+          <a class="btn-primary" href="<?= htmlspecialchars(por_page_path('/po-receiving/asn.php')) ?>?id=<?= $porId ?>&amp;v=20260611">View ASN &amp; Transmit to Jazz</a>
           <?php else: ?>
-          <a class="btn-secondary" href="/po-receiving/asn.php?id=<?= $porId ?>">View ASN Data</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(por_page_path('/po-receiving/asn.php')) ?>?id=<?= $porId ?>">View ASN Data</a>
           <?php endif; ?>
           <?php if (por_can_edit($receipt)): ?>
-          <a class="btn-secondary" href="/po-receiving/edit.php?id=<?= $porId ?>">Edit</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(por_page_path('/po-receiving/edit.php')) ?>?id=<?= $porId ?>">Edit</a>
           <?php endif; ?>
           <a class="btn-secondary" href="/po-management/view.php?id=<?= (int) $receipt['POID'] ?>">View PO</a>
           <?php if (por_can_delete()): ?>
-          <form method="post" action="/po-receiving/delete.php" class="inline-form" onsubmit="return confirm('Delete this receipt record?');">
+          <form method="post" action="<?= htmlspecialchars(por_page_path('/po-receiving/delete.php')) ?>" class="inline-form" onsubmit="return confirm('Delete this receipt record?');">
             <input type="hidden" name="por_id" value="<?= $porId ?>" />
             <button type="submit" class="btn-text btn-text-danger">Delete</button>
           </form>
@@ -96,8 +99,8 @@ require dirname(__DIR__) . '/includes/header.php';
         <?php if (!empty($receipt['JazzASN'])): ?>
         Jazz ASN number: <strong><?= htmlspecialchars($receipt['JazzASN']) ?></strong>
         <?php endif; ?>
-        · <a href="/po-receiving/jazz-asns.php">View Jazz ASNs</a>
-        · <a href="/po-receiving/asn.php?id=<?= $porId ?>">View ASN data</a>
+        · <a href="<?= htmlspecialchars(por_page_path('/po-receiving/jazz-asns.php')) ?>">View Jazz ASNs</a>
+        · <a href="<?= htmlspecialchars(por_page_path('/po-receiving/asn.php')) ?>?id=<?= $porId ?>">View ASN data</a>
       </div>
       <?php if ($warning !== null && $warning !== ''): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars($warning) ?></div>

@@ -1,10 +1,13 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
+
+por_bind_page_environments();
 
 das_require_create();
 
-$activeSlug = 'delivery-scheduling-log';
+$activeSlug = $activeSlug ?? 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $returnContext = das_return_context_from_query();
 $breadcrumb = das_breadcrumb($returnContext);
@@ -45,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'por_id'      => $returnContext['por_id'] > 0 ? $returnContext['por_id'] : null,
             'jazz_asn_id' => $returnContext['jazz_asn_id'] !== '' ? $returnContext['jazz_asn_id'] : null,
         ]));
-        header('Location: /delivery-scheduling-log/edit.php?id=' . (int) $result['appt_id'] . '&' . $query, true, 303);
+        header('Location: ' . data_profile_page_path('/delivery-scheduling-log/edit.php') . '?id=' . (int) $result['appt_id'] . '&' . $query, true, 303);
         exit;
     }
 

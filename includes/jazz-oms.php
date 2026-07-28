@@ -51,16 +51,15 @@ function jazz_oms_normalize_domain(string $domain): string
 
 function jazz_oms_domain(): string
 {
+    // No shared legacy fallback — production and UAT keys must not cross.
     if (jazz_oms_is_production_environment()) {
         $domain = trim((string) env_first([
             'JAZZ_DOMAIN_PROD',
             'JAZZ_PRODUCTION_DOMAIN',
-            'JAZZ_DOMAIN',
         ], ''));
     } else {
         $domain = trim((string) env_first([
             'JAZZ_UAT_DOMAIN',
-            'JAZZ_DOMAIN',
         ], ''));
     }
 
@@ -73,13 +72,11 @@ function jazz_oms_username(): string
         return trim((string) env_first([
             'JAZZ_USERNAME_PROD',
             'JAZZ_PRODUCTION_USERNAME',
-            'JAZZ_USERNAME',
         ], ''));
     }
 
     return trim((string) env_first([
         'JAZZ_UAT_USERNAME',
-        'JAZZ_USERNAME',
     ], ''));
 }
 
@@ -89,13 +86,11 @@ function jazz_oms_password(): string
         return (string) env_first([
             'JAZZ_PASSWORD_PROD',
             'JAZZ_PRODUCTION_PASSWORD',
-            'JAZZ_PASSWORD',
         ], '');
     }
 
     return (string) env_first([
         'JAZZ_UAT_PASSWORD',
-        'JAZZ_PASSWORD',
     ], '');
 }
 
@@ -117,12 +112,10 @@ function jazz_oms_base_url(): string
         $override = rtrim(trim((string) env_first([
             'JAZZ_BASE_URL_PROD',
             'JAZZ_PRODUCTION_BASE_URL',
-            'JAZZ_BASE_URL',
         ], '')), '/');
     } else {
         $override = rtrim(trim((string) env_first([
             'JAZZ_UAT_BASE_URL',
-            'JAZZ_BASE_URL',
         ], '')), '/');
     }
 
@@ -150,8 +143,8 @@ function jazz_oms_config_error(): ?string
     }
 
     return jazz_oms_is_production_environment()
-        ? 'Jazz OMS (production) is not configured. Set JAZZ_DOMAIN_PROD / JAZZ_USERNAME_PROD / JAZZ_PASSWORD_PROD (or legacy JAZZ_*), and JAZZ_TENANT_CODE in application settings.'
-        : 'Jazz OMS (UAT) is not configured. Set JAZZ_UAT_DOMAIN / JAZZ_UAT_USERNAME / JAZZ_UAT_PASSWORD (or legacy JAZZ_*), and JAZZ_TENANT_CODE in application settings.';
+        ? 'Jazz OMS (production) is not configured. Set JAZZ_DOMAIN_PROD / JAZZ_USERNAME_PROD / JAZZ_PASSWORD_PROD (and optional JAZZ_BASE_URL_PROD), plus JAZZ_TENANT_CODE. Production does not fall back to UAT or legacy JAZZ_* keys.'
+        : 'Jazz OMS (UAT) is not configured. Set JAZZ_UAT_DOMAIN / JAZZ_UAT_USERNAME / JAZZ_UAT_PASSWORD (and optional JAZZ_UAT_BASE_URL), plus JAZZ_TENANT_CODE. UAT does not fall back to production or legacy JAZZ_* keys.';
 }
 
 function jazz_oms_is_cloudflare_block(?string $responseBody): bool

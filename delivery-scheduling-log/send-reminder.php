@@ -1,6 +1,9 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
+
+por_bind_page_environments();
 
 das_require_update();
 
@@ -9,11 +12,11 @@ $appointment = $apptId > 0 ? das_get($apptId) : null;
 $returnContext = das_return_context_from_query();
 
 if ($appointment === null) {
-    header('Location: /delivery-scheduling-log/', true, 302);
+    header('Location: ' . data_profile_page_path('/delivery-scheduling-log/'), true, 302);
     exit;
 }
 
-$activeSlug = 'delivery-scheduling-log';
+$activeSlug = $activeSlug ?? 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $contactEmail = trim((string) ($appointment['ContactEmail'] ?? ''));
 $canEmail = $contactEmail !== '' && filter_var($contactEmail, FILTER_VALIDATE_EMAIL);
@@ -42,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]
             : ['email_error' => $emailResult['error'] ?? 'Unable to send reminder email.']
     ));
-    header('Location: /delivery-scheduling-log/view.php?id=' . $apptId . '&' . $query, true, 303);
+    header('Location: ' . data_profile_page_path('/delivery-scheduling-log/view.php') . '?id=' . $apptId . '&' . $query, true, 303);
     exit;
 }
 
@@ -53,7 +56,7 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner <?= htmlspecialchars($pageContainerClass ?? '') ?>">
-      <a class="breadcrumb" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">
+      <a class="breadcrumb" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/view.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
@@ -70,8 +73,8 @@ require dirname(__DIR__) . '/includes/header.php';
           </p>
         </div>
         <div class="admin-actions">
-          <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View appointment</a>
-          <a class="btn-secondary" href="/delivery-scheduling-log/edit.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit appointment</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/view.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View appointment</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/edit.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Edit appointment</a>
         </div>
       </div>
 
@@ -94,7 +97,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-primary" onclick="return confirm('Send reminder email to <?= htmlspecialchars($emailRecipientSummary) ?>?');">
               Send reminder to <?= htmlspecialchars($emailRecipientSummary) ?>
             </button>
-            <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Cancel</a>
+            <a class="btn-secondary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/view.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">Cancel</a>
           </div>
         </form>
         <?php else: ?>

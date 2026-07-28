@@ -1,10 +1,13 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
+
+por_bind_page_environments();
 
 das_require_read();
 
-$activeSlug = 'delivery-scheduling-log';
+$activeSlug = $activeSlug ?? 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
@@ -40,7 +43,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('delivery-scheduling-log')) ?></p>
         </div>
         <?php if (das_can_create()): ?>
-        <a class="btn-primary" href="/delivery-scheduling-log/new.php">New appointment</a>
+        <a class="btn-primary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/new.php')) ?>">New appointment</a>
         <?php endif; ?>
       </div>
 
@@ -56,7 +59,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($emailError) ?></div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/delivery-scheduling-log/">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/')) ?>">
         <?php table_sort_hidden_inputs($listFilters, 'appointment', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -75,7 +78,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
-          <a class="btn-secondary" href="/delivery-scheduling-log/">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/')) ?>">Clear</a>
         </div>
       </form>
 

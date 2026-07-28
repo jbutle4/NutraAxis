@@ -1,6 +1,9 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
+
+por_bind_page_environments();
 
 das_require_update();
 
@@ -10,11 +13,11 @@ $returnContext = das_return_context_from_query();
 $breadcrumb = das_breadcrumb($returnContext);
 
 if ($appointment === null) {
-    header('Location: /delivery-scheduling-log/', true, 302);
+    header('Location: ' . data_profile_page_path('/delivery-scheduling-log/'), true, 302);
     exit;
 }
 
-$activeSlug = 'delivery-scheduling-log';
+$activeSlug = $activeSlug ?? 'delivery-scheduling-log';
 $pageContainerClass = 'page-inner--wide';
 $error = null;
 $emailError = null;
@@ -43,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]
                 : ['email_error' => $emailResult['error'] ?? 'Unable to send email.']
         ));
-        header('Location: /delivery-scheduling-log/edit.php?id=' . $apptId . '&' . $query, true, 303);
+        header('Location: ' . data_profile_page_path('/delivery-scheduling-log/edit.php') . '?id=' . $apptId . '&' . $query, true, 303);
         exit;
     }
 
@@ -57,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'por_id'      => $returnContext['por_id'] > 0 ? $returnContext['por_id'] : null,
             'jazz_asn_id' => $returnContext['jazz_asn_id'] !== '' ? $returnContext['jazz_asn_id'] : null,
         ]));
-        header('Location: /delivery-scheduling-log/edit.php?id=' . $apptId . '&' . $query, true, 303);
+        header('Location: ' . data_profile_page_path('/delivery-scheduling-log/edit.php') . '?id=' . $apptId . '&' . $query, true, 303);
         exit;
     }
 
@@ -95,7 +98,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <p class="page-lead">PO <?= htmlspecialchars($appointment['PONumber']) ?> · <?= htmlspecialchars($appointment['CompanyName'] ?? '—') ?></p>
         </div>
         <div class="admin-actions">
-          <a class="btn-secondary" href="/delivery-scheduling-log/view.php?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(data_profile_page_path('/delivery-scheduling-log/view.php')) ?>?id=<?= $apptId ?><?= htmlspecialchars(das_return_query($returnContext)) ?>">View</a>
         </div>
       </div>
 

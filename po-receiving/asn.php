@@ -3,7 +3,10 @@
  * PO receipt ASN preview. Jazz transmit uses GET (POST returns nginx 404 on Azure).
  */
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+
+por_bind_page_environments();
 require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 require dirname(__DIR__) . '/includes/delivery-appointment.php';
 
@@ -12,12 +15,17 @@ header('Pragma: no-cache');
 
 $porId = (int) ($_GET['id'] ?? 0);
 
+$asnPage = por_page_path('/po-receiving/asn.php');
+$viewPage = por_page_path('/po-receiving/view.php');
+$listPage = por_page_path('/po-receiving/');
+$jazzAsnsPage = por_page_path('/po-receiving/jazz-asns.php');
+
 if (($_GET['transmit'] ?? '') === '1') {
     por_require_update();
 
     $token = (string) ($_GET['token'] ?? '');
     if ($porId <= 0 || $token === '' || !hash_equals(por_transmit_token($porId), $token)) {
-        header('Location: /po-receiving/asn.php?id=' . $porId . '&v=20260611&error=' . rawurlencode('Invalid transmit request. Refresh the page and try again.'), true, 302);
+        header('Location: ' . $asnPage . '?id=' . $porId . '&v=20260611&error=' . rawurlencode('Invalid transmit request. Refresh the page and try again.'), true, 302);
         exit;
     }
 
@@ -34,7 +42,7 @@ if (($_GET['transmit'] ?? '') === '1') {
             $detail = 'Transmit failed: ' . $detail;
         }
         header(
-            'Location: /po-receiving/asn.php?id=' . $porId . '&v=20260611&error=' . rawurlencode($detail),
+            'Location: ' . $asnPage . '?id=' . $porId . '&v=20260611&error=' . rawurlencode($detail),
             true,
             303
         );
@@ -46,12 +54,12 @@ if (($_GET['transmit'] ?? '') === '1') {
         if (isset($result['warning']) && $result['warning'] !== '') {
             $params['warning'] = (string) $result['warning'];
         }
-        header('Location: /po-receiving/asn.php?id=' . $porId . '&' . http_build_query($params), true, 303);
+        header('Location: ' . $asnPage . '?id=' . $porId . '&' . http_build_query($params), true, 303);
         exit;
     }
 
     header(
-        'Location: /po-receiving/asn.php?id=' . $porId . '&v=20260611&error=' . rawurlencode((string) ($result['error'] ?? 'Unable to transmit ASN to Jazz.')),
+        'Location: ' . $asnPage . '?id=' . $porId . '&v=20260611&error=' . rawurlencode((string) ($result['error'] ?? 'Unable to transmit ASN to Jazz.')),
         true,
         303
     );
@@ -67,7 +75,7 @@ $warning = isset($_GET['warning']) ? (string) $_GET['warning'] : null;
 $receipt = $porId > 0 ? por_get($porId) : null;
 
 if ($receipt === null) {
-    header('Location: /po-receiving/', true, 302);
+    header('Location: ' . $listPage, true, 302);
     exit;
 }
 
@@ -83,18 +91,18 @@ if (($_GET['format'] ?? '') === 'csv') {
     exit;
 }
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'po-receiving';
 $canTransmit = por_can_transmit($receipt);
 $jazzConfigError = jazz_oms_config_error();
 
-$pageTitle = $receipt['PONumber'] . ' ASN | PO Receiving';
+$pageTitle = $receipt['PONumber'] . ' ASN | PO Receiving' . (data_profile_is_uat() ? ' (UAT)' : '');
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/view.php?id=<?= $porId ?>">
+      <a class="breadcrumb" href="<?= htmlspecialchars($viewPage) ?>?id=<?= $porId ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
@@ -103,11 +111,12 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <div class="admin-header">
         <div>
-          <div class="section-label">PO Receipt · ASN</div>
+          <div class="section-label">PO Receipt · ASN<?= data_profile_is_uat() ? ' · UAT' : '' ?></div>
           <h1>ASN Data — <?= htmlspecialchars($receipt['PONumber']) ?></h1>
           <p class="page-lead">
             <span class="status-badge <?= por_status_class($receipt['PORStatus']) ?>"><?= htmlspecialchars($receipt['PORStatus']) ?></span>
             · <?= htmlspecialchars($receipt['SupplierName']) ?>
+            · Jazz <?= htmlspecialchars(jazz_oms_data_source_label()) ?>
             <?php if (!empty($receipt['JazzASN'])): ?>
             · Jazz ASN: <strong><?= htmlspecialchars($receipt['JazzASN']) ?></strong>
             <?php endif; ?>
@@ -118,15 +127,15 @@ require dirname(__DIR__) . '/includes/header.php';
           $dasUrl = das_appointment_url_for_por($porId, ['return_to' => 'asn', 'por_id' => $porId]);
           ?>
           <a class="btn-secondary" href="<?= htmlspecialchars($dasUrl) ?>">Delivery appointment</a>
-          <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Jazz ASNs</a>
-          <a class="btn-secondary" href="/po-receiving/asn.php?id=<?= $porId ?>&format=csv">Download CSV</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($jazzAsnsPage) ?>">Jazz ASNs</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($asnPage) ?>?id=<?= $porId ?>&format=csv">Download CSV</a>
           <?php if ($canTransmit): ?>
           <a
             class="btn-primary"
             href="<?= htmlspecialchars(por_transmit_url($porId)) ?>"
-            onclick="return confirm('Transmit this ASN to Jazz?');"
+            onclick="return confirm('Transmit this ASN to Jazz <?= htmlspecialchars(jazz_oms_data_source_label(), ENT_QUOTES) ?>?');"
             <?= $jazzConfigError !== null ? 'aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.55"' : '' ?>
-          >Transmit to Jazz</a>
+          >Transmit to Jazz <?= htmlspecialchars(jazz_oms_data_source_label()) ?></a>
           <?php endif; ?>
         </div>
       </div>
@@ -135,12 +144,12 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php elseif ($notice === 'transmitted'): ?>
       <div class="admin-notice is-success" role="status">
-        ASN transmitted to Jazz successfully.
+        ASN transmitted to Jazz <?= htmlspecialchars(jazz_oms_data_source_label()) ?> successfully.
         <?php if (!empty($receipt['JazzASN'])): ?>
         Jazz ASN number: <strong><?= htmlspecialchars($receipt['JazzASN']) ?></strong>
         <?php endif; ?>
-        · <a href="/po-receiving/jazz-asns.php">View Jazz ASNs</a>
-        · <a href="/po-receiving/view.php?id=<?= $porId ?>">View receipt</a>
+        · <a href="<?= htmlspecialchars($jazzAsnsPage) ?>">View Jazz ASNs</a>
+        · <a href="<?= htmlspecialchars($viewPage) ?>?id=<?= $porId ?>">View receipt</a>
       </div>
       <?php if ($warning !== null && $warning !== ''): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars($warning) ?></div>

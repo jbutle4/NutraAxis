@@ -1,10 +1,16 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
 
+por_bind_page_environments();
 por_require_read();
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'po-receiving';
+$listPath = por_page_path('/po-receiving/');
+$hubBack = function_exists('app_module_hub_back_link')
+    ? app_module_hub_back_link('po-receiving')
+    : ['href' => '/inbound-receiving/', 'label' => 'Back to Inbound Receiving'];
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
 $listFilters = [
@@ -14,7 +20,7 @@ $listFilters = [
 $receipts = por_list($listFilters);
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'PO Receiving | Supply Chain Management';
+$pageTitle = 'PO Receiving' . (data_profile_is_uat() ? ' (UAT)' : '') . ' | Supply Chain Management';
 $pageDescription = 'Advanced shipping notices and purchase order receiving.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -22,24 +28,24 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/inventory-management/">
+      <a class="breadcrumb" href="<?= htmlspecialchars($hubBack['href']) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to Supply Chain Management
+        <?= htmlspecialchars($hubBack['label']) ?>
       </a>
 
       <div class="admin-header">
         <div>
-          <div class="section-label">Supply Chain</div>
-          <h1>PO Receiving</h1>
-          <p class="page-lead">Schedule and record inbound shipments against purchase orders.</p>
+          <div class="section-label">Inbound Receiving<?= data_profile_is_uat() ? ' · UAT' : '' ?></div>
+          <h1>PO Receiving<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
+          <p class="page-lead">Schedule and record inbound shipments against purchase orders (Jazz <?= htmlspecialchars(jazz_oms_data_source_label()) ?>).</p>
           <p class="permission-note">Your access: <?= htmlspecialchars(permission_label(po_permission_value())) ?></p>
         </div>
         <div class="admin-actions">
-          <a class="btn-secondary" href="/po-receiving/jazz-asns.php">Jazz ASNs</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(por_page_path('/po-receiving/jazz-asns.php')) ?>">Jazz ASNs</a>
           <?php if (por_can_create()): ?>
-          <a class="btn-primary" href="/po-receiving/new.php">New Receipt</a>
+          <a class="btn-primary" href="<?= htmlspecialchars(por_page_path('/po-receiving/new.php')) ?>">New Receipt</a>
           <?php endif; ?>
         </div>
       </div>
@@ -54,7 +60,7 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/po-receiving/">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($listPath) ?>">
         <?php table_sort_hidden_inputs($listFilters, 'scheduled', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -73,7 +79,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
-          <a class="btn-secondary" href="/po-receiving/">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($listPath) ?>">Clear</a>
         </div>
       </form>
 
@@ -82,7 +88,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <thead>
             <?php table_sort_render_head_row(
                 POR_LIST_SORT_COLUMNS,
-                '/po-receiving',
+                rtrim($listPath, '/'),
                 $listFilters,
                 ['status', 'q'],
                 [],
@@ -107,10 +113,10 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><?= !empty($receipt['AppointmentMade']) ? 'Yes' : 'No' ?></td>
               <?php
               $actions = [
-                  ['href' => '/po-receiving/view.php?id=' . (int) $receipt['PORID'], 'label' => 'View'],
+                  ['href' => por_page_path('/po-receiving/view.php') . '?id=' . (int) $receipt['PORID'], 'label' => 'View'],
               ];
               if (por_can_edit($receipt)) {
-                  $actions[] = ['href' => '/po-receiving/edit.php?id=' . (int) $receipt['PORID'], 'label' => 'Edit'];
+                  $actions[] = ['href' => por_page_path('/po-receiving/edit.php') . '?id=' . (int) $receipt['PORID'], 'label' => 'Edit'];
               }
               table_actions_cell($actions);
               ?>

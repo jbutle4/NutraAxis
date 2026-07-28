@@ -1,17 +1,20 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
+require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+
+por_bind_page_environments();
 
 por_require_create();
 
-$activeSlug = 'po-receiving';
+$activeSlug = $activeSlug ?? 'po-receiving';
 $error = null;
 $preselectedPo = (int) ($_GET['po_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = por_save($_POST);
     if ($result['ok']) {
-        header('Location: /po-receiving/view.php?id=' . (int) $result['id'] . '&notice=created', true, 302);
+        header('Location: ' . por_page_path('/po-receiving/view.php') . '?id=' . (int) $result['id'] . '&notice=created', true, 302);
         exit;
     }
     $error = $result['error'];
@@ -29,7 +32,7 @@ require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
     <div class="container page-inner">
-      <a class="breadcrumb" href="/po-receiving/">
+      <a class="breadcrumb" href="<?= htmlspecialchars(por_page_path('/po-receiving/')) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
