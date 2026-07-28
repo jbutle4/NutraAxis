@@ -608,7 +608,8 @@ function approval_pending_row(
     mixed $submittedAt,
     ?string $submitterName,
     ?string $secondaryEntityType = null,
-    ?int $secondaryEntityId = null
+    ?int $secondaryEntityId = null,
+    ?string $ledgerProfile = null
 ): array {
     $submitterName = trim((string) ($submitterName ?? ''));
 
@@ -619,6 +620,7 @@ function approval_pending_row(
         'EntityID'            => $entityId,
         'SecondaryEntityType' => $secondaryEntityType,
         'SecondaryEntityID'   => $secondaryEntityId,
+        'LedgerProfile'       => $ledgerProfile,
         'ApproverName'        => '—',
         'ApproverResult'      => 'Pending approval',
         'ApproverComments'    => $submitterName !== '' ? 'Submitted by ' . $submitterName : 'Awaiting approver action',
@@ -647,13 +649,17 @@ function approval_list_pending_entries(array $filters = []): array
 
     if ($includeType('PO') && approval_can_read_type('PO')) {
         require_once __DIR__ . '/po-approval.php';
+        require_once __DIR__ . '/procurement-ledger.php';
         foreach (po_list_pending_approvals() as $row) {
             $entries[] = approval_pending_row(
                 'PO',
                 'PurchaseOrder',
                 (int) $row['POID'],
                 $row['ModifiedDate'] ?? $row['CreateDate'] ?? null,
-                (string) ($row['CreatedByName'] ?? '')
+                (string) ($row['CreatedByName'] ?? ''),
+                null,
+                null,
+                po_has_ledger_profile_column() ? po_order_ledger_profile($row) : null
             );
         }
     }
@@ -673,26 +679,34 @@ function approval_list_pending_entries(array $filters = []): array
 
     if ($includeType('QBOInsert') && approval_can_read_type('QBOInsert')) {
         require_once __DIR__ . '/qbo-insert-approval.php';
+        require_once __DIR__ . '/procurement-ledger.php';
         foreach (qbo_insert_list_pending() as $row) {
             $entries[] = approval_pending_row(
                 'QBOInsert',
                 'SupplierInvoice',
                 (int) $row['SupplierInvoiceID'],
                 $row['ModifiedDate'] ?? $row['TxnDate'] ?? null,
-                (string) ($row['CreatedByName'] ?? '')
+                (string) ($row['CreatedByName'] ?? ''),
+                null,
+                null,
+                supplier_invoice_has_ledger_profile_column() ? procurement_row_ledger_profile($row) : null
             );
         }
     }
 
     if ($includeType('Payment') && approval_can_read_type('Payment')) {
         require_once __DIR__ . '/payment-approval.php';
+        require_once __DIR__ . '/procurement-ledger.php';
         foreach (payment_approval_list_pending() as $row) {
             $entries[] = approval_pending_row(
                 'Payment',
                 'SupplierInvoice',
                 (int) $row['SupplierInvoiceID'],
                 $row['ModifiedDate'] ?? $row['TxnDate'] ?? null,
-                (string) ($row['CreatedByName'] ?? '')
+                (string) ($row['CreatedByName'] ?? ''),
+                null,
+                null,
+                supplier_invoice_has_ledger_profile_column() ? procurement_row_ledger_profile($row) : null
             );
         }
     }

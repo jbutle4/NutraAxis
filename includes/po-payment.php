@@ -17,6 +17,7 @@ const PO_PAYMENT_STATUSES = [
 
 const PO_PAYMENT_LIST_SORT_COLUMNS = [
     'payment_date'   => 'Payment date',
+    'environment'    => 'Env',
     'reference'      => 'PO / invoice',
     'supplier'       => 'Supplier',
     'amount'         => 'Amount',
@@ -29,6 +30,7 @@ const PO_PAYMENT_LIST_SORT_COLUMNS = [
 
 const PO_PAYMENT_LIST_SORT_SQL = [
     'payment_date' => 'p.PaymentDate',
+    'environment'  => 'p.LedgerProfile',
     'reference'    => 'ReferenceLabel',
     'supplier'     => 's.SupplierName',
     'amount'       => 'p.PaymentAmount',
@@ -221,6 +223,7 @@ function po_payment_parse_datetime(string $value): ?string
 function po_payment_list(array $filters = []): array
 {
     $pdo = db();
+    $selectLedger = po_payment_has_ledger_profile_column() ? 'p.LedgerProfile,' : '';
     $sql = <<<SQL
         SELECT
             p.PaymentID,
@@ -232,6 +235,7 @@ function po_payment_list(array $filters = []): array
             p.PaymentStatus,
             p.PaymentConfNumber,
             p.PaymentMadeBy,
+            {$selectLedger}
             (
                 SELECT COUNT(*)
                 FROM dbo.POPaymentAttachment pa
@@ -276,6 +280,17 @@ function po_payment_list(array $filters = []): array
         $sql .= ' AND p.PaymentStatus = :status';
         $params['status'] = $filters['status'];
     }
+
+    procurement_append_ledger_profile_filter(
+        $sql,
+        $params,
+        $filters,
+        'p.LedgerProfile',
+        po_payment_has_ledger_profile_column(),
+        array_key_exists('ledger_profile', $filters) && $filters['ledger_profile'] === 'all'
+            ? null
+            : (string) ($filters['ledger_profile'] ?? PO_LEDGER_PROFILE_PRODUCTION)
+    );
 
     if (!empty($filters['q'])) {
         [$likeSql, $likeParams] = db_like_or([
@@ -367,15 +382,24 @@ function po_payment_get_invoice(int $supplierInvoiceId): ?array
     return $row === false ? null : $row;
 }
 
-function po_payment_po_options(): array
+function po_payment_po_options(?string $ledgerProfile = null): array
 {
     $pdo = db();
-    $stmt = $pdo->query(<<<SQL
+    $profileClause = '';
+    $params = [];
+    if (po_has_ledger_profile_column()) {
+        $profileClause = ' AND po.LedgerProfile = :ledger_profile';
+        $params['ledger_profile'] = po_normalize_ledger_profile($ledgerProfile ?? PO_LEDGER_PROFILE_PRODUCTION);
+    }
+
+    $stmt = $pdo->prepare(<<<SQL
         SELECT po.POID, po.PONumber, s.SupplierName, po.POStatus
         FROM dbo.PurchaseOrder po
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
+        WHERE 1 = 1{$profileClause}
         ORDER BY po.OrderDate DESC, po.POID DESC
     SQL);
+    $stmt->execute($params);
 
     $options = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -388,10 +412,17 @@ function po_payment_po_options(): array
     return $options;
 }
 
-function po_payment_invoice_options(): array
+function po_payment_invoice_options(?string $ledgerProfile = null): array
 {
     $pdo = db();
-    $stmt = $pdo->query(<<<SQL
+    $profileClause = '';
+    $params = [];
+    if (supplier_invoice_has_ledger_profile_column()) {
+        $profileClause = ' AND si.LedgerProfile = :ledger_profile';
+        $params['ledger_profile'] = po_normalize_ledger_profile($ledgerProfile ?? PO_LEDGER_PROFILE_PRODUCTION);
+    }
+
+    $stmt = $pdo->prepare(<<<SQL
         SELECT
             si.SupplierInvoiceID,
             si.DocNumber,
@@ -408,9 +439,10 @@ function po_payment_invoice_options(): array
               N'Rejected',
               N'Failed',
               N'Posted'
-          )
+          ){$profileClause}
         ORDER BY si.TxnDate DESC, si.SupplierInvoiceID DESC
     SQL);
+    $stmt->execute($params);
 
     $options = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -439,6 +471,8 @@ function po_payment_save(array $input, ?int $paymentId = null): array
 
     $poId = null;
     $supplierInvoiceId = null;
+    $po = null;
+    $invoice = null;
 
     if ($target === 'invoice') {
         $supplierInvoiceId = (int) ($data['supplier_invoice_id'] ?? 0);
@@ -460,9 +494,35 @@ function po_payment_save(array $input, ?int $paymentId = null): array
             return ['ok' => false, 'error' => 'Select a purchase order.'];
         }
 
-        if (po_get_order($poId) === null) {
+        $po = po_get_order($poId);
+        if ($po === null) {
             return ['ok' => false, 'error' => 'Purchase order not found.'];
         }
+    }
+
+    $existingPayment = $paymentId !== null ? po_payment_get($paymentId) : null;
+    $ledgerProfile = procurement_resolve_ledger_profile(
+        $input['ledger_profile'] ?? null,
+        $po,
+        $invoice,
+        $existingPayment,
+        PO_LEDGER_PROFILE_PRODUCTION
+    );
+
+    if (
+        $po !== null
+        && po_has_ledger_profile_column()
+        && po_order_ledger_profile($po) !== $ledgerProfile
+    ) {
+        return ['ok' => false, 'error' => 'Selected purchase order environment does not match this payment.'];
+    }
+
+    if (
+        $invoice !== null
+        && supplier_invoice_has_ledger_profile_column()
+        && procurement_row_ledger_profile($invoice) !== $ledgerProfile
+    ) {
+        return ['ok' => false, 'error' => 'Selected supplier invoice environment does not match this payment.'];
     }
 
     $paymentDate = po_payment_parse_datetime($data['payment_date']);
@@ -484,7 +544,6 @@ function po_payment_save(array $input, ?int $paymentId = null): array
     }
 
     if ($target === 'invoice') {
-        $existingPayment = $paymentId !== null ? po_payment_get($paymentId) : null;
         if ($existingPayment !== null && ($existingPayment['PaymentStatus'] ?? '') === 'Submitted for Approval') {
             return ['ok' => false, 'error' => 'This payment is awaiting approval and cannot be edited.'];
         }
@@ -512,19 +571,35 @@ function po_payment_save(array $input, ?int $paymentId = null): array
         $pdo = db();
 
         if ($paymentId === null) {
-            $stmt = $pdo->prepare(<<<SQL
-                INSERT INTO dbo.POPayment (
-                    POID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
-                    PaymentConfNumber, PaymentMadeBy, PaymentComments,
-                    CreatedByUser, ModifiedbyUser
-                )
-                OUTPUT INSERTED.PaymentID AS inserted_id
-                VALUES (
-                    :po_id, :supplier_invoice_id, :payment_date, :amount, :type, :status,
-                    :conf_number, :made_by, :comments,
-                    :actor, :actor
-                )
-            SQL);
+            if (po_payment_has_ledger_profile_column()) {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.POPayment (
+                        POID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
+                        PaymentConfNumber, PaymentMadeBy, PaymentComments, LedgerProfile,
+                        CreatedByUser, ModifiedbyUser
+                    )
+                    OUTPUT INSERTED.PaymentID AS inserted_id
+                    VALUES (
+                        :po_id, :supplier_invoice_id, :payment_date, :amount, :type, :status,
+                        :conf_number, :made_by, :comments, :ledger_profile,
+                        :actor, :actor
+                    )
+                SQL);
+            } else {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.POPayment (
+                        POID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
+                        PaymentConfNumber, PaymentMadeBy, PaymentComments,
+                        CreatedByUser, ModifiedbyUser
+                    )
+                    OUTPUT INSERTED.PaymentID AS inserted_id
+                    VALUES (
+                        :po_id, :supplier_invoice_id, :payment_date, :amount, :type, :status,
+                        :conf_number, :made_by, :comments,
+                        :actor, :actor
+                    )
+                SQL);
+            }
             $stmt->bindValue(':po_id', $poId, $poId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindValue(':supplier_invoice_id', $supplierInvoiceId, $supplierInvoiceId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindValue(':payment_date', $params['payment_date']);
@@ -534,6 +609,9 @@ function po_payment_save(array $input, ?int $paymentId = null): array
             $stmt->bindValue(':conf_number', $params['conf_number']);
             $stmt->bindValue(':made_by', $params['made_by']);
             $stmt->bindValue(':comments', $params['comments']);
+            if (po_payment_has_ledger_profile_column()) {
+                $stmt->bindValue(':ledger_profile', $ledgerProfile);
+            }
             $stmt->bindValue(':actor', $params['actor'], $params['actor'] === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->execute();
             $paymentId = db_fetch_inserted_int($stmt, 'inserted_id');

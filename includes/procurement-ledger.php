@@ -36,21 +36,116 @@ function po_order_ledger_profile(array $order): string
 
 function po_has_ledger_profile_column(): bool
 {
-    static $has = null;
-    if ($has !== null) {
-        return $has;
+    return procurement_table_has_ledger_profile('PurchaseOrder');
+}
+
+function supplier_invoice_has_ledger_profile_column(): bool
+{
+    return procurement_table_has_ledger_profile('SupplierInvoice');
+}
+
+function po_payment_has_ledger_profile_column(): bool
+{
+    return procurement_table_has_ledger_profile('POPayment');
+}
+
+function procurement_table_has_ledger_profile(string $table): bool
+{
+    static $cache = [];
+    if (isset($cache[$table])) {
+        return $cache[$table];
+    }
+
+    $allowed = ['PurchaseOrder', 'SupplierInvoice', 'POPayment'];
+    if (!in_array($table, $allowed, true)) {
+        return false;
     }
 
     try {
         $pdo = db();
-        $stmt = $pdo->query("SELECT COL_LENGTH('dbo.PurchaseOrder', 'LedgerProfile') AS col_len");
+        $stmt = $pdo->query("SELECT COL_LENGTH('dbo." . $table . "', 'LedgerProfile') AS col_len");
         $row = $stmt->fetch();
-        $has = $row !== false && $row['col_len'] !== null;
+        $cache[$table] = $row !== false && $row['col_len'] !== null;
     } catch (Throwable) {
-        $has = false;
+        $cache[$table] = false;
     }
 
-    return $has;
+    return $cache[$table];
+}
+
+function procurement_page_ledger_profile(): string
+{
+    return data_profile_is_uat() ? PO_LEDGER_PROFILE_UAT : PO_LEDGER_PROFILE_PRODUCTION;
+}
+
+function procurement_row_ledger_profile(array $row): string
+{
+    return po_normalize_ledger_profile($row['LedgerProfile'] ?? PO_LEDGER_PROFILE_PRODUCTION);
+}
+
+/**
+ * Resolve ledger profile for a new or updated procurement row.
+ */
+function procurement_resolve_ledger_profile(
+    ?string $explicit,
+    ?array $purchaseOrder = null,
+    ?array $supplierInvoice = null,
+    ?array $existing = null,
+    ?string $pageFallback = null
+): string {
+    if ($existing !== null && isset($existing['LedgerProfile'])) {
+        return procurement_row_ledger_profile($existing);
+    }
+
+    if ($explicit !== null && trim($explicit) !== '') {
+        return po_normalize_ledger_profile($explicit);
+    }
+
+    if ($purchaseOrder !== null) {
+        return po_order_ledger_profile($purchaseOrder);
+    }
+
+    if ($supplierInvoice !== null) {
+        return procurement_row_ledger_profile($supplierInvoice);
+    }
+
+    if ($pageFallback !== null) {
+        return po_normalize_ledger_profile($pageFallback);
+    }
+
+    return PO_LEDGER_PROFILE_PRODUCTION;
+}
+
+/**
+ * Append a ledger profile predicate when the column exists.
+ */
+function procurement_append_ledger_profile_filter(
+    string &$sql,
+    array &$params,
+    array $filters,
+    string $columnSql,
+    bool $hasColumn,
+    ?string $defaultProfile = PO_LEDGER_PROFILE_PRODUCTION
+): void {
+    if (!$hasColumn) {
+        return;
+    }
+
+    $ledgerFilter = strtolower(trim((string) ($filters['ledger_profile'] ?? $defaultProfile ?? '')));
+    if ($ledgerFilter === 'all') {
+        return;
+    }
+
+    if ($ledgerFilter === '' && $defaultProfile === null) {
+        return;
+    }
+
+    if ($ledgerFilter === '') {
+        $ledgerFilter = (string) $defaultProfile;
+    }
+
+    $sql .= ' AND ' . $columnSql . ' = :ledger_profile';
+    $params['ledger_profile'] = po_normalize_ledger_profile($ledgerFilter);
 }
 
 /**
