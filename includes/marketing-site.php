@@ -1,6 +1,7 @@
 <?php
 
 const MARKETING_SITE_ORIGIN = 'https://www.nutraaxislabs.com';
+const MARKETING_GA_MEASUREMENT_ID = 'G-DDPDCVQCLJ';
 
 function marketing_site_origin(): string
 {
@@ -30,6 +31,38 @@ function marketing_site_css_version(): string
     $path = dirname(__DIR__) . '/assets/css/marketing-site.css';
 
     return $version = is_readable($path) ? (string) filemtime($path) : '1';
+}
+
+function marketing_site_ga_measurement_id(): ?string
+{
+    $configured = trim((string) env('GA_MEASUREMENT_ID', MARKETING_GA_MEASUREMENT_ID));
+    if ($configured === '' || $configured === '0' || strcasecmp($configured, 'off') === 0) {
+        return null;
+    }
+
+    if (!preg_match('/^G-[A-Z0-9]+$/', $configured)) {
+        return null;
+    }
+
+    return $configured;
+}
+
+function marketing_site_render_ga_tag(): void
+{
+    $measurementId = marketing_site_ga_measurement_id();
+    if ($measurementId === null) {
+        return;
+    }
+    ?>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($measurementId) ?>"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '<?= htmlspecialchars($measurementId) ?>');
+  </script>
+    <?php
 }
 
 /**
