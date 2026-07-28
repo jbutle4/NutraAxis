@@ -8,10 +8,15 @@ $activeSlug = 'po-payments';
 $typeFilter = $_GET['type'] ?? '';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
+$ledgerProfileFilter = strtolower(trim((string) ($_GET['ledger_profile'] ?? PO_LEDGER_PROFILE_PRODUCTION)));
+if ($ledgerProfileFilter === '') {
+    $ledgerProfileFilter = PO_LEDGER_PROFILE_PRODUCTION;
+}
 $listFilters = [
-    'type'   => $typeFilter !== '' ? $typeFilter : null,
-    'status' => $statusFilter !== '' ? $statusFilter : null,
-    'q'      => $search !== '' ? $search : null,
+    'type'           => $typeFilter !== '' ? $typeFilter : null,
+    'status'         => $statusFilter !== '' ? $statusFilter : null,
+    'q'              => $search !== '' ? $search : null,
+    'ledger_profile' => $ledgerProfileFilter,
 ] + table_sort_state(PO_PAYMENT_LIST_SORT_COLUMNS, 'payment_date', 'desc', $_GET);
 $payments = po_payment_list($listFilters);
 $notice = $_GET['notice'] ?? null;
@@ -48,6 +53,14 @@ require dirname(__DIR__) . '/includes/header.php';
       <form class="po-filter audit-filter page-list-filters" method="get" action="/po-payments/">
         <?php table_sort_hidden_inputs($listFilters, 'payment_date', 'desc'); ?>
         <div class="audit-filter-grid">
+          <div>
+            <label for="ledger_profile">Environment</label>
+            <select class="form-input" id="ledger_profile" name="ledger_profile">
+              <option value="production" <?= $ledgerProfileFilter === 'production' ? 'selected' : '' ?>>Production</option>
+              <option value="uat" <?= $ledgerProfileFilter === 'uat' ? 'selected' : '' ?>>UAT</option>
+              <option value="all" <?= $ledgerProfileFilter === 'all' ? 'selected' : '' ?>>All environments</option>
+            </select>
+          </div>
           <div>
             <label for="type">Payment type</label>
             <select class="form-input" id="type" name="type">
@@ -86,7 +99,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 PO_PAYMENT_LIST_SORT_COLUMNS,
                 '/po-payments',
                 $listFilters,
-                ['type', 'status', 'q'],
+                ['type', 'status', 'q', 'ledger_profile'],
                 PO_PAYMENT_LIST_SORT_NUMERIC,
                 'payment_date',
                 'desc',
@@ -96,11 +109,13 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($payments === []): ?>
-            <tr><td colspan="9">No payments match your filters.</td></tr>
+            <tr><td colspan="10">No payments match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($payments as $payment): ?>
+            <?php $paymentProfile = procurement_row_ledger_profile($payment); ?>
             <tr>
               <td><?= htmlspecialchars(po_payment_format_datetime($payment['PaymentDate'])) ?></td>
+              <td><span class="<?= htmlspecialchars(po_ledger_profile_badge_class($paymentProfile)) ?>"><?= htmlspecialchars(po_ledger_profile_label($paymentProfile)) ?></span></td>
               <td>
                 <?php $referenceHref = po_payment_reference_href($payment); ?>
                 <?php if ($referenceHref !== null): ?>

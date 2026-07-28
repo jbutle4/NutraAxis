@@ -143,6 +143,7 @@ function qbo_insert_count_pending(): int
 function qbo_insert_list_pending(array $filters = []): array
 {
     $pdo = db();
+    $selectLedger = supplier_invoice_has_ledger_profile_column() ? 'si.LedgerProfile,' : '';
     $sql = <<<SQL
         SELECT
             si.SupplierInvoiceID,
@@ -152,6 +153,7 @@ function qbo_insert_list_pending(array $filters = []): array
             si.TotalAmt,
             si.SyncStatus,
             si.ModifiedDate,
+            {$selectLedger}
             s.SupplierName,
             cu.UserName AS CreatedByName
         FROM dbo.SupplierInvoice si

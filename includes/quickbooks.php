@@ -1179,11 +1179,14 @@ function qbo_apply_bill_link_to_invoice(int $invoiceId, array $bill): void
 function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
 {
     require_once __DIR__ . '/supplier-invoice.php';
+    require_once __DIR__ . '/procurement-ledger.php';
 
     $invoice = supplier_invoice_get($invoiceId);
     if ($invoice === null) {
         return ['ok' => false, 'error' => 'Supplier invoice not found.'];
     }
+
+    procurement_bind_ledger_profile(procurement_row_ledger_profile($invoice));
 
     $existingBillId = trim((string) ($invoice['QBO_BillId'] ?? ''));
     if ($existingBillId !== '') {

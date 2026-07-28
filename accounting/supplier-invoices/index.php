@@ -22,9 +22,14 @@ $activeSlug = $activeSlug ?? 'accounting';
 $accountingSection = 'invoices';
 $statusFilter = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
+$ledgerProfileFilter = strtolower(trim((string) ($_GET['ledger_profile'] ?? procurement_page_ledger_profile())));
+if ($ledgerProfileFilter === '') {
+    $ledgerProfileFilter = procurement_page_ledger_profile();
+}
 $listFilters = [
-    'status' => $statusFilter !== '' ? $statusFilter : null,
-    'q'      => $search !== '' ? $search : null,
+    'status'         => $statusFilter !== '' ? $statusFilter : null,
+    'q'              => $search !== '' ? $search : null,
+    'ledger_profile' => $ledgerProfileFilter,
 ] + table_sort_state(SUPPLIER_INVOICE_LIST_SORT_COLUMNS, 'txn_date', 'desc', $_GET);
 $invoices = supplier_invoice_list($listFilters);
 $notice = $_GET['notice'] ?? null;
@@ -65,6 +70,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <?php table_sort_hidden_inputs($listFilters, 'txn_date', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
+            <label for="ledger_profile">Environment</label>
+            <select class="form-input" id="ledger_profile" name="ledger_profile">
+              <option value="production" <?= $ledgerProfileFilter === 'production' ? 'selected' : '' ?>>Production</option>
+              <option value="uat" <?= $ledgerProfileFilter === 'uat' ? 'selected' : '' ?>>UAT</option>
+              <option value="all" <?= $ledgerProfileFilter === 'all' ? 'selected' : '' ?>>All environments</option>
+            </select>
+          </div>
+          <div>
             <label for="status">Sync status</label>
             <select class="form-input" id="status" name="status">
               <option value="">All statuses</option>
@@ -93,7 +106,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                 SUPPLIER_INVOICE_LIST_SORT_COLUMNS,
                 accounting_path('/accounting/supplier-invoices'),
                 $listFilters,
-                ['status', 'q'],
+                ['status', 'q', 'ledger_profile'],
                 SUPPLIER_INVOICE_LIST_SORT_NUMERIC,
                 'txn_date',
                 'desc',
@@ -105,12 +118,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($invoices === []): ?>
-            <tr><td colspan="9">No supplier invoices match your filters.</td></tr>
+            <tr><td colspan="10">No supplier invoices match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($invoices as $invoice): ?>
+            <?php $invoiceProfile = procurement_row_ledger_profile($invoice); ?>
             <tr>
               <td><?= htmlspecialchars(accounting_format_date($invoice['TxnDate'])) ?></td>
               <td><a class="btn-text" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/view.php')) ?>?id=<?= (int) $invoice['SupplierInvoiceID'] ?>"><?= htmlspecialchars(supplier_invoice_reference($invoice)) ?></a></td>
+              <td><span class="<?= htmlspecialchars(po_ledger_profile_badge_class($invoiceProfile)) ?>"><?= htmlspecialchars(po_ledger_profile_label($invoiceProfile)) ?></span></td>
               <td><?= htmlspecialchars($invoice['SupplierName']) ?></td>
               <td><?= htmlspecialchars(accounting_format_money($invoice['TotalAmt'])) ?></td>
               <td><?= htmlspecialchars(accounting_format_money($invoice['Balance'] ?? max(0, (float) $invoice['TotalAmt'] - (float) ($invoice['PaidAmt'] ?? 0)))) ?></td>

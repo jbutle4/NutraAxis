@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/includes/init.php';
 require_once dirname(__DIR__) . '/includes/approval.php';
 require_once dirname(__DIR__) . '/includes/admin.php';
+require_once dirname(__DIR__) . '/includes/procurement-ledger.php';
 
 approval_require_any();
 
@@ -98,6 +99,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <tr>
               <th>Date</th>
               <th>Type</th>
+              <th>Env</th>
               <th>Reference</th>
               <th>Supplier</th>
               <th>Amount</th>
@@ -110,7 +112,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <tbody>
             <?php if ($entries === []): ?>
             <tr>
-              <td colspan="9" class="empty-cell">No approval entries match the current filters.</td>
+              <td colspan="10" class="empty-cell">No approval entries match the current filters.</td>
             </tr>
             <?php else: ?>
             <?php foreach ($entries as $entry):
@@ -123,6 +125,9 @@ require dirname(__DIR__) . '/includes/header.php';
             <tr<?= $isPending ? ' class="is-pending-row"' : '' ?>>
               <td><?= htmlspecialchars(admin_format_datetime($entry['LogDate'])) ?></td>
               <td><?= htmlspecialchars(approval_type_label((string) $entry['ApprovalType'])) ?></td>
+              <td><?php if (!empty($entry['LedgerProfile'])): ?>
+                <span class="<?= htmlspecialchars(po_ledger_profile_badge_class((string) $entry['LedgerProfile'])) ?>"><?= htmlspecialchars(po_ledger_profile_label((string) $entry['LedgerProfile'])) ?></span>
+              <?php else: ?>—<?php endif; ?></td>
               <td><?= htmlspecialchars($display['reference']) ?></td>
               <td><?= htmlspecialchars((string) ($display['supplier'] ?? '—')) ?></td>
               <td><?= htmlspecialchars((string) ($display['amount'] ?? '—')) ?></td>

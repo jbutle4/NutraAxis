@@ -108,6 +108,7 @@ function po_count_pending_approvals(): int
 function po_list_pending_approvals(array $filters = []): array
 {
     $pdo = db();
+    $selectLedger = po_has_ledger_profile_column() ? 'po.LedgerProfile,' : '';
     $sql = <<<SQL
         SELECT
             po.POID,
@@ -118,6 +119,7 @@ function po_list_pending_approvals(array $filters = []): array
             po.TotalDue,
             po.CreateDate,
             po.ModifiedDate,
+            {$selectLedger}
             s.SupplierName,
             cu.UserName AS CreatedByName
         FROM dbo.PurchaseOrder po

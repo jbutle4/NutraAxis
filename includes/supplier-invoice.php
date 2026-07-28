@@ -28,6 +28,7 @@ const SUPPLIER_INVOICE_TAX_CALCULATIONS = [
 const SUPPLIER_INVOICE_LIST_SORT_COLUMNS = [
     'txn_date'   => 'Invoice date',
     'doc_number' => 'Invoice #',
+    'environment'=> 'Env',
     'supplier'   => 'Supplier',
     'total'      => 'Total',
     'balance'    => 'Balance',
@@ -39,6 +40,7 @@ const SUPPLIER_INVOICE_LIST_SORT_COLUMNS = [
 const SUPPLIER_INVOICE_LIST_SORT_SQL = [
     'txn_date'   => 'si.TxnDate',
     'doc_number' => 'si.DocNumber',
+    'environment'=> 'si.LedgerProfile',
     'supplier'   => 's.SupplierName',
     'total'      => 'si.TotalAmt',
     'balance'    => 'si.Balance',
@@ -420,6 +422,7 @@ function supplier_invoice_get_supplier(int $supplierId): ?array
 function supplier_invoice_list(array $filters = []): array
 {
     $pdo = db();
+    $selectLedger = supplier_invoice_has_ledger_profile_column() ? 'si.LedgerProfile,' : '';
     $sql = <<<SQL
         SELECT
             si.SupplierInvoiceID,
@@ -432,6 +435,7 @@ function supplier_invoice_list(array $filters = []): array
             si.Balance,
             si.SyncStatus,
             si.QBO_BillId,
+            {$selectLedger}
             s.SupplierName,
             po.PONumber,
             (
@@ -464,6 +468,17 @@ function supplier_invoice_list(array $filters = []): array
         $sql .= ' AND si.POID = :po_id';
         $params['po_id'] = (int) $filters['po_id'];
     }
+
+    procurement_append_ledger_profile_filter(
+        $sql,
+        $params,
+        $filters,
+        'si.LedgerProfile',
+        supplier_invoice_has_ledger_profile_column(),
+        array_key_exists('ledger_profile', $filters) && $filters['ledger_profile'] === 'all'
+            ? null
+            : (string) ($filters['ledger_profile'] ?? procurement_page_ledger_profile())
+    );
 
     if (!empty($filters['q'])) {
         [$likeSql, $likeParams] = db_like_or([
@@ -748,6 +763,7 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
     $totalAmt = round(array_sum(array_column($lines, 'amount')), 2);
 
     $poId = $data['po_id'] !== '' ? (int) $data['po_id'] : null;
+    $po = null;
     if ($poId !== null) {
         $po = po_get_order($poId);
         if ($po === null) {
@@ -755,6 +771,32 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
         }
         if ((int) $po['SupplierID'] !== $supplierId) {
             return ['ok' => false, 'error' => 'Selected PO belongs to a different supplier.'];
+        }
+    }
+
+    $ledgerProfile = procurement_resolve_ledger_profile(
+        $input['ledger_profile'] ?? null,
+        $po,
+        null,
+        $existing,
+        procurement_page_ledger_profile()
+    );
+
+    if ($po !== null && po_has_ledger_profile_column() && po_order_ledger_profile($po) !== $ledgerProfile) {
+        return ['ok' => false, 'error' => 'Selected purchase order environment does not match this invoice environment.'];
+    }
+
+    if (
+        supplier_invoice_has_ledger_profile_column()
+        && $ledgerProfile === PO_LEDGER_PROFILE_UAT
+        && !supplier_invoice_is_qbo_stub_mode()
+    ) {
+        require_once __DIR__ . '/supplier-qbo.php';
+        require_once __DIR__ . '/qbo-reconcile.php';
+        procurement_bind_ledger_profile($ledgerProfile);
+        $vendorResolve = qbo_resolve_po_vendor_id(['LedgerProfile' => $ledgerProfile], $supplier);
+        if ($vendorResolve['ok']) {
+            $vendorRefValue = (string) $vendorResolve['vendor_id'];
         }
     }
 
@@ -787,22 +829,43 @@ function supplier_invoice_save(array $input, ?int $invoiceId = null): array
         $pdo->beginTransaction();
 
         if ($invoiceId === null) {
-            $stmt = $pdo->prepare(<<<SQL
-                INSERT INTO dbo.SupplierInvoice (
-                    SupplierID, POID, DocNumber, TxnDate, DueDate,
-                    VendorRefValue, VendorRefName, APAccountRefValue, APAccountRefName,
-                    CurrencyRefValue, GlobalTaxCalculation, PrivateNote, Memo,
-                    TotalAmt, SyncStatus, CreatedByUser, ModifiedByUser
-                )
-                OUTPUT INSERTED.SupplierInvoiceID AS inserted_id
-                VALUES (
-                    :supplier_id, :po_id, :doc_number, :txn_date, :due_date,
-                    :vendor_ref_value, :vendor_ref_name, :ap_account_ref_value, :ap_account_ref_name,
-                    :currency_ref_value, :global_tax_calculation, :private_note, :memo,
-                    :total_amt, :sync_status, :created_by_user, :modified_by_user
-                )
-            SQL);
-            supplier_invoice_bind_params($stmt, supplier_invoice_insert_params($params));
+            if (supplier_invoice_has_ledger_profile_column()) {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.SupplierInvoice (
+                        SupplierID, POID, DocNumber, TxnDate, DueDate,
+                        VendorRefValue, VendorRefName, APAccountRefValue, APAccountRefName,
+                        CurrencyRefValue, GlobalTaxCalculation, PrivateNote, Memo,
+                        TotalAmt, SyncStatus, LedgerProfile, CreatedByUser, ModifiedByUser
+                    )
+                    OUTPUT INSERTED.SupplierInvoiceID AS inserted_id
+                    VALUES (
+                        :supplier_id, :po_id, :doc_number, :txn_date, :due_date,
+                        :vendor_ref_value, :vendor_ref_name, :ap_account_ref_value, :ap_account_ref_name,
+                        :currency_ref_value, :global_tax_calculation, :private_note, :memo,
+                        :total_amt, :sync_status, :ledger_profile, :created_by_user, :modified_by_user
+                    )
+                SQL);
+                $insertParams = supplier_invoice_insert_params($params);
+                $insertParams['ledger_profile'] = $ledgerProfile;
+                supplier_invoice_bind_params($stmt, $insertParams);
+            } else {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.SupplierInvoice (
+                        SupplierID, POID, DocNumber, TxnDate, DueDate,
+                        VendorRefValue, VendorRefName, APAccountRefValue, APAccountRefName,
+                        CurrencyRefValue, GlobalTaxCalculation, PrivateNote, Memo,
+                        TotalAmt, SyncStatus, CreatedByUser, ModifiedByUser
+                    )
+                    OUTPUT INSERTED.SupplierInvoiceID AS inserted_id
+                    VALUES (
+                        :supplier_id, :po_id, :doc_number, :txn_date, :due_date,
+                        :vendor_ref_value, :vendor_ref_name, :ap_account_ref_value, :ap_account_ref_name,
+                        :currency_ref_value, :global_tax_calculation, :private_note, :memo,
+                        :total_amt, :sync_status, :created_by_user, :modified_by_user
+                    )
+                SQL);
+                supplier_invoice_bind_params($stmt, supplier_invoice_insert_params($params));
+            }
             $stmt->execute();
             $invoiceId = db_fetch_inserted_int($stmt, 'inserted_id');
         } else {
