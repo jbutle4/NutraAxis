@@ -367,6 +367,16 @@ function qbo_store_token_response(array $data, ?string $realmId = null, ?string 
         }
     }
 
+    // ConnectedByUser is the QBO Admin who completed OAuth once. Preserve it on
+    // token refresh so later non-admin sessions do not overwrite the connector.
+    $connectedByUser = (int) ($connection['ConnectedByUser'] ?? 0);
+    if ($connectedByUser <= 0) {
+        $connectedByUser = (int) (auth_user()['UserID'] ?? 0);
+    }
+    if ($connectedByUser <= 0) {
+        $connectedByUser = 1;
+    }
+
     qbo_save_connection([
         'realm_id'                => $realmId,
         'company_name'            => $companyName,
@@ -374,7 +384,7 @@ function qbo_store_token_response(array $data, ?string $realmId = null, ?string 
         'refresh_token'           => $refreshToken,
         'access_token_expires_at' => $expiresAt,
         'environment'             => $env,
-        'connected_by_user'       => auth_user()['UserID'] ?? 0,
+        'connected_by_user'       => $connectedByUser,
     ]);
 
     return ['ok' => true, 'error' => null];
