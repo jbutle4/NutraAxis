@@ -106,6 +106,7 @@ function env(string $key, ?string $default = null): ?string
             'PROVIDER_SIGNUP_RECAPTCHA_SECRET_KEY',
             'PROVIDER_SIGNUP_E2E_START_SECRET',
             'NUTRAAXIS_STORE_URL',
+            'GA_MEASUREMENT_ID',
         ];
 
         require_once __DIR__ . '/adobe-commerce-settings.php';
