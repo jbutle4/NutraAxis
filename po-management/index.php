@@ -18,8 +18,13 @@ $canDelete = po_can_delete();
 $canApprove = po_can_read_approval_queue();
 $pendingApprovalCount = $canApprove ? po_count_pending_approvals() : 0;
 $statusFilter = $_GET['status'] ?? '';
+$ledgerProfileFilter = strtolower(trim((string) ($_GET['ledger_profile'] ?? PO_LEDGER_PROFILE_PRODUCTION)));
+if ($ledgerProfileFilter === '') {
+    $ledgerProfileFilter = PO_LEDGER_PROFILE_PRODUCTION;
+}
 $listFilters = [
-    'status' => $statusFilter !== '' ? $statusFilter : null,
+    'status'         => $statusFilter !== '' ? $statusFilter : null,
+    'ledger_profile' => $ledgerProfileFilter,
 ] + table_sort_state(PO_LIST_SORT_COLUMNS, 'order_date', 'desc', $_GET);
 $orders = po_list_orders($listFilters);
 $notice = $_GET['notice'] ?? null;
@@ -50,6 +55,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <?php if ($canCreate): ?>
         <a class="btn-primary" href="/po-management/new.php">New Purchase Order</a>
+        <a class="btn-secondary" href="/po-management/new.php?ledger_profile=uat">New UAT PO</a>
         <a class="btn-secondary" href="/po-management/import.php">Import from Excel</a>
         <?php endif; ?>
       </div>
@@ -76,6 +82,12 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <form class="po-filter" method="get" action="/po-management/">
         <?php table_sort_hidden_inputs($listFilters, 'order_date', 'desc'); ?>
+        <label for="ledger_profile">Environment</label>
+        <select class="form-input" id="ledger_profile" name="ledger_profile" onchange="this.form.submit()">
+          <option value="production" <?= $ledgerProfileFilter === 'production' ? 'selected' : '' ?>>Production</option>
+          <option value="uat" <?= $ledgerProfileFilter === 'uat' ? 'selected' : '' ?>>UAT</option>
+          <option value="all" <?= $ledgerProfileFilter === 'all' ? 'selected' : '' ?>>All environments</option>
+        </select>
         <label for="status">Filter by status</label>
         <select class="form-input" id="status" name="status" onchange="this.form.submit()">
           <option value="">All statuses</option>
@@ -100,7 +112,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 PO_LIST_SORT_COLUMNS,
                 '/po-management',
                 $listFilters,
-                ['status'],
+                ['status', 'ledger_profile'],
                 PO_LIST_SORT_NUMERIC,
                 'order_date',
                 'desc',
@@ -112,12 +124,14 @@ require dirname(__DIR__) . '/includes/header.php';
           <tbody>
             <?php if ($orders === []): ?>
             <tr>
-              <td colspan="8" class="empty-cell">No purchase orders found.</td>
+              <td colspan="9" class="empty-cell">No purchase orders found.</td>
             </tr>
             <?php else: ?>
             <?php foreach ($orders as $order): ?>
+            <?php $orderProfile = po_order_ledger_profile($order); ?>
             <tr>
               <td><a class="btn-text" href="/po-management/view.php?id=<?= (int) $order['POID'] ?>"><?= htmlspecialchars($order['PONumber']) ?></a></td>
+              <td><span class="<?= htmlspecialchars(po_ledger_profile_badge_class($orderProfile)) ?>"><?= htmlspecialchars(po_ledger_profile_label($orderProfile)) ?></span></td>
               <td><?= htmlspecialchars($order['SupplierName']) ?></td>
               <td><span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span></td>
               <td><?= htmlspecialchars(po_format_date($order['OrderDate'])) ?></td>

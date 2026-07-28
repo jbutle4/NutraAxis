@@ -9,6 +9,9 @@ $activeSlug = 'po-management';
 $activePoSection = 'new';
 $error = null;
 $form = po_default_header();
+if (isset($_GET['ledger_profile'])) {
+    $form['ledger_profile'] = po_normalize_ledger_profile((string) $_GET['ledger_profile']);
+}
 $suppliers = po_list_suppliers();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

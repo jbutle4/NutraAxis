@@ -4,6 +4,7 @@ require_once __DIR__ . '/supplier.php';
 require_once __DIR__ . '/supplier-qbo.php';
 require_once __DIR__ . '/quickbooks.php';
 require_once __DIR__ . '/po.php';
+require_once __DIR__ . '/procurement-ledger.php';
 
 function qbo_reconcile_bind_production(): void
 {
@@ -174,17 +175,79 @@ function qbo_default_expense_account_id(): ?string
     return null;
 }
 
-function qbo_create_purchase_order_from_ops(int $poId): array
+/**
+ * Resolve QuickBooks vendor ID for an Ops PO without overwriting production IDs on UAT sync.
+ *
+ * @return array{ok: bool, error: ?string, vendor_id: string}
+ */
+function qbo_resolve_po_vendor_id(array $order, array $supplier): array
 {
-    qbo_reconcile_bind_production();
+    $profile = po_order_ledger_profile($order);
+    $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
 
-    if (!qbo_is_connected()) {
-        return ['ok' => false, 'error' => 'QuickBooks Production is not connected.'];
+    if ($profile === PO_LEDGER_PROFILE_UAT) {
+        $vendorList = qbo_list_vendors();
+        if (!$vendorList['ok']) {
+            return [
+                'ok'        => false,
+                'error'     => (string) ($vendorList['error'] ?? 'Unable to list QuickBooks Sandbox vendors.'),
+                'vendor_id' => '',
+            ];
+        }
+
+        $norm = supplier_qbo_normalize_name((string) ($supplier['SupplierName'] ?? ''));
+        foreach ($vendorList['rows'] as $vendor) {
+            if (!is_array($vendor)) {
+                continue;
+            }
+            if (supplier_qbo_normalize_name((string) ($vendor['DisplayName'] ?? '')) === $norm) {
+                $id = trim((string) ($vendor['Id'] ?? ''));
+
+                return $id === ''
+                    ? ['ok' => false, 'error' => 'Matched QuickBooks vendor has no ID.', 'vendor_id' => '']
+                    : ['ok' => true, 'error' => null, 'vendor_id' => $id];
+            }
+        }
+
+        return [
+            'ok'        => false,
+            'error'     => 'Supplier not found in QuickBooks Sandbox. Mirror or create the vendor in Sandbox first.',
+            'vendor_id' => '',
+        ];
     }
 
+    if ($vendorId === '') {
+        $sync = qbo_sync_supplier((int) $supplier['SupplierID']);
+        if (!$sync['ok']) {
+            return [
+                'ok'        => false,
+                'error'     => 'Supplier is not linked to QuickBooks: ' . ($sync['error'] ?? 'sync failed.'),
+                'vendor_id' => '',
+            ];
+        }
+        $supplier = supplier_get((int) $supplier['SupplierID']) ?? $supplier;
+        $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
+    }
+
+    if ($vendorId === '') {
+        return ['ok' => false, 'error' => 'Supplier has no QuickBooks vendor ID after sync.', 'vendor_id' => ''];
+    }
+
+    return ['ok' => true, 'error' => null, 'vendor_id' => $vendorId];
+}
+
+function qbo_create_purchase_order_from_ops(int $poId): array
+{
     $order = po_get_order($poId);
     if ($order === null) {
         return ['ok' => false, 'error' => 'Purchase order not found.'];
+    }
+
+    $ledgerProfile = po_order_ledger_profile($order);
+    procurement_bind_ledger_profile($ledgerProfile);
+
+    if (!qbo_is_connected()) {
+        return ['ok' => false, 'error' => 'QuickBooks ' . qbo_environment_label(qbo_environment()) . ' is not connected.'];
     }
 
     $existingQboId = trim((string) ($order['QBO_POID'] ?? ''));
@@ -200,19 +263,11 @@ function qbo_create_purchase_order_from_ops(int $poId): array
         return ['ok' => false, 'error' => 'Supplier not found for this purchase order.'];
     }
 
-    $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
-    if ($vendorId === '') {
-        $sync = qbo_sync_supplier((int) $supplier['SupplierID']);
-        if (!$sync['ok']) {
-            return ['ok' => false, 'error' => 'Supplier is not linked to QuickBooks: ' . ($sync['error'] ?? 'sync failed.')];
-        }
-        $supplier = supplier_get((int) $order['SupplierID']) ?? $supplier;
-        $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
+    $vendorResolve = qbo_resolve_po_vendor_id($order, $supplier);
+    if (!$vendorResolve['ok']) {
+        return ['ok' => false, 'error' => (string) ($vendorResolve['error'] ?? 'Unable to resolve QuickBooks vendor.')];
     }
-
-    if ($vendorId === '') {
-        return ['ok' => false, 'error' => 'Supplier has no QuickBooks vendor ID after sync.'];
-    }
+    $vendorId = (string) ($vendorResolve['vendor_id'] ?? '');
 
     $lines = po_get_lines($poId);
     if ($lines === []) {

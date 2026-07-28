@@ -2590,6 +2590,16 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   font-weight: 700;
 }
 
+.status-production {
+  background: #e8f4ec;
+  color: #1f6b3a;
+}
+
+.status-uat {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
 .status-draft {
   background: #f4f4f4;
   color: var(--text-muted);

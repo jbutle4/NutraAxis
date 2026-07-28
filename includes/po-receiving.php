@@ -423,13 +423,21 @@ function por_enrich_lines_sku_barcode(array $lines, bool $overwrite = false): ar
 function por_po_options(): array
 {
     $pdo = db();
-    $stmt = $pdo->query(<<<SQL
+    $profileClause = '';
+    $params = [];
+    if (po_has_ledger_profile_column()) {
+        $profileClause = ' AND po.LedgerProfile = :ledger_profile';
+        $params['ledger_profile'] = por_ledger_profile();
+    }
+
+    $stmt = $pdo->prepare(<<<SQL
         SELECT po.POID, po.PONumber, s.SupplierName, po.POStatus
         FROM dbo.PurchaseOrder po
         INNER JOIN dbo.Supplier s ON s.SupplierID = po.SupplierID
-        WHERE po.POStatus NOT IN (N'Cancelled')
+        WHERE po.POStatus NOT IN (N'Cancelled'){$profileClause}
         ORDER BY po.OrderDate DESC, po.POID DESC
     SQL);
+    $stmt->execute($params);
 
     $options = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -738,6 +746,17 @@ function por_save(array $input, ?int $porId = null): array
     $order = po_get_order($poId);
     if ($order === null) {
         return ['ok' => false, 'error' => 'Purchase order not found.'];
+    }
+
+    if (po_has_ledger_profile_column() && po_order_ledger_profile($order) !== por_ledger_profile()) {
+        return [
+            'ok'    => false,
+            'error' => 'Selected purchase order is '
+                . po_ledger_profile_label(po_order_ledger_profile($order))
+                . '. Open PO Receiving ('
+                . po_ledger_profile_label(por_ledger_profile())
+                . ') to receive against it.',
+        ];
     }
 
     if (!in_array($data['por_status'], POR_STATUSES, true)) {
