@@ -32,6 +32,16 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
 <form class="admin-form po-form" method="post" enctype="multipart/form-data"<?= !empty($formAction) ? ' action="' . htmlspecialchars($formAction) . '"' : '' ?>>
   <h2 class="admin-form-subhead">Purchase order</h2>
   <div class="form-grid">
+    <?php if (!$isEdit): ?>
+    <div class="form-group">
+      <label for="ledger_profile">Environment</label>
+      <select class="form-input" id="ledger_profile" name="ledger_profile" required>
+        <option value="production" <?= po_normalize_ledger_profile($form['ledger_profile'] ?? 'production') === PO_LEDGER_PROFILE_PRODUCTION ? 'selected' : '' ?>>Production</option>
+        <option value="uat" <?= po_normalize_ledger_profile($form['ledger_profile'] ?? 'production') === PO_LEDGER_PROFILE_UAT ? 'selected' : '' ?>>UAT (test)</option>
+      </select>
+      <p class="form-hint">UAT purchase orders sync to QuickBooks Sandbox and Jazz UAT when integrated.</p>
+    </div>
+    <?php endif; ?>
     <div class="form-group">
       <label for="po_number">PO number</label>
       <input class="form-input" type="text" id="po_number" name="po_number" value="<?= htmlspecialchars($form['po_number'] ?? '') ?>" placeholder="Auto-generated if blank" />

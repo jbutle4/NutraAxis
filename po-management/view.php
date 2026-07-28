@@ -71,6 +71,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <div class="section-label">Procurement</div>
           <h1><?= htmlspecialchars($order['PONumber']) ?></h1>
           <p class="page-lead">
+            <span class="<?= htmlspecialchars(po_ledger_profile_badge_class(po_order_ledger_profile($order))) ?>"><?= htmlspecialchars(po_ledger_profile_label(po_order_ledger_profile($order))) ?></span>
             <span class="status-badge <?= po_status_class($order['POStatus']) ?>"><?= htmlspecialchars($order['POStatus']) ?></span>
             · <?= htmlspecialchars($order['SupplierName']) ?>
           </p>

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/procurement-ledger.php';
 
 const PO_PERMISSION_COLUMN = 'POManagement';
 const PO_APPROVAL_PERMISSION_COLUMN = 'POApproval';
@@ -26,6 +27,7 @@ const PO_POST_APPROVAL_STATUSES = [
 
 const PO_LIST_SORT_COLUMNS = [
     'po_number'          => 'PO Number',
+    'environment'        => 'Env',
     'supplier'           => 'Supplier',
     'status'             => 'Status',
     'order_date'         => 'Order Date',
@@ -36,6 +38,7 @@ const PO_LIST_SORT_COLUMNS = [
 
 const PO_LIST_SORT_SQL = [
     'po_number'         => 'po.PONumber',
+    'environment'       => 'po.LedgerProfile',
     'supplier'          => 's.SupplierName',
     'status'            => 'po.POStatus',
     'order_date'        => 'po.OrderDate',
@@ -100,6 +103,7 @@ function po_default_header(): array
         'shipping_handling'      => '',
         'notes'                  => '',
         'po_status'              => 'Created',
+        'ledger_profile'         => PO_LEDGER_PROFILE_PRODUCTION,
     ]);
 }
 
@@ -268,8 +272,12 @@ function po_format_exception_message(Throwable $e, string $action = 'save this p
     if (stripos($raw, 'Invalid column name') !== false) {
         $hints[] = 'The database schema may be out of date — migrations 011–013 may need to be applied.';
     }
-    if (stripos($raw, 'UQ_PurchaseOrder_PONumber') !== false || stripos($raw, 'duplicate key') !== false) {
-        $hints[] = 'Use a different PO Number or remove the existing purchase order with that number.';
+    if (
+        stripos($raw, 'UQ_PurchaseOrder_PONumber') !== false
+        || stripos($raw, 'UQ_PurchaseOrder_PONumber_LedgerProfile') !== false
+        || stripos($raw, 'duplicate key') !== false
+    ) {
+        $hints[] = 'Use a different PO Number or remove the existing purchase order with that number in this environment.';
     }
     if (stripos($raw, 'FK_PurchaseOrder_CreatedByUser') !== false) {
         $hints[] = 'Sign out, sign back in, and try again.';
@@ -361,6 +369,7 @@ function po_list_suppliers(): array
 function po_list_orders(array $filters = []): array
 {
     $pdo = db();
+    $selectLedger = po_has_ledger_profile_column() ? 'po.LedgerProfile,' : '';
     $sql = <<<SQL
         SELECT
             po.POID,
@@ -369,6 +378,7 @@ function po_list_orders(array $filters = []): array
             po.OrderDate,
             po.ExpectedDeliveryDate,
             po.Subtotal,
+            {$selectLedger}
             s.SupplierName,
             u.UserName AS CreatedByName
         FROM dbo.PurchaseOrder po
@@ -377,10 +387,23 @@ function po_list_orders(array $filters = []): array
     SQL;
 
     $params = [];
+    $where = [];
     $statusFilter = $filters['status'] ?? null;
     if ($statusFilter !== null && $statusFilter !== '' && in_array($statusFilter, PO_STATUSES, true)) {
-        $sql .= ' WHERE po.POStatus = :status';
+        $where[] = 'po.POStatus = :status';
         $params['status'] = $statusFilter;
+    }
+
+    if (po_has_ledger_profile_column()) {
+        $ledgerFilter = strtolower(trim((string) ($filters['ledger_profile'] ?? PO_LEDGER_PROFILE_PRODUCTION)));
+        if ($ledgerFilter !== '' && $ledgerFilter !== 'all') {
+            $where[] = 'po.LedgerProfile = :ledger_profile';
+            $params['ledger_profile'] = po_normalize_ledger_profile($ledgerFilter);
+        }
+    }
+
+    if ($where !== []) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
     }
 
     $sortState = table_sort_state(PO_LIST_SORT_COLUMNS, 'order_date', 'desc', $filters);
@@ -625,32 +648,62 @@ function po_save_order(array $input, ?int $poId = null): array
         $pdo->beginTransaction();
 
         if ($isInsert) {
+            $ledgerProfile = po_normalize_ledger_profile($input['ledger_profile'] ?? PO_LEDGER_PROFILE_PRODUCTION);
             $poNumber = $customPoNumber !== '' ? $customPoNumber : po_generate_number($pdo);
-            $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number');
-            $dup->execute(['number' => $poNumber]);
+            if (po_has_ledger_profile_column()) {
+                $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number AND LedgerProfile = :ledger_profile');
+                $dup->execute(['number' => $poNumber, 'ledger_profile' => $ledgerProfile]);
+            } else {
+                $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number');
+                $dup->execute(['number' => $poNumber]);
+            }
             if ($dup->fetch() !== false) {
                 $pdo->rollBack();
-                return ['ok' => false, 'error' => 'PO Number already exists.'];
+
+                return ['ok' => false, 'error' => 'PO Number already exists for ' . po_ledger_profile_label($ledgerProfile) . '.'];
             }
 
-            $stmt = $pdo->prepare(<<<SQL
-                INSERT INTO dbo.PurchaseOrder (
-                    PONumber, SupplierID, POStatus, OrderDate, ExpectedDeliveryDate,
-                    Notes, Subtotal, ShippingHandling, TotalDue,
-                    BuyerName, BuyerAddress, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
-                    SupplierAddress, DeliveryAddress, PaymentTerms, DeliveryTerms, ReferenceDocuments, SpecialInstructions,
-                    CreatedByUser, ModifiedbyUser
-                )
-                OUTPUT INSERTED.POID AS inserted_id
-                VALUES (
-                    :number, :supplier, :status, :order_date, :expected_date,
-                    :notes, :subtotal, :shipping, :total_due,
-                    :buyer_name, :buyer_address, :buyer_contact_name, :buyer_contact_email, :buyer_contact_phone,
-                    :supplier_address, :delivery_address, :payment_terms, :delivery_terms, :reference_documents, :special_instructions,
-                    :created_by, :modified_by
-                )
-            SQL);
-            $stmt->execute(po_save_bind_header($poNumber, $supplierId, $status, $orderDate, $expectedDate, $notes, $subtotal, $shipping, $totalDue, $header, $supplierAddress, $actorId));
+            if (po_has_ledger_profile_column()) {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.PurchaseOrder (
+                        PONumber, SupplierID, POStatus, OrderDate, ExpectedDeliveryDate,
+                        Notes, Subtotal, ShippingHandling, TotalDue,
+                        BuyerName, BuyerAddress, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
+                        SupplierAddress, DeliveryAddress, PaymentTerms, DeliveryTerms, ReferenceDocuments, SpecialInstructions,
+                        LedgerProfile, CreatedByUser, ModifiedbyUser
+                    )
+                    OUTPUT INSERTED.POID AS inserted_id
+                    VALUES (
+                        :number, :supplier, :status, :order_date, :expected_date,
+                        :notes, :subtotal, :shipping, :total_due,
+                        :buyer_name, :buyer_address, :buyer_contact_name, :buyer_contact_email, :buyer_contact_phone,
+                        :supplier_address, :delivery_address, :payment_terms, :delivery_terms, :reference_documents, :special_instructions,
+                        :ledger_profile, :created_by, :modified_by
+                    )
+                SQL);
+                $bind = po_save_bind_header($poNumber, $supplierId, $status, $orderDate, $expectedDate, $notes, $subtotal, $shipping, $totalDue, $header, $supplierAddress, $actorId);
+                $bind['ledger_profile'] = $ledgerProfile;
+                $stmt->execute($bind);
+            } else {
+                $stmt = $pdo->prepare(<<<SQL
+                    INSERT INTO dbo.PurchaseOrder (
+                        PONumber, SupplierID, POStatus, OrderDate, ExpectedDeliveryDate,
+                        Notes, Subtotal, ShippingHandling, TotalDue,
+                        BuyerName, BuyerAddress, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
+                        SupplierAddress, DeliveryAddress, PaymentTerms, DeliveryTerms, ReferenceDocuments, SpecialInstructions,
+                        CreatedByUser, ModifiedbyUser
+                    )
+                    OUTPUT INSERTED.POID AS inserted_id
+                    VALUES (
+                        :number, :supplier, :status, :order_date, :expected_date,
+                        :notes, :subtotal, :shipping, :total_due,
+                        :buyer_name, :buyer_address, :buyer_contact_name, :buyer_contact_email, :buyer_contact_phone,
+                        :supplier_address, :delivery_address, :payment_terms, :delivery_terms, :reference_documents, :special_instructions,
+                        :created_by, :modified_by
+                    )
+                SQL);
+                $stmt->execute(po_save_bind_header($poNumber, $supplierId, $status, $orderDate, $expectedDate, $notes, $subtotal, $shipping, $totalDue, $header, $supplierAddress, $actorId));
+            }
             $poId = db_fetch_inserted_int($stmt, 'inserted_id');
         } else {
             $existing = po_get_order($poId);
@@ -668,11 +721,21 @@ function po_save_order(array $input, ?int $poId = null): array
             $beforeLines = po_get_lines($poId);
 
             if ($customPoNumber !== '' && $customPoNumber !== $existing['PONumber']) {
-                $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number AND POID <> :id');
-                $dup->execute(['number' => $customPoNumber, 'id' => $poId]);
+                if (po_has_ledger_profile_column()) {
+                    $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number AND LedgerProfile = :ledger_profile AND POID <> :id');
+                    $dup->execute([
+                        'number'         => $customPoNumber,
+                        'ledger_profile' => po_order_ledger_profile($existing),
+                        'id'             => $poId,
+                    ]);
+                } else {
+                    $dup = $pdo->prepare('SELECT POID FROM dbo.PurchaseOrder WHERE PONumber = :number AND POID <> :id');
+                    $dup->execute(['number' => $customPoNumber, 'id' => $poId]);
+                }
                 if ($dup->fetch() !== false) {
                     $pdo->rollBack();
-                    return ['ok' => false, 'error' => 'PO Number already exists.'];
+
+                    return ['ok' => false, 'error' => 'PO Number already exists in this environment.'];
                 }
             }
 
