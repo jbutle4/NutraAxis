@@ -45,7 +45,7 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
+    <div class="container page-inner page-inner--wide">
       <a class="breadcrumb" href="<?= htmlspecialchars(por_page_path('/po-receiving/')) ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
@@ -144,35 +144,62 @@ require dirname(__DIR__) . '/includes/header.php';
 
         <section class="detail-card">
           <h2>Line items</h2>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
+          <div class="admin-table-wrap por-receiving-table-wrap">
+            <table class="admin-table por-receiving-lines-table por-receiving-lines-table--view">
               <thead>
                 <tr>
-                  <th>Line</th>
-                  <th>SKU</th>
-                  <th>Description</th>
-                  <th>Expected</th>
-                  <th>Received</th>
-                  <th>Case barcode</th>
-                  <th>SKU barcode</th>
-                  <th>Country of origin</th>
-                  <th>On hold</th>
+                  <th class="por-sticky-col">LN#</th>
+                  <th class="por-sticky-col">SKU</th>
+                  <th class="por-sticky-col">Desc</th>
+                  <th>QTY ORD</th>
+                  <th>QTY SCHED</th>
+                  <th>QTY REM</th>
+                  <th>LOT#</th>
+                  <th>QTY EXP</th>
+                  <th>QTY REC</th>
+                  <th>CS BC</th>
+                  <th>SKU BC</th>
+                  <th>COO</th>
+                  <th>On HLD</th>
                   <th>Note</th>
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($lines as $line): ?>
-                <tr>
-                  <td><?= (int) $line['LineNumber'] ?></td>
-                  <td><?= htmlspecialchars($line['ItemSKU'] ?? '—') ?></td>
-                  <td><?= htmlspecialchars($line['ItemDescription']) ?></td>
-                  <td><?= htmlspecialchars(por_format_qty($line['QuantityExpected'] ?? null)) ?></td>
-                  <td><?= htmlspecialchars(por_format_qty($line['QuantityReceived'] ?? null)) ?></td>
-                  <td><?= htmlspecialchars($line['CaseBarcode'] ?? '—') ?></td>
-                  <td><?= htmlspecialchars($line['SKUBarcode'] ?? '—') ?></td>
-                  <td><?= htmlspecialchars($line['CountryOfOrigin'] ?? '—') ?></td>
-                  <td><?= !empty($line['OnHold']) ? 'Yes' : 'No' ?></td>
-                  <td><?= htmlspecialchars($line['LINote'] ?? '—') ?></td>
+                <?php
+                  $displayLines = por_prepare_form_lines(array_map(static function (array $line): array {
+                      return [
+                          'po_line_id'         => (int) $line['POLineID'],
+                          'line_number'        => (int) $line['LineNumber'],
+                          'item_sku'           => (string) ($line['ItemSKU'] ?? ''),
+                          'item_description'   => (string) $line['ItemDescription'],
+                          'lot_number'         => (string) ($line['LotNumber'] ?? ''),
+                          'quantity_expected'  => por_format_qty($line['QuantityExpected'] ?? null),
+                          'quantity_received'  => por_format_qty($line['QuantityReceived'] ?? null),
+                          'case_barcode'       => (string) ($line['CaseBarcode'] ?? ''),
+                          'sku_barcode'        => (string) ($line['SKUBarcode'] ?? ''),
+                          'country_of_origin'  => (string) ($line['CountryOfOrigin'] ?? ''),
+                          'on_hold'            => !empty($line['OnHold']),
+                          'li_note'            => (string) ($line['LINote'] ?? ''),
+                      ];
+                  }, $lines), (int) $receipt['POID'], (int) $receipt['PORID']);
+                ?>
+                <?php foreach ($displayLines as $line): ?>
+                <?php $showMeta = !empty($line['show_line_meta']); ?>
+                <tr class="<?= $showMeta ? 'por-lot-row' : 'por-lot-row por-lot-continuation' ?>">
+                  <td class="por-sticky-col"><?= $showMeta ? (int) ($line['line_number'] ?? 0) : '' ?></td>
+                  <td class="por-sticky-col"><?= $showMeta ? htmlspecialchars($line['item_sku'] ?? '—') : '' ?></td>
+                  <td class="por-sticky-col"><?= $showMeta ? htmlspecialchars($line['item_description'] ?? '') : '' ?></td>
+                  <td><?= $showMeta ? htmlspecialchars($line['quantity_ordered'] ?? '—') : '' ?></td>
+                  <td><?= $showMeta ? htmlspecialchars($line['quantity_scheduled'] ?? '0') : '' ?></td>
+                  <td><?= $showMeta ? htmlspecialchars($line['quantity_remaining'] ?? '0') : '' ?></td>
+                  <td><?= htmlspecialchars(($line['lot_number'] ?? '') !== '' ? $line['lot_number'] : '—') ?></td>
+                  <td><?= htmlspecialchars($line['quantity_expected'] ?? '0') ?></td>
+                  <td><?= htmlspecialchars($line['quantity_received'] ?? '0') ?></td>
+                  <td><?= htmlspecialchars(($line['case_barcode'] ?? '') !== '' ? $line['case_barcode'] : '—') ?></td>
+                  <td><?= htmlspecialchars(($line['sku_barcode'] ?? '') !== '' ? $line['sku_barcode'] : '—') ?></td>
+                  <td><?= htmlspecialchars(($line['country_of_origin'] ?? '') !== '' ? $line['country_of_origin'] : '—') ?></td>
+                  <td><?= !empty($line['on_hold']) ? 'Yes' : 'No' ?></td>
+                  <td><?= htmlspecialchars(($line['li_note'] ?? '') !== '' ? $line['li_note'] : '—') ?></td>
                 </tr>
                 <?php endforeach; ?>
               </tbody>

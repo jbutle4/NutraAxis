@@ -24,7 +24,7 @@ $attachmentFieldId = 'por-attachment-' . (int) $porId;
             <tbody>
               <?php foreach ($attachments as $file): ?>
               <tr>
-                <td><a class="btn-text" href="/po-receiving/attachment.php?id=<?= (int) $file['AttachmentID'] ?>"><?= htmlspecialchars($file['FileName']) ?></a></td>
+                <td><a class="btn-text" href="<?= htmlspecialchars(por_page_path('/po-receiving/attachment.php')) ?>?id=<?= (int) $file['AttachmentID'] ?>"><?= htmlspecialchars($file['FileName']) ?></a></td>
                 <td><?= htmlspecialchars(por_attachment_kind_label((string) $file['AttachmentKind'])) ?></td>
                 <td><?= htmlspecialchars(por_format_file_size((int) $file['FileSizeBytes'])) ?></td>
                 <td><?= htmlspecialchars(admin_format_datetime($file['UploadDate'])) ?></td>
@@ -37,7 +37,7 @@ $attachmentFieldId = 'por-attachment-' . (int) $porId;
         <?php endif; ?>
 
         <?php if ($showUploadForm): ?>
-        <form class="admin-form" method="post" enctype="multipart/form-data" action="/po-receiving/upload-attachment.php" style="margin-top: 16px;">
+        <form class="admin-form" method="post" enctype="multipart/form-data" action="<?= htmlspecialchars(por_page_path('/po-receiving/upload-attachment.php')) ?>" style="margin-top: 16px;">
           <input type="hidden" name="por_id" value="<?= $porId ?>" />
           <div class="form-grid">
             <?php

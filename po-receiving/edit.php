@@ -42,7 +42,7 @@ require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
 ?>
   <main class="page-main">
-    <div class="container page-inner">
+    <div class="container page-inner page-inner--wide">
       <a class="breadcrumb" href="<?= htmlspecialchars(por_page_path('/po-receiving/view.php')) ?>?id=<?= $porId ?>">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
@@ -62,7 +62,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php
         $isEdit = true;
-        $formAction = '/po-receiving/edit.php?id=' . $porId;
+        $formAction = por_page_path('/po-receiving/edit.php') . '?id=' . $porId;
         require dirname(__DIR__) . '/includes/po-receiving-form.php';
       ?>
     </div>

@@ -1,26 +1,29 @@
 <?php
-/** @var int $poId */
-/** @var array $poReceipts */
-/** @var string $poLedgerProfile */
-$poLedgerProfile = $poLedgerProfile ?? PO_LEDGER_PROFILE_PRODUCTION;
-$newReceiptHref = por_href_for_profile('/po-receiving/new.php', $poLedgerProfile, ['po_id' => $poId]);
+/** @var array $priorReceipts */
+/** @var int|null $excludePorId */
+$excludePorId = $excludePorId ?? null;
+$rows = [];
+foreach ($priorReceipts as $receipt) {
+    $porId = (int) ($receipt['PORID'] ?? 0);
+    if ($excludePorId !== null && $porId === $excludePorId) {
+        continue;
+    }
+    $rows[] = $receipt;
+}
+
+if ($rows === []) {
+    return;
+}
 ?>
-      <section class="detail-card supplier-po-report production-status-card">
+      <section class="detail-card supplier-po-report production-status-card por-prior-receipts-card">
         <div class="production-status-header">
           <div>
-            <h2>PO receipts</h2>
+            <h2>Prior receipts on this PO</h2>
             <p class="account-card-lead">
-              <?= count($poReceipts) === 1 ? '1 receipt' : count($poReceipts) . ' receipts' ?> recorded against this purchase order
-              · <span class="<?= po_ledger_profile_badge_class($poLedgerProfile) ?>"><?= htmlspecialchars(po_ledger_profile_label($poLedgerProfile)) ?></span>
+              <?= count($rows) === 1 ? '1 other receipt' : count($rows) . ' other receipts' ?> recorded for this purchase order
             </p>
           </div>
-          <?php if (por_can_create()): ?>
-          <div class="module-actions">
-            <a class="btn-secondary" href="<?= htmlspecialchars($newReceiptHref) ?>">New PO Receipt</a>
-          </div>
-          <?php endif; ?>
         </div>
-
         <div class="admin-table-wrap production-status-table-wrap">
           <table class="admin-table production-status-table">
             <thead>
@@ -30,18 +33,14 @@ $newReceiptHref = por_href_for_profile('/po-receiving/new.php', $poLedgerProfile
                 <th>Status</th>
                 <th>Scheduled</th>
                 <th>Actual receipt</th>
-                <th>Appointment</th>
                 <th>Created</th>
               </tr>
             </thead>
             <tbody>
-              <?php if ($poReceipts === []): ?>
-              <tr><td colspan="7">No receipts recorded for this purchase order.</td></tr>
-              <?php else: ?>
-              <?php foreach ($poReceipts as $receipt): ?>
+              <?php foreach ($rows as $receipt): ?>
               <tr>
                 <td>
-                  <a class="btn-text" href="<?= htmlspecialchars(por_href_for_profile('/po-receiving/view.php', $poLedgerProfile, ['id' => (int) $receipt['PORID']])) ?>">
+                  <a class="btn-text" href="<?= htmlspecialchars(por_page_path('/po-receiving/view.php')) ?>?id=<?= (int) $receipt['PORID'] ?>">
                     Receipt #<?= (int) $receipt['PORID'] ?>
                   </a>
                 </td>
@@ -49,11 +48,9 @@ $newReceiptHref = por_href_for_profile('/po-receiving/new.php', $poLedgerProfile
                 <td><span class="status-badge <?= por_status_class($receipt['PORStatus']) ?>"><?= htmlspecialchars($receipt['PORStatus']) ?></span></td>
                 <td><?= htmlspecialchars(por_format_scheduled($receipt['ScheduledReceiptDate'] ?? null, $receipt['ScheduledReceiptTime'] ?? null)) ?></td>
                 <td><?= htmlspecialchars(por_format_date($receipt['ActualReceiptDate'] ?? null)) ?></td>
-                <td><?= !empty($receipt['AppointmentMade']) ? 'Yes' : 'No' ?></td>
                 <td><?= htmlspecialchars(por_format_date($receipt['CreateDate'] ?? null)) ?></td>
               </tr>
               <?php endforeach; ?>
-              <?php endif; ?>
             </tbody>
           </table>
         </div>
