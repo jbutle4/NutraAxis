@@ -93,6 +93,12 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php elseif ($notice === 'created' || $notice === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Receipt saved successfully.</div>
+      <?php if (!empty($_GET['attachment'])): ?>
+      <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
+      <?php endif; ?>
+      <?php if ($warning !== null && $warning !== ''): ?>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($warning) ?></div>
+      <?php endif; ?>
       <?php elseif ($notice === 'transmitted'): ?>
       <div class="admin-notice is-success" role="status">
         ASN transmitted to Jazz successfully.
@@ -153,6 +159,7 @@ require dirname(__DIR__) . '/includes/header.php';
                   <th class="por-sticky-col">Desc</th>
                   <th>QTY ORD</th>
                   <th>QTY SCHED</th>
+                  <th>QTY Prev Rec</th>
                   <th>QTY REM</th>
                   <th>LOT#</th>
                   <th>QTY EXP</th>
@@ -191,6 +198,7 @@ require dirname(__DIR__) . '/includes/header.php';
                   <td class="por-sticky-col"><?= $showMeta ? htmlspecialchars($line['item_description'] ?? '') : '' ?></td>
                   <td><?= $showMeta ? htmlspecialchars($line['quantity_ordered'] ?? '—') : '' ?></td>
                   <td><?= $showMeta ? htmlspecialchars($line['quantity_scheduled'] ?? '0') : '' ?></td>
+                  <td><?= $showMeta ? htmlspecialchars($line['quantity_prev_received'] ?? '0') : '' ?></td>
                   <td><?= $showMeta ? htmlspecialchars($line['quantity_remaining'] ?? '0') : '' ?></td>
                   <td><?= htmlspecialchars(($line['lot_number'] ?? '') !== '' ? $line['lot_number'] : '—') ?></td>
                   <td><?= htmlspecialchars($line['quantity_expected'] ?? '0') ?></td>

@@ -9,10 +9,14 @@ $activeSlug = 'po-management';
 $activePoSection = 'new';
 $error = null;
 $form = po_default_header();
-if (isset($_GET['ledger_profile'])) {
+$lines = [['sku' => '', 'quote_number' => '', 'description' => '', 'quantity' => '', 'unit_price' => '', 'expiration_date' => '']];
+$copiedFrom = null;
+$copyFromId = (int) ($_GET['copy_from'] ?? 0);
+$suppliers = po_list_suppliers();
+
+if (isset($_GET['ledger_profile']) && $copyFromId <= 0) {
     $form['ledger_profile'] = po_normalize_ledger_profile((string) $_GET['ledger_profile']);
 }
-$suppliers = po_list_suppliers();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = array_merge($form, $_POST);
@@ -27,9 +31,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $error = $result['error'];
+    $lines = $_POST['lines'] ?? $lines;
+} elseif ($copyFromId > 0) {
+    $duplicate = po_duplicate_form_from_order($copyFromId);
+    if (!$duplicate['ok']) {
+        $error = $duplicate['error'];
+    } else {
+        $form = $duplicate['form'];
+        $lines = $duplicate['lines'];
+        $copiedFrom = [
+            'id'     => (int) $duplicate['source_po_id'],
+            'number' => (string) $duplicate['source_po_number'],
+        ];
+    }
 }
 
-$pageTitle = 'New Purchase Order | PO Management';
+$pageTitle = $copiedFrom !== null
+    ? 'Duplicate ' . $copiedFrom['number'] . ' | PO Management'
+    : 'New Purchase Order | PO Management';
 $pageDescription = 'Create a new supplier purchase order.';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -48,8 +67,15 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <div class="page-hero">
         <div class="section-label">Procurement</div>
-        <h1>New Purchase Order</h1>
-        <p class="page-lead">Enter NutraSeal-style header fields, line items, and optionally attach the source PDF.</p>
+        <h1><?= $copiedFrom !== null ? 'Duplicate Purchase Order' : 'New Purchase Order' ?></h1>
+        <p class="page-lead">
+          <?php if ($copiedFrom !== null): ?>
+          Copied from <a href="/po-management/view.php?id=<?= (int) $copiedFrom['id'] ?>"><?= htmlspecialchars($copiedFrom['number']) ?></a>.
+          Review the PO number, dates, and line items before saving.
+          <?php else: ?>
+          Enter NutraSeal-style header fields, line items, and optionally attach the source PDF.
+          <?php endif; ?>
+        </p>
       </div>
 
       <?php if ($error !== null): ?>
@@ -57,7 +83,6 @@ require dirname(__DIR__) . '/includes/header.php';
       <?php endif; ?>
 
       <?php
-        $lines = $_POST['lines'] ?? [['sku' => '', 'quote_number' => '', 'description' => '', 'quantity' => '', 'unit_price' => '', 'expiration_date' => '']];
         $isEdit = false;
         require dirname(__DIR__) . '/includes/po-form.php';
       ?>

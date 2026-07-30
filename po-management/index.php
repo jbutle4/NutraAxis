@@ -105,6 +105,9 @@ require dirname(__DIR__) . '/includes/header.php';
             if ($canApprove) {
                 $poActionHeader = 'View | Review | Edit';
             }
+            if ($canCreate) {
+                $poActionHeader .= ' | Duplicate';
+            }
             if ($canDelete) {
                 $poActionHeader .= ' | Delete';
             }
@@ -147,6 +150,9 @@ require dirname(__DIR__) . '/includes/header.php';
               }
               if (po_can_edit_order($order)) {
                   $poActions[] = ['href' => '/po-management/edit.php?id=' . (int) $order['POID'], 'label' => 'Edit'];
+              }
+              if ($canCreate) {
+                  $poActions[] = ['href' => '/po-management/new.php?copy_from=' . (int) $order['POID'], 'label' => 'Duplicate'];
               }
               if ($canDelete && $order['POStatus'] === 'Created') {
                   $poActions[] = [

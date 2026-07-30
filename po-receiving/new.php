@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+require dirname(__DIR__) . '/includes/po-receiving-attachments.php';
 
 por_bind_page_environments();
 
@@ -10,12 +11,13 @@ por_require_create();
 $activeSlug = $activeSlug ?? 'po-receiving';
 $error = null;
 $preselectedPo = (int) ($_GET['po_id'] ?? 0);
+$porAttachments = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = por_save($_POST);
     if ($result['ok']) {
-        header('Location: ' . por_page_path('/po-receiving/view.php') . '?id=' . (int) $result['id'] . '&notice=created', true, 302);
-        exit;
+        $kind = trim((string) ($_POST['attachment_kind'] ?? 'PackingSlip'));
+        por_finish_save_and_redirect((int) $result['id'], 'created', $_FILES['attachment'] ?? null, $kind);
     }
     $error = $result['error'];
     $form = por_form_from_post($_POST);

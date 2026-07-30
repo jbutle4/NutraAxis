@@ -113,6 +113,9 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-primary">Mark as Paid</button>
           </form>
           <?php endif; ?>
+          <?php if (po_can_create()): ?>
+          <a class="btn-secondary" href="/po-management/new.php?copy_from=<?= $poId ?>">Duplicate PO</a>
+          <?php endif; ?>
           <?php if (por_can_create()): ?>
           <a class="btn-secondary" href="/po-receiving/new.php?po_id=<?= $poId ?>">New PO Receipt</a>
           <?php endif; ?>

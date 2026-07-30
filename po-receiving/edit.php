@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+require dirname(__DIR__) . '/includes/po-receiving-attachments.php';
 
 por_bind_page_environments();
 
@@ -22,12 +23,13 @@ if (!por_can_edit($receipt)) {
 
 $activeSlug = $activeSlug ?? 'po-receiving';
 $error = null;
+$porAttachments = por_list_attachments($porId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = por_save($_POST, $porId);
     if ($result['ok']) {
-        header('Location: ' . por_page_path('/po-receiving/view.php') . '?id=' . $porId . '&notice=updated', true, 302);
-        exit;
+        $kind = trim((string) ($_POST['attachment_kind'] ?? 'PackingSlip'));
+        por_finish_save_and_redirect($porId, 'updated', $_FILES['attachment'] ?? null, $kind);
     }
     $error = $result['error'];
     $form = por_form_from_post($_POST, $porId);

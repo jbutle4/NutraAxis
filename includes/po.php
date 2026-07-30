@@ -455,6 +455,102 @@ function po_get_lines(int $poId): array
     return $stmt->fetchAll();
 }
 
+/**
+ * Map PO line rows to new/edit form line arrays.
+ *
+ * @param list<array<string, mixed>> $dbLines
+ * @return list<array<string, string>>
+ */
+function po_lines_to_form(array $dbLines): array
+{
+    if ($dbLines === []) {
+        return [['sku' => '', 'quote_number' => '', 'description' => '', 'quantity' => '', 'unit_price' => '', 'expiration_date' => '']];
+    }
+
+    return array_map(
+        static fn(array $line): array => [
+            'sku'             => (string) ($line['ItemSKU'] ?? ''),
+            'quote_number'    => (string) ($line['QuoteNumber'] ?? ''),
+            'description'     => (string) $line['ItemDescription'],
+            'quantity'        => po_format_qty($line['Quantity'] ?? null),
+            'unit_price'      => (string) $line['UnitPrice'],
+            'expiration_date' => po_format_date_input($line['ExpirationDate'] ?? null),
+        ],
+        $dbLines
+    );
+}
+
+/**
+ * Map a purchase order row to header fields used by new/edit forms.
+ *
+ * @param array<string, mixed> $order
+ */
+function po_order_to_form_fields(array $order, bool $forDuplicate = false): array
+{
+    $fields = [
+        'po_number'              => (string) ($order['PONumber'] ?? ''),
+        'supplier_id'            => (string) ($order['SupplierID'] ?? ''),
+        'order_date'             => po_format_date_input($order['OrderDate'] ?? null) ?: date('Y-m-d'),
+        'expected_delivery_date' => po_format_date_input($order['ExpectedDeliveryDate'] ?? null),
+        'notes'                  => (string) ($order['Notes'] ?? ''),
+        'po_status'              => (string) ($order['POStatus'] ?? 'Created'),
+        'buyer_name'             => (string) ($order['BuyerName'] ?? ''),
+        'buyer_address'          => (string) ($order['BuyerAddress'] ?? ''),
+        'buyer_contact_name'     => (string) ($order['BuyerContactName'] ?? ''),
+        'buyer_contact_email'    => (string) ($order['BuyerContactEmail'] ?? ''),
+        'buyer_contact_phone'    => (string) ($order['BuyerContactPhone'] ?? ''),
+        'supplier_address'       => (string) ($order['SupplierAddress'] ?? ''),
+        'delivery_address'       => (string) ($order['DeliveryAddress'] ?? ''),
+        'payment_terms'          => (string) ($order['PaymentTerms'] ?? ''),
+        'delivery_terms'         => (string) ($order['DeliveryTerms'] ?? ''),
+        'reference_documents'    => (string) ($order['ReferenceDocuments'] ?? ''),
+        'shipping_handling'      => (string) ($order['ShippingHandling'] ?? ''),
+        'special_instructions'   => (string) ($order['SpecialInstructions'] ?? ''),
+        'ledger_profile'         => po_order_ledger_profile($order),
+    ];
+
+    if ($forDuplicate) {
+        $fields['po_number'] = '';
+        $fields['po_status'] = 'Created';
+        $fields['order_date'] = date('Y-m-d');
+    }
+
+    return array_merge(po_default_header(), $fields);
+}
+
+/**
+ * Build new-PO form state by copying an existing purchase order (header + lines).
+ *
+ * @return array{
+ *   ok: bool,
+ *   error: ?string,
+ *   form?: array<string, mixed>,
+ *   lines?: list<array<string, string>>,
+ *   source_po_id?: int,
+ *   source_po_number?: string
+ * }
+ */
+function po_duplicate_form_from_order(int $poId): array
+{
+    if (!po_can_create()) {
+        return ['ok' => false, 'error' => 'You do not have permission to create purchase orders.'];
+    }
+
+    $order = po_get_order($poId);
+    if ($order === null) {
+        return ['ok' => false, 'error' => 'Purchase order not found.'];
+    }
+
+    return [
+        'ok'               => true,
+        'error'            => null,
+        'form'             => po_order_to_form_fields($order, true),
+        'lines'            => po_lines_to_form(po_get_lines($poId)),
+        'source_po_id'     => $poId,
+        'source_po_number' => (string) $order['PONumber'],
+    ];
+}
+
 function po_save_notes(int $poId, string $notes): array
 {
     $order = po_get_order($poId);

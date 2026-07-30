@@ -6,7 +6,7 @@
 $isEdit = $isEdit ?? false;
 $poOptions = $poOptions ?? por_po_options();
 $lines = $form['lines'] ?? [];
-$lineColspan = 15;
+$lineColspan = 16;
 $newPagePath = por_page_path('/po-receiving/new.php');
 $listPagePath = por_page_path('/po-receiving/');
 $viewPagePath = por_page_path('/po-receiving/view.php');
@@ -14,7 +14,7 @@ $poId = (int) ($form['po_id'] ?? 0);
 $priorReceipts = $poId > 0 ? por_list_for_po($poId) : [];
 $excludePorId = $isEdit ? (int) ($form['por_id'] ?? 0) : null;
 ?>
-      <form class="admin-form por-receiving-form" method="post" action="<?= htmlspecialchars($formAction) ?>">
+      <form class="admin-form por-receiving-form" method="post" enctype="multipart/form-data" action="<?= htmlspecialchars($formAction) ?>">
         <div class="form-grid por-receiving-header-grid">
           <div class="form-group form-grid-full por-inline-field">
             <label for="po_id">Purchase order</label>
@@ -119,6 +119,7 @@ $excludePorId = $isEdit ? (int) ($form['por_id'] ?? 0) : null;
                 <th class="por-sticky-col">Desc</th>
                 <th>QTY ORD</th>
                 <th>QTY SCHED</th>
+                <th>QTY Prev Rec</th>
                 <th>QTY REM</th>
                 <th>LOT#</th>
                 <th>QTY EXP</th>
@@ -156,6 +157,7 @@ $excludePorId = $isEdit ? (int) ($form['por_id'] ?? 0) : null;
                 <td class="por-sticky-col por-line-meta"><?= $showMeta ? htmlspecialchars($line['item_description'] ?? '') : '' ?></td>
                 <td class="por-line-meta"><?= $showMeta ? htmlspecialchars($line['quantity_ordered'] ?? '—') : '' ?></td>
                 <td class="por-line-meta"><?= $showMeta ? htmlspecialchars($line['quantity_scheduled'] ?? '0') : '' ?></td>
+                <td class="por-line-meta"><?= $showMeta ? htmlspecialchars($line['quantity_prev_received'] ?? '0') : '' ?></td>
                 <td class="por-line-meta"><?= $showMeta ? htmlspecialchars($line['quantity_remaining'] ?? '0') : '' ?></td>
                 <td><input class="form-input por-compact-input" type="text" maxlength="50" name="lines[<?= $index ?>][lot_number]" value="<?= htmlspecialchars($line['lot_number'] ?? '') ?>" /></td>
                 <td><input class="form-input por-compact-input" type="number" min="0" step="1" name="lines[<?= $index ?>][quantity_expected]" value="<?= htmlspecialchars($line['quantity_expected'] ?? '') ?>" /></td>
@@ -181,6 +183,8 @@ $excludePorId = $isEdit ? (int) ($form['por_id'] ?? 0) : null;
             </tbody>
           </table>
         </div>
+
+        <?php require __DIR__ . '/po-receiving-form-attachments-section.php'; ?>
 
         <div class="module-actions">
           <button type="submit" class="btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Receipt' ?></button>

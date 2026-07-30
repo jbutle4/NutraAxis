@@ -2410,6 +2410,10 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-top: 1.5rem;
 }
 
+.por-form-attachments-card {
+  margin-bottom: 1.5rem;
+}
+
 .por-receiving-table-wrap {
   overflow-x: auto;
   max-width: 100%;

@@ -79,6 +79,7 @@ $canEditProduction = $canEditProduction ?? false;
               <th>Unit price</th>
               <th>Exp date</th>
               <th>Qty</th>
+              <th>Qty received</th>
               <th>Line total</th>
             </tr>
           </thead>
@@ -92,6 +93,7 @@ $canEditProduction = $canEditProduction ?? false;
               <td><?= htmlspecialchars(po_format_money($line['UnitPrice'])) ?></td>
               <td><?= htmlspecialchars(po_format_date($line['ExpirationDate'] ?? null)) ?></td>
               <td><?= htmlspecialchars(po_format_qty($line['Quantity'] ?? null)) ?></td>
+              <td><?= htmlspecialchars(po_format_qty($line['QuantityReceived'] ?? null)) ?></td>
               <td><?= htmlspecialchars(po_format_money($line['LineTotal'])) ?></td>
             </tr>
             <?php endforeach; ?>

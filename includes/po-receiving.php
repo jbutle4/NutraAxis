@@ -365,6 +365,7 @@ function por_prepare_form_lines(array $lines, int $poId, ?int $excludePorId = nu
     }
 
     $scheduledByLine = por_scheduled_quantities_for_po($poId, $excludePorId);
+    $receivedByLine = por_received_quantities_for_po($poId, $excludePorId);
     $poLines = [];
     foreach (po_get_lines($poId) as $poLine) {
         $poLines[(int) $poLine['POLineID']] = $poLine;
@@ -384,10 +385,12 @@ function por_prepare_form_lines(array $lines, int $poId, ?int $excludePorId = nu
         if ($showMeta && $poLineId > 0) {
             $line['quantity_ordered'] = por_format_qty($ordered);
             $line['quantity_scheduled'] = por_format_qty($scheduledByLine[$poLineId] ?? 0.0);
+            $line['quantity_prev_received'] = por_format_qty($receivedByLine[$poLineId] ?? 0.0);
             $line['quantity_remaining'] = por_format_qty(por_remaining_for_po_line($poId, $poLineId, $ordered, $excludePorId));
         } else {
             $line['quantity_ordered'] = '';
             $line['quantity_scheduled'] = '';
+            $line['quantity_prev_received'] = '';
             $line['quantity_remaining'] = '';
         }
 
@@ -408,6 +411,7 @@ function por_default_lot_line(array $line, bool $showMeta = true): array
         'item_description'   => (string) ($line['item_description'] ?? ''),
         'quantity_ordered'   => $showMeta ? (string) ($line['quantity_ordered'] ?? '') : '',
         'quantity_scheduled' => $showMeta ? (string) ($line['quantity_scheduled'] ?? '') : '',
+        'quantity_prev_received' => $showMeta ? (string) ($line['quantity_prev_received'] ?? '') : '',
         'quantity_remaining' => $showMeta ? (string) ($line['quantity_remaining'] ?? '') : '',
         'lot_number'         => '',
         'quantity_expected'  => '',
@@ -454,6 +458,43 @@ function por_scheduled_quantities_for_po(int $poId, ?int $excludePorId = null): 
     $map = [];
     foreach ($stmt->fetchAll() as $row) {
         $map[(int) $row['POLineID']] = (float) $row['ScheduledQty'];
+    }
+
+    return $map;
+}
+
+/**
+ * Sum of QuantityReceived on other (non-cancelled) receipts per PO line. Keyed by POLineID.
+ */
+function por_received_quantities_for_po(int $poId, ?int $excludePorId = null): array
+{
+    $pdo = db();
+    $sql = <<<SQL
+        SELECT d.POLineID, SUM(d.QuantityReceived) AS ReceivedQty
+        FROM dbo.PORDetail d
+        INNER JOIN dbo.POReceipt r ON r.PORID = d.PORID
+        WHERE r.POID = :po
+          AND r.PORStatus <> N'Cancelled'
+          AND r.LedgerProfile = :ledger_profile
+    SQL;
+    $params = [
+        'po' => $poId,
+        'ledger_profile' => por_ledger_profile(),
+    ];
+
+    if ($excludePorId !== null) {
+        $sql .= ' AND r.PORID <> :exclude';
+        $params['exclude'] = $excludePorId;
+    }
+
+    $sql .= ' GROUP BY d.POLineID';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $map = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $map[(int) $row['POLineID']] = (float) $row['ReceivedQty'];
     }
 
     return $map;
@@ -774,7 +815,7 @@ function por_from_input(array $input): array
     ]);
 }
 
-function por_parse_lines(array $lines, int $poId): array
+function por_parse_lines(array $lines, int $poId, ?int $excludePorId = null): array
 {
     $parsed = [];
     $pdo = db();
@@ -828,9 +869,52 @@ function por_parse_lines(array $lines, int $poId): array
         return ['ok' => false, 'error' => 'Add at least one lot row with a QTY EXP before saving.'];
     }
 
+    $quantityError = por_validate_expected_quantities($parsed, $poId, $excludePorId);
+    if ($quantityError !== null) {
+        return ['ok' => false, 'error' => $quantityError];
+    }
+
     $parsed = por_enrich_lines_sku_barcode($parsed, true);
 
     return ['ok' => true, 'error' => null, 'lines' => $parsed];
+}
+
+/**
+ * Ensure total QTY EXP per PO line does not exceed schedulable remaining quantity.
+ */
+function por_validate_expected_quantities(array $parsed, int $poId, ?int $excludePorId = null): ?string
+{
+    $totals = [];
+    foreach ($parsed as $line) {
+        $poLineId = (int) $line['po_line_id'];
+        $totals[$poLineId] = ($totals[$poLineId] ?? 0.0) + (float) $line['quantity_expected'];
+    }
+
+    $poLines = [];
+    foreach (po_get_lines($poId) as $line) {
+        $poLines[(int) $line['POLineID']] = $line;
+    }
+
+    foreach ($totals as $poLineId => $totalExpected) {
+        $poLine = $poLines[$poLineId] ?? null;
+        if ($poLine === null) {
+            continue;
+        }
+
+        $ordered = (float) $poLine['Quantity'];
+        $remaining = por_remaining_for_po_line($poId, $poLineId, $ordered, $excludePorId);
+        if ($totalExpected > $remaining + 0.0001) {
+            $lineLabel = trim((string) ($poLine['ItemSKU'] ?? ''));
+            if ($lineLabel === '') {
+                $lineLabel = 'line ' . (int) $poLine['LineNumber'];
+            }
+
+            return 'QTY EXP for ' . $lineLabel . ' exceeds the remaining schedulable quantity ('
+                . por_format_qty($remaining) . ').';
+        }
+    }
+
+    return null;
 }
 
 function por_save(array $input, ?int $porId = null): array
@@ -868,7 +952,7 @@ function por_save(array $input, ?int $porId = null): array
         return ['ok' => false, 'error' => $facilityError];
     }
 
-    $lineResult = por_parse_lines($data['lines'], $poId);
+    $lineResult = por_parse_lines($data['lines'], $poId, $porId);
     if (!$lineResult['ok']) {
         return $lineResult;
     }

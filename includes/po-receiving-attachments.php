@@ -16,6 +16,31 @@ function por_attachment_kind_label(string $kind): string
     };
 }
 
+function por_attachment_upload_requested(?array $file): bool
+{
+    return is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+}
+
+function por_finish_save_and_redirect(int $porId, string $notice, ?array $file, string $kind): void
+{
+    $params = [
+        'id'     => $porId,
+        'notice' => $notice,
+    ];
+
+    if (por_attachment_upload_requested($file)) {
+        $attachResult = por_save_attachment($porId, $file, $kind);
+        if ($attachResult['ok']) {
+            $params['attachment'] = '1';
+        } else {
+            $params['warning'] = (string) ($attachResult['error'] ?? 'Unable to save attachment.');
+        }
+    }
+
+    header('Location: ' . por_page_path('/po-receiving/view.php') . '?' . http_build_query($params), true, 302);
+    exit;
+}
+
 function por_save_attachment(int $porId, array $file, string $kind = 'Other'): array
 {
     if (por_get($porId) === null) {

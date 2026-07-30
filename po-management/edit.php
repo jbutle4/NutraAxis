@@ -28,38 +28,9 @@ $error = null;
 $suppliers = po_list_suppliers();
 $dbLines = po_get_lines($poId);
 
-$form = array_merge(po_default_header(), [
-    'po_number'              => $order['PONumber'],
-    'supplier_id'            => (string) $order['SupplierID'],
-    'order_date'             => $order['OrderDate'],
-    'expected_delivery_date' => $order['ExpectedDeliveryDate'] ?? '',
-    'notes'                  => $order['Notes'] ?? '',
-    'po_status'              => $order['POStatus'],
-    'buyer_name'             => $order['BuyerName'] ?? '',
-    'buyer_address'          => $order['BuyerAddress'] ?? '',
-    'buyer_contact_name'     => $order['BuyerContactName'] ?? '',
-    'buyer_contact_email'    => $order['BuyerContactEmail'] ?? '',
-    'buyer_contact_phone'    => $order['BuyerContactPhone'] ?? '',
-    'supplier_address'       => $order['SupplierAddress'] ?? '',
-    'delivery_address'       => $order['DeliveryAddress'] ?? '',
-    'payment_terms'          => $order['PaymentTerms'] ?? '',
-    'delivery_terms'         => $order['DeliveryTerms'] ?? '',
-    'reference_documents'    => $order['ReferenceDocuments'] ?? '',
-    'shipping_handling'      => $order['ShippingHandling'] ?? '',
-    'special_instructions'   => $order['SpecialInstructions'] ?? '',
-]);
+$form = po_order_to_form_fields($order);
 
-$lines = array_map(
-    fn(array $line): array => [
-        'sku'             => $line['ItemSKU'] ?? '',
-        'quote_number'    => $line['QuoteNumber'] ?? '',
-        'description'     => $line['ItemDescription'],
-        'quantity'        => po_format_qty($line['Quantity'] ?? null),
-        'unit_price'      => $line['UnitPrice'],
-        'expiration_date' => po_format_date_input($line['ExpirationDate'] ?? null),
-    ],
-    $dbLines
-);
+$lines = po_lines_to_form($dbLines);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = array_merge($form, $_POST);
