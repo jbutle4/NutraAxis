@@ -106,6 +106,10 @@ body.page-catalog-list {
   border: 0;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
 .portal-search-input {
   width: 100%;
   font: inherit;
@@ -1216,13 +1220,15 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-top: 24px;
 }
 
-.form-group {
+.form-group,
+.form-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.form-group label {
+.form-group label,
+.form-field label {
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--teal-dark);
@@ -2270,7 +2276,8 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-bottom: 16px;
 }
 
-.form-grid-full {
+.form-grid-full,
+.form-field--full {
   grid-column: 1 / -1;
 }
 
