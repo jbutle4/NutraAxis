@@ -892,6 +892,142 @@ function por_jazz_received_by_sku(array $details): array
     return $receivedBySku;
 }
 
+function por_receipt_eligible_for_received_quantity_sync(array $receipt): bool
+{
+    $status = (string) ($receipt['PORStatus'] ?? '');
+
+    return in_array($status, ['Transmitted', 'Complete'], true);
+}
+
+/**
+ * Jazz ASN statuses that indicate receiving is finalized in the warehouse.
+ */
+function por_jazz_asn_is_closed(?string $status): bool
+{
+    $normalized = strtolower(trim((string) $status));
+    if ($normalized === '') {
+        return false;
+    }
+
+    return in_array($normalized, ['received', 'complete', 'completed', 'closed'], true);
+}
+
+/**
+ * Resolve received qty: Jazz ASN received when ASN is closed; otherwise QTY EXP while open.
+ */
+function por_resolve_line_received_from_asn(
+    array $line,
+    array $receivedBySku,
+    array $receipt,
+    ?string $jazzAsnStatus = null
+): ?float {
+    if (!por_receipt_eligible_for_received_quantity_sync($receipt)) {
+        return null;
+    }
+
+    $sku = trim((string) ($line['ItemSKU'] ?? ''));
+    if ($sku === '') {
+        return null;
+    }
+
+    $asnStatus = $jazzAsnStatus ?? (string) ($receipt['JazzASNStatus'] ?? '');
+
+    if (por_jazz_asn_is_closed($asnStatus)) {
+        if (!array_key_exists($sku, $receivedBySku)) {
+            return null;
+        }
+
+        return (float) $receivedBySku[$sku];
+    }
+
+    $expected = (float) ($line['QuantityExpected'] ?? 0);
+
+    return $expected > 0 ? $expected : null;
+}
+
+/**
+ * Write resolved received quantities onto POR detail lines.
+ */
+function por_apply_received_quantities_to_receipt(int $porId, array $receivedBySku = [], ?string $jazzAsnStatus = null): bool
+{
+    $receipt = por_get($porId);
+    if ($receipt === null || !por_receipt_eligible_for_received_quantity_sync($receipt)) {
+        return false;
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        UPDATE dbo.PORDetail
+        SET QuantityReceived = :received
+        WHERE PORDID = :id
+    SQL);
+    $updated = false;
+    $asnStatus = $jazzAsnStatus ?? (string) ($receipt['JazzASNStatus'] ?? '');
+
+    foreach (por_get_lines($porId) as $line) {
+        $resolved = por_resolve_line_received_from_asn($line, $receivedBySku, $receipt, $asnStatus);
+        if ($resolved === null) {
+            continue;
+        }
+
+        $stmt->execute([
+            'received' => $resolved,
+            'id'       => (int) $line['PORDID'],
+        ]);
+        $updated = true;
+    }
+
+    return $updated;
+}
+
+/**
+ * Refresh Jazz ASN data for every receipt on a purchase order.
+ *
+ * @return array{ok: bool, synced: int, warnings: list<string>, errors: list<string>}
+ */
+function por_sync_jazz_asn_for_po(int $poId, ?string $ledgerProfile = null): array
+{
+    $profile = $ledgerProfile !== null
+        ? po_normalize_ledger_profile($ledgerProfile)
+        : por_ledger_profile();
+    $previousProfile = data_profile();
+
+    procurement_bind_ledger_profile($profile);
+
+    $summary = [
+        'ok'       => true,
+        'synced'   => 0,
+        'warnings' => [],
+        'errors'   => [],
+    ];
+
+    try {
+        foreach (por_list_for_po($poId, $profile) as $receipt) {
+            $porId = (int) $receipt['PORID'];
+            $result = por_sync_jazz_asn_from_integration($porId);
+
+            if (!empty($result['updated'])) {
+                $summary['synced']++;
+            }
+
+            if (!$result['ok'] && !empty($result['error'])) {
+                $summary['errors'][] = 'Receipt #' . $porId . ': ' . $result['error'];
+            } elseif (!empty($result['warning'])) {
+                $summary['warnings'][] = 'Receipt #' . $porId . ': ' . $result['warning'];
+            }
+        }
+
+        if ($summary['errors'] !== []) {
+            $summary['ok'] = false;
+        }
+
+        return $summary;
+    } finally {
+        data_profile_set($previousProfile);
+        jazz_oms_use_environment($previousProfile === 'uat' ? 'uat' : 'production');
+    }
+}
+
 /**
  * Refresh Jazz ASN header fields and line received quantities from Jazz OMS.
  *
@@ -904,94 +1040,78 @@ function por_sync_jazz_asn_from_integration(int $porId): array
         return ['ok' => false, 'error' => 'Receipt not found.', 'updated' => false, 'warning' => null];
     }
 
-    $configError = jazz_oms_config_error();
-    if ($configError !== null) {
-        return ['ok' => false, 'error' => $configError, 'updated' => false, 'warning' => null];
-    }
+    $receivedBySku = [];
+    $warning = null;
+    $headerUpdated = false;
+    $jazzAsnStatus = null;
 
     $hasLookupKey = trim((string) ($receipt['JazzASN'] ?? '')) !== ''
         || trim((string) ($receipt['ShipmentNumber'] ?? '')) !== ''
         || ($receipt['PORStatus'] ?? '') === 'Transmitted';
 
-    if (!$hasLookupKey) {
-        return ['ok' => true, 'error' => null, 'updated' => false, 'warning' => null];
+    $configError = jazz_oms_config_error();
+    if ($configError !== null) {
+        $warning = $configError;
+    } elseif ($hasLookupKey) {
+        $asn = por_resolve_jazz_asn_for_receipt($receipt);
+        if ($asn === null) {
+            $warning = 'No matching Jazz ASN was found for this receipt.';
+        } else {
+            $jazzAsnId = por_asn_jazz_id_from_row($asn);
+            $jazzAsnStatus = trim((string) ($asn['status'] ?? ''));
+            $details = is_array($asn['detail'] ?? null)
+                ? $asn['detail']
+                : (is_array($asn['details'] ?? null) ? $asn['details'] : []);
+            $receivedBySku = por_jazz_received_by_sku($details);
+            $modifiedBy = por_actor_name();
+            $modifiedBy = $modifiedBy !== '' ? $modifiedBy : null;
+
+            try {
+                $pdo = db();
+                db_apply_sql_server_options($pdo);
+                $pdo->prepare(<<<SQL
+                    UPDATE dbo.POReceipt
+                    SET JazzASN = :jazz_asn,
+                        JazzASNStatus = :jazz_asn_status,
+                        JazzASNModifiedDate = SYSUTCDATETIME(),
+                        ModifiedBy = :modified_by,
+                        ModifiedDate = SYSUTCDATETIME()
+                    WHERE PORID = :id
+                      AND LedgerProfile = :ledger_profile
+                SQL)->execute([
+                    'jazz_asn'        => $jazzAsnId,
+                    'jazz_asn_status' => $jazzAsnStatus !== '' ? $jazzAsnStatus : null,
+                    'modified_by'     => $modifiedBy,
+                    'id'              => $porId,
+                    'ledger_profile'  => por_ledger_profile(),
+                ]);
+                $headerUpdated = true;
+            } catch (Throwable $e) {
+                return [
+                    'ok'      => false,
+                    'error'   => por_format_exception_message($e, 'sync Jazz ASN data'),
+                    'updated' => false,
+                    'warning' => null,
+                ];
+            }
+        }
     }
 
-    $asn = por_resolve_jazz_asn_for_receipt($receipt);
-    if ($asn === null) {
+    try {
+        $linesUpdated = por_apply_received_quantities_to_receipt($porId, $receivedBySku, $jazzAsnStatus);
+
         return [
             'ok'      => true,
             'error'   => null,
-            'updated' => false,
-            'warning' => 'No matching Jazz ASN was found for this receipt.',
+            'updated' => $headerUpdated || $linesUpdated,
+            'warning' => $warning,
         ];
-    }
-
-    $jazzAsnId = por_asn_jazz_id_from_row($asn);
-    $jazzStatus = trim((string) ($asn['status'] ?? ''));
-    $details = is_array($asn['detail'] ?? null)
-        ? $asn['detail']
-        : (is_array($asn['details'] ?? null) ? $asn['details'] : []);
-    $receivedBySku = por_jazz_received_by_sku($details);
-    $lines = por_get_lines($porId);
-    $modifiedBy = por_actor_name();
-    $modifiedBy = $modifiedBy !== '' ? $modifiedBy : null;
-
-    try {
-        $pdo = db();
-        db_apply_sql_server_options($pdo);
-        $pdo->beginTransaction();
-
-        $pdo->prepare(<<<SQL
-            UPDATE dbo.POReceipt
-            SET JazzASN = :jazz_asn,
-                JazzASNStatus = :jazz_asn_status,
-                JazzASNModifiedDate = SYSUTCDATETIME(),
-                ModifiedBy = :modified_by,
-                ModifiedDate = SYSUTCDATETIME()
-            WHERE PORID = :id
-              AND LedgerProfile = :ledger_profile
-        SQL)->execute([
-            'jazz_asn'        => $jazzAsnId,
-            'jazz_asn_status' => $jazzStatus !== '' ? $jazzStatus : null,
-            'modified_by'     => $modifiedBy,
-            'id'              => $porId,
-            'ledger_profile'  => por_ledger_profile(),
-        ]);
-
-        if ($receivedBySku !== []) {
-            $updateLine = $pdo->prepare(<<<SQL
-                UPDATE dbo.PORDetail
-                SET QuantityReceived = :received
-                WHERE PORDID = :id
-            SQL);
-
-            foreach ($lines as $line) {
-                $sku = trim((string) ($line['ItemSKU'] ?? ''));
-                if ($sku === '' || !array_key_exists($sku, $receivedBySku)) {
-                    continue;
-                }
-
-                $updateLine->execute([
-                    'received' => $receivedBySku[$sku],
-                    'id'       => (int) $line['PORDID'],
-                ]);
-            }
-        }
-
-        $pdo->commit();
-
-        return ['ok' => true, 'error' => null, 'updated' => true, 'warning' => null];
     } catch (Throwable $e) {
-        if (isset($pdo) && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-
         return [
             'ok'      => false,
-            'error'   => por_format_exception_message($e, 'sync Jazz ASN data'),
+            'error'   => por_format_exception_message($e, 'sync received quantities'),
             'updated' => false,
-            'warning' => null,
+            'warning' => $warning,
         ];
     }
 }

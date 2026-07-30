@@ -7,6 +7,7 @@ require dirname(__DIR__) . '/includes/po-approval.php';
 require dirname(__DIR__) . '/includes/po-production.php';
 require dirname(__DIR__) . '/includes/po-payment.php';
 require dirname(__DIR__) . '/includes/po-receiving.php';
+require dirname(__DIR__) . '/includes/po-receiving-asn.php';
 
 po_require_read();
 
@@ -22,6 +23,9 @@ if ($order === null) {
     require dirname(__DIR__) . '/includes/footer.php';
     exit;
 }
+
+$poLedgerProfile = po_order_ledger_profile($order);
+por_sync_jazz_asn_for_po($poId, $poLedgerProfile);
 
 $activeSlug = 'po-management';
 $activePoSection = 'list';
@@ -42,7 +46,6 @@ $canApprove = po_can_read_approval_queue();
 $canSubmitForApproval = po_can_submit_for_approval($order);
 $needsReapproval = po_requires_reapproval($order);
 $poPayments = po_payment_list_for_po($poId);
-$poLedgerProfile = po_order_ledger_profile($order);
 $poReceipts = por_list_for_po($poId, $poLedgerProfile);
 $poPaymentTotal = po_payment_total_for_po($poId);
 $paymentNotice = $_GET['payment_notice'] ?? null;
