@@ -129,9 +129,11 @@ function inventory_transfers_ship(int $transferId, ?int $userId = null): array
     $qty = (float) ($transfer['QtyRequested'] ?? 0);
     $from = (string) $transfer['FromFacilityCode'];
     $to = (string) $transfer['ToFacilityCode'];
+    $toFacility = facility_get_by_code($to);
     $useTransit = facility_get_by_code('TRANSIT') !== null
         && strcasecmp($from, 'CART') === 0
-        && strcasecmp($to, 'TRANSIT') !== 0;
+        && strcasecmp($to, 'TRANSIT') !== 0
+        && !facility_is_cmo_storage($toFacility);
 
     $outFacility = $from;
     $inFacility = $useTransit ? 'TRANSIT' : $to;

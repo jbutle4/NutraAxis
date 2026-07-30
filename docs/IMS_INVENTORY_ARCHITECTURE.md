@@ -26,6 +26,7 @@ CPPC / WLO → local IMS (sales, adjustments) — no Jazz sync
 | **WPC_QUEUE** | WPC awaiting processing | No | Local | Transfer stage (SQL); QBO G/L via JE when configured |
 | **WPC_WIP** | WPC work in progress | No | Local | Transfer stage (SQL); QBO G/L via JE when configured |
 | **TRANSIT** | In-flight bucket | No | Local | Cleared when spoke receives |
+| **CMO** | Off-site CMO rework storage (company-owned) | No | Local | CART ↔ CMO transfers; rework return via PO Receiving at CART |
 
 See also [QBO Inventory Cycle Runbook](./QBO_INVENTORY_CYCLE_RUNBOOK.md) for sandbox cutover steps.
 
@@ -64,8 +65,9 @@ Implementation: `facility_validate_po_receipt_destination()` in `includes/facili
 - **In-transit completion:** `TRANSIT → CPPC/WLO` is allowed; `TRANSIT → CART` is not.
 - **No spoke-to-spoke supply:** CPPC and WLO cannot replenish each other.
 - **No PO destinations as transfer targets from spokes:** inventory cannot be pushed into CART from a spoke via transfer.
+- **CMO rework:** `CART → CMO` moves company-owned stock to off-site rework storage (select CMO supplier). `CMO → CART` clears CMO when reworked stock returns. Inbound Jazz receipt still uses **PO Receiving at CART** on a zero-dollar rework return PO.
 
-Implementation: `facility_validate_transfer()` in `includes/facility.php`; used by `facility_insert_transfer()` for programmatic/API use ahead of a transfer UI.
+Implementation: `facility_validate_transfer()` in `includes/facility.php`; rework helpers in `includes/po-rework.php`; used by `facility_insert_transfer()` for programmatic/API use ahead of a transfer UI.
 
 ---
 

@@ -30,6 +30,9 @@ $renderSkuSelect = static function (int $index, string $selected) use ($skuOptio
 };
 ?>
 <form class="admin-form po-form" method="post" enctype="multipart/form-data"<?= !empty($formAction) ? ' action="' . htmlspecialchars($formAction) . '"' : '' ?>>
+  <?php if (!empty($sourceTransferId)): ?>
+  <input type="hidden" name="source_transfer_id" value="<?= (int) $sourceTransferId ?>" />
+  <?php endif; ?>
   <h2 class="admin-form-subhead">Purchase order</h2>
   <div class="form-grid">
     <?php if (!$isEdit): ?>

@@ -4,6 +4,7 @@ require_once __DIR__ . '/database.php';
 
 const FACILITY_INTEGRATION_LOCAL = 'Local';
 const FACILITY_INTEGRATION_JAZZ = 'Jazz';
+const FACILITY_CMO_STORAGE_CODE = 'CMO';
 
 function facility_get_by_code(string $facilityCode): ?array
 {
@@ -74,6 +75,24 @@ function facility_default_po_receipt_code(): string
     $destinations = facility_list_po_receipt_destinations();
 
     return $destinations !== [] ? (string) $destinations[0]['FacilityCode'] : 'CART';
+}
+
+function facility_is_cmo_storage(?array $facility): bool
+{
+    if ($facility === null) {
+        return false;
+    }
+
+    if (strcasecmp((string) ($facility['FacilityCode'] ?? ''), FACILITY_CMO_STORAGE_CODE) === 0) {
+        return true;
+    }
+
+    return strcasecmp((string) ($facility['FacilityType'] ?? ''), 'CMO') === 0;
+}
+
+function facility_cmo_storage_code(): string
+{
+    return FACILITY_CMO_STORAGE_CODE;
 }
 
 function facility_jazz_facility_code(string $facilityCode): string
@@ -159,6 +178,24 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
     $fromIsMothership = !empty($from['IsMothership']);
     $toIsMothership = !empty($to['IsMothership']);
     $toReceivesPo = !empty($to['ReceivesPurchaseOrders']);
+    $fromIsCmo = facility_is_cmo_storage($from);
+    $toIsCmo = facility_is_cmo_storage($to);
+
+    if ($fromIsMothership && $toIsCmo) {
+        return null;
+    }
+
+    if ($fromIsCmo && $toIsMothership) {
+        return null;
+    }
+
+    if ($toIsCmo && !$fromIsMothership) {
+        return 'Material must be sent to CMO storage from the Cart.com mothership.';
+    }
+
+    if ($fromIsCmo && !$toIsMothership && !$toIsTransit) {
+        return 'CMO storage can only transfer back to the Cart.com mothership.';
+    }
 
     if ($toReceivesPo && !$fromIsMothership) {
         return 'Inventory cannot be transferred into the mothership from a spoke facility through this workflow.';
@@ -195,6 +232,25 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
     return 'This facility transfer path is not allowed. Spoke replenishment must originate at Cart.com.';
 }
 
+function facility_transfer_has_supplier_column(): bool
+{
+    static $has = null;
+    if ($has !== null) {
+        return $has;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->query("SELECT COL_LENGTH('dbo.InvTransfer', 'SupplierID') AS col_len");
+        $row = $stmt->fetch();
+        $has = $row !== false && $row['col_len'] !== null;
+    } catch (Throwable) {
+        $has = false;
+    }
+
+    return $has;
+}
+
 function facility_insert_transfer(array $input): array
 {
     require_once __DIR__ . '/auth.php';
@@ -207,6 +263,7 @@ function facility_insert_transfer(array $input): array
     $fromBucket = trim((string) ($input['from_status_bucket'] ?? 'OK'));
     $toBucket = trim((string) ($input['to_status_bucket'] ?? 'OK'));
     $reasonCodeId = isset($input['reason_code_id']) ? (int) $input['reason_code_id'] : null;
+    $supplierId = isset($input['supplier_id']) ? (int) $input['supplier_id'] : null;
     $notes = trim((string) ($input['notes'] ?? ''));
 
     $validationError = facility_validate_transfer($fromCode, $toCode);
@@ -220,6 +277,11 @@ function facility_insert_transfer(array $input): array
 
     if ($qty <= 0) {
         return ['ok' => false, 'error' => 'Transfer quantity must be greater than zero.', 'transfer_id' => null];
+    }
+
+    $toIsCmo = facility_is_cmo_storage(facility_get_by_code($toCode));
+    if ($toIsCmo && $supplierId <= 0) {
+        return ['ok' => false, 'error' => 'Select the CMO partner when sending inventory to CMO storage.', 'transfer_id' => null];
     }
 
     $allowedBuckets = ['OK', 'Quarantine', 'OnHold', 'Destroy'];
@@ -236,47 +298,100 @@ function facility_insert_transfer(array $input): array
         $pdo = db();
         db_apply_sql_server_options($pdo);
 
-        $stmt = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.InvTransfer (
-                SKUCode,
-                FromFacilityCode,
-                ToFacilityCode,
-                FromStatusBucket,
-                ToStatusBucket,
-                QtyRequested,
-                ReasonCodeID,
-                TransferStatus,
-                Notes,
-                RequestedByUser,
-                LedgerProfile
-            )
-            OUTPUT INSERTED.TransferID AS inserted_id
-            VALUES (
-                :sku,
-                :from_facility,
-                :to_facility,
-                :from_bucket,
-                :to_bucket,
-                :qty,
-                :reason_code_id,
-                N'Pending',
-                :notes,
-                :requested_by,
-                :ledger_profile
-            )
-        SQL);
-        $stmt->execute([
-            'sku'             => $skuCode,
-            'from_facility'   => $fromCode,
-            'to_facility'     => $toCode,
-            'from_bucket'     => $fromBucket,
-            'to_bucket'       => $toBucket,
-            'qty'             => $qty,
-            'reason_code_id'  => $reasonCodeId > 0 ? $reasonCodeId : null,
-            'notes'           => $notes !== '' ? $notes : null,
-            'requested_by'    => $userId,
-            'ledger_profile'  => inventory_ledger_profile(),
-        ]);
+        $supplierSql = facility_transfer_has_supplier_column()
+            ? ", SupplierID\n                VALUES (\n                :sku,\n                :from_facility,\n                :to_facility,\n                :from_bucket,\n                :to_bucket,\n                :qty,\n                :reason_code_id,\n                N'Pending',\n                :notes,\n                :requested_by,\n                :ledger_profile,\n                :supplier_id\n            )"
+            : null;
+
+        if ($supplierSql !== null) {
+            $stmt = $pdo->prepare(<<<SQL
+                INSERT INTO dbo.InvTransfer (
+                    SKUCode,
+                    FromFacilityCode,
+                    ToFacilityCode,
+                    FromStatusBucket,
+                    ToStatusBucket,
+                    QtyRequested,
+                    ReasonCodeID,
+                    TransferStatus,
+                    Notes,
+                    RequestedByUser,
+                    LedgerProfile,
+                    SupplierID
+                )
+                OUTPUT INSERTED.TransferID AS inserted_id
+                VALUES (
+                    :sku,
+                    :from_facility,
+                    :to_facility,
+                    :from_bucket,
+                    :to_bucket,
+                    :qty,
+                    :reason_code_id,
+                    N'Pending',
+                    :notes,
+                    :requested_by,
+                    :ledger_profile,
+                    :supplier_id
+                )
+            SQL);
+            $params = [
+                'sku'             => $skuCode,
+                'from_facility'   => $fromCode,
+                'to_facility'     => $toCode,
+                'from_bucket'     => $fromBucket,
+                'to_bucket'       => $toBucket,
+                'qty'             => $qty,
+                'reason_code_id'  => $reasonCodeId > 0 ? $reasonCodeId : null,
+                'notes'           => $notes !== '' ? $notes : null,
+                'requested_by'    => $userId,
+                'ledger_profile'  => inventory_ledger_profile(),
+                'supplier_id'     => $supplierId > 0 ? $supplierId : null,
+            ];
+        } else {
+            $stmt = $pdo->prepare(<<<SQL
+                INSERT INTO dbo.InvTransfer (
+                    SKUCode,
+                    FromFacilityCode,
+                    ToFacilityCode,
+                    FromStatusBucket,
+                    ToStatusBucket,
+                    QtyRequested,
+                    ReasonCodeID,
+                    TransferStatus,
+                    Notes,
+                    RequestedByUser,
+                    LedgerProfile
+                )
+                OUTPUT INSERTED.TransferID AS inserted_id
+                VALUES (
+                    :sku,
+                    :from_facility,
+                    :to_facility,
+                    :from_bucket,
+                    :to_bucket,
+                    :qty,
+                    :reason_code_id,
+                    N'Pending',
+                    :notes,
+                    :requested_by,
+                    :ledger_profile
+                )
+            SQL);
+            $params = [
+                'sku'             => $skuCode,
+                'from_facility'   => $fromCode,
+                'to_facility'     => $toCode,
+                'from_bucket'     => $fromBucket,
+                'to_bucket'       => $toBucket,
+                'qty'             => $qty,
+                'reason_code_id'  => $reasonCodeId > 0 ? $reasonCodeId : null,
+                'notes'           => $notes !== '' ? $notes : null,
+                'requested_by'    => $userId,
+                'ledger_profile'  => inventory_ledger_profile(),
+            ];
+        }
+
+        $stmt->execute($params);
 
         return [
             'ok'          => true,

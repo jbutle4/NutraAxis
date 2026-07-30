@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
+require dirname(__DIR__) . '/includes/po-rework.php';
 require dirname(__DIR__) . '/includes/catalog.php';
 
 inventory_transfers_require_update();
@@ -9,6 +10,8 @@ inventory_transfers_require_update();
 $activeSlug = $activeSlug ?? 'inventory-transfers';
 $facilities = inventory_transfers_list_facilities();
 $reasons = inventory_transfers_reason_codes();
+$cmoSuppliers = po_rework_list_cmo_suppliers();
+$cmoReasonId = po_rework_reason_code_id();
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'from_status_bucket' => $_POST['from_status_bucket'] ?? 'OK',
         'to_status_bucket'   => $_POST['to_status_bucket'] ?? 'OK',
         'reason_code_id'     => $_POST['reason_code_id'] ?? null,
+        'supplier_id'        => $_POST['supplier_id'] ?? null,
         'notes'              => $_POST['notes'] ?? '',
     ]);
     if ($result['ok']) {
@@ -40,7 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => 'Back to Transfers',
           'category'   => 'Inventory',
           'title'      => 'New Facility Transfer',
-          'lead'       => 'Spoke replenishment must originate at Cart.com.',
+          'lead'       => 'Spoke replenishment from Cart.com, or send company-owned stock to CMO storage for rework.',
       ]); ?>
 
       <?php if ($error !== null): ?>
@@ -78,12 +82,23 @@ require dirname(__DIR__) . '/includes/header.php';
             <label for="qty_requested">Quantity</label>
             <input class="form-input" id="qty_requested" name="qty_requested" type="number" min="0.0001" step="0.0001" required value="<?= htmlspecialchars((string) ($_POST['qty_requested'] ?? '')) ?>" />
           </div>
+          <div class="form-field" id="cmo-supplier-field" hidden>
+            <label for="supplier_id">CMO partner</label>
+            <select class="form-input" id="supplier_id" name="supplier_id">
+              <option value="">Select CMO supplier</option>
+              <?php foreach ($cmoSuppliers as $supplier): ?>
+              <option value="<?= (int) $supplier['SupplierID'] ?>"<?= (int) ($_POST['supplier_id'] ?? 0) === (int) $supplier['SupplierID'] ? ' selected' : '' ?>>
+                <?= htmlspecialchars((string) $supplier['SupplierName']) ?>
+              </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
           <div class="form-field">
             <label for="reason_code_id">Reason</label>
             <select class="form-input" id="reason_code_id" name="reason_code_id">
               <option value="">—</option>
               <?php foreach ($reasons as $reason): ?>
-              <option value="<?= (int) $reason['ReasonCodeID'] ?>"><?= htmlspecialchars((string) $reason['ReasonCode']) ?> — <?= htmlspecialchars((string) $reason['Description']) ?></option>
+              <option value="<?= (int) $reason['ReasonCodeID'] ?>"<?= $cmoReasonId !== null && (int) $reason['ReasonCodeID'] === $cmoReasonId ? ' data-cmo-reason="1"' : '' ?>><?= htmlspecialchars((string) $reason['ReasonCode']) ?> — <?= htmlspecialchars((string) $reason['Description']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -103,4 +118,31 @@ require dirname(__DIR__) . '/includes/header.php';
       </form>
     </div>
   </main>
+  <script>
+  (function () {
+    var toFacility = document.getElementById('to_facility_code');
+    var cmoField = document.getElementById('cmo-supplier-field');
+    var supplier = document.getElementById('supplier_id');
+    var reason = document.getElementById('reason_code_id');
+    var cmoReasonId = <?= $cmoReasonId !== null ? (int) $cmoReasonId : 'null' ?>;
+
+    function syncCmoFields() {
+      var isCmo = toFacility && toFacility.value === 'CMO';
+      if (cmoField) {
+        cmoField.hidden = !isCmo;
+      }
+      if (supplier) {
+        supplier.required = isCmo;
+      }
+      if (isCmo && reason && cmoReasonId) {
+        reason.value = String(cmoReasonId);
+      }
+    }
+
+    if (toFacility) {
+      toFacility.addEventListener('change', syncCmoFields);
+      syncCmoFields();
+    }
+  })();
+  </script>
 <?php require dirname(__DIR__) . '/includes/footer.php'; ?>

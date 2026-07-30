@@ -2,6 +2,9 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
+require dirname(__DIR__) . '/includes/po.php';
+require dirname(__DIR__) . '/includes/po-rework.php';
+require dirname(__DIR__) . '/includes/supplier.php';
 
 inventory_transfers_require_read();
 inventory_ims_bind_page_environments();
@@ -65,6 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
 
 $transfer = inventory_transfers_get($transferId);
 $syncStatus = qbo_inventory_sync_log_status($docNumber);
+$cmoSupplier = !empty($transfer['SupplierID']) ? supplier_get((int) $transfer['SupplierID']) : null;
+$isCmoOutbound = facility_is_cmo_storage(facility_get_by_code((string) ($transfer['ToFacilityCode'] ?? '')));
+$reworkReturnPoId = (int) ($transfer['ReworkReturnPOID'] ?? 0);
 $pageTitle = 'Transfer #' . $transferId . ' | Inventory Management';
 
 require dirname(__DIR__) . '/includes/head.php';
@@ -94,6 +100,18 @@ require dirname(__DIR__) . '/includes/header.php';
         <input type="hidden" name="action" value="receive" />
         <button type="submit" class="btn-primary">Receive transfer</button>
       </form>
+      <?php endif;
+      if (
+          inventory_transfers_can_update()
+          && $isCmoOutbound
+          && ($transfer['TransferStatus'] ?? '') === 'Received'
+          && $reworkReturnPoId <= 0
+          && po_can_create()
+      ): ?>
+      <a class="btn-secondary" href="/po-management/new.php?rework_from_transfer=<?= $transferId ?>">Create rework return PO</a>
+      <?php endif;
+      if ($reworkReturnPoId > 0): ?>
+      <a class="btn-secondary" href="/po-management/view.php?id=<?= $reworkReturnPoId ?>">View rework return PO</a>
       <?php endif;
       if (
           inventory_transfers_can_update()
@@ -128,6 +146,9 @@ require dirname(__DIR__) . '/includes/header.php';
         <div><dt>Shipped</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyShipped'] ?? null)) ?></dd></div>
         <div><dt>Received</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyReceived'] ?? null)) ?></dd></div>
         <div><dt>QBO Doc</dt><dd><?= htmlspecialchars($docNumber) ?><?= $syncStatus !== null ? ' · ' . htmlspecialchars($syncStatus) : '' ?></dd></div>
+        <?php if ($cmoSupplier !== null): ?>
+        <div><dt>CMO partner</dt><dd><?= htmlspecialchars((string) $cmoSupplier['SupplierName']) ?></dd></div>
+        <?php endif; ?>
         <div><dt>Notes</dt><dd><?= htmlspecialchars((string) ($transfer['Notes'] ?? '—')) ?></dd></div>
       </dl>
     </div>
