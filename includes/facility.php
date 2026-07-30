@@ -150,10 +150,6 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
         return 'Select both a source and destination facility for the transfer.';
     }
 
-    if (strcasecmp($fromFacilityCode, $toFacilityCode) === 0) {
-        return 'Source and destination facility must be different.';
-    }
-
     $from = facility_get_by_code($fromFacilityCode);
     $to = facility_get_by_code($toFacilityCode);
 
@@ -163,6 +159,13 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
 
     if ($to === null) {
         return 'Unknown destination facility: ' . $toFacilityCode . '.';
+    }
+
+    $fromFacilityCode = (string) $from['FacilityCode'];
+    $toFacilityCode = (string) $to['FacilityCode'];
+
+    if (strcasecmp($fromFacilityCode, $toFacilityCode) === 0) {
+        return 'Source and destination facility must be different.';
     }
 
     if (empty($from['IsActive'])) {
@@ -232,6 +235,26 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
     return 'This facility transfer path is not allowed. Spoke replenishment must originate at Cart.com.';
 }
 
+/**
+ * CMO storage moves always involve the Cart.com mothership on one end.
+ */
+function facility_normalize_transfer_facilities(string &$fromCode, string &$toCode): void
+{
+    $from = facility_get_by_code($fromCode);
+    $to = facility_get_by_code($toCode);
+    $mothership = facility_default_po_receipt_code();
+
+    if ($to !== null && facility_is_cmo_storage($to)) {
+        $fromCode = $mothership;
+
+        return;
+    }
+
+    if ($from !== null && facility_is_cmo_storage($from)) {
+        $toCode = $mothership;
+    }
+}
+
 function facility_transfer_has_supplier_column(): bool
 {
     static $has = null;
@@ -265,6 +288,8 @@ function facility_insert_transfer(array $input): array
     $reasonCodeId = isset($input['reason_code_id']) ? (int) $input['reason_code_id'] : null;
     $supplierId = isset($input['supplier_id']) ? (int) $input['supplier_id'] : null;
     $notes = trim((string) ($input['notes'] ?? ''));
+
+    facility_normalize_transfer_facilities($fromCode, $toCode);
 
     $validationError = facility_validate_transfer($fromCode, $toCode);
     if ($validationError !== null) {

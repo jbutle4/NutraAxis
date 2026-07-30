@@ -8,7 +8,13 @@ inventory_transfers_require_update();
 inventory_ims_bind_page_environments();
 
 $activeSlug = $activeSlug ?? 'inventory-transfers';
-$facilities = inventory_transfers_list_facilities();
+$sourceFacilities = inventory_transfers_list_source_facilities();
+$selectedFrom = (string) ($_POST['from_facility_code'] ?? 'CART');
+$selectedTo = (string) ($_POST['to_facility_code'] ?? '');
+$destinationFacilities = inventory_transfers_list_destination_facilities($selectedFrom);
+if ($selectedTo === '' && $destinationFacilities !== []) {
+    $selectedTo = (string) $destinationFacilities[0]['FacilityCode'];
+}
 $reasons = inventory_transfers_reason_codes();
 $cmoSuppliers = po_rework_list_cmo_suppliers();
 $cmoReasonId = po_rework_reason_code_id();
@@ -55,13 +61,13 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
-      <form method="post" class="admin-form" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/new.php')) ?>">
+      <form method="post" class="admin-form" id="transfer-form" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/new.php')) ?>">
         <div class="form-grid">
           <div class="form-group">
             <label for="from_facility_code">From facility</label>
             <select class="form-input" id="from_facility_code" name="from_facility_code" required>
-              <?php foreach ($facilities as $facility): ?>
-              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>"<?= (string) ($facility['FacilityCode'] ?? '') === 'CART' ? ' selected' : '' ?>>
+              <?php foreach ($sourceFacilities as $facility): ?>
+              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>"<?= strcasecmp((string) ($facility['FacilityCode'] ?? ''), $selectedFrom) === 0 ? ' selected' : '' ?>>
                 <?= htmlspecialchars((string) $facility['FacilityCode']) ?> — <?= htmlspecialchars((string) $facility['FacilityName']) ?>
               </option>
               <?php endforeach; ?>
@@ -70,9 +76,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <div class="form-group">
             <label for="to_facility_code">To facility</label>
             <select class="form-input" id="to_facility_code" name="to_facility_code" required>
-              <?php foreach ($facilities as $facility): ?>
-              <?php if ((string) ($facility['FacilityCode'] ?? '') === 'CART') { continue; } ?>
-              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>"<?= (string) ($_POST['to_facility_code'] ?? '') === (string) ($facility['FacilityCode'] ?? '') ? ' selected' : '' ?>>
+              <?php foreach ($destinationFacilities as $facility): ?>
+              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>"<?= strcasecmp((string) ($facility['FacilityCode'] ?? ''), $selectedTo) === 0 ? ' selected' : '' ?>>
                 <?= htmlspecialchars((string) $facility['FacilityCode']) ?> — <?= htmlspecialchars((string) $facility['FacilityName']) ?>
               </option>
               <?php endforeach; ?>
@@ -124,11 +129,37 @@ require dirname(__DIR__) . '/includes/header.php';
   </main>
   <script>
   (function () {
+    var form = document.getElementById('transfer-form');
+    var fromFacility = document.getElementById('from_facility_code');
     var toFacility = document.getElementById('to_facility_code');
     var cmoField = document.getElementById('cmo-supplier-field');
     var supplier = document.getElementById('supplier_id');
     var reason = document.getElementById('reason_code_id');
     var cmoReasonId = <?= $cmoReasonId !== null ? (int) $cmoReasonId : 'null' ?>;
+    var mothershipCode = <?= json_encode(facility_default_po_receipt_code(), JSON_THROW_ON_ERROR) ?>;
+
+    function syncFacilityPair() {
+      if (!fromFacility || !toFacility) {
+        return;
+      }
+
+      if (toFacility.value === 'CMO') {
+        fromFacility.value = mothershipCode;
+      } else if (fromFacility.value === 'CMO') {
+        toFacility.value = mothershipCode;
+      }
+
+      if (fromFacility.value === toFacility.value) {
+        for (var i = 0; i < toFacility.options.length; i++) {
+          if (toFacility.options[i].value !== fromFacility.value) {
+            toFacility.value = toFacility.options[i].value;
+            break;
+          }
+        }
+      }
+
+      syncCmoFields();
+    }
 
     function syncCmoFields() {
       var isCmo = toFacility && toFacility.value === 'CMO';
@@ -146,10 +177,17 @@ require dirname(__DIR__) . '/includes/header.php';
       }
     }
 
-    if (toFacility) {
-      toFacility.addEventListener('change', syncCmoFields);
-      syncCmoFields();
+    if (fromFacility) {
+      fromFacility.addEventListener('change', syncFacilityPair);
     }
+    if (toFacility) {
+      toFacility.addEventListener('change', syncFacilityPair);
+    }
+    if (form) {
+      form.addEventListener('submit', syncFacilityPair);
+    }
+
+    syncFacilityPair();
   })();
   </script>
 <?php require dirname(__DIR__) . '/includes/footer.php'; ?>

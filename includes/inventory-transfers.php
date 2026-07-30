@@ -103,6 +103,70 @@ function inventory_transfers_list_facilities(): array
     return $stmt->fetchAll();
 }
 
+/**
+ * @return list<array<string, mixed>>
+ */
+function inventory_transfers_list_source_facilities(): array
+{
+    return array_values(array_filter(
+        inventory_transfers_list_facilities(),
+        static function (array $facility): bool {
+            if (!empty($facility['IsMothership'])) {
+                return true;
+            }
+
+            if (facility_is_cmo_storage($facility)) {
+                return true;
+            }
+
+            return strcasecmp((string) ($facility['FacilityType'] ?? ''), 'Transit') === 0;
+        }
+    ));
+}
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function inventory_transfers_list_destination_facilities(string $fromCode): array
+{
+    $from = facility_get_by_code($fromCode);
+    if ($from === null) {
+        return [];
+    }
+
+    $fromCode = (string) $from['FacilityCode'];
+    $fromIsMothership = !empty($from['IsMothership']);
+    $fromIsCmo = facility_is_cmo_storage($from);
+    $fromIsTransit = strcasecmp((string) ($from['FacilityType'] ?? ''), 'Transit') === 0;
+
+    return array_values(array_filter(
+        inventory_transfers_list_facilities(),
+        static function (array $facility) use ($fromCode, $fromIsMothership, $fromIsCmo, $fromIsTransit): bool {
+            $code = (string) $facility['FacilityCode'];
+            if (strcasecmp($code, $fromCode) === 0) {
+                return false;
+            }
+
+            if ($fromIsCmo) {
+                return !empty($facility['IsMothership']);
+            }
+
+            if ($fromIsMothership) {
+                return true;
+            }
+
+            if ($fromIsTransit) {
+                $toIsMothership = !empty($facility['IsMothership']);
+                $toIsTransit = strcasecmp((string) ($facility['FacilityType'] ?? ''), 'Transit') === 0;
+
+                return !$toIsMothership && !$toIsTransit;
+            }
+
+            return false;
+        }
+    ));
+}
+
 function inventory_transfers_reason_codes(): array
 {
     $pdo = db();
