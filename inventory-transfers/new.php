@@ -136,7 +136,7 @@ require dirname(__DIR__) . '/includes/header.php';
     var supplier = document.getElementById('supplier_id');
     var reason = document.getElementById('reason_code_id');
     var cmoReasonId = <?= $cmoReasonId !== null ? (int) $cmoReasonId : 'null' ?>;
-    var mothershipCode = <?= json_encode(facility_default_po_receipt_code(), JSON_THROW_ON_ERROR) ?>;
+    var mothershipCode = <?= json_encode(facility_default_po_receipt_code()) ?>;
 
     function syncFacilityPair() {
       if (!fromFacility || !toFacility) {

@@ -4,7 +4,6 @@ require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
 require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-rework.php';
-require dirname(__DIR__) . '/includes/supplier.php';
 
 inventory_transfers_require_read();
 inventory_ims_bind_page_environments();

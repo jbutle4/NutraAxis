@@ -32,13 +32,16 @@ function facility_get_by_code(string $facilityCode): ?array
             IntegrationMode,
             ExternalReferenceCode
         FROM dbo.Facility
-        WHERE UPPER(FacilityCode) = UPPER(:code)
+        WHERE UPPER(FacilityCode) = UPPER(:facility_code)
            OR (
                 ExternalReferenceCode IS NOT NULL
-                AND UPPER(ExternalReferenceCode) = UPPER(:code)
+                AND UPPER(ExternalReferenceCode) = UPPER(:external_code)
            )
     SQL);
-    $stmt->execute(['code' => $facilityCode]);
+    $stmt->execute([
+        'facility_code' => $facilityCode,
+        'external_code' => $facilityCode,
+    ]);
     $row = $stmt->fetch();
 
     $cache[$cacheKey] = $row === false ? null : $row;
