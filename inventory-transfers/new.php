@@ -3,9 +3,9 @@ require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
 require dirname(__DIR__) . '/includes/po-rework.php';
-require dirname(__DIR__) . '/includes/catalog.php';
 
 inventory_transfers_require_update();
+inventory_ims_bind_page_environments();
 
 $activeSlug = $activeSlug ?? 'inventory-transfers';
 $facilities = inventory_transfers_list_facilities();
@@ -15,22 +15,26 @@ $cmoReasonId = po_rework_reason_code_id();
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = facility_insert_transfer([
-        'from_facility_code' => $_POST['from_facility_code'] ?? '',
-        'to_facility_code'   => $_POST['to_facility_code'] ?? '',
-        'sku_code'           => $_POST['sku_code'] ?? '',
-        'qty_requested'      => $_POST['qty_requested'] ?? 0,
-        'from_status_bucket' => $_POST['from_status_bucket'] ?? 'OK',
-        'to_status_bucket'   => $_POST['to_status_bucket'] ?? 'OK',
-        'reason_code_id'     => $_POST['reason_code_id'] ?? null,
-        'supplier_id'        => $_POST['supplier_id'] ?? null,
-        'notes'              => $_POST['notes'] ?? '',
-    ]);
-    if ($result['ok']) {
-        header('Location: ' . inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $result['transfer_id'] . '&notice=created'), true, 302);
-        exit;
+    try {
+        $result = facility_insert_transfer([
+            'from_facility_code' => $_POST['from_facility_code'] ?? '',
+            'to_facility_code'   => $_POST['to_facility_code'] ?? '',
+            'sku_code'           => $_POST['sku_code'] ?? '',
+            'qty_requested'      => $_POST['qty_requested'] ?? 0,
+            'from_status_bucket' => $_POST['from_status_bucket'] ?? 'OK',
+            'to_status_bucket'   => $_POST['to_status_bucket'] ?? 'OK',
+            'reason_code_id'     => $_POST['reason_code_id'] ?? null,
+            'supplier_id'        => $_POST['supplier_id'] ?? null,
+            'notes'              => $_POST['notes'] ?? '',
+        ]);
+        if ($result['ok']) {
+            header('Location: ' . inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $result['transfer_id'] . '&notice=created'), true, 302);
+            exit;
+        }
+        $error = $result['error'] ?? 'Unable to create transfer.';
+    } catch (Throwable) {
+        $error = 'Unable to create transfer. Please try again or contact support.';
     }
-    $error = $result['error'] ?? 'Unable to create transfer.';
 }
 
 $pageTitle = 'New Facility Transfer | Inventory Management';
@@ -53,7 +57,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <form method="post" class="admin-form" action="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/new.php')) ?>">
         <div class="form-grid">
-          <div class="form-field">
+          <div class="form-group">
             <label for="from_facility_code">From facility</label>
             <select class="form-input" id="from_facility_code" name="from_facility_code" required>
               <?php foreach ($facilities as $facility): ?>
@@ -63,26 +67,18 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-field">
+          <div class="form-group">
             <label for="to_facility_code">To facility</label>
             <select class="form-input" id="to_facility_code" name="to_facility_code" required>
               <?php foreach ($facilities as $facility): ?>
               <?php if ((string) ($facility['FacilityCode'] ?? '') === 'CART') { continue; } ?>
-              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>">
+              <option value="<?= htmlspecialchars((string) $facility['FacilityCode']) ?>"<?= (string) ($_POST['to_facility_code'] ?? '') === (string) ($facility['FacilityCode'] ?? '') ? ' selected' : '' ?>>
                 <?= htmlspecialchars((string) $facility['FacilityCode']) ?> — <?= htmlspecialchars((string) $facility['FacilityName']) ?>
               </option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-field">
-            <label for="sku_code">SKU</label>
-            <input class="form-input" id="sku_code" name="sku_code" required maxlength="100" value="<?= htmlspecialchars((string) ($_POST['sku_code'] ?? '')) ?>" />
-          </div>
-          <div class="form-field">
-            <label for="qty_requested">Quantity</label>
-            <input class="form-input" id="qty_requested" name="qty_requested" type="number" min="0.0001" step="0.0001" required value="<?= htmlspecialchars((string) ($_POST['qty_requested'] ?? '')) ?>" />
-          </div>
-          <div class="form-field" id="cmo-supplier-field" hidden>
+          <div class="form-group form-grid-full is-hidden" id="cmo-supplier-field">
             <label for="supplier_id">CMO partner</label>
             <select class="form-input" id="supplier_id" name="supplier_id">
               <option value="">Select CMO supplier</option>
@@ -93,16 +89,24 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-field">
+          <div class="form-group">
+            <label for="sku_code">SKU</label>
+            <input class="form-input" id="sku_code" name="sku_code" required maxlength="100" value="<?= htmlspecialchars((string) ($_POST['sku_code'] ?? '')) ?>" />
+          </div>
+          <div class="form-group">
+            <label for="qty_requested">Quantity</label>
+            <input class="form-input" id="qty_requested" name="qty_requested" type="number" min="0.0001" step="0.0001" required value="<?= htmlspecialchars((string) ($_POST['qty_requested'] ?? '')) ?>" />
+          </div>
+          <div class="form-group">
             <label for="reason_code_id">Reason</label>
             <select class="form-input" id="reason_code_id" name="reason_code_id">
               <option value="">—</option>
               <?php foreach ($reasons as $reason): ?>
-              <option value="<?= (int) $reason['ReasonCodeID'] ?>"<?= $cmoReasonId !== null && (int) $reason['ReasonCodeID'] === $cmoReasonId ? ' data-cmo-reason="1"' : '' ?>><?= htmlspecialchars((string) $reason['ReasonCode']) ?> — <?= htmlspecialchars((string) $reason['Description']) ?></option>
+              <option value="<?= (int) $reason['ReasonCodeID'] ?>"<?= $cmoReasonId !== null && (int) $reason['ReasonCodeID'] === $cmoReasonId ? ' data-cmo-reason="1"' : '' ?><?= (int) ($_POST['reason_code_id'] ?? 0) === (int) $reason['ReasonCodeID'] ? ' selected' : '' ?>><?= htmlspecialchars((string) $reason['ReasonCode']) ?> — <?= htmlspecialchars((string) $reason['Description']) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-field form-field--full">
+          <div class="form-group form-grid-full">
             <label for="notes">Notes</label>
             <textarea class="form-input" id="notes" name="notes" rows="3"><?= htmlspecialchars((string) ($_POST['notes'] ?? '')) ?></textarea>
           </div>
@@ -129,10 +133,13 @@ require dirname(__DIR__) . '/includes/header.php';
     function syncCmoFields() {
       var isCmo = toFacility && toFacility.value === 'CMO';
       if (cmoField) {
-        cmoField.hidden = !isCmo;
+        cmoField.classList.toggle('is-hidden', !isCmo);
       }
       if (supplier) {
         supplier.required = isCmo;
+        if (!isCmo) {
+          supplier.value = '';
+        }
       }
       if (isCmo && reason && cmoReasonId) {
         reason.value = String(cmoReasonId);

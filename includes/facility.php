@@ -298,11 +298,7 @@ function facility_insert_transfer(array $input): array
         $pdo = db();
         db_apply_sql_server_options($pdo);
 
-        $supplierSql = facility_transfer_has_supplier_column()
-            ? ", SupplierID\n                VALUES (\n                :sku,\n                :from_facility,\n                :to_facility,\n                :from_bucket,\n                :to_bucket,\n                :qty,\n                :reason_code_id,\n                N'Pending',\n                :notes,\n                :requested_by,\n                :ledger_profile,\n                :supplier_id\n            )"
-            : null;
-
-        if ($supplierSql !== null) {
+        if (facility_transfer_has_supplier_column()) {
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO dbo.InvTransfer (
                     SKUCode,
