@@ -1,0 +1,18 @@
+<!--
+  Related / Up-Sell / Cross-Sell products (managed per product in ACCS Admin).
+
+  Paste into a DA html-loader block on the product page (for example, below
+  the pdp-enrichment block in enrichment/pdp/{sku}). The script reads the SKU
+  from the page URL and shows the product links entered in the Commerce Admin.
+
+  Default: shows all three sections (when products are assigned):
+    Related Products / You May Also Like (up-sell) / Pairs Well With (cross-sell)
+
+  To limit which sections appear, set data-link-types, for example:
+    <div id="pdp-related-products" data-link-types="related,upsell"></div>
+
+  To change a heading:
+    <div id="pdp-related-products" data-heading-upsell="Customers Also Bought"></div>
+-->
+<div id="pdp-related-products"></div>
+<script src="https://nutraaxisweb.azurewebsites.net/pdp-enrichment/pdp-related-products-dynamic.js?v=1"></script>
