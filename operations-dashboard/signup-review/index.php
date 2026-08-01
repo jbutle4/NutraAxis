@@ -34,6 +34,11 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           'lead'       => 'Review draft provider applications, validate NPI and banking data, approve applications, and create ACCS companies.',
           'permission' => permission_label(provider_signup_permission_value()),
       ]);
+      if (provider_signup_can_update()) {
+          render_list_page_toolbar(
+              '<a class="btn-primary" href="/operations-dashboard/signup-review/new.php">Create new clinic</a>'
+          );
+      }
       ?>
 
       <?php if ($notice === 'commented'): ?>

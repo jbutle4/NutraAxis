@@ -581,8 +581,15 @@ function provider_signup_banking_validate_format(array $form, int $applicationId
     ];
 }
 
-function provider_signup_create_application(string $providerEmail, bool $sendProviderContinueEmail = true): array
-{
+/**
+ * @param bool $sendProviderContinueEmail When true, emails the provider a continue link (and notifies ops).
+ * @param bool $notifyOps When false (and provider continue is false), skip all start emails — used for Operations backend create.
+ */
+function provider_signup_create_application(
+    string $providerEmail,
+    bool $sendProviderContinueEmail = true,
+    bool $notifyOps = true
+): array {
     $providerEmail = provider_signup_normalize_email($providerEmail);
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'A valid provider email address is required.', 'application' => null];
@@ -621,7 +628,10 @@ function provider_signup_create_application(string $providerEmail, bool $sendPro
     }
 
     try {
-        provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', 'Application started by provider after email confirmation.');
+        $logMessage = $sendProviderContinueEmail || $notifyOps
+            ? 'Application started by provider after email confirmation.'
+            : 'Application shell created by Operations (backend create).';
+        provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', $logMessage);
     } catch (Throwable $e) {
         error_log('provider_signup_create_application review log: ' . $e->getMessage());
     }
@@ -629,7 +639,7 @@ function provider_signup_create_application(string $providerEmail, bool $sendPro
     try {
         if ($sendProviderContinueEmail) {
             provider_signup_mail_application_started($application);
-        } else {
+        } elseif ($notifyOps) {
             provider_signup_mail_application_started_ops($application);
         }
     } catch (Throwable $e) {
@@ -1447,6 +1457,168 @@ function provider_signup_ops_update(int $applicationId, array $form, string $edi
     );
 
     return ['ok' => true, 'error' => null];
+}
+
+/**
+ * Create a clinic application from Operations (no public signup flow).
+ *
+ * @param array<string, mixed> $form
+ * @return array{ok: bool, error: ?string, application_id: ?int}
+ */
+function provider_signup_ops_create_clinic(array $form, bool $markApproved = false): array
+{
+    provider_signup_require_update();
+
+    $providerEmail = provider_signup_normalize_email((string) ($form['provider_email'] ?? ''));
+    if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'A valid provider email is required.', 'application_id' => null];
+    }
+
+    $adminEmail = provider_signup_normalize_email((string) ($form['admin_email'] ?? ''));
+    if ($adminEmail === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'A valid admin email is required.', 'application_id' => null];
+    }
+
+    $existing = provider_signup_find_resumable_by_email($providerEmail);
+    if ($existing !== null) {
+        $existingId = (int) ($existing['ApplicationID'] ?? 0);
+
+        return [
+            'ok'             => false,
+            'error'          => 'A draft/returned application already exists for this provider email (#'
+                . $existingId . '). Open that application instead of creating a duplicate.',
+            'application_id' => $existingId > 0 ? $existingId : null,
+        ];
+    }
+
+    // Validate required clinic fields before inserting a row.
+    $probeMissing = [];
+    foreach ([
+        'company_name'       => 'Practice / company name',
+        'company_legal_name' => 'Legal company name',
+        'company_email'      => 'Company email',
+        'company_phone'      => 'Company phone',
+        'street_address'     => 'Street address',
+        'city'               => 'City',
+        'state_code'         => 'State',
+        'postal_code'        => 'Postal code',
+        'clinic_type'        => 'Clinic type',
+        'admin_first_name'   => 'Admin first name',
+        'admin_last_name'    => 'Admin last name',
+        'npi_number'         => 'NPI #',
+        'tax_id_type'        => 'Tax ID type',
+        'tax_id'             => 'Tax ID (SSN or EIN)',
+    ] as $field => $label) {
+        if (trim((string) ($form[$field] ?? '')) === '') {
+            $probeMissing[] = $label;
+        }
+    }
+    if (!provider_signup_is_valid_clinic_type((string) ($form['clinic_type'] ?? ''))) {
+        $probeMissing[] = 'Clinic type';
+    }
+    if (!in_array((string) ($form['tax_id_type'] ?? ''), PROVIDER_SIGNUP_TAX_ID_TYPES, true)) {
+        $probeMissing[] = 'Tax ID type (SSN or EIN)';
+    }
+    $npi = preg_replace('/\D+/', '', (string) ($form['npi_number'] ?? '')) ?? '';
+    if ($npi === '' || strlen($npi) !== 10) {
+        $probeMissing[] = 'Valid 10-digit NPI #';
+    }
+    if ($probeMissing !== []) {
+        return [
+            'ok'             => false,
+            'error'          => 'Missing or invalid fields: ' . implode(', ', array_values(array_unique($probeMissing))) . '.',
+            'application_id' => null,
+        ];
+    }
+
+    $created = provider_signup_create_application($providerEmail, false, false);
+    if (!$created['ok'] || !is_array($created['application'] ?? null)) {
+        return [
+            'ok'             => false,
+            'error'          => $created['error'] ?? 'Unable to create clinic application.',
+            'application_id' => null,
+        ];
+    }
+
+    $application = $created['application'];
+    $applicationId = (int) ($application['ApplicationID'] ?? 0);
+    if ($applicationId <= 0) {
+        return ['ok' => false, 'error' => 'Unable to load the new clinic application.', 'application_id' => null];
+    }
+
+    // If create_application resumed an unexpected row, stop before overwriting.
+    if (!empty($created['resumed'])) {
+        return [
+            'ok'             => false,
+            'error'          => 'A resumable application already exists for this provider email (#'
+                . $applicationId . '). Open that application instead.',
+            'application_id' => $applicationId,
+        ];
+    }
+
+    $form['provider_email'] = $providerEmail;
+    $form['admin_email'] = $adminEmail;
+    $persist = provider_signup_persist_form($applicationId, $form, false);
+    if (!$persist['ok']) {
+        return [
+            'ok'             => false,
+            'error'          => $persist['error'] ?? 'Unable to save clinic details.',
+            'application_id' => $applicationId,
+        ];
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $opsEmail = provider_signup_normalize_email((string) (auth_user()['Email'] ?? $providerEmail));
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET PolicyAcknowledgedAt = SYSUTCDATETIME(),
+                PolicyAcknowledgedByEmail = :email,
+                PolicyVersion = :version,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'email'   => $opsEmail !== '' ? $opsEmail : $providerEmail,
+            'version' => PROVIDER_SIGNUP_POLICY_VERSION,
+            'id'      => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_ops_create_clinic policy ack: ' . $e->getMessage());
+
+        return [
+            'ok'             => false,
+            'error'          => 'Clinic was created but policy acknowledgement could not be recorded.',
+            'application_id' => $applicationId,
+        ];
+    }
+
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Comment',
+        'Clinic application created by Operations (backend create). Policy '
+        . PROVIDER_SIGNUP_POLICY_VERSION . ' recorded on behalf of the clinic.'
+    );
+
+    if ($markApproved) {
+        $approve = provider_signup_ops_approve(
+            $applicationId,
+            'Approved immediately after Operations backend clinic create.'
+        );
+        if (!$approve['ok']) {
+            return [
+                'ok'             => false,
+                'error'          => 'Clinic was created, but approval failed: '
+                    . ($approve['error'] ?? 'unknown error')
+                    . ' Open the application to finish review.',
+                'application_id' => $applicationId,
+            ];
+        }
+    }
+
+    return ['ok' => true, 'error' => null, 'application_id' => $applicationId];
 }
 
 function provider_signup_ops_comment(int $applicationId, string $comments): array

@@ -149,6 +149,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">NPI validation refreshed.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Application data saved.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'created'): ?>
+      <div class="admin-notice is-success" role="status">Clinic application created. Review the details, approve if needed, then use <strong>Create Clinic Store</strong> to provision ACCS.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'created_approved'): ?>
+      <div class="admin-notice is-success" role="status">Clinic application created and approved. Use <strong>Create Clinic Store</strong> when you are ready to provision ACCS.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>

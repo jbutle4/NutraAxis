@@ -5,11 +5,20 @@
 
 $hasStoredTaxId = trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '';
 $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '';
-$opsFormAction = $opsFormAction ?? '/operations-dashboard/signup-review/application-form.php?id=' . (int) ($application['ApplicationID'] ?? 0);
-$opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/view.php?id=' . (int) ($application['ApplicationID'] ?? 0);
+$opsFormIsCreate = !empty($opsFormIsCreate);
+$opsFormMarkApproved = !empty($opsFormMarkApproved);
+$opsFormErrorHtml = $opsFormErrorHtml ?? null;
+$opsFormAction = $opsFormAction
+    ?? '/operations-dashboard/signup-review/application-form.php?id=' . (int) ($application['ApplicationID'] ?? 0);
+$opsFormCancelHref = $opsFormCancelHref
+    ?? '/operations-dashboard/signup-review/view.php?id=' . (int) ($application['ApplicationID'] ?? 0);
+$submitLabel = $opsFormIsCreate ? 'Create clinic application' : 'Save changes';
+$submitValue = $opsFormIsCreate ? 'create' : 'save';
 ?>
 <form class="admin-form" method="post" action="<?= htmlspecialchars($opsFormAction) ?>" novalidate>
-  <?php if (!empty($error)): ?>
+  <?php if ($opsFormErrorHtml !== null && $opsFormErrorHtml !== ''): ?>
+  <div class="admin-notice is-error" role="alert"><?= $opsFormErrorHtml ?></div>
+  <?php elseif (!empty($error)): ?>
   <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
   <?php endif; ?>
 
@@ -67,8 +76,13 @@ $opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/
   <h2 class="admin-form-subhead">Admin user</h2>
   <div class="form-grid">
     <div class="form-group">
-      <label for="provider_email">Provider email</label>
+      <label for="provider_email">Provider email *</label>
+      <?php if ($opsFormIsCreate): ?>
+      <input class="form-input" type="email" id="provider_email" name="provider_email" value="<?= htmlspecialchars($form['provider_email']) ?>" required />
+      <p class="form-hint">Login / application identity for this clinic. Usually the same as admin email.</p>
+      <?php else: ?>
       <input class="form-input" type="email" id="provider_email" value="<?= htmlspecialchars($form['provider_email']) ?>" readonly />
+      <?php endif; ?>
     </div>
     <div class="form-group">
       <label for="admin_first_name">Admin first name *</label>
@@ -105,8 +119,8 @@ $opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/
       </select>
     </div>
     <div class="form-group">
-      <label for="tax_id">Tax ID (SSN or EIN)</label>
-      <input class="form-input" type="password" id="tax_id" name="tax_id" autocomplete="off" placeholder="<?= $hasStoredTaxId ? 'Saved — enter to replace' : 'Leave blank to keep empty' ?>" />
+      <label for="tax_id">Tax ID (SSN or EIN)<?= $opsFormIsCreate ? ' *' : '' ?></label>
+      <input class="form-input" type="password" id="tax_id" name="tax_id" autocomplete="off" <?= $opsFormIsCreate ? 'required' : '' ?> placeholder="<?= $hasStoredTaxId ? 'Saved — enter to replace' : ($opsFormIsCreate ? 'Required' : 'Leave blank to keep empty') ?>" />
     </div>
     <div class="form-group">
       <label for="ach_routing_number">ACH routing number</label>
@@ -114,7 +128,7 @@ $opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/
     </div>
     <div class="form-group">
       <label for="ach_account_number">ACH account number</label>
-      <input class="form-input" type="password" id="ach_account_number" name="ach_account_number" autocomplete="off" placeholder="<?= $hasStoredAccount ? 'Saved — enter to replace' : 'Leave blank to keep empty' ?>" />
+      <input class="form-input" type="password" id="ach_account_number" name="ach_account_number" autocomplete="off" placeholder="<?= $hasStoredAccount ? 'Saved — enter to replace' : 'Optional' ?>" />
     </div>
     <div class="form-group">
       <label for="ach_account_type">ACH account type</label>
@@ -127,13 +141,23 @@ $opsFormCancelHref = $opsFormCancelHref ?? '/operations-dashboard/signup-review/
     </div>
   </div>
 
+  <?php if ($opsFormIsCreate): ?>
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input type="checkbox" name="mark_approved" value="1" <?= $opsFormMarkApproved ? 'checked' : '' ?> />
+      Mark as Approved after create (ready for Create Clinic Store)
+    </label>
+    <p class="form-hint">Leave unchecked to save as Draft and finish review later.</p>
+  </div>
+  <?php else: ?>
   <div class="form-group">
     <label for="edit_note">Edit note (optional)</label>
     <textarea class="form-input form-textarea" id="edit_note" name="edit_note" rows="3" placeholder="Brief note for review history, e.g. corrected NPI typo"></textarea>
   </div>
+  <?php endif; ?>
 
   <div class="module-actions">
     <a class="btn-secondary" href="<?= htmlspecialchars($opsFormCancelHref) ?>">Cancel</a>
-    <button class="btn-primary" type="submit" name="action" value="save">Save changes</button>
+    <button class="btn-primary" type="submit" name="action" value="<?= htmlspecialchars($submitValue) ?>"><?= htmlspecialchars($submitLabel) ?></button>
   </div>
 </form>
