@@ -60,6 +60,19 @@ Wrong depth → fatal on first `require`.
 - `attachment-storage.php` / `file-storage.php` for Azure Blob save/read/download (not per-page LOB copies)
 - `module_hub_render()` for hub cards
 
+### Forms & detail labels (design standard)
+
+Label and control/value belong on the **same row** (Application detail cards are the reference).
+
+| Surface | Pattern |
+|---------|---------|
+| Admin edit forms (`.admin-form`) | `.form-group` / `.form-field` — CSS lays out label \| control. Or explicit `.form-group-inline`. |
+| Opt-out (checkboxes, rare) | `.form-group--stacked` |
+| Read-only detail cards | `.detail-list.detail-list-inline` |
+| Login / auth | Stay stacked under `.auth-form` |
+
+Do not invent a parallel label-above-field layout for new Operations forms.
+
 **Upload storage standard:**
 
 - All uploaded **documents** go to Azure Blob via `attachment_storage_*`. SQL stores metadata + `BlobPath` only (not `FileData` LOBs).

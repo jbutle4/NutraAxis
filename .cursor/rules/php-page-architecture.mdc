@@ -57,6 +57,14 @@ require dirname(__DIR__) . '/includes/footer.php';
 9. **Hide unfinished modules** via `app_nav_hidden_module_slugs()` in `app.php` until the leaf page and permission column exist — do not leave hub cards pointing at 404s.
 10. **Session writes after `init.php`:** session is closed for writing. Follow login/logout patterns that reopen the session when mutating `$_SESSION`.
 
+## Forms & detail labels (design standard)
+
+- **Label and control/value on the same row** for Operations admin UI (matches Application detail cards).
+- Inside `.admin-form`, `.form-group` / `.form-field` are inline by default (`operations.css`). Prefer that over stacking label above input.
+- Explicit compact rows: `.form-group-inline`. Opt out: `.form-group--stacked`.
+- Read-only cards: `.detail-list.detail-list-inline`.
+- Do **not** invent a parallel label/value layout. Login/auth (`.auth-form`) stays stacked.
+
 ## Attachments
 
 Upload UI: `includes/file-upload-dropzone-field.php`. Persistence: `attachment_storage_save($domain, …, ['encrypt' => true|false])` → Azure Blob. Sensitive docs must encrypt via shared `file-crypto.php` and set `IsEncrypted`. Resolve downloads with `attachment_storage_resolve_content()` / `attachment_storage_stream_download()`. Never store new document bytes in SQL `FileData`. Never add a parallel upload or crypto helper.

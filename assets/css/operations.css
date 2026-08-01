@@ -1234,6 +1234,60 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   color: var(--teal-dark);
 }
 
+/*
+ * Design standard: label + control on one row (matches detail-list-inline).
+ * Applies inside .admin-form. Opt out with .form-group--stacked / .form-field--stacked.
+ * Auth / login forms stay stacked via .auth-form.
+ */
+.admin-form .form-group:not(.form-group--stacked):not(:has(> .checkbox-label)),
+.admin-form .form-field:not(.form-field--stacked):not(:has(> .checkbox-label)) {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 11.5rem) minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: center;
+}
+
+.admin-form .form-group:not(.form-group--stacked):not(:has(> .checkbox-label)) > label,
+.admin-form .form-field:not(.form-field--stacked):not(:has(> .checkbox-label)) > label {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-muted);
+}
+
+.admin-form .form-group:has(textarea.form-input),
+.admin-form .form-field:has(textarea.form-input) {
+  align-items: start;
+}
+
+.admin-form .form-group > .form-hint,
+.admin-form .form-group > .form-static,
+.admin-form .form-field > .form-hint,
+.admin-form .form-field > .form-static {
+  grid-column: 2;
+  margin-top: 0;
+}
+
+.admin-form .form-group:has(> .checkbox-label) > .checkbox-label,
+.admin-form .form-group--stacked > .checkbox-label {
+  margin-top: 0;
+}
+
+.admin-form .form-group > .form-input,
+.admin-form .form-group > select.form-input,
+.admin-form .form-group > textarea.form-input,
+.admin-form .form-field > .form-input,
+.admin-form .form-field > select.form-input,
+.admin-form .form-field > textarea.form-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-form .form-group--wide {
+  grid-column: 1 / -1;
+}
+
 .form-input {
   font: inherit;
   padding: 12px 14px;
@@ -2287,8 +2341,8 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 
 .form-group-inline {
   display: grid;
-  grid-template-columns: minmax(6.5rem, 7.75rem) minmax(0, 1fr);
-  gap: 8px 12px;
+  grid-template-columns: minmax(9.5rem, 11.5rem) minmax(0, 1fr);
+  gap: 6px 12px;
   align-items: center;
   margin: 0;
 }
@@ -2300,8 +2354,9 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 .form-group-inline > label {
   margin: 0;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   line-height: 1.2;
+  color: var(--text-muted);
 }
 
 .form-group-inline .form-input,
@@ -2936,9 +2991,18 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  .form-group-inline {
+  .form-group-inline,
+  .admin-form .form-group:not(.form-group--stacked):not(:has(> .checkbox-label)),
+  .admin-form .form-field:not(.form-field--stacked):not(:has(> .checkbox-label)) {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .admin-form .form-group > .form-hint,
+  .admin-form .form-group > .form-static,
+  .admin-form .form-field > .form-hint,
+  .admin-form .form-field > .form-static {
+    grid-column: 1;
   }
   .ops-badge,
   .header-dashboard-title { display: none; }

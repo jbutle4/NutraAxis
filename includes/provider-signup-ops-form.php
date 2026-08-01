@@ -142,7 +142,7 @@ $submitValue = $opsFormIsCreate ? 'create' : 'save';
   </div>
 
   <?php if ($opsFormIsCreate): ?>
-  <div class="form-group">
+  <div class="form-group form-group--stacked">
     <label class="checkbox-label">
       <input type="checkbox" name="mark_approved" value="1" <?= $opsFormMarkApproved ? 'checked' : '' ?> />
       Mark as Approved after create (ready for Create Clinic Store)
@@ -150,7 +150,7 @@ $submitValue = $opsFormIsCreate ? 'create' : 'save';
     <p class="form-hint">Leave unchecked to save as Draft and finish review later.</p>
   </div>
   <?php else: ?>
-  <div class="form-group">
+  <div class="form-group form-group--wide">
     <label for="edit_note">Edit note (optional)</label>
     <textarea class="form-input form-textarea" id="edit_note" name="edit_note" rows="3" placeholder="Brief note for review history, e.g. corrected NPI typo"></textarea>
   </div>

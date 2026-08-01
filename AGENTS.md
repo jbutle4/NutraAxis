@@ -105,6 +105,13 @@ Internal shortcuts on `/` come from **`includes/operations-dashboard.php`** only
 - `module_hub_render($hubSlug, $activeSlug)` — hub landing cards
 - `render_list_page_header([...])` — shared list header (pass hub-aware `back_href` / `back_label` / `category`)
 
+### Forms & detail labels (design standard)
+
+- **Label and value/control on the same row** — do not stack label above the field for ops admin UI.
+- **Edit forms** inside `.admin-form`: use `.form-group` / `.form-field` (auto inline via `operations.css`) or explicit `.form-group-inline`. Opt out with `.form-group--stacked` (checkboxes, rare exceptions).
+- **Read-only detail cards**: use `.detail-list.detail-list-inline` (see provider signup `view.php`).
+- Keep login/auth forms stacked (`.auth-form`).
+
 ## Active handoffs
 
 - Dual QBO + Accounting UAT: see **`docs/AGENT_HANDOFF_DUAL_QBO.md`** before touching QBO/Accounting. Prefer **Local** agent for the remaining SQL migration.
