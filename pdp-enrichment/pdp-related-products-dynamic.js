@@ -8,11 +8,14 @@
  *
  * DA setup (enrichment/pdp/{sku} html-loader block or product template):
  *   <div id="pdp-related-products"></div>
- *   <script src="https://nutraaxisweb.azurewebsites.net/pdp-enrichment/pdp-related-products-dynamic.js?v=1"></script>
+ *   <script src="https://nutraaxisweb.azurewebsites.net/pdp-enrichment/pdp-related-products-dynamic.js?v=2"></script>
+ *
+ * Default: shows only the Related Products list from the Commerce Admin,
+ * under the heading "Frequently Bought Together".
  *
  * Optional configuration on the mount element:
- *   data-link-types="related,upsell,crosssell"  (default: all three)
- *   data-heading-related="Related Products"
+ *   data-link-types="related,upsell,crosssell"  (default: related)
+ *   data-heading-related="Frequently Bought Together"
  *   data-heading-upsell="You May Also Like"
  *   data-heading-crosssell="Pairs Well With"
  */
@@ -31,10 +34,12 @@
   var PRODUCT_URL_PREFIX = '/products/';
 
   var DEFAULT_SECTIONS = [
-    { type: 'related', heading: 'Related Products' },
+    { type: 'related', heading: 'Frequently Bought Together' },
     { type: 'upsell', heading: 'You May Also Like' },
     { type: 'crosssell', heading: 'Pairs Well With' },
   ];
+
+  var DEFAULT_ENABLED_TYPES = ['related'];
 
   var LINKS_QUERY = ''
     + 'query($skus:[String]!){'
@@ -74,11 +79,11 @@
     var typesAttr = (mount.getAttribute('data-link-types') || '').trim().toLowerCase();
     var enabled = typesAttr !== ''
       ? typesAttr.split(',').map(function (t) { return t.trim(); })
-      : null;
+      : DEFAULT_ENABLED_TYPES;
 
     return DEFAULT_SECTIONS
       .filter(function (section) {
-        return !enabled || enabled.indexOf(section.type) !== -1;
+        return enabled.indexOf(section.type) !== -1;
       })
       .map(function (section) {
         var override = mount.getAttribute('data-heading-' + section.type);
