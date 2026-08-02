@@ -8,6 +8,7 @@ require_once __DIR__ . '/provider-signup-npi.php';
 require_once __DIR__ . '/provider-signup-mail.php';
 require_once __DIR__ . '/provider-signup-npi-snapshot.php';
 require_once __DIR__ . '/provider-signup-accs.php';
+require_once __DIR__ . '/provider-signup-accs-config.php';
 require_once __DIR__ . '/provider-signup-recaptcha.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
@@ -105,22 +106,36 @@ const PROVIDER_SIGNUP_CLINIC_TYPES = [
 ];
 
 const PROVIDER_SIGNUP_LIST_SORT_COLUMNS = [
-    'id'        => 'ID',
-    'practice'  => 'Practice',
-    'provider'  => 'Provider Email',
-    'status'    => 'Status',
-    'created'   => 'Date Created',
-    'submitted' => 'Submitted',
+    'id'              => 'ID',
+    'practice'        => 'Practice',
+    'provider'        => 'Provider Email',
+    'status'          => 'Status',
+    'created'         => 'Created',
+    'submitted'       => 'Submitted',
+    'step_clinic'     => 'Clinic',
+    'step_admin'      => 'Admin',
+    'step_catalog'    => 'Catalog',
+    'step_assign'     => 'Assign',
+    'step_roles'      => 'Roles',
+    'config_complete' => 'Config',
 ];
 
 const PROVIDER_SIGNUP_LIST_SORT_SQL = [
-    'id'        => 'a.ApplicationID',
-    'practice'  => 'a.CompanyName',
-    'provider'  => 'a.ProviderEmail',
-    'status'    => 'a.Status',
-    'created'   => 'a.CreatedAt',
-    'submitted' => 'a.SubmittedAt',
+    'id'              => 'a.ApplicationID',
+    'practice'        => 'a.CompanyName',
+    'provider'        => 'a.ProviderEmail',
+    'status'          => 'a.Status',
+    'created'         => 'a.CreatedAt',
+    'submitted'       => 'a.SubmittedAt',
+    'step_clinic'     => 'a.AccsStepClinicDone',
+    'step_admin'      => 'a.AccsStepAdminDone',
+    'step_catalog'    => 'a.AccsStepSharedCatalogDone',
+    'step_assign'     => 'a.AccsStepCatalogAssignDone',
+    'step_roles'      => 'a.AccsStepRolesDone',
+    'config_complete' => 'a.AccsConfigurationComplete',
 ];
+
+const PROVIDER_SIGNUP_LIST_PAGE_SIZE = 25;
 
 const PROVIDER_SIGNUP_US_STATES = [
     'AL' => 'Alabama', 'AK' => 'Alaska', 'AZ' => 'Arizona', 'AR' => 'Arkansas', 'CA' => 'California',
@@ -320,6 +335,660 @@ function provider_signup_provider_can_submit(array $application): bool
 function provider_signup_ops_can_provision(array $application): bool
 {
     return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED;
+}
+
+/** @return list<string> */
+function provider_signup_config_step_keys(): array
+{
+    return ['clinic', 'admin', 'shared_catalog', 'catalog_assign', 'roles'];
+}
+
+function provider_signup_ops_can_mark_config_step(array $application): bool
+{
+    return in_array((string) ($application['Status'] ?? ''), [
+        PROVIDER_SIGNUP_STATUS_APPROVED,
+        PROVIDER_SIGNUP_STATUS_PROVISIONED,
+    ], true);
+}
+
+function provider_signup_config_step_done(array $application, string $step): bool
+{
+    return match ($step) {
+        'clinic'         => !empty($application['AccsStepClinicDone']),
+        'admin'          => !empty($application['AccsStepAdminDone']),
+        'shared_catalog' => !empty($application['AccsStepSharedCatalogDone']),
+        'catalog_assign' => !empty($application['AccsStepCatalogAssignDone']),
+        'roles'          => !empty($application['AccsStepRolesDone']),
+        default          => false,
+    };
+}
+
+function provider_signup_config_steps_complete(array $application): bool
+{
+    foreach (provider_signup_config_step_keys() as $step) {
+        if (!provider_signup_config_step_done($application, $step)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function provider_signup_config_step_table_title(array $application, string $step): string
+{
+    return match ($step) {
+        'clinic' => provider_signup_config_step_done($application, 'clinic')
+            ? 'Clinic company · ID ' . (int) ($application['AccsCompanyId'] ?? 0)
+            : 'Clinic company not complete',
+        'admin' => provider_signup_config_step_done($application, 'admin')
+            ? 'Clinic admin · customer ID ' . (int) ($application['AccsCustomerId'] ?? 0)
+            : 'Clinic admin not complete',
+        'shared_catalog' => provider_signup_config_step_done($application, 'shared_catalog')
+            ? 'Shared catalog · ID ' . (int) ($application['AccsSharedCatalogId'] ?? 0)
+            : 'Shared catalog not complete',
+        'catalog_assign' => provider_signup_config_step_done($application, 'catalog_assign')
+            ? trim(
+                (($application['AccsCatalogCategoryCount'] ?? null) !== null
+                    ? (int) $application['AccsCatalogCategoryCount'] . ' categories' : '')
+                . (($application['AccsCatalogCategoryCount'] ?? null) !== null
+                    && ($application['AccsCatalogProductCount'] ?? null) !== null ? ', ' : '')
+                . (($application['AccsCatalogProductCount'] ?? null) !== null
+                    ? (int) $application['AccsCatalogProductCount'] . ' products' : '')
+            ) ?: 'Categories and products assigned'
+            : 'Categories and products not complete',
+        'roles' => provider_signup_config_step_done($application, 'roles')
+            ? (trim((string) ($application['AccsRolesSummary'] ?? '')) !== ''
+                ? 'Roles: ' . (string) $application['AccsRolesSummary']
+                : 'Company roles complete')
+            : 'Company roles not complete',
+        default => '',
+    };
+}
+
+/**
+ * @return array{done: bool, label: string, title: string}
+ */
+function provider_signup_config_step_table_cell(array $application, string $step): array
+{
+    $done = provider_signup_config_step_done($application, $step);
+
+    return [
+        'done'  => $done,
+        'label' => $done ? 'Yes' : '—',
+        'title' => provider_signup_config_step_table_title($application, $step),
+    ];
+}
+
+/**
+ * @return array{status: ?string, q: ?string, page: int, sort: string, dir: string}
+ */
+function provider_signup_list_filters_from_request(): array
+{
+    $status = trim((string) ($_GET['status'] ?? ''));
+    $search = trim((string) ($_GET['q'] ?? ''));
+
+    return [
+        'status' => $status !== '' ? $status : null,
+        'q'      => $search !== '' ? $search : null,
+        'page'   => max(1, (int) ($_GET['page'] ?? 1)),
+    ] + table_sort_state(PROVIDER_SIGNUP_LIST_SORT_COLUMNS, 'submitted', 'desc', $_GET);
+}
+
+function provider_signup_list_page_href(array $filters, int $page): string
+{
+    $query = array_filter([
+        'status' => ($filters['status'] ?? null) !== null && ($filters['status'] ?? '') !== ''
+            ? (string) $filters['status'] : null,
+        'q'      => ($filters['q'] ?? null) !== null && ($filters['q'] ?? '') !== ''
+            ? (string) $filters['q'] : null,
+        'sort'   => $filters['sort'] ?? null,
+        'dir'    => $filters['dir'] ?? null,
+        'page'   => $page > 1 ? $page : null,
+    ], static fn($value) => $value !== null && $value !== '');
+
+    return '/operations-dashboard/signup-review/?' . http_build_query($query);
+}
+
+/**
+ * @param array<string, mixed> $filters
+ * @return array{where: list<string>, params: array<string, mixed>}
+ */
+function provider_signup_list_applications_where(array $filters): array
+{
+    $where = [];
+    $params = [];
+
+    $status = trim((string) ($filters['status'] ?? ''));
+    if ($status !== '') {
+        $where[] = 'a.Status = :status';
+        $params['status'] = $status;
+    }
+
+    $search = trim((string) ($filters['q'] ?? ''));
+    if ($search !== '') {
+        $searchParts = [];
+        if (ctype_digit($search)) {
+            $searchParts[] = 'a.ApplicationID = :app_id';
+            $params['app_id'] = (int) $search;
+        }
+        [$likeSql, $likeParams] = db_like_or([
+            'a.CompanyName',
+            'a.CompanyLegalName',
+            'a.ProviderEmail',
+            'a.AdminEmail',
+            'a.AdminFirstName',
+            'a.AdminLastName',
+            'a.NpiNumber',
+            'CAST(a.AccsCompanyId AS NVARCHAR(20))',
+            'CAST(a.AccsCustomerId AS NVARCHAR(20))',
+            'CAST(a.AccsSharedCatalogId AS NVARCHAR(20))',
+            'a.AccsRolesSummary',
+        ], $search, 'q');
+        $searchParts[] = $likeSql;
+        $params = array_merge($params, $likeParams);
+        $where[] = '(' . implode(' OR ', $searchParts) . ')';
+    }
+
+    return ['where' => $where, 'params' => $params];
+}
+
+/**
+ * @param array<string, mixed> $filters
+ * @return array{
+ *   rows: list<array<string, mixed>>,
+ *   total: int,
+ *   page: int,
+ *   per_page: int,
+ *   has_prev: bool,
+ *   has_next: bool
+ * }
+ */
+function provider_signup_list_applications_page(array $filters = []): array
+{
+    $pdo = db();
+    $page = max(1, (int) ($filters['page'] ?? 1));
+    $perPage = PROVIDER_SIGNUP_LIST_PAGE_SIZE;
+    $offset = ($page - 1) * $perPage;
+
+    $whereData = provider_signup_list_applications_where($filters);
+    $where = $whereData['where'];
+    $params = $whereData['params'];
+
+    $fromSql = 'FROM dbo.ProviderSignupApplication a';
+    if ($where !== []) {
+        $fromSql .= ' WHERE ' . implode(' AND ', $where);
+    }
+
+    $countStmt = $pdo->prepare('SELECT COUNT(*) ' . $fromSql);
+    $countStmt->execute($params);
+    $total = (int) $countStmt->fetchColumn();
+
+    $sortState = table_sort_state(
+        PROVIDER_SIGNUP_LIST_SORT_COLUMNS,
+        'submitted',
+        'desc',
+        $filters
+    );
+    $orderSql = ' ORDER BY ' . table_sort_sql_clause(
+        PROVIDER_SIGNUP_LIST_SORT_SQL,
+        $sortState,
+        'submitted',
+        'id'
+    );
+
+    $dataSql = 'SELECT a.* ' . $fromSql . $orderSql
+        . ' OFFSET ' . (int) $offset . ' ROWS FETCH NEXT ' . (int) $perPage . ' ROWS ONLY';
+    $stmt = $pdo->prepare($dataSql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll() ?: [];
+
+    return [
+        'rows'     => $rows,
+        'total'    => $total,
+        'page'     => $page,
+        'per_page' => $perPage,
+        'has_prev' => $page > 1,
+        'has_next' => ($offset + $perPage) < $total,
+    ];
+}
+
+/**
+ * @return list<array{key: string, label: string, done: bool, completed_at: ?string, detail: string}>
+ */
+function provider_signup_config_steps(array $application): array
+{
+    $companyId = (int) ($application['AccsCompanyId'] ?? 0);
+    $customerId = (int) ($application['AccsCustomerId'] ?? 0);
+    $catalogId = (int) ($application['AccsSharedCatalogId'] ?? 0);
+    $categoryCount = $application['AccsCatalogCategoryCount'] ?? null;
+    $productCount = $application['AccsCatalogProductCount'] ?? null;
+    $rolesSummary = trim((string) ($application['AccsRolesSummary'] ?? ''));
+
+    $clinicDetail = $companyId > 0
+        ? 'Company ID ' . $companyId . (
+            trim((string) ($application['AccsClinicId'] ?? '')) !== ''
+                ? ' · Clinic ID ' . (string) $application['AccsClinicId']
+                : ''
+        )
+        : '';
+
+    $adminDetail = $customerId > 0 ? 'Customer ID ' . $customerId : '';
+
+    $catalogDetail = $catalogId > 0 ? 'Shared catalog ID ' . $catalogId : '';
+
+    $assignDetail = '';
+    if ($categoryCount !== null || $productCount !== null) {
+        $assignDetail = trim(
+            ($categoryCount !== null ? (int) $categoryCount . ' categories' : '')
+            . ($categoryCount !== null && $productCount !== null ? ', ' : '')
+            . ($productCount !== null ? (int) $productCount . ' products' : '')
+        );
+    }
+
+    return [
+        [
+            'key'          => 'clinic',
+            'label'        => 'Clinic (company)',
+            'done'         => provider_signup_config_step_done($application, 'clinic'),
+            'completed_at' => $application['AccsStepClinicAt'] ?? null,
+            'detail'       => $clinicDetail,
+        ],
+        [
+            'key'          => 'admin',
+            'label'        => 'Clinic admin',
+            'done'         => provider_signup_config_step_done($application, 'admin'),
+            'completed_at' => $application['AccsStepAdminAt'] ?? null,
+            'detail'       => $adminDetail,
+        ],
+        [
+            'key'          => 'shared_catalog',
+            'label'        => 'Shared catalog',
+            'done'         => provider_signup_config_step_done($application, 'shared_catalog'),
+            'completed_at' => $application['AccsStepSharedCatalogAt'] ?? null,
+            'detail'       => $catalogDetail,
+        ],
+        [
+            'key'          => 'catalog_assign',
+            'label'        => 'Categories & products',
+            'done'         => provider_signup_config_step_done($application, 'catalog_assign'),
+            'completed_at' => $application['AccsStepCatalogAssignAt'] ?? null,
+            'detail'       => $assignDetail,
+        ],
+        [
+            'key'          => 'roles',
+            'label'        => 'Company roles',
+            'done'         => provider_signup_config_step_done($application, 'roles'),
+            'completed_at' => $application['AccsStepRolesAt'] ?? null,
+            'detail'       => $rolesSummary,
+        ],
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_recompute_configuration_complete(int $applicationId): array
+{
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    $complete = provider_signup_config_steps_complete($application);
+
+    try {
+        $pdo = db();
+        if ($complete) {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET AccsConfigurationComplete = 1,
+                    AccsConfigurationCompletedAt = COALESCE(AccsConfigurationCompletedAt, SYSUTCDATETIME()),
+                    LastSavedAt = SYSUTCDATETIME()
+                WHERE ApplicationID = ?
+            SQL)->execute([$applicationId]);
+        } else {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET AccsConfigurationComplete = 0,
+                    AccsConfigurationCompletedAt = NULL,
+                    LastSavedAt = SYSUTCDATETIME()
+                WHERE ApplicationID = ?
+            SQL)->execute([$applicationId]);
+        }
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'Unable to update configuration completion status.'];
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
+ * @param array<string, mixed> $extra
+ * @return array{ok: bool, error: ?string, configuration_complete?: bool}
+ */
+function provider_signup_ops_mark_config_step(int $applicationId, string $step, array $extra = []): array
+{
+    provider_signup_require_update();
+
+    $step = strtolower(trim($step));
+    if (!in_array($step, provider_signup_config_step_keys(), true)) {
+        return ['ok' => false, 'error' => 'Unknown configuration step.'];
+    }
+
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_ops_can_mark_config_step($application)) {
+        return [
+            'ok'    => false,
+            'error' => 'Configuration steps can only be marked when the application is Approved or Provisioned.',
+        ];
+    }
+
+    if (provider_signup_config_step_done($application, $step)) {
+        return ['ok' => false, 'error' => 'This configuration step is already marked complete.'];
+    }
+
+    $setClauses = ['LastSavedAt = SYSUTCDATETIME()'];
+    $params = [];
+    $logDetail = '';
+
+    switch ($step) {
+        case 'clinic':
+            $companyId = (int) ($extra['accs_company_id'] ?? $application['AccsCompanyId'] ?? 0);
+            if ($companyId <= 0) {
+                return ['ok' => false, 'error' => 'ACCS company ID is required to mark the clinic step complete.'];
+            }
+            $setClauses[] = 'AccsCompanyId = :accs_company_id';
+            $setClauses[] = 'AccsClinicId = COALESCE(AccsClinicId, :accs_clinic_id)';
+            $setClauses[] = 'AccsStepClinicDone = 1';
+            $setClauses[] = 'AccsStepClinicAt = SYSUTCDATETIME()';
+            $params['accs_company_id'] = $companyId;
+            $params['accs_clinic_id'] = trim((string) ($extra['accs_clinic_id'] ?? $application['AccsClinicId'] ?? (string) $companyId));
+            $logDetail = 'company ID ' . $companyId;
+            break;
+
+        case 'admin':
+            $customerId = (int) ($extra['accs_customer_id'] ?? $application['AccsCustomerId'] ?? 0);
+            if ($customerId <= 0) {
+                return ['ok' => false, 'error' => 'ACCS customer ID is required to mark the clinic admin step complete.'];
+            }
+            $setClauses[] = 'AccsCustomerId = :accs_customer_id';
+            $setClauses[] = 'AccsStepAdminDone = 1';
+            $setClauses[] = 'AccsStepAdminAt = SYSUTCDATETIME()';
+            $params['accs_customer_id'] = $customerId;
+            $logDetail = 'customer ID ' . $customerId;
+            break;
+
+        case 'shared_catalog':
+            $catalogId = (int) ($extra['accs_shared_catalog_id'] ?? $application['AccsSharedCatalogId'] ?? 0);
+            if ($catalogId <= 0) {
+                return ['ok' => false, 'error' => 'Shared catalog ID is required to mark the shared catalog step complete.'];
+            }
+            $setClauses[] = 'AccsSharedCatalogId = :accs_shared_catalog_id';
+            $setClauses[] = 'AccsStepSharedCatalogDone = 1';
+            $setClauses[] = 'AccsStepSharedCatalogAt = SYSUTCDATETIME()';
+            $params['accs_shared_catalog_id'] = $catalogId;
+            $logDetail = 'shared catalog ID ' . $catalogId;
+            break;
+
+        case 'catalog_assign':
+            if (!provider_signup_config_step_done($application, 'shared_catalog')) {
+                return [
+                    'ok'    => false,
+                    'error' => 'Mark the shared catalog step complete before categories and products.',
+                ];
+            }
+            $categoryCount = trim((string) ($extra['accs_catalog_category_count'] ?? ''));
+            $productCount = trim((string) ($extra['accs_catalog_product_count'] ?? ''));
+            if ($categoryCount !== '' && (int) $categoryCount < 0) {
+                return ['ok' => false, 'error' => 'Category count cannot be negative.'];
+            }
+            if ($productCount !== '' && (int) $productCount < 0) {
+                return ['ok' => false, 'error' => 'Product count cannot be negative.'];
+            }
+            $setClauses[] = 'AccsStepCatalogAssignDone = 1';
+            $setClauses[] = 'AccsStepCatalogAssignAt = SYSUTCDATETIME()';
+            if ($categoryCount !== '') {
+                $setClauses[] = 'AccsCatalogCategoryCount = :accs_catalog_category_count';
+                $params['accs_catalog_category_count'] = (int) $categoryCount;
+            }
+            if ($productCount !== '') {
+                $setClauses[] = 'AccsCatalogProductCount = :accs_catalog_product_count';
+                $params['accs_catalog_product_count'] = (int) $productCount;
+            }
+            $logDetail = trim(
+                ($categoryCount !== '' ? $categoryCount . ' categories' : '')
+                . ($categoryCount !== '' && $productCount !== '' ? ', ' : '')
+                . ($productCount !== '' ? $productCount . ' products' : '')
+            );
+            if ($logDetail === '') {
+                $logDetail = 'categories and products assigned';
+            }
+            break;
+
+        case 'roles':
+            if (!provider_signup_config_step_done($application, 'clinic')
+                && (int) ($application['AccsCompanyId'] ?? 0) <= 0) {
+                return [
+                    'ok'    => false,
+                    'error' => 'Mark the clinic step complete (or provision the company) before company roles.',
+                ];
+            }
+            $rolesSummary = trim((string) ($extra['accs_roles_summary'] ?? ''));
+            $setClauses[] = 'AccsStepRolesDone = 1';
+            $setClauses[] = 'AccsStepRolesAt = SYSUTCDATETIME()';
+            if ($rolesSummary !== '') {
+                $setClauses[] = 'AccsRolesSummary = :accs_roles_summary';
+                $params['accs_roles_summary'] = mb_substr($rolesSummary, 0, 500);
+                $logDetail = $rolesSummary;
+            } else {
+                $logDetail = 'company roles configured';
+            }
+            break;
+    }
+
+    $params['id'] = $applicationId;
+    $sql = 'UPDATE dbo.ProviderSignupApplication SET ' . implode(', ', $setClauses) . ' WHERE ApplicationID = :id';
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'Unable to save configuration step.'];
+    }
+
+    $recompute = provider_signup_recompute_configuration_complete($applicationId);
+    if (!$recompute['ok']) {
+        return $recompute;
+    }
+
+    $stepLabels = [
+        'clinic'         => 'Clinic (company)',
+        'admin'          => 'Clinic admin',
+        'shared_catalog' => 'Shared catalog',
+        'catalog_assign' => 'Categories & products',
+        'roles'          => 'Company roles',
+    ];
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Comment',
+        'Clinic configuration step marked complete: '
+        . ($stepLabels[$step] ?? $step)
+        . ($logDetail !== '' ? ' (' . $logDetail . ').' : '.')
+    );
+
+    $updated = provider_signup_get($applicationId);
+
+    return [
+        'ok'                     => true,
+        'error'                  => null,
+        'configuration_complete' => $updated !== null && provider_signup_config_steps_complete($updated),
+    ];
+}
+
+/**
+ * @param array{
+ *   ok: bool,
+ *   shared_catalog_id?: ?int,
+ *   category_count?: ?int,
+ *   product_count?: ?int,
+ *   roles_summary?: ?string,
+ *   steps?: array<string, array{done: bool}>
+ * } $result
+ * @return array{ok: bool, error: ?string, configuration_complete?: bool}
+ */
+function provider_signup_persist_accs_config_result(int $applicationId, array $result): array
+{
+    if (empty($result['ok'])) {
+        return ['ok' => false, 'error' => (string) ($result['error'] ?? 'ACCS configuration failed.')];
+    }
+
+    $setClauses = ['LastSavedAt = SYSUTCDATETIME()'];
+    $params = ['application_id' => $applicationId];
+
+    $steps = $result['steps'] ?? [];
+    if (!empty($steps['shared_catalog']['done'])) {
+        $setClauses[] = 'AccsStepSharedCatalogDone = 1';
+        $setClauses[] = 'AccsStepSharedCatalogAt = COALESCE(AccsStepSharedCatalogAt, SYSUTCDATETIME())';
+        if (!empty($result['shared_catalog_id'])) {
+            $setClauses[] = 'AccsSharedCatalogId = :accs_shared_catalog_id';
+            $params['accs_shared_catalog_id'] = (int) $result['shared_catalog_id'];
+        }
+    }
+
+    if (!empty($steps['catalog_assign']['done'])) {
+        $setClauses[] = 'AccsStepCatalogAssignDone = 1';
+        $setClauses[] = 'AccsStepCatalogAssignAt = COALESCE(AccsStepCatalogAssignAt, SYSUTCDATETIME())';
+        if (isset($result['category_count']) && $result['category_count'] !== null) {
+            $setClauses[] = 'AccsCatalogCategoryCount = :accs_catalog_category_count';
+            $params['accs_catalog_category_count'] = (int) $result['category_count'];
+        }
+        if (isset($result['product_count']) && $result['product_count'] !== null) {
+            $setClauses[] = 'AccsCatalogProductCount = :accs_catalog_product_count';
+            $params['accs_catalog_product_count'] = (int) $result['product_count'];
+        }
+    }
+
+    if (!empty($steps['roles']['done'])) {
+        $setClauses[] = 'AccsStepRolesDone = 1';
+        $setClauses[] = 'AccsStepRolesAt = COALESCE(AccsStepRolesAt, SYSUTCDATETIME())';
+        if (!empty($result['roles_summary'])) {
+            $setClauses[] = 'AccsRolesSummary = :accs_roles_summary';
+            $params['accs_roles_summary'] = (string) $result['roles_summary'];
+        }
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(
+            'UPDATE dbo.ProviderSignupApplication SET ' . implode(', ', $setClauses) . ' WHERE ApplicationID = :application_id'
+        )->execute($params);
+    } catch (Throwable) {
+        return ['ok' => false, 'error' => 'Unable to save ACCS configuration results.'];
+    }
+
+    $recompute = provider_signup_recompute_configuration_complete($applicationId);
+    if (!$recompute['ok']) {
+        return $recompute;
+    }
+
+    $updated = provider_signup_get($applicationId);
+
+    return [
+        'ok'                     => true,
+        'error'                  => null,
+        'configuration_complete' => $updated !== null && provider_signup_config_steps_complete($updated),
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, configuration_complete?: bool, already?: bool}
+ */
+function provider_signup_ops_complete_accs_configuration(int $applicationId): array
+{
+    provider_signup_require_update();
+
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+        return ['ok' => false, 'error' => 'ACCS configuration automation requires a provisioned application.'];
+    }
+
+    if ((int) ($application['AccsCompanyId'] ?? 0) <= 0) {
+        return ['ok' => false, 'error' => 'ACCS company ID is required before clinic configuration can run.'];
+    }
+
+    if (provider_signup_config_steps_complete($application)) {
+        return ['ok' => true, 'error' => null, 'configuration_complete' => true, 'already' => true];
+    }
+
+    $result = provider_signup_accs_complete_clinic_configuration($application);
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => $result['error'] ?? 'ACCS clinic configuration failed.'];
+    }
+
+    $persist = provider_signup_persist_accs_config_result($applicationId, $result);
+    if (!$persist['ok']) {
+        return $persist;
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $detailParts = array_filter([
+        !empty($result['shared_catalog_id']) ? 'catalog ID ' . (int) $result['shared_catalog_id'] : null,
+        isset($result['category_count'], $result['product_count'])
+            ? (int) $result['category_count'] . ' categories / ' . (int) $result['product_count'] . ' products'
+            : null,
+        !empty($result['roles_summary']) ? 'roles: ' . (string) $result['roles_summary'] : null,
+    ]);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Comment',
+        'ACCS clinic configuration completed'
+        . ($detailParts !== [] ? ' (' . implode('; ', $detailParts) . ').' : '.')
+    );
+
+    return [
+        'ok'                     => true,
+        'error'                  => null,
+        'configuration_complete' => !empty($persist['configuration_complete']),
+    ];
+}
+
+/**
+ * @return list<array<string, mixed>>
+ */
+function provider_signup_list_applications_needing_accs_config(int $limit = 100): array
+{
+    $limit = max(1, min(500, $limit));
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->prepare(<<<SQL
+            SELECT TOP ($limit) *
+            FROM dbo.ProviderSignupApplication
+            WHERE Status = :status
+              AND AccsCompanyId IS NOT NULL
+              AND AccsConfigurationComplete = 0
+            ORDER BY ProvisionedAt DESC, ApplicationID DESC
+        SQL);
+        $stmt->execute(['status' => PROVIDER_SIGNUP_STATUS_PROVISIONED]);
+    } catch (Throwable) {
+        return [];
+    }
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return is_array($rows) ? $rows : [];
 }
 
 function provider_signup_ops_can_revert(array $application): bool
@@ -995,6 +1664,12 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
                 AccsCompanyId = ?,
                 AccsCustomerId = ?,
                 AccsClinicId = ?,
+                AccsStepClinicDone = 1,
+                AccsStepClinicAt = SYSUTCDATETIME(),
+                AccsStepAdminDone = 1,
+                AccsStepAdminAt = SYSUTCDATETIME(),
+                AccsConfigurationComplete = 0,
+                AccsConfigurationCompletedAt = NULL,
                 LastProvisionError = NULL
             WHERE ApplicationID = ?
         SQL)->execute([
@@ -1015,6 +1690,35 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             $updated,
             isset($provision['temporary_password']) ? (string) $provision['temporary_password'] : null
         );
+
+        $configResult = provider_signup_accs_complete_clinic_configuration($updated);
+        if ($configResult['ok']) {
+            $persist = provider_signup_persist_accs_config_result($applicationId, $configResult);
+            if ($persist['ok'] && !empty($persist['configuration_complete'])) {
+                provider_signup_add_review_log(
+                    $applicationId,
+                    $reviewerUserId,
+                    'Comment',
+                    'ACCS clinic configuration completed automatically after provision.'
+                );
+            } elseif (!$persist['ok']) {
+                provider_signup_add_review_log(
+                    $applicationId,
+                    $reviewerUserId,
+                    'Comment',
+                    'ACCS clinic configuration automation saved with errors: '
+                    . ($persist['error'] ?? 'Unable to persist configuration results.')
+                );
+            }
+        } else {
+            provider_signup_add_review_log(
+                $applicationId,
+                $reviewerUserId,
+                'Comment',
+                'ACCS clinic configuration automation pending: '
+                . ($configResult['error'] ?? 'Unknown error')
+            );
+        }
     }
 
     return ['ok' => true, 'error' => null];
@@ -1345,38 +2049,7 @@ function provider_signup_attachment_bytes(array $attachment): string
 
 function provider_signup_list_applications(array $filters = []): array
 {
-    $pdo = db();
-    $where = [];
-    $params = [];
-
-    $status = trim((string) ($filters['status'] ?? ''));
-    if ($status !== '') {
-        $where[] = 'a.Status = :status';
-        $params['status'] = $status;
-    }
-
-    $sql = 'SELECT a.* FROM dbo.ProviderSignupApplication a';
-    if ($where !== []) {
-        $sql .= ' WHERE ' . implode(' AND ', $where);
-    }
-
-    $sortState = table_sort_state(
-        PROVIDER_SIGNUP_LIST_SORT_COLUMNS,
-        'submitted',
-        'desc',
-        $filters
-    );
-    $sql .= ' ORDER BY ' . table_sort_sql_clause(
-        PROVIDER_SIGNUP_LIST_SORT_SQL,
-        $sortState,
-        'submitted',
-        'submitted'
-    );
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-
-    return $stmt->fetchAll();
+    return provider_signup_list_applications_page($filters)['rows'];
 }
 
 function provider_signup_count_by_status(string $status): int

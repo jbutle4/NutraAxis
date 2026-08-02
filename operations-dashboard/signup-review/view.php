@@ -92,6 +92,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to create ACCS company.'), true, 302);
             }
             exit;
+        case 'mark_config_step':
+            $result = provider_signup_ops_mark_config_step($applicationId, (string) ($_POST['step'] ?? ''), [
+                'accs_company_id'            => $_POST['accs_company_id'] ?? '',
+                'accs_clinic_id'             => $_POST['accs_clinic_id'] ?? '',
+                'accs_customer_id'           => $_POST['accs_customer_id'] ?? '',
+                'accs_shared_catalog_id'     => $_POST['accs_shared_catalog_id'] ?? '',
+                'accs_catalog_category_count'=> $_POST['accs_catalog_category_count'] ?? '',
+                'accs_catalog_product_count' => $_POST['accs_catalog_product_count'] ?? '',
+                'accs_roles_summary'         => $_POST['accs_roles_summary'] ?? '',
+            ]);
+            if ($result['ok']) {
+                $suffix = !empty($result['configuration_complete'])
+                    ? 'notice=config_complete'
+                    : 'notice=config_step_marked';
+                header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            } else {
+                header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to mark configuration step.'), true, 302);
+            }
+            exit;
+        case 'complete_accs_config':
+            $result = provider_signup_ops_complete_accs_configuration($applicationId);
+            if ($result['ok']) {
+                if (!empty($result['already'])) {
+                    $suffix = 'notice=config_complete';
+                } elseif (!empty($result['configuration_complete'])) {
+                    $suffix = 'notice=accs_config_complete';
+                } else {
+                    $suffix = 'notice=accs_config_partial';
+                }
+                header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            } else {
+                header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to complete ACCS clinic configuration.'), true, 302);
+            }
+            exit;
         default:
             $error = 'Unknown action.';
     }
@@ -106,6 +140,12 @@ $npiSnapshotBundle = provider_signup_npi_get_snapshot_bundle(
 );
 $taxId = provider_signup_decrypt($application['TaxIdEncrypted'] ?? null);
 $accountNumber = provider_signup_decrypt($application['AchAccountNumberEncrypted'] ?? null);
+$configSteps = provider_signup_config_steps($application);
+$canMarkConfig = $canUpdate && provider_signup_ops_can_mark_config_step($application);
+$canRunAccsConfig = $canUpdate
+    && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED
+    && (int) ($application['AccsCompanyId'] ?? 0) > 0
+    && empty($application['AccsConfigurationComplete']);
 
 $pageTitle = 'Provider Application #' . $applicationId . ' | NutraAxis Operations';
 $pageDescription = 'Review provider signup application details.';
@@ -153,6 +193,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Clinic application created. Review the details, approve if needed, then use <strong>Create Clinic Store</strong> to provision ACCS.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'created_approved'): ?>
       <div class="admin-notice is-success" role="status">Clinic application created and approved. Use <strong>Create Clinic Store</strong> when you are ready to provision ACCS.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'config_step_marked'): ?>
+      <div class="admin-notice is-success" role="status">Clinic configuration step saved.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'config_complete'): ?>
+      <div class="admin-notice is-success" role="status">All clinic configuration steps are complete.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'accs_config_complete'): ?>
+      <div class="admin-notice is-success" role="status">ACCS clinic configuration completed (shared catalog, categories/products, and roles).</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'accs_config_partial'): ?>
+      <div class="admin-notice is-success" role="status">ACCS clinic configuration updated. Review remaining checklist items if any are still pending.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
@@ -214,6 +262,101 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>ACCS customer ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCustomerId'] ?? '—')) ?></dd></div>
             <div><dt>Clinic ID</dt><dd><?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '—')) ?></dd></div>
           </dl>
+        </section>
+
+        <section class="detail-card detail-card--wide">
+          <h2>Clinic configuration</h2>
+          <?php if (!empty($application['AccsConfigurationComplete'])): ?>
+          <div class="admin-notice is-success" role="status">
+            All configuration steps complete
+            <?php if (!empty($application['AccsConfigurationCompletedAt'])): ?>
+            · <?= htmlspecialchars(provider_signup_format_datetime($application['AccsConfigurationCompletedAt'])) ?>
+            <?php endif; ?>
+          </div>
+          <?php else: ?>
+          <p class="form-hint">Track ACCS clinic setup after approval. <strong>Create Clinic Store</strong> marks clinic and admin automatically; shared catalog, categories/products, and roles can be completed automatically or marked manually.</p>
+          <?php endif; ?>
+          <?php if ($canRunAccsConfig): ?>
+          <form class="admin-form provider-signup-config-automation-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+            <input type="hidden" name="action" value="complete_accs_config" />
+            <div class="module-actions">
+              <button class="btn-primary" type="submit">Complete ACCS clinic configuration</button>
+            </div>
+            <p class="form-hint">Creates or reuses <code>SC-{clinic name}</code>, clones master catalog categories/products, assigns the company, and clones template roles.</p>
+          </form>
+          <?php endif; ?>
+          <dl class="detail-list detail-list-inline">
+            <?php foreach ($configSteps as $step): ?>
+            <div>
+              <dt><?= htmlspecialchars($step['label']) ?></dt>
+              <dd>
+                <?php if ($step['done']): ?>
+                <span class="status-badge status-approved">Complete</span>
+                <?php if (!empty($step['completed_at'])): ?>
+                · <?= htmlspecialchars(provider_signup_format_datetime($step['completed_at'])) ?>
+                <?php endif; ?>
+                <?php if ($step['detail'] !== ''): ?>
+                · <?= htmlspecialchars($step['detail']) ?>
+                <?php endif; ?>
+                <?php else: ?>
+                <span class="status-badge status-draft">Pending</span>
+                <?php endif; ?>
+              </dd>
+            </div>
+            <?php endforeach; ?>
+          </dl>
+
+          <?php if ($canMarkConfig): ?>
+          <?php foreach ($configSteps as $step): ?>
+          <?php if ($step['done']) {
+              continue;
+          } ?>
+          <form class="admin-form provider-signup-config-step-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+            <input type="hidden" name="action" value="mark_config_step" />
+            <input type="hidden" name="step" value="<?= htmlspecialchars($step['key']) ?>" />
+            <h3 class="admin-form-subhead">Mark complete: <?= htmlspecialchars($step['label']) ?></h3>
+            <div class="form-grid form-grid-compact">
+              <?php if ($step['key'] === 'clinic'): ?>
+              <div class="form-group form-group-inline">
+                <label for="accs_company_id_<?= htmlspecialchars($step['key']) ?>">ACCS company ID</label>
+                <input class="form-input" type="number" min="1" id="accs_company_id_<?= htmlspecialchars($step['key']) ?>" name="accs_company_id" value="<?= (int) ($application['AccsCompanyId'] ?? 0) > 0 ? (int) $application['AccsCompanyId'] : '' ?>" required />
+              </div>
+              <div class="form-group form-group-inline">
+                <label for="accs_clinic_id_<?= htmlspecialchars($step['key']) ?>">Clinic ID (optional)</label>
+                <input class="form-input" type="text" id="accs_clinic_id_<?= htmlspecialchars($step['key']) ?>" name="accs_clinic_id" value="<?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '')) ?>" />
+              </div>
+              <?php elseif ($step['key'] === 'admin'): ?>
+              <div class="form-group form-group-inline">
+                <label for="accs_customer_id_<?= htmlspecialchars($step['key']) ?>">ACCS customer ID</label>
+                <input class="form-input" type="number" min="1" id="accs_customer_id_<?= htmlspecialchars($step['key']) ?>" name="accs_customer_id" value="<?= (int) ($application['AccsCustomerId'] ?? 0) > 0 ? (int) $application['AccsCustomerId'] : '' ?>" required />
+              </div>
+              <?php elseif ($step['key'] === 'shared_catalog'): ?>
+              <div class="form-group form-group-inline form-group-inline--wide">
+                <label for="accs_shared_catalog_id_<?= htmlspecialchars($step['key']) ?>">Shared catalog ID</label>
+                <input class="form-input" type="number" min="1" id="accs_shared_catalog_id_<?= htmlspecialchars($step['key']) ?>" name="accs_shared_catalog_id" value="<?= (int) ($application['AccsSharedCatalogId'] ?? 0) > 0 ? (int) $application['AccsSharedCatalogId'] : '' ?>" required />
+              </div>
+              <?php elseif ($step['key'] === 'catalog_assign'): ?>
+              <div class="form-group form-group-inline">
+                <label for="accs_catalog_category_count_<?= htmlspecialchars($step['key']) ?>">Category count</label>
+                <input class="form-input" type="number" min="0" id="accs_catalog_category_count_<?= htmlspecialchars($step['key']) ?>" name="accs_catalog_category_count" value="<?= $application['AccsCatalogCategoryCount'] !== null ? (int) $application['AccsCatalogCategoryCount'] : '' ?>" />
+              </div>
+              <div class="form-group form-group-inline">
+                <label for="accs_catalog_product_count_<?= htmlspecialchars($step['key']) ?>">Product count</label>
+                <input class="form-input" type="number" min="0" id="accs_catalog_product_count_<?= htmlspecialchars($step['key']) ?>" name="accs_catalog_product_count" value="<?= $application['AccsCatalogProductCount'] !== null ? (int) $application['AccsCatalogProductCount'] : '' ?>" />
+              </div>
+              <?php elseif ($step['key'] === 'roles'): ?>
+              <div class="form-group form-group-inline form-group-inline--wide">
+                <label for="accs_roles_summary_<?= htmlspecialchars($step['key']) ?>">Roles summary (optional)</label>
+                <input class="form-input" type="text" id="accs_roles_summary_<?= htmlspecialchars($step['key']) ?>" name="accs_roles_summary" maxlength="500" placeholder="e.g. Default User, Owner, Company_Admin, Provider, Affiliated Patients" value="<?= htmlspecialchars((string) ($application['AccsRolesSummary'] ?? '')) ?>" />
+              </div>
+              <?php endif; ?>
+            </div>
+            <div class="module-actions">
+              <button class="btn-secondary" type="submit">Mark <?= htmlspecialchars($step['label']) ?> complete</button>
+            </div>
+          </form>
+          <?php endforeach; ?>
+          <?php endif; ?>
         </section>
 
         <section class="detail-card">

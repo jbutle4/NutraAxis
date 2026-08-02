@@ -1522,6 +1522,31 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   font-weight: 500;
 }
 
+.page-inner--wide .admin-table--signup-review {
+  min-width: 1280px;
+}
+
+.admin-table-wrap--signup-review {
+  overflow-x: auto;
+}
+
+.admin-table--signup-review th.config-step-col,
+.admin-table--signup-review td.config-step-col {
+  white-space: nowrap;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.page-list-pagination {
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-list-pagination-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .page-inner--wide .admin-table-wrap {
   overflow-x: auto;
 }

@@ -117,7 +117,13 @@ function provider_signup_accs_region_id_for_state(string $stateCode, string $cou
     return $cache[$countryId][$stateCode] ?? null;
 }
 
-function provider_signup_accs_api_request(string $method, string $path, ?array $query = null, ?array $body = null): array
+function provider_signup_accs_api_request(
+    string $method,
+    string $path,
+    ?array $query = null,
+    ?array $body = null,
+    int $timeoutSeconds = 30
+): array
 {
     $tokenResult = adobe_commerce_get_token();
     if (!$tokenResult['ok']) {
@@ -144,7 +150,7 @@ function provider_signup_accs_api_request(string $method, string $path, ?array $
             'Content-Type: application/json',
             'Accept: application/json',
         ],
-        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_TIMEOUT        => max(5, $timeoutSeconds),
     ];
 
     if ($body !== null) {
