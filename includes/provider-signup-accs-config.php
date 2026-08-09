@@ -253,7 +253,12 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
             'POST',
             '/sharedCatalog/' . $catalogId . '/assignCategories',
             null,
-            ['categories' => $categoryIds]
+            [
+                'categories' => array_map(
+                    static fn (int $categoryId): array => ['id' => $categoryId],
+                    $categoryIds
+                ),
+            ]
         );
         if (!$assignCategories['ok']) {
             return [
@@ -306,7 +311,7 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
         foreach ($productPayloads as $payload) {
             $assignProducts = provider_signup_accs_config_api_request(
                 'POST',
-                '/sharedCatalog/' . $catalogId . '/products',
+                '/sharedCatalog/' . $catalogId . '/assignProducts',
                 null,
                 $payload
             );
