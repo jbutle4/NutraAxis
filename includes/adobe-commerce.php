@@ -167,13 +167,26 @@ function adobe_commerce_config_error(): ?string
     return $message;
 }
 
+function adobe_commerce_reset_access_token_cache(): void
+{
+    $GLOBALS['_adobe_commerce_access_token_cache'] = [
+        'token'   => null,
+        'expires' => 0,
+    ];
+}
+
 function adobe_commerce_get_token(): array
 {
-    static $cachedToken = null;
-    static $cachedExpiresAt = 0;
+    if (!isset($GLOBALS['_adobe_commerce_access_token_cache'])) {
+        $GLOBALS['_adobe_commerce_access_token_cache'] = [
+            'token'   => null,
+            'expires' => 0,
+        ];
+    }
 
-    if (is_string($cachedToken) && $cachedExpiresAt > time()) {
-        return ['ok' => true, 'error' => null, 'token' => $cachedToken];
+    $cache = &$GLOBALS['_adobe_commerce_access_token_cache'];
+    if (is_string($cache['token']) && (int) $cache['expires'] > time()) {
+        return ['ok' => true, 'error' => null, 'token' => $cache['token']];
     }
 
     $configError = adobe_commerce_config_error();
@@ -226,8 +239,8 @@ function adobe_commerce_get_token(): array
     }
 
     $expiresIn = (int) ($data['expires_in'] ?? 3600);
-    $cachedToken = $token;
-    $cachedExpiresAt = time() + max(60, $expiresIn - 60);
+    $cache['token'] = $token;
+    $cache['expires'] = time() + max(60, $expiresIn - 60);
 
     return ['ok' => true, 'error' => null, 'token' => $token];
 }

@@ -112,6 +112,7 @@ const PROVIDER_SIGNUP_LIST_SORT_COLUMNS = [
     'status'          => 'Status',
     'created'         => 'Created',
     'submitted'       => 'Submitted',
+    'accs_env'        => 'ACCS Env',
     'step_clinic'     => 'Clinic',
     'step_admin'      => 'Admin',
     'step_catalog'    => 'Catalog',
@@ -127,6 +128,7 @@ const PROVIDER_SIGNUP_LIST_SORT_SQL = [
     'status'          => 'a.Status',
     'created'         => 'a.CreatedAt',
     'submitted'       => 'a.SubmittedAt',
+    'accs_env'        => 'a.AccsEnvironment',
     'step_clinic'     => 'a.AccsStepClinicDone',
     'step_admin'      => 'a.AccsStepAdminDone',
     'step_catalog'    => 'a.AccsStepSharedCatalogDone',
@@ -483,6 +485,7 @@ function provider_signup_list_applications_where(array $filters): array
             'CAST(a.AccsCustomerId AS NVARCHAR(20))',
             'CAST(a.AccsSharedCatalogId AS NVARCHAR(20))',
             'a.AccsRolesSummary',
+            'a.AccsEnvironment',
         ], $search, 'q');
         $searchParts[] = $likeSql;
         $params = array_merge($params, $likeParams);
@@ -703,10 +706,12 @@ function provider_signup_ops_mark_config_step(int $applicationId, string $step, 
             }
             $setClauses[] = 'AccsCompanyId = :accs_company_id';
             $setClauses[] = 'AccsClinicId = COALESCE(AccsClinicId, :accs_clinic_id)';
+            $setClauses[] = 'AccsEnvironment = COALESCE(AccsEnvironment, :accs_environment)';
             $setClauses[] = 'AccsStepClinicDone = 1';
             $setClauses[] = 'AccsStepClinicAt = SYSUTCDATETIME()';
             $params['accs_company_id'] = $companyId;
             $params['accs_clinic_id'] = trim((string) ($extra['accs_clinic_id'] ?? $application['AccsClinicId'] ?? (string) $companyId));
+            $params['accs_environment'] = provider_signup_accs_target_environment();
             $logDetail = 'company ID ' . $companyId;
             break;
 
@@ -1661,6 +1666,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
                 SubmittedAt = COALESCE(SubmittedAt, SYSUTCDATETIME()),
                 ProvisionedAt = SYSUTCDATETIME(),
                 LastSavedAt = SYSUTCDATETIME(),
+                AccsEnvironment = ?,
                 AccsCompanyId = ?,
                 AccsCustomerId = ?,
                 AccsClinicId = ?,
@@ -1674,6 +1680,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             WHERE ApplicationID = ?
         SQL)->execute([
             PROVIDER_SIGNUP_STATUS_PROVISIONED,
+            provider_signup_accs_target_environment(),
             $provision['company_id'] ?? null,
             $provision['customer_id'] ?? null,
             provider_signup_nullable_string((string) ($provision['clinic_id'] ?? '')),
@@ -2568,6 +2575,21 @@ function provider_signup_status_badge_class(string $status): string
         default:
             return 'status-draft';
     }
+}
+
+function provider_signup_accs_environment_label(?string $environment): string
+{
+    $environment = strtolower(trim((string) $environment));
+    if ($environment === '') {
+        return '—';
+    }
+
+    return match ($environment) {
+        'production' => 'Production',
+        'stage'      => 'Stage',
+        'dev'        => 'Dev',
+        default      => ucfirst($environment),
+    };
 }
 
 function provider_signup_format_datetime(DateTimeInterface|string|null $value): string

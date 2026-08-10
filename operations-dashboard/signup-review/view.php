@@ -258,6 +258,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             ?></dd></div>
             <div><dt>NPI validation</dt><dd><?= htmlspecialchars((string) ($application['NpiValidationStatus'] ?? '—')) ?><?= !empty($application['NpiValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['NpiValidationSummary']) : '' ?></dd></div>
             <div><dt>Banking validation</dt><dd><?= htmlspecialchars((string) ($application['BankingValidationStatus'] ?? '—')) ?><?= !empty($application['BankingValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['BankingValidationSummary']) : '' ?></dd></div>
+            <div><dt>ACCS environment</dt><dd><?= htmlspecialchars(provider_signup_accs_environment_label($application['AccsEnvironment'] ?? null)) ?></dd></div>
             <div><dt>ACCS company ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCompanyId'] ?? '—')) ?></dd></div>
             <div><dt>ACCS customer ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCustomerId'] ?? '—')) ?></dd></div>
             <div><dt>Clinic ID</dt><dd><?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '—')) ?></dd></div>
