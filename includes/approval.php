@@ -493,13 +493,13 @@ function approval_append_log(
         INSERT INTO dbo.ApprovalLog (
             ApprovalType, EntityType, EntityID,
             SecondaryEntityType, SecondaryEntityID,
-            ApproverUserID, ApproverName, ApproverResult, ApproverComments
+            ApproverUserID, ApproverName, ApproverResult, ApproverComments, LogDate
         )
         OUTPUT INSERTED.ApprovalID AS inserted_id
         VALUES (
             :approval_type, :entity_type, :entity_id,
             :secondary_entity_type, :secondary_entity_id,
-            :approver_user_id, :approver_name, :approver_result, :approver_comments
+            :approver_user_id, :approver_name, :approver_result, :approver_comments, SYSUTCDATETIME()
         )
     SQL);
     $stmt->execute([

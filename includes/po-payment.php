@@ -336,6 +336,27 @@ function po_payment_total_for_invoice(int $supplierInvoiceId): float
     return (float) $stmt->fetchColumn();
 }
 
+/**
+ * Sum paid amounts applied to a PO, including invoice-linked payment requests.
+ */
+function po_payment_total_applied_to_po(int $poId): float
+{
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT ISNULL(SUM(p.PaymentAmount), 0)
+        FROM dbo.POPayment p
+        LEFT JOIN dbo.SupplierInvoice si ON si.SupplierInvoiceID = p.SupplierInvoiceID
+        WHERE p.PaymentStatus = N'Paid'
+          AND (
+              p.POID = :po_id
+              OR si.POID = :po_id
+          )
+    SQL);
+    $stmt->execute(['po_id' => $poId]);
+
+    return (float) $stmt->fetchColumn();
+}
+
 function po_payment_get(int $paymentId): ?array
 {
     $pdo = db();

@@ -4,6 +4,19 @@ require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-approval.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $getPoId = (int) ($_GET['id'] ?? 0);
+    $getToken = trim($_GET['token'] ?? '');
+    $getAction = trim($_GET['action'] ?? '');
+    if ($getPoId > 0 && $getToken !== '') {
+        $query = http_build_query(array_filter([
+            'id'     => $getPoId,
+            'token'  => $getToken,
+            'action' => $getAction !== '' ? $getAction : null,
+        ]));
+        header('Location: /po-management/approve.php?' . $query, true, 302);
+        exit;
+    }
+
     header('Location: /po-management/approvals.php', true, 302);
     exit;
 }
@@ -25,6 +38,13 @@ if ($tokenContext !== null) {
     echo '<main class="page-main"><div class="container page-inner"><div class="page-hero">';
     if ($result['ok']) {
         echo '<div class="admin-notice is-success" role="status">Your action was recorded successfully.</div>';
+        if (!empty($result['qbo_warning'])) {
+            echo '<div class="admin-notice is-error is-detail" role="alert">QuickBooks PO was not created: '
+                . htmlspecialchars((string) $result['qbo_warning']) . '</div>';
+        } elseif (!empty($result['qbo_sync']['qbo_po_id'])) {
+            echo '<div class="admin-notice is-success" role="status">QuickBooks purchase order '
+                . htmlspecialchars((string) $result['qbo_sync']['qbo_po_id']) . ' is linked.</div>';
+        }
         echo '<h1>Thank you</h1>';
         echo '<p class="page-lead">';
         echo htmlspecialchars($actionLabel) . ' was recorded';

@@ -45,6 +45,11 @@ $canUpdate = po_can_update();
 $canApprove = po_can_read_approval_queue();
 $canSubmitForApproval = po_can_submit_for_approval($order);
 $needsReapproval = po_requires_reapproval($order);
+$qboReadiness = null;
+if (in_array($order['POStatus'], [PO_STATUS_CREATED, PO_STATUS_SENT_BACK], true)) {
+    require_once dirname(__DIR__) . '/includes/po-qbo-sync.php';
+    $qboReadiness = po_qbo_readiness_check($order);
+}
 $poPayments = po_payment_list_for_po($poId);
 $poReceipts = por_list_for_po($poId, $poLedgerProfile);
 $poPaymentTotal = po_payment_total_for_po($poId);
@@ -109,6 +114,12 @@ require dirname(__DIR__) . '/includes/header.php';
             <button type="submit" class="btn-primary">Submit to Accounting</button>
           </form>
           <?php endif; ?>
+          <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_APPROVED && empty($order['QBO_POID'])): ?>
+          <form method="post" action="/po-management/sync-qbo.php" class="inline-form">
+            <input type="hidden" name="po_id" value="<?= $poId ?>" />
+            <button type="submit" class="btn-secondary">Retry QuickBooks PO Sync</button>
+          </form>
+          <?php endif; ?>
           <?php if ($canUpdate && $order['POStatus'] === PO_STATUS_ACCOUNTING): ?>
           <form method="post" action="/po-management/status.php" class="inline-form">
             <input type="hidden" name="po_id" value="<?= $poId ?>" />
@@ -147,6 +158,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Notes saved successfully.</div>
       <?php elseif ($notice === 'production_updated'): ?>
       <div class="admin-notice is-success" role="status">Production status updated successfully.</div>
+      <?php elseif ($notice === 'qbo_synced'): ?>
+      <div class="admin-notice is-success" role="status">QuickBooks purchase order synced successfully.</div>
       <?php endif; ?>
 
       <?php if (isset($_GET['reapproval']) && $_GET['reapproval'] === '1'): ?>
@@ -162,6 +175,36 @@ require dirname(__DIR__) . '/includes/header.php';
         Approved total: <strong><?= htmlspecialchars(po_format_money((float) $order['ApprovedTotalDue'])) ?></strong>
         · Current total: <strong><?= htmlspecialchars(po_format_money((float) $order['TotalDue'])) ?></strong>
         <?php endif; ?>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($qboReadiness !== null && !$qboReadiness['ok']): ?>
+      <div class="admin-notice is-error is-detail" role="alert">
+        <strong>QuickBooks readiness</strong> — <?= htmlspecialchars((string) $qboReadiness['error']) ?>
+        <?php if (!empty($qboReadiness['remediation'])): ?>
+        <p style="margin: 0.5rem 0 0;"><?= htmlspecialchars((string) $qboReadiness['remediation']) ?></p>
+        <?php endif; ?>
+        <?php if (po_order_ledger_profile($order) === PO_LEDGER_PROFILE_UAT): ?>
+        <p style="margin: 0.5rem 0 0;"><a href="/accounting/sync-sandbox-mirror.php">Open Sandbox Mirror</a></p>
+        <?php else: ?>
+        <p style="margin: 0.5rem 0 0;"><a href="/supplier-management/view.php?id=<?= (int) $order['SupplierID'] ?>">Open supplier</a>
+        · <a href="/accounting/sync-production.php">Open QBO Sync</a></p>
+        <?php endif; ?>
+      </div>
+      <?php elseif ($qboReadiness !== null && $qboReadiness['ok'] && !empty($qboReadiness['vendor_id'])): ?>
+      <div class="admin-notice is-success" role="status">
+        <?php
+        $vendorAction = (string) ($qboReadiness['vendor_action'] ?? 'existing');
+        $vendorMessage = match ($vendorAction) {
+            'created'  => 'QuickBooks vendor was created automatically',
+            'linked'   => 'QuickBooks vendor was linked automatically',
+            'synced', 'updated' => 'QuickBooks vendor was synced automatically',
+            default    => 'QuickBooks vendor is ready',
+        };
+        echo htmlspecialchars($vendorMessage);
+        ?>
+        (ID <?= htmlspecialchars((string) $qboReadiness['vendor_id']) ?>) for
+        <?= htmlspecialchars(po_ledger_profile_label(po_order_ledger_profile($order))) ?>.
       </div>
       <?php endif; ?>
 

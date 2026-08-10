@@ -143,6 +143,7 @@ function data_profile_page_path(string $productionPath): string
         '/accounting/inventory.php'         => '/accounting/inventory-uat.php',
         '/accounting/suppliers.php'         => '/accounting/suppliers-uat.php',
         '/accounting/chart-of-accounts.php' => '/accounting/chart-of-accounts-uat.php',
+        '/accounting/sync-bills.php'        => '/accounting/sync-bills-uat.php',
         '/accounting/supplier-invoices'     => '/accounting/supplier-invoices-uat',
         '/accounting/supplier-invoices/'    => '/accounting/supplier-invoices-uat/',
         '/accounting/invoice-payments'      => '/accounting/invoice-payments-uat',

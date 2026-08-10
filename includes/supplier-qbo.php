@@ -34,6 +34,48 @@ function supplier_qbo_normalize_name(string $name): string
     return mb_strtolower(trim($name));
 }
 
+function supplier_qbo_display_name(array $supplier): string
+{
+    $displayName = trim((string) ($supplier['QBO_DisplayName'] ?? ''));
+    if ($displayName !== '') {
+        return $displayName;
+    }
+
+    return trim((string) ($supplier['SupplierName'] ?? ''));
+}
+
+function supplier_qbo_find_bound_vendor_id(array $supplier): ?string
+{
+    require_once __DIR__ . '/quickbooks.php';
+
+    $displayName = supplier_qbo_display_name($supplier);
+    if ($displayName === '') {
+        return null;
+    }
+
+    $match = qbo_find_vendor_by_display_name($displayName);
+    if ($match['ok'] && is_array($match['vendor'] ?? null)) {
+        $id = trim((string) ($match['vendor']['Id'] ?? ''));
+
+        return $id !== '' ? $id : null;
+    }
+
+    $supplierName = trim((string) ($supplier['SupplierName'] ?? ''));
+    if (
+        $supplierName !== ''
+        && supplier_qbo_normalize_name($supplierName) !== supplier_qbo_normalize_name($displayName)
+    ) {
+        $altMatch = qbo_find_vendor_by_display_name($supplierName);
+        if ($altMatch['ok'] && is_array($altMatch['vendor'] ?? null)) {
+            $id = trim((string) ($altMatch['vendor']['Id'] ?? ''));
+
+            return $id !== '' ? $id : null;
+        }
+    }
+
+    return null;
+}
+
 function supplier_qbo_sync_status_class(string $status): string
 {
     return match ($status) {

@@ -15,6 +15,7 @@ const ACCOUNTING_SECTIONS = [
     'suppliers'             => ['title' => 'Suppliers', 'href' => '/accounting/suppliers.php'],
     'accounts'              => ['title' => 'QBO Chart of Accounts', 'href' => '/accounting/chart-of-accounts.php'],
     'sync-production'       => ['title' => 'QBO Sync', 'href' => '/accounting/sync-production.php'],
+    'sync-bills'            => ['title' => 'Bill Payment Sync', 'href' => '/accounting/sync-bills.php'],
     'sync-sandbox-mirror'   => ['title' => 'Sandbox Mirror', 'href' => '/accounting/sync-sandbox-mirror.php'],
     'procurement-approvals' => ['title' => 'Approvals Queue', 'href' => '/procurement-approvals/'],
 ];

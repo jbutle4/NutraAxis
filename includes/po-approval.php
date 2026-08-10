@@ -166,6 +166,17 @@ function po_submit_for_approval(int $poId): array
         return ['ok' => false, 'error' => 'This purchase order cannot be submitted for approval in its current status.'];
     }
 
+    require_once __DIR__ . '/po-qbo-sync.php';
+    $qboReady = po_qbo_readiness_check($order);
+    if (!$qboReady['ok']) {
+        $message = (string) ($qboReady['error'] ?? 'This purchase order is not ready for QuickBooks sync.');
+        if (!empty($qboReady['remediation'])) {
+            $message .= ' ' . (string) $qboReady['remediation'];
+        }
+
+        return ['ok' => false, 'error' => $message];
+    }
+
     $current = $order['POStatus'];
 
     try {
@@ -313,7 +324,17 @@ function po_process_approval_action(int $poId, string $action, string $comments 
 
         po_notify_po_users_of_status_change($order, $config, $approverName, $comments);
 
-        return ['ok' => true, 'error' => null, 'status' => $config['status']];
+        $response = ['ok' => true, 'error' => null, 'status' => $config['status']];
+        if ($action === 'approve' && $config['status'] === PO_STATUS_APPROVED) {
+            require_once __DIR__ . '/po-qbo-sync.php';
+            $qboSync = po_qbo_sync_after_approval($poId);
+            $response['qbo_sync'] = $qboSync;
+            if (!$qboSync['ok'] && !($qboSync['skipped'] ?? false)) {
+                $response['qbo_warning'] = (string) ($qboSync['error'] ?? 'QuickBooks purchase order was not created.');
+            }
+        }
+
+        return $response;
     } catch (Throwable $e) {
         if (isset($pdo) && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -580,5 +601,58 @@ function po_notify_po_users_of_status_change(array $order, array $config, string
     $result = alert_send_message($alertName, $subject, $body);
     if (($result['skipped_reason'] ?? null) === 'no_subscribers') {
         error_log('po_notify_po_users_of_status_change skipped (no alert subscribers) for PO ' . $poNumber);
+    }
+}
+
+/**
+ * Advance PO accounting lifecycle statuses (Submit to Accounting / Paid).
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function po_advance_accounting_status(int $poId, string $targetStatus): array
+{
+    if (!in_array($targetStatus, [PO_STATUS_ACCOUNTING, PO_STATUS_PAID], true)) {
+        return ['ok' => false, 'error' => 'Invalid purchase order status transition.'];
+    }
+
+    $order = po_get_order($poId);
+    if ($order === null) {
+        return ['ok' => false, 'error' => 'Purchase order not found.'];
+    }
+
+    $currentStatus = (string) ($order['POStatus'] ?? '');
+    if ($targetStatus === PO_STATUS_ACCOUNTING) {
+        if ($currentStatus !== PO_STATUS_APPROVED) {
+            return ['ok' => false, 'error' => 'Only approved purchase orders can be submitted to accounting.'];
+        }
+    } elseif ($targetStatus === PO_STATUS_PAID) {
+        if (!in_array($currentStatus, [PO_STATUS_APPROVED, PO_STATUS_ACCOUNTING], true)) {
+            return ['ok' => false, 'error' => 'This purchase order cannot be marked paid in its current status.'];
+        }
+    }
+
+    if ($currentStatus === $targetStatus) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    try {
+        $pdo = db();
+        $actorId = auth_user()['UserID'] ?? null;
+        $stmt = $pdo->prepare(<<<SQL
+            UPDATE dbo.PurchaseOrder
+            SET POStatus = :status,
+                ModifiedDate = SYSUTCDATETIME(),
+                ModifiedbyUser = :modified_by
+            WHERE POID = :id
+        SQL);
+        $stmt->execute([
+            'status'      => $targetStatus,
+            'modified_by' => $actorId,
+            'id'          => $poId,
+        ]);
+
+        return ['ok' => true, 'error' => null];
+    } catch (Throwable $e) {
+        return ['ok' => false, 'error' => po_format_exception_message($e, 'update this purchase order status')];
     }
 }
