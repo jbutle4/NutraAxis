@@ -72,19 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
             }
             exit;
         case 'approve':
-            $result = provider_signup_ops_approve($applicationId, $comments);
+            $result = provider_signup_ops_approve($applicationId, $comments, $_POST);
             if ($result['ok']) {
                 $suffix = 'notice=approved';
-                if (!empty($result['warn'])) {
-                    $suffix .= '&warn=' . rawurlencode((string) $result['warn']);
-                }
                 header('Location: ' . $redirect . '&' . $suffix, true, 302);
             } else {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to approve application.'), true, 302);
             }
             exit;
         case 'provision':
-            $result = provider_signup_ops_provision($applicationId);
+            $result = provider_signup_ops_provision($applicationId, $_POST);
             if ($result['ok']) {
                 $suffix = !empty($result['already']) ? 'notice=already_provisioned' : 'notice=provisioned';
                 header('Location: ' . $redirect . '&' . $suffix, true, 302);
@@ -146,6 +143,12 @@ $canRunAccsConfig = $canUpdate
     && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED
     && (int) ($application['AccsCompanyId'] ?? 0) > 0
     && empty($application['AccsConfigurationComplete']);
+$reviewWarnings = provider_signup_ops_review_warnings(
+    $application,
+    $applicationId,
+    $canApprove || $canProvision
+);
+$showReviewOverride = $canUpdate && $reviewWarnings !== [] && ($canApprove || $canProvision);
 
 $pageTitle = 'Provider Application #' . $applicationId . ' | NutraAxis Operations';
 $pageDescription = 'Review provider signup application details.';
@@ -227,6 +230,21 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         Complete application data is required before approval: <?= htmlspecialchars(implode(', ', $approvalChecklist['missing'])) ?>.
         <a href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
       </div>
+      <?php endif; ?>
+
+      <?php if ($reviewWarnings !== []): ?>
+      <section class="detail-card detail-card--wide provider-signup-review-warnings">
+        <h2>Review warnings</h2>
+        <p class="form-hint">These items should be resolved before approval or provisioning. You may proceed with an explicit override when appropriate (for example, internal test clinics).</p>
+        <ul class="provider-signup-review-warnings-list">
+          <?php foreach ($reviewWarnings as $warning): ?>
+          <li>
+            <strong><?= htmlspecialchars((string) $warning['label']) ?>:</strong>
+            <?= htmlspecialchars((string) $warning['message']) ?>
+          </li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
       <?php endif; ?>
 
       <?php if ($canUpdate && $canEdit): ?>
@@ -499,6 +517,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <label for="comments">Comments / return notes</label>
           <textarea class="form-input form-textarea" id="comments" name="comments" rows="4"></textarea>
         </div>
+        <?php if ($showReviewOverride): ?>
+        <div class="form-group form-group--stacked provider-signup-review-override">
+          <label class="checkbox-label">
+            <input type="checkbox" name="review_override" value="1" />
+            Acknowledge review warnings and proceed
+          </label>
+          <p class="form-hint">Required to approve or create the Clinic Store while review warnings are present.</p>
+        </div>
+        <?php endif; ?>
         <div class="module-actions">
           <button class="btn-secondary" type="submit" name="action" value="comment">Add comment</button>
           <button class="btn-secondary" type="submit" name="action" value="validate_npi">Re-run NPI validation</button>

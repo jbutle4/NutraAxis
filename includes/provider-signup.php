@@ -1200,6 +1200,112 @@ function provider_signup_optional_documents_warnings(array $form, int $applicati
     return $warnings;
 }
 
+/**
+ * Review warnings that should block approve/provision unless ops explicitly overrides.
+ *
+ * @return list<array{key: string, label: string, message: string}>
+ */
+function provider_signup_ops_review_warnings(array $application, int $applicationId, bool $includeProvisionChecks = false): array
+{
+    $warnings = [];
+    $form = provider_signup_form_from_row($application);
+
+    $npiStatus = trim((string) ($application['NpiValidationStatus'] ?? ''));
+    if ($npiStatus !== 'Validated') {
+        $summary = trim((string) ($application['NpiValidationSummary'] ?? ''));
+        $warnings[] = [
+            'key'     => 'npi',
+            'label'   => 'NPI validation',
+            'message' => $summary !== ''
+                ? $summary
+                : ($npiStatus !== '' ? $npiStatus : 'NPI has not been validated.'),
+        ];
+    }
+
+    if (!provider_signup_has_reseller_certificate($applicationId)) {
+        $warnings[] = [
+            'key'     => 'reseller_certificate',
+            'label'   => 'Reseller certificate',
+            'message' => 'No state reseller certificate uploaded. The account will default to taxable status until a certificate is validated.',
+        ];
+    }
+
+    $bankResult = provider_signup_banking_validate_format($form, $applicationId);
+    $bankStatus = (string) ($bankResult['status'] ?? '');
+    if ($bankStatus === 'NotProvided' || $bankStatus === 'Invalid' || !($bankResult['ok'] ?? false)) {
+        $warnings[] = [
+            'key'     => 'banking',
+            'label'   => 'Banking / ACH',
+            'message' => (string) ($bankResult['summary'] ?? 'Banking details are incomplete or invalid.'),
+        ];
+    }
+
+    if ($includeProvisionChecks) {
+        $adminEmail = strtolower(trim((string) ($application['AdminEmail'] ?? '')));
+        if ($adminEmail !== '') {
+            $existing = provider_signup_accs_search_customer_by_email($adminEmail);
+            if (($existing['ok'] ?? false)
+                && is_array($existing['customer'] ?? null)
+                && !empty($existing['customer']['id'])) {
+                $warnings[] = [
+                    'key'     => 'existing_accs_admin',
+                    'label'   => 'Existing ACCS account',
+                    'message' => 'Admin email already exists in ACCS as customer #'
+                        . (int) $existing['customer']['id']
+                        . '. Provisioning will link that account as company admin (no new password).',
+                ];
+            }
+        }
+    }
+
+    return $warnings;
+}
+
+function provider_signup_ops_review_override_confirmed(array $input): bool
+{
+    return isset($input['review_override']) && (string) $input['review_override'] === '1';
+}
+
+/**
+ * @param list<array{key: string, label: string, message: string}> $warnings
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_ops_require_review_override_or_fail(array $warnings, bool $overrideConfirmed, string $actionLabel): array
+{
+    if ($warnings === [] || $overrideConfirmed) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $lines = array_map(
+        static fn (array $warning): string => $warning['label'] . ' — ' . $warning['message'],
+        $warnings
+    );
+
+    return [
+        'ok'    => false,
+        'error' => 'Cannot ' . $actionLabel . ' until review warnings are acknowledged. '
+            . implode(' ', $lines)
+            . ' Check "Acknowledge review warnings and proceed" to override.',
+    ];
+}
+
+/**
+ * @param list<array{key: string, label: string, message: string}> $warnings
+ */
+function provider_signup_ops_format_review_override_log(array $warnings): string
+{
+    if ($warnings === []) {
+        return '';
+    }
+
+    $parts = array_map(
+        static fn (array $warning): string => $warning['label'],
+        $warnings
+    );
+
+    return 'Review warnings overridden: ' . implode('; ', $parts) . '.';
+}
+
 function provider_signup_banking_validate_format(array $form, int $applicationId): array
 {
     $routing = preg_replace('/\D+/', '', (string) ($form['ach_routing_number'] ?? '')) ?? '';
@@ -1731,7 +1837,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
     return ['ok' => true, 'error' => null];
 }
 
-function provider_signup_ops_provision(int $applicationId): array
+function provider_signup_ops_provision(int $applicationId, array $options = []): array
 {
     provider_signup_require_update();
     $application = provider_signup_get($applicationId);
@@ -1743,12 +1849,23 @@ function provider_signup_ops_provision(int $applicationId): array
         return ['ok' => false, 'error' => 'This application is not ready for ACCS company creation.'];
     }
 
+    $warnings = provider_signup_ops_review_warnings($application, $applicationId, true);
+    $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
+    $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'create the Clinic Store');
+    if (!$gate['ok']) {
+        return ['ok' => false, 'error' => $gate['error']];
+    }
+
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $logComments = 'ACCS company created by operations reviewer.';
+    if ($overrideConfirmed && $warnings !== []) {
+        $logComments .= ' ' . provider_signup_ops_format_review_override_log($warnings);
+    }
 
     return provider_signup_finalize_provision(
         $applicationId,
         $reviewerId > 0 ? $reviewerId : null,
-        'ACCS company created by operations reviewer.'
+        $logComments
     );
 }
 
@@ -2285,7 +2402,8 @@ function provider_signup_ops_create_clinic(array $form, bool $markApproved = fal
     if ($markApproved) {
         $approve = provider_signup_ops_approve(
             $applicationId,
-            'Approved immediately after Operations backend clinic create.'
+            'Approved immediately after Operations backend clinic create.',
+            ['review_override' => '1']
         );
         if (!$approve['ok']) {
             return [
@@ -2462,7 +2580,7 @@ function provider_signup_ops_validate_npi(int $applicationId): array
     return $result;
 }
 
-function provider_signup_ops_approve(int $applicationId, string $comments = ''): array
+function provider_signup_ops_approve(int $applicationId, string $comments = '', array $options = []): array
 {
     provider_signup_require_update();
     $application = provider_signup_get($applicationId);
@@ -2472,6 +2590,13 @@ function provider_signup_ops_approve(int $applicationId, string $comments = ''):
 
     if (!provider_signup_ops_can_approve($application)) {
         return ['ok' => false, 'error' => 'This application cannot be approved in its current status.'];
+    }
+
+    $warnings = provider_signup_ops_review_warnings($application, $applicationId, false);
+    $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
+    $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'approve this application');
+    if (!$gate['ok']) {
+        return ['ok' => false, 'error' => $gate['error']];
     }
 
     $form = provider_signup_form_from_row($application);
@@ -2516,15 +2641,12 @@ function provider_signup_ops_approve(int $applicationId, string $comments = ''):
     }
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
-    provider_signup_add_review_log($applicationId, $reviewerId, 'Approved', trim($comments));
-
-    if (!$npiResult['ok']) {
-        return [
-            'ok'    => true,
-            'error' => null,
-            'warn'  => 'Application approved, but NPI validation did not pass: ' . ($npiResult['summary'] ?? 'Unknown issue') . '.',
-        ];
+    $logComments = trim($comments);
+    if ($overrideConfirmed && $warnings !== []) {
+        $overrideLog = provider_signup_ops_format_review_override_log($warnings);
+        $logComments = trim($logComments . ($logComments !== '' ? ' ' : '') . $overrideLog);
     }
+    provider_signup_add_review_log($applicationId, $reviewerId, 'Approved', $logComments);
 
     return ['ok' => true, 'error' => null];
 }
