@@ -48,7 +48,7 @@ function po_approval_token_resolve(string $token, int $poId): ?array
 function po_approval_build_action_url(int $poId, string $token, string $action): string
 {
     return approval_site_url()
-        . '/po-management/approval-action.php?id=' . $poId
+        . '/po-management/approve.php?id=' . $poId
         . '&token=' . rawurlencode($token)
         . '&action=' . rawurlencode($action);
 }

@@ -130,10 +130,6 @@ function qbo_ptos_vendor_payload_from_source(array $vendor): array
         }
     }
 
-    if (!empty($vendor['TermRef']) && is_array($vendor['TermRef'])) {
-        $payload['TermRef'] = $vendor['TermRef'];
-    }
-
     return $payload;
 }
 
@@ -142,6 +138,101 @@ function qbo_ptos_find_vendor_by_display_name(string $displayName): ?array
     $result = qbo_find_vendor_by_display_name($displayName);
 
     return $result['ok'] ? ($result['vendor'] ?? null) : null;
+}
+
+/**
+ * Ensure an Operations supplier has a matching vendor in QuickBooks Sandbox.
+ * Mirrors from Production when needed.
+ *
+ * @return array{ok: bool, error: ?string, vendor_id: string, action: ?string}
+ */
+function qbo_ensure_sandbox_vendor_for_supplier(array $supplier): array
+{
+    $displayName = supplier_qbo_display_name($supplier);
+    if ($displayName === '') {
+        return ['ok' => false, 'error' => 'Supplier name is required.', 'vendor_id' => '', 'action' => null];
+    }
+
+    $connectionError = qbo_ptos_require_connections();
+    if ($connectionError !== null) {
+        return ['ok' => false, 'error' => $connectionError, 'vendor_id' => '', 'action' => null];
+    }
+
+    $existingId = qbo_with_environment(
+        QBO_ENV_SANDBOX,
+        fn(): ?string => supplier_qbo_find_bound_vendor_id($supplier)
+    );
+    if ($existingId !== null) {
+        return ['ok' => true, 'error' => null, 'vendor_id' => $existingId, 'action' => 'existing'];
+    }
+
+    $prodVendor = null;
+    $qboSupplierId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
+    if ($qboSupplierId !== '') {
+        $fetch = qbo_with_environment(
+            QBO_ENV_PRODUCTION,
+            fn(): array => qbo_api_request('GET', '/vendor/' . rawurlencode($qboSupplierId), ['minorversion' => 65])
+        );
+        if ($fetch['ok'] && is_array($fetch['data']['Vendor'] ?? null)) {
+            $prodVendor = $fetch['data']['Vendor'];
+        }
+    }
+
+    if (!is_array($prodVendor)) {
+        $prodVendor = qbo_with_environment(
+            QBO_ENV_PRODUCTION,
+            fn(): ?array => qbo_ptos_find_vendor_by_display_name($displayName)
+        );
+    }
+
+    if (!is_array($prodVendor)) {
+        $supplierName = trim((string) ($supplier['SupplierName'] ?? ''));
+        if (
+            $supplierName !== ''
+            && supplier_qbo_normalize_name($supplierName) !== supplier_qbo_normalize_name($displayName)
+        ) {
+            $prodVendor = qbo_with_environment(
+                QBO_ENV_PRODUCTION,
+                fn(): ?array => qbo_ptos_find_vendor_by_display_name($supplierName)
+            );
+        }
+    }
+
+    if (!is_array($prodVendor) || qbo_ptos_is_skipped_vendor($prodVendor)) {
+        return [
+            'ok'        => false,
+            'error'     => 'Supplier not found in QuickBooks Production for Sandbox mirroring.',
+            'vendor_id' => '',
+            'action'    => null,
+        ];
+    }
+
+    $payload = qbo_ptos_vendor_payload_from_source($prodVendor);
+    $create = qbo_with_environment(
+        QBO_ENV_SANDBOX,
+        fn(): array => qbo_api_request('POST', '/vendor', ['minorversion' => 65], $payload)
+    );
+    if (!$create['ok']) {
+        return [
+            'ok'        => false,
+            'error'     => (string) ($create['error'] ?? 'Unable to create Sandbox vendor.'),
+            'vendor_id' => '',
+            'action'    => null,
+        ];
+    }
+
+    $created = qbo_extract_vendor($create['data']);
+    $vendorId = trim((string) ($created['Id'] ?? ''));
+    if ($vendorId === '') {
+        return [
+            'ok'        => false,
+            'error'     => 'QuickBooks Sandbox did not return a vendor ID.',
+            'vendor_id' => '',
+            'action'    => null,
+        ];
+    }
+
+    return ['ok' => true, 'error' => null, 'vendor_id' => $vendorId, 'action' => 'created'];
 }
 
 function qbo_ptos_find_purchase_order_by_doc_number(string $docNumber): ?array

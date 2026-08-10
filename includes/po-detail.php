@@ -53,6 +53,12 @@ $canEditProduction = $canEditProduction ?? false;
             <div><dt>Subtotal</dt><dd><?= htmlspecialchars(po_format_money($order['Subtotal'])) ?></dd></div>
             <div><dt>Shipping &amp; handling</dt><dd><?= $order['ShippingHandling'] !== null ? htmlspecialchars(po_format_money($order['ShippingHandling'])) : 'TBD' ?></dd></div>
             <div><dt>Total due</dt><dd><strong><?= htmlspecialchars(po_format_money($order['TotalDue'] ?? $order['Subtotal'])) ?></strong></dd></div>
+            <?php if (!empty($order['QBO_POID'])): ?>
+            <div><dt>QuickBooks PO</dt><dd><?= htmlspecialchars((string) $order['QBO_POID']) ?></dd></div>
+            <?php endif; ?>
+            <?php if (!empty($order['POQBO_LastSyncError'])): ?>
+            <div><dt>QuickBooks sync</dt><dd class="text-danger"><?= htmlspecialchars((string) $order['POQBO_LastSyncError']) ?></dd></div>
+            <?php endif; ?>
             <div><dt>Created by</dt><dd><?= htmlspecialchars($order['CreatedByName']) ?></dd></div>
             <div><dt>Last modified</dt><dd><?= htmlspecialchars(admin_format_datetime($order['ModifiedDate'])) ?></dd></div>
           </dl>

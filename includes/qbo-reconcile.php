@@ -6,6 +6,87 @@ require_once __DIR__ . '/quickbooks.php';
 require_once __DIR__ . '/po.php';
 require_once __DIR__ . '/procurement-ledger.php';
 
+const QBO_PO_DOC_NUMBER_MAX_LENGTH = 21;
+
+/**
+ * Ensure an Operations supplier exists in QuickBooks Production (link or create).
+ *
+ * @return array{ok: bool, error: ?string, vendor_id: string, action: ?string}
+ */
+function qbo_ensure_production_vendor_for_supplier(array $supplier): array
+{
+    $supplierId = (int) ($supplier['SupplierID'] ?? 0);
+    if ($supplierId <= 0) {
+        return ['ok' => false, 'error' => 'Invalid supplier.', 'vendor_id' => '', 'action' => null];
+    }
+
+    if (!qbo_is_connected(QBO_ENV_PRODUCTION)) {
+        return ['ok' => false, 'error' => 'QuickBooks Production is not connected.', 'vendor_id' => '', 'action' => null];
+    }
+
+    $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
+    if ($vendorId !== '') {
+        $fetch = qbo_api_request('GET', '/vendor/' . rawurlencode($vendorId), ['minorversion' => 65]);
+        if ($fetch['ok'] && is_array($fetch['data']['Vendor'] ?? null)) {
+            return ['ok' => true, 'error' => null, 'vendor_id' => $vendorId, 'action' => 'existing'];
+        }
+    }
+
+    $linkedId = supplier_qbo_find_bound_vendor_id($supplier);
+    if ($linkedId !== null) {
+        $lookup = qbo_find_vendor_by_display_name(supplier_qbo_display_name($supplier));
+        $vendor = is_array($lookup['vendor'] ?? null) ? $lookup['vendor'] : null;
+        if ($vendor !== null) {
+            supplier_apply_qbo_vendor_response($supplierId, $vendor);
+
+            return ['ok' => true, 'error' => null, 'vendor_id' => $linkedId, 'action' => 'linked'];
+        }
+    }
+
+    $sync = qbo_sync_supplier($supplierId);
+    if (!$sync['ok']) {
+        return [
+            'ok'        => false,
+            'error'     => (string) ($sync['error'] ?? 'QuickBooks supplier sync failed.'),
+            'vendor_id' => '',
+            'action'    => null,
+        ];
+    }
+
+    $refreshed = supplier_get($supplierId) ?? $supplier;
+    $vendorId = trim((string) ($refreshed['QBO_SupplierID'] ?? ''));
+    if ($vendorId === '') {
+        return [
+            'ok'        => false,
+            'error'     => 'Supplier has no QuickBooks vendor ID after sync.',
+            'vendor_id' => '',
+            'action'    => null,
+        ];
+    }
+
+    $action = (string) ($sync['action'] ?? 'synced');
+    if (!empty($sync['reconciled'])) {
+        $action = 'linked';
+    }
+
+    return ['ok' => true, 'error' => null, 'vendor_id' => $vendorId, 'action' => $action];
+}
+
+/**
+ * QuickBooks purchase order DocNumber is limited to 21 characters.
+ */
+function qbo_po_doc_number_for_order(array $order): string
+{
+    $poNumber = trim((string) ($order['PONumber'] ?? ''));
+    $poId = (int) ($order['POID'] ?? 0);
+
+    if ($poNumber !== '' && mb_strlen($poNumber) <= QBO_PO_DOC_NUMBER_MAX_LENGTH) {
+        return $poNumber;
+    }
+
+    return sprintf('PO-UAT-%06d', $poId > 0 ? $poId : 0);
+}
+
 function qbo_reconcile_bind_production(): void
 {
     supplier_qbo_bind_production();
@@ -183,57 +264,48 @@ function qbo_default_expense_account_id(): ?string
 function qbo_resolve_po_vendor_id(array $order, array $supplier): array
 {
     $profile = po_order_ledger_profile($order);
-    $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
 
     if ($profile === PO_LEDGER_PROFILE_UAT) {
-        $vendorList = qbo_list_vendors();
-        if (!$vendorList['ok']) {
-            return [
-                'ok'        => false,
-                'error'     => (string) ($vendorList['error'] ?? 'Unable to list QuickBooks Sandbox vendors.'),
-                'vendor_id' => '',
-            ];
+        $existingId = supplier_qbo_find_bound_vendor_id($supplier);
+        if ($existingId !== null) {
+            return ['ok' => true, 'error' => null, 'vendor_id' => $existingId, 'action' => 'existing'];
         }
 
-        $norm = supplier_qbo_normalize_name((string) ($supplier['SupplierName'] ?? ''));
-        foreach ($vendorList['rows'] as $vendor) {
-            if (!is_array($vendor)) {
-                continue;
-            }
-            if (supplier_qbo_normalize_name((string) ($vendor['DisplayName'] ?? '')) === $norm) {
-                $id = trim((string) ($vendor['Id'] ?? ''));
-
-                return $id === ''
-                    ? ['ok' => false, 'error' => 'Matched QuickBooks vendor has no ID.', 'vendor_id' => '']
-                    : ['ok' => true, 'error' => null, 'vendor_id' => $id];
-            }
+        require_once __DIR__ . '/qbo-prod-to-sandbox.php';
+        $ensure = qbo_ensure_sandbox_vendor_for_supplier($supplier);
+        if (!$ensure['ok']) {
+            return [
+                'ok'        => false,
+                'error'     => (string) ($ensure['error'] ?? 'Supplier not found in QuickBooks Sandbox.'),
+                'vendor_id' => '',
+                'action'    => null,
+            ];
         }
 
         return [
-            'ok'        => false,
-            'error'     => 'Supplier not found in QuickBooks Sandbox. Mirror or create the vendor in Sandbox first.',
-            'vendor_id' => '',
+            'ok'        => true,
+            'error'     => null,
+            'vendor_id' => (string) ($ensure['vendor_id'] ?? ''),
+            'action'    => $ensure['action'] ?? null,
         ];
     }
 
-    if ($vendorId === '') {
-        $sync = qbo_sync_supplier((int) $supplier['SupplierID']);
-        if (!$sync['ok']) {
-            return [
-                'ok'        => false,
-                'error'     => 'Supplier is not linked to QuickBooks: ' . ($sync['error'] ?? 'sync failed.'),
-                'vendor_id' => '',
-            ];
-        }
-        $supplier = supplier_get((int) $supplier['SupplierID']) ?? $supplier;
-        $vendorId = trim((string) ($supplier['QBO_SupplierID'] ?? ''));
+    $ensure = qbo_ensure_production_vendor_for_supplier($supplier);
+    if (!$ensure['ok']) {
+        return [
+            'ok'        => false,
+            'error'     => (string) ($ensure['error'] ?? 'Supplier is not linked to QuickBooks.'),
+            'vendor_id' => '',
+            'action'    => null,
+        ];
     }
 
-    if ($vendorId === '') {
-        return ['ok' => false, 'error' => 'Supplier has no QuickBooks vendor ID after sync.', 'vendor_id' => ''];
-    }
-
-    return ['ok' => true, 'error' => null, 'vendor_id' => $vendorId];
+    return [
+        'ok'        => true,
+        'error'     => null,
+        'vendor_id' => (string) ($ensure['vendor_id'] ?? ''),
+        'action'    => $ensure['action'] ?? null,
+    ];
 }
 
 function qbo_create_purchase_order_from_ops(int $poId): array
@@ -315,8 +387,9 @@ function qbo_create_purchase_order_from_ops(int $poId): array
         'Line'      => $qboLines,
     ];
 
-    if (!empty($order['PONumber'])) {
-        $payload['DocNumber'] = (string) $order['PONumber'];
+    $docNumber = qbo_po_doc_number_for_order($order);
+    if ($docNumber !== '') {
+        $payload['DocNumber'] = $docNumber;
     }
 
     $result = qbo_api_request('POST', '/purchaseorder', ['minorversion' => 65], $payload);
@@ -340,6 +413,9 @@ function qbo_create_purchase_order_from_ops(int $poId): array
         'qbo_id' => (string) $po['Id'],
         'id'     => $poId,
     ]);
+
+    require_once __DIR__ . '/po-qbo-sync.php';
+    po_qbo_mark_sync_success($poId);
 
     return ['ok' => true, 'error' => null, 'po' => $po, 'action' => 'created', 'realm_id' => (string) ($connection['RealmID'] ?? '')];
 }
@@ -630,12 +706,27 @@ function qbo_import_bill_from_qbo(array $bill): array
  */
 function qbo_reconcile_bills_production(): array
 {
-    qbo_reconcile_bind_production();
+    return qbo_reconcile_bills(PO_LEDGER_PROFILE_PRODUCTION);
+}
+
+/**
+ * Reconcile supplier invoices with QuickBooks bills for a ledger profile.
+ *
+ * @return array{summary: array<string, int>, rows: list<array<string, mixed>>}
+ */
+function qbo_reconcile_bills(?string $ledgerProfile = null): array
+{
+    $profile = po_normalize_ledger_profile($ledgerProfile ?? PO_LEDGER_PROFILE_PRODUCTION);
+    procurement_bind_ledger_profile($profile);
 
     if (!qbo_is_connected()) {
         return [
             'summary' => ['errors' => 1],
-            'rows'    => [['action' => 'error', 'name' => '—', 'detail' => 'QuickBooks Production is not connected.']],
+            'rows'    => [[
+                'action' => 'error',
+                'name'   => '—',
+                'detail' => 'QuickBooks ' . qbo_environment_label(qbo_environment()) . ' is not connected.',
+            ]],
         ];
     }
 
@@ -664,21 +755,35 @@ function qbo_reconcile_bills_production(): array
     }
 
     $pdo = db();
-    $invoices = $pdo->query(<<<SQL
+    $invoiceSql = <<<SQL
         SELECT SupplierInvoiceID, DocNumber, QBO_BillId, SyncStatus
         FROM dbo.SupplierInvoice
-        ORDER BY SupplierInvoiceID
-    SQL)->fetchAll();
+    SQL;
+    if (supplier_invoice_has_ledger_profile_column()) {
+        $invoiceSql .= ' WHERE LedgerProfile = :ledger_profile';
+    }
+    $invoiceSql .= ' ORDER BY SupplierInvoiceID';
+    $invoiceStmt = $pdo->prepare($invoiceSql);
+    if (supplier_invoice_has_ledger_profile_column()) {
+        $invoiceStmt->execute(['ledger_profile' => $profile]);
+    } else {
+        $invoiceStmt->execute();
+    }
+    $invoices = $invoiceStmt->fetchAll();
 
     $matchedQboIds = [];
     $rows = [];
     $summary = [
-        'cleared_stale'   => 0,
-        'linked'          => 0,
-        'awaiting_approval' => 0,
-        'created_in_ops'  => 0,
-        'errors'          => 0,
+        'cleared_stale'       => 0,
+        'linked'              => 0,
+        'awaiting_approval'   => 0,
+        'created_in_ops'      => 0,
+        'payments_synced'     => 0,
+        'po_marked_paid'      => 0,
+        'errors'              => 0,
     ];
+
+    require_once __DIR__ . '/po-qbo-sync.php';
 
     foreach ($invoices as $invoice) {
         $invoiceId = (int) $invoice['SupplierInvoiceID'];
@@ -697,10 +802,24 @@ function qbo_reconcile_bills_production(): array
                 $rows[] = ['action' => 'cleared_stale', 'name' => $doc, 'detail' => "Removed stale QBO bill ID {$billId}."];
                 $billId = '';
             } else {
-                qbo_apply_bill_link_to_invoice($invoiceId, $qboById[$billId]);
+                $refresh = qbo_refresh_ops_invoice_from_qbo_bill($invoiceId, $qboById[$billId]);
                 $matchedQboIds[$billId] = true;
                 $summary['linked']++;
-                $rows[] = ['action' => 'linked', 'name' => $doc, 'detail' => 'Verified linked QuickBooks bill.'];
+                if ($refresh['payments_updated'] > 0 || $refresh['payment_created']) {
+                    $summary['payments_synced']++;
+                }
+                if ($refresh['po_marked_paid']) {
+                    $summary['po_marked_paid']++;
+                }
+                $detail = 'Verified linked QuickBooks bill.';
+                if ($refresh['paid']) {
+                    $detail .= ' Payment status synced from QuickBooks.';
+                }
+                if (!$refresh['ok']) {
+                    $summary['errors']++;
+                    $detail = (string) ($refresh['error'] ?? 'Unable to refresh bill payment status.');
+                }
+                $rows[] = ['action' => $refresh['ok'] ? 'linked' : 'error', 'name' => $doc, 'detail' => $detail];
                 continue;
             }
         }
@@ -708,10 +827,24 @@ function qbo_reconcile_bills_production(): array
         if ($billId === '' && $doc !== '') {
             $match = $qboByDoc[mb_strtolower($doc)] ?? null;
             if (is_array($match)) {
-                qbo_apply_bill_link_to_invoice($invoiceId, $match);
+                $refresh = qbo_refresh_ops_invoice_from_qbo_bill($invoiceId, $match);
                 $matchedQboIds[(string) ($match['Id'] ?? '')] = true;
                 $summary['linked']++;
-                $rows[] = ['action' => 'linked', 'name' => $doc, 'detail' => 'Linked to existing QuickBooks bill by document number.'];
+                if ($refresh['payments_updated'] > 0 || $refresh['payment_created']) {
+                    $summary['payments_synced']++;
+                }
+                if ($refresh['po_marked_paid']) {
+                    $summary['po_marked_paid']++;
+                }
+                $detail = 'Linked to existing QuickBooks bill by document number.';
+                if ($refresh['paid']) {
+                    $detail .= ' Payment status synced from QuickBooks.';
+                }
+                if (!$refresh['ok']) {
+                    $summary['errors']++;
+                    $detail = (string) ($refresh['error'] ?? 'Unable to refresh bill payment status.');
+                }
+                $rows[] = ['action' => $refresh['ok'] ? 'linked' : 'error', 'name' => $doc, 'detail' => $detail];
                 continue;
             }
         }
@@ -736,7 +869,25 @@ function qbo_reconcile_bills_production(): array
         if ($import['ok']) {
             $matchedQboIds[$billId] = true;
             $summary['created_in_ops']++;
-            $rows[] = ['action' => 'created_in_ops', 'name' => $doc, 'detail' => 'Imported QuickBooks bill into Operations.'];
+            $importedInvoiceId = (int) ($import['id'] ?? 0);
+            $detail = 'Imported QuickBooks bill into Operations.';
+            if ($importedInvoiceId > 0) {
+                $refresh = qbo_refresh_ops_invoice_from_qbo_bill($importedInvoiceId, $bill);
+                if ($refresh['payments_updated'] > 0 || $refresh['payment_created']) {
+                    $summary['payments_synced']++;
+                }
+                if ($refresh['po_marked_paid']) {
+                    $summary['po_marked_paid']++;
+                }
+                if ($refresh['paid']) {
+                    $detail .= ' Payment status synced from QuickBooks.';
+                }
+                if (!$refresh['ok']) {
+                    $summary['errors']++;
+                    $detail = (string) ($refresh['error'] ?? 'Imported bill but payment sync failed.');
+                }
+            }
+            $rows[] = ['action' => 'created_in_ops', 'name' => $doc, 'detail' => $detail];
         } else {
             $summary['errors']++;
             $rows[] = ['action' => 'error', 'name' => $doc, 'detail' => (string) ($import['error'] ?? 'Import failed.')];
