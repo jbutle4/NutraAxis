@@ -1543,6 +1543,19 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   font-size: 0.82rem;
 }
 
+.provider-signup-review-warnings-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.provider-signup-review-warnings-list li + li {
+  margin-top: 0.5rem;
+}
+
+.provider-signup-review-override {
+  margin-top: 0.5rem;
+}
+
 .page-list-pagination {
   align-items: center;
   gap: 0.75rem;
