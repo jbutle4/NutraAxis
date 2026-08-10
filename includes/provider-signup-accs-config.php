@@ -5,6 +5,35 @@ require_once __DIR__ . '/provider-signup-accs.php';
 
 const PROVIDER_SIGNUP_ACCS_CONFIG_API_TIMEOUT_SECONDS = 120;
 const PROVIDER_SIGNUP_ACCS_CONFIG_SHARED_CATALOG_TAX_CLASS_ID = 3;
+const PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT = 'Clinic_Template';
+
+function provider_signup_accs_config_api_request_for_environment(
+    string $environment,
+    string $method,
+    string $path,
+    ?array $query = null,
+    ?array $body = null
+): array {
+    $environment = strtolower(trim($environment));
+    $previous = getenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');
+    $hadPrevious = $previous !== false;
+
+    putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT=' . $environment);
+    $_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT'] = $environment;
+    adobe_commerce_reset_access_token_cache();
+
+    try {
+        return provider_signup_accs_config_api_request($method, $path, $query, $body);
+    } finally {
+        if ($hadPrevious) {
+            putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT=' . $previous);
+            $_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT'] = $previous;
+        } else {
+            putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');
+            unset($_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT']);
+        }
+    }
+}
 
 function provider_signup_accs_config_api_request(
     string $method,
@@ -28,9 +57,77 @@ function provider_signup_accs_config_master_catalog_id(): int
     return $configured > 0 ? $configured : 1;
 }
 
+function provider_signup_accs_config_template_company_name(): string
+{
+    $configured = trim((string) env(
+        'PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME',
+        PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT
+    ));
+
+    return $configured !== '' ? $configured : PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT;
+}
+
+function provider_signup_accs_config_template_source_environment(): string
+{
+    $configured = strtolower(trim((string) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT', 'dev')));
+
+    return $configured !== '' ? $configured : 'dev';
+}
+
+function provider_signup_accs_config_template_source_company_id(): int
+{
+    $configured = (int) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID', '5');
+
+    return $configured > 0 ? $configured : 5;
+}
+
+function provider_signup_accs_config_find_company_id_by_name(string $companyName, ?string $environment = null): ?int
+{
+    $companyName = trim($companyName);
+    if ($companyName === '') {
+        return null;
+    }
+
+    $request = $environment === null
+        ? static fn (string $method, string $path, ?array $query = null, ?array $body = null): array => provider_signup_accs_config_api_request($method, $path, $query, $body)
+        : static fn (string $method, string $path, ?array $query = null, ?array $body = null): array => provider_signup_accs_config_api_request_for_environment($environment, $method, $path, $query, $body);
+
+    $result = $request('GET', '/company', [
+        'searchCriteria[filterGroups][0][filters][0][field]'          => 'company_name',
+        'searchCriteria[filterGroups][0][filters][0][value]'          => $companyName,
+        'searchCriteria[filterGroups][0][filters][0][conditionType]'    => 'eq',
+        'searchCriteria[pageSize]'                                     => '5',
+        'searchCriteria[currentPage]'                                  => '1',
+    ]);
+
+    if (!$result['ok'] || !is_array($result['data'] ?? null)) {
+        return null;
+    }
+
+    foreach ($result['data']['items'] ?? [] as $company) {
+        if (!is_array($company)) {
+            continue;
+        }
+        if (strcasecmp(trim((string) ($company['company_name'] ?? '')), $companyName) === 0) {
+            $companyId = (int) ($company['id'] ?? 0);
+
+            return $companyId > 0 ? $companyId : null;
+        }
+    }
+
+    return null;
+}
+
 function provider_signup_accs_config_template_company_id(): int
 {
-    return max(0, (int) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID', '0'));
+    $configured = max(0, (int) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID', '0'));
+    if ($configured > 0) {
+        return $configured;
+    }
+
+    return provider_signup_accs_config_find_company_id_by_name(
+        provider_signup_accs_config_template_company_name()
+    ) ?? 0;
 }
 
 /**
@@ -462,7 +559,7 @@ function provider_signup_accs_config_clone_roles(int $companyId): array
         if ($templateCompanyId <= 0) {
             return [
                 'ok'      => false,
-                'error'   => 'Set PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS or PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID.',
+                'error'   => 'Clinic role template company is not configured. Run scripts/provider-signup-bootstrap-clinic-template.php or set PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID.',
                 'summary' => null,
                 'actions' => [],
             ];
@@ -785,5 +882,368 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
         'roles_summary'          => $rolesSummary !== '' ? $rolesSummary : null,
         'configuration_complete' => $configurationComplete,
         'steps'                  => $steps,
+    ];
+}
+
+/**
+ * @return list<array{resource_id: mixed, permission: mixed}>
+ */
+function provider_signup_accs_config_role_permissions_from_role_data(array $roleData): array
+{
+    $permissions = [];
+    foreach ($roleData['permissions'] ?? [] as $permission) {
+        if (!is_array($permission) || empty($permission['resource_id'])) {
+            continue;
+        }
+        $permissions[] = [
+            'resource_id' => $permission['resource_id'],
+            'permission'  => $permission['permission'] ?? 'allow',
+        ];
+    }
+
+    return $permissions;
+}
+
+/**
+ * @param array<string, array<string, mixed>> $existingByName
+ * @return array{ok: bool, error: ?string, role_name: ?string, action: ?string, role_id: ?int}
+ */
+function provider_signup_accs_config_upsert_company_role(
+    int $companyId,
+    string $roleName,
+    array $permissions,
+    array $existingByName
+): array {
+    if (isset($existingByName[$roleName])) {
+        $current = $existingByName[$roleName];
+        $roleId = (int) ($current['id'] ?? 0);
+        if ($roleId <= 0) {
+            return ['ok' => false, 'error' => 'Existing role is missing an ID.', 'role_name' => $roleName, 'action' => null, 'role_id' => null];
+        }
+
+        $update = provider_signup_accs_config_api_request('PUT', '/company/role/' . $roleId, null, [
+            'role' => [
+                'id'          => $roleId,
+                'role_name'   => $roleName,
+                'company_id'  => $companyId,
+                'permissions' => $permissions,
+            ],
+        ]);
+        if (!$update['ok']) {
+            return [
+                'ok'        => false,
+                'error'     => provider_signup_accs_format_api_error($update),
+                'role_name' => $roleName,
+                'action'    => null,
+                'role_id'   => null,
+            ];
+        }
+
+        return ['ok' => true, 'error' => null, 'role_name' => $roleName, 'action' => 'updated', 'role_id' => $roleId];
+    }
+
+    $create = provider_signup_accs_config_api_request('POST', '/company/role', null, [
+        'role' => [
+            'role_name'   => $roleName,
+            'company_id'  => $companyId,
+            'permissions' => $permissions,
+        ],
+    ]);
+    if (!$create['ok'] || !is_array($create['data'] ?? null)) {
+        return [
+            'ok'        => false,
+            'error'     => provider_signup_accs_format_api_error($create),
+            'role_name' => $roleName,
+            'action'    => null,
+            'role_id'   => null,
+        ];
+    }
+
+    return [
+        'ok'        => true,
+        'error'     => null,
+        'role_name' => $roleName,
+        'action'    => 'created',
+        'role_id'   => (int) ($create['data']['id'] ?? 0),
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, company_id: ?int, action: ?string}
+ */
+function provider_signup_accs_config_bootstrap_clinic_template_company(int $superUserId): array
+{
+    $companyName = provider_signup_accs_config_template_company_name();
+    $existingId = provider_signup_accs_config_find_company_id_by_name($companyName);
+    if ($existingId !== null) {
+        return ['ok' => true, 'error' => null, 'company_id' => $existingId, 'action' => 'existing'];
+    }
+
+    if ($superUserId <= 0) {
+        return ['ok' => false, 'error' => 'A valid ACCS super user ID is required to create the clinic template company.', 'company_id' => null, 'action' => null];
+    }
+
+    $groupId = provider_signup_accs_customer_group_id();
+    $salesRepresentativeId = provider_signup_accs_sales_representative_id();
+    $result = provider_signup_accs_config_api_request('POST', '/company', null, [
+        'company' => [
+            'status'                  => 1,
+            'company_name'            => $companyName,
+            'legal_name'              => $companyName,
+            'company_email'           => 'clinic-template@nutraaxislabs.com',
+            'comment'                 => 'NutraAxis clinic role template company. Do not assign to live clinics.',
+            'street'                  => ['123 Template Street'],
+            'city'                    => 'Frisco',
+            'country_id'              => 'US',
+            'region_id'               => provider_signup_accs_region_id_for_state('TX', 'US'),
+            'postcode'                => '75035',
+            'telephone'               => '2145550100',
+            'customer_group_id'       => $groupId,
+            'sales_representative_id' => $salesRepresentativeId,
+            'super_user_id'           => $superUserId,
+        ],
+    ]);
+
+    if (!$result['ok']) {
+        return [
+            'ok'         => false,
+            'error'      => provider_signup_accs_format_api_error($result),
+            'company_id' => null,
+            'action'     => null,
+        ];
+    }
+
+    $companyId = (int) ($result['data']['id'] ?? 0);
+    if ($companyId <= 0) {
+        return ['ok' => false, 'error' => 'ACCS did not return a clinic template company ID.', 'company_id' => null, 'action' => null];
+    }
+
+    return ['ok' => true, 'error' => null, 'company_id' => $companyId, 'action' => 'created'];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, roles: array<string, list<array{resource_id: mixed, permission: mixed}>>}
+ */
+function provider_signup_accs_config_load_template_role_definitions(
+    ?string $sourceEnvironment = null,
+    ?int $sourceCompanyId = null
+): array {
+    $sourceEnvironment = $sourceEnvironment ?? provider_signup_accs_config_template_source_environment();
+    $sourceCompanyId = $sourceCompanyId ?? provider_signup_accs_config_template_source_company_id();
+    if ($sourceCompanyId <= 0) {
+        return ['ok' => false, 'error' => 'Source company ID is required.', 'roles' => []];
+    }
+
+    $sourceRoles = provider_signup_accs_config_api_request_for_environment($sourceEnvironment, 'GET', '/company/role', [
+        'searchCriteria[pageSize]'                                     => '50',
+        'searchCriteria[currentPage]'                                  => '1',
+        'searchCriteria[filterGroups][0][filters][0][field]'           => 'company_id',
+        'searchCriteria[filterGroups][0][filters][0][value]'          => (string) $sourceCompanyId,
+        'searchCriteria[filterGroups][0][filters][0][conditionType]'    => 'eq',
+    ]);
+    if (!$sourceRoles['ok'] || !is_array($sourceRoles['data'] ?? null)) {
+        return [
+            'ok'    => false,
+            'error' => provider_signup_accs_format_api_error($sourceRoles),
+            'roles' => [],
+        ];
+    }
+
+    $definitions = [];
+    foreach ($sourceRoles['data']['items'] ?? [] as $role) {
+        if (!is_array($role)) {
+            continue;
+        }
+        $roleName = trim((string) ($role['role_name'] ?? ''));
+        if ($roleName === '') {
+            continue;
+        }
+
+        $sourceRoleId = (int) ($role['id'] ?? 0);
+        $sourceDetail = $sourceRoleId > 0
+            ? provider_signup_accs_config_api_request_for_environment($sourceEnvironment, 'GET', '/company/role/' . $sourceRoleId)
+            : ['ok' => false, 'error' => 'Missing source role ID.', 'data' => null];
+        if (!$sourceDetail['ok'] || !is_array($sourceDetail['data'] ?? null)) {
+            return [
+                'ok'    => false,
+                'error' => provider_signup_accs_format_api_error($sourceDetail),
+                'roles' => [],
+            ];
+        }
+
+        $definitions[$roleName] = provider_signup_accs_config_role_permissions_from_role_data($sourceDetail['data']);
+    }
+
+    return ['ok' => true, 'error' => null, 'roles' => $definitions];
+}
+
+/**
+ * @param array<string, list<array{resource_id: mixed, permission: mixed}>> $roleDefinitions
+ * @return array{ok: bool, error: ?string, summary: ?string, actions: list<string>, company_id: ?int}
+ */
+function provider_signup_accs_config_apply_template_role_definitions(int $targetCompanyId, array $roleDefinitions): array
+{
+    if ($targetCompanyId <= 0) {
+        return ['ok' => false, 'error' => 'Target company ID is required.', 'summary' => null, 'actions' => [], 'company_id' => null];
+    }
+
+    $requiredNames = provider_signup_accs_config_required_role_names();
+    $existing = provider_signup_accs_config_list_company_roles($targetCompanyId);
+    if (!$existing['ok']) {
+        return ['ok' => false, 'error' => $existing['error'], 'summary' => null, 'actions' => [], 'company_id' => $targetCompanyId];
+    }
+
+    $existingByName = [];
+    foreach ($existing['roles'] as $role) {
+        $roleName = trim((string) ($role['role_name'] ?? ''));
+        if ($roleName !== '') {
+            $existingByName[$roleName] = $role;
+        }
+    }
+
+    $actions = [];
+    foreach ($requiredNames as $roleName) {
+        if (!isset($roleDefinitions[$roleName])) {
+            return [
+                'ok'         => false,
+                'error'      => 'Source company is missing required role "' . $roleName . '".',
+                'summary'    => null,
+                'actions'    => $actions,
+                'company_id' => $targetCompanyId,
+            ];
+        }
+
+        $upsert = provider_signup_accs_config_upsert_company_role(
+            $targetCompanyId,
+            $roleName,
+            $roleDefinitions[$roleName],
+            $existingByName
+        );
+        if (!$upsert['ok']) {
+            return [
+                'ok'         => false,
+                'error'      => $upsert['error'],
+                'summary'    => null,
+                'actions'    => $actions,
+                'company_id' => $targetCompanyId,
+            ];
+        }
+
+        $actions[] = ($upsert['action'] ?? 'updated') . ':' . $roleName;
+        if (!empty($upsert['role_name'])) {
+            $existingByName[$upsert['role_name']] = ['role_name' => $upsert['role_name'], 'id' => $upsert['role_id'] ?? null];
+        }
+    }
+
+    $finalRoles = provider_signup_accs_config_list_company_roles($targetCompanyId);
+    if (!$finalRoles['ok']) {
+        return ['ok' => false, 'error' => $finalRoles['error'], 'summary' => null, 'actions' => $actions, 'company_id' => $targetCompanyId];
+    }
+
+    $finalNames = [];
+    foreach ($finalRoles['roles'] as $role) {
+        $roleName = trim((string) ($role['role_name'] ?? ''));
+        if ($roleName !== '') {
+            $finalNames[] = $roleName;
+        }
+    }
+
+    $missing = array_values(array_diff($requiredNames, $finalNames));
+    if ($missing !== []) {
+        return [
+            'ok'         => false,
+            'error'      => 'Clinic template company is missing required roles: ' . implode(', ', $missing) . '.',
+            'summary'    => null,
+            'actions'    => $actions,
+            'company_id' => $targetCompanyId,
+        ];
+    }
+
+    return [
+        'ok'         => true,
+        'error'      => null,
+        'summary'    => implode(', ', $finalNames),
+        'actions'    => $actions,
+        'company_id' => $targetCompanyId,
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, summary: ?string, actions: list<string>, company_id: ?int}
+ */
+function provider_signup_accs_config_seed_clinic_template_roles(
+    int $targetCompanyId,
+    ?string $sourceEnvironment = null,
+    ?int $sourceCompanyId = null
+): array {
+    $definitions = provider_signup_accs_config_load_template_role_definitions($sourceEnvironment, $sourceCompanyId);
+    if (!$definitions['ok']) {
+        return [
+            'ok'         => false,
+            'error'      => $definitions['error'] ?? 'Unable to load template role definitions.',
+            'summary'    => null,
+            'actions'    => [],
+            'company_id' => $targetCompanyId,
+        ];
+    }
+
+    return provider_signup_accs_config_apply_template_role_definitions($targetCompanyId, $definitions['roles']);
+}
+
+/**
+ * @return array{
+ *   ok: bool,
+ *   error: ?string,
+ *   company_id: ?int,
+ *   company_action: ?string,
+ *   roles_summary: ?string,
+ *   role_actions: list<string>
+ * }
+ */
+function provider_signup_accs_config_bootstrap_clinic_template(int $superUserId): array
+{
+    $definitions = provider_signup_accs_config_load_template_role_definitions();
+    if (!$definitions['ok']) {
+        return [
+            'ok'             => false,
+            'error'          => $definitions['error'] ?? 'Unable to load clinic template role definitions.',
+            'company_id'     => null,
+            'company_action' => null,
+            'roles_summary'  => null,
+            'role_actions'   => [],
+        ];
+    }
+
+    $company = provider_signup_accs_config_bootstrap_clinic_template_company($superUserId);
+    if (!$company['ok'] || empty($company['company_id'])) {
+        return [
+            'ok'             => false,
+            'error'          => $company['error'] ?? 'Unable to create clinic template company.',
+            'company_id'     => null,
+            'company_action' => null,
+            'roles_summary'  => null,
+            'role_actions'   => [],
+        ];
+    }
+
+    $roles = provider_signup_accs_config_apply_template_role_definitions((int) $company['company_id'], $definitions['roles']);
+    if (!$roles['ok']) {
+        return [
+            'ok'             => false,
+            'error'          => $roles['error'] ?? 'Unable to seed clinic template roles.',
+            'company_id'     => (int) $company['company_id'],
+            'company_action' => $company['action'] ?? null,
+            'roles_summary'  => null,
+            'role_actions'   => $roles['actions'] ?? [],
+        ];
+    }
+
+    return [
+        'ok'             => true,
+        'error'          => null,
+        'company_id'     => (int) $company['company_id'],
+        'company_action' => $company['action'] ?? null,
+        'roles_summary'  => $roles['summary'] ?? null,
+        'role_actions'   => $roles['actions'] ?? [],
     ];
 }

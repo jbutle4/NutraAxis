@@ -10,6 +10,11 @@ const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 
 function provider_signup_accs_target_environment(): string
 {
+    $runtime = env_runtime_value('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');
+    if ($runtime !== null && $runtime !== '') {
+        return strtolower(trim($runtime));
+    }
+
     return strtolower(trim((string) env('PROVIDER_SIGNUP_ACCS_ENVIRONMENT', 'stage')));
 }
 

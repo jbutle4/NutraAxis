@@ -1523,7 +1523,13 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 }
 
 .page-inner--wide .admin-table--signup-review {
-  min-width: 1280px;
+  min-width: 1340px;
+}
+
+.admin-table--signup-review th.accs-env-col,
+.admin-table--signup-review td.accs-env-col {
+  white-space: nowrap;
+  font-size: 0.82rem;
 }
 
 .admin-table-wrap--signup-review {

@@ -142,6 +142,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <td><span class="<?= htmlspecialchars(provider_signup_status_badge_class((string) $row['Status'])) ?>"><?= htmlspecialchars((string) $row['Status']) ?></span></td>
               <td><?= htmlspecialchars(provider_signup_format_datetime($row['CreatedAt'] ?? null)) ?></td>
               <td><?= htmlspecialchars(provider_signup_format_datetime($row['SubmittedAt'] ?? null)) ?></td>
+              <td class="accs-env-col" title="<?= htmlspecialchars(provider_signup_accs_environment_label($row['AccsEnvironment'] ?? null)) ?>">
+                <?= htmlspecialchars(provider_signup_accs_environment_label($row['AccsEnvironment'] ?? null)) ?>
+              </td>
               <?php foreach ($configStepColumns as $stepKey => $sortKey): ?>
               <?php $stepCell = provider_signup_config_step_table_cell($row, $stepKey); ?>
               <td class="config-step-col" title="<?= htmlspecialchars($stepCell['title']) ?>">

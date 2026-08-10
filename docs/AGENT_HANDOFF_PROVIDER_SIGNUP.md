@@ -200,14 +200,18 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 - `provider_signup_accs_complete_clinic_configuration($application)` — shared catalog, catalog assign, roles clone
 - Runs automatically after successful **Create Clinic Store** (non-fatal if automation fails; review log comment)
 - Batch CLI: `php scripts/provider-signup-complete-accs-config.php` (`--id=`, `--limit=`)
+- Bootstrap template company + roles: `php scripts/provider-signup-bootstrap-clinic-template.php`
 
 **Automation env** (in addition to `ADOBE_COMMERCE_*`):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Source catalog for categories/products |
-| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID` | (none) | List all roles from template company when role IDs unset |
-| `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS` | (none) | Comma-separated template role IDs (e.g. Dev Butler `7,8,9,10,15`) |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME` | `Clinic_Template` | Auto-resolved template company for role cloning |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID` | (none) | Optional explicit ID; otherwise lookup by name |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT` | `dev` | Bootstrap script copies role permissions from this ACCS tenant |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID` | `5` | Dev Butler Health (full clinic roles; Stage Butler only has Default User) |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS` | (none) | Optional comma-separated template role IDs instead of company clone |
 | `PROVIDER_SIGNUP_ACCS_REQUIRED_ROLE_NAMES` | `Default User,Owner,Company_Admin,Provider,Affiliated Patients` | Post-clone verification |
 
 ### Company payload highlights (`provider_signup_accs_build_company_payload`)
@@ -342,7 +346,10 @@ PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID=12
 PROVIDER_SIGNUP_ACCS_WEBSITE_ID=1
 PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD=
 PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1
+PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME=Clinic_Template
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID=
+PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT=dev
+PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID=5
 PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS=
 PROVIDER_SIGNUP_ACCS_REQUIRED_ROLE_NAMES=Default User,Owner,Company_Admin,Provider,Affiliated Patients
 PROVIDER_SIGNUP_RECAPTCHA_SITE_KEY=
