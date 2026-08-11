@@ -384,7 +384,7 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         '- Once your reseller certificate is validated, tax exemption will be applied and your account will be updated accordingly.',
         '',
         'YOUR CLINIC STORE',
-        '- Your co-branded clinic storefront will be provisioned after August 3, 2026. As clinic admin, you will be able to set your own retail pricing for patients.',
+        '- Your co-branded clinic storefront will be provisioned in 3-5 business days. As clinic admin, you will be able to set your own retail pricing for patients.',
         '- You can invite patients with your clinic QR code or shareable store link (available in your Clinic Store admin after the storefront is live).',
         '- You can add your own clinic logo to the storefront.',
         '',
@@ -443,7 +443,7 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . '</ul>'
         . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">Your Clinic Store</h2>'
         . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
-        . '<li style="margin-bottom:8px;">Your co-branded clinic storefront will be provisioned after <strong>August 3, 2026</strong>. As clinic admin, you\'ll be able to set your own retail pricing for patients.</li>'
+        . '<li style="margin-bottom:8px;">Your co-branded clinic storefront will be provisioned in <strong>3-5 business days</strong>. As clinic admin, you\'ll be able to set your own retail pricing for patients.</li>'
         . '<li style="margin-bottom:8px;">You can invite patients with your clinic\'s <strong>QR code</strong> or shareable store link (available in your Clinic Store admin after the storefront is live).</li>'
         . '<li>You can add your own clinic logo to the storefront.</li>'
         . '</ul>'
