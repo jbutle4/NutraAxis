@@ -638,21 +638,23 @@ function qbo_refresh_access_token(?string $env = null): array
     return qbo_store_token_response($result['data'], (string) $connection['RealmID'], $env);
 }
 
-function qbo_ensure_access_token(): array
+function qbo_ensure_access_token(bool $forceRefresh = false): array
 {
     $connection = qbo_get_connection();
     if ($connection === null) {
         return ['ok' => false, 'error' => 'QuickBooks is not connected. An Accounting user with Update access must connect QuickBooks first.'];
     }
 
-    try {
-        $expires = new DateTimeImmutable((string) $connection['AccessTokenExpiresAt'], new DateTimeZone('UTC'));
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        if ($expires > $now) {
-            return ['ok' => true, 'error' => null, 'connection' => $connection];
+    if (!$forceRefresh) {
+        try {
+            $expires = new DateTimeImmutable((string) $connection['AccessTokenExpiresAt'], new DateTimeZone('UTC'));
+            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+            if ($expires > $now) {
+                return ['ok' => true, 'error' => null, 'connection' => $connection];
+            }
+        } catch (Throwable) {
+            // fall through to refresh
         }
-    } catch (Throwable) {
-        // fall through to refresh
     }
 
     $refresh = qbo_refresh_access_token();
@@ -663,6 +665,37 @@ function qbo_ensure_access_token(): array
     $connection = qbo_get_connection();
 
     return ['ok' => true, 'error' => null, 'connection' => $connection];
+}
+
+function qbo_api_response_is_auth_failure(int $status, ?array $data): bool
+{
+    if ($status === 401) {
+        return true;
+    }
+
+    if (!is_array($data)) {
+        return false;
+    }
+
+    $fault = $data['fault']['error'] ?? null;
+    if (!is_array($fault)) {
+        return false;
+    }
+
+    $errors = isset($fault[0]) ? $fault : [$fault];
+    foreach ($errors as $error) {
+        if (!is_array($error)) {
+            continue;
+        }
+        $code = strtolower(trim((string) ($error['code'] ?? '')));
+        $message = strtolower(trim((string) ($error['message'] ?? '')));
+        $detail = strtolower(trim((string) ($error['detail'] ?? '')));
+        if ($code === '3200' || str_contains($message, 'authenticationfailed') || str_contains($detail, 'token expired')) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function qbo_api_request(string $method, string $path, ?array $query = null, ?array $body = null): array
@@ -677,7 +710,29 @@ function qbo_api_request(string $method, string $path, ?array $query = null, ?ar
         return $tokenResult;
     }
 
-    $connection = $tokenResult['connection'];
+    $result = qbo_api_request_with_connection($method, $path, $query, $body, $tokenResult['connection']);
+    if (
+        !($result['ok'] ?? false)
+        && qbo_api_response_is_auth_failure((int) ($result['status'] ?? 0), is_array($result['data'] ?? null) ? $result['data'] : null)
+    ) {
+        $refresh = qbo_ensure_access_token(true);
+        if (!$refresh['ok']) {
+            return $refresh;
+        }
+
+        $result = qbo_api_request_with_connection($method, $path, $query, $body, $refresh['connection']);
+    }
+
+    return $result;
+}
+
+function qbo_api_request_with_connection(
+    string $method,
+    string $path,
+    ?array $query,
+    ?array $body,
+    array $connection
+): array {
     $realmId = (string) $connection['RealmID'];
     $url = qbo_api_base_url() . '/v3/company/' . rawurlencode($realmId) . $path;
 

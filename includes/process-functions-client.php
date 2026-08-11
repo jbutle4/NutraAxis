@@ -25,7 +25,11 @@ function process_functions_prod_is_configured(): bool
     return process_functions_prod_base_url() !== '' && process_functions_prod_key() !== '';
 }
 
-/** Process codes that must execute on Nutra-forecast-tool-prod. */
+/**
+ * Process codes that route to Nutra-forecast-tool-prod when the active Process Log
+ * profile is production. UAT profile always uses Nutra-forecast-tool (stage ACCS,
+ * QBO sandbox, IMS uat).
+ */
 function process_functions_prod_codes(): array
 {
     return [
@@ -34,21 +38,59 @@ function process_functions_prod_codes(): array
     ];
 }
 
-function process_functions_resolve_target(string $code): array
+function process_functions_uat_app_label(): string
 {
-    if (in_array($code, process_functions_prod_codes(), true) && process_functions_prod_is_configured()) {
-        return [
-            'base_url' => process_functions_prod_base_url(),
-            'key'      => process_functions_prod_key(),
-            'app'      => 'Nutra-forecast-tool-prod',
-        ];
-    }
+    return 'Nutra-forecast-tool';
+}
 
+function process_functions_prod_app_label(): string
+{
+    return 'Nutra-forecast-tool-prod';
+}
+
+function process_functions_uat_target(): array
+{
     return [
         'base_url' => process_functions_base_url(),
         'key'      => process_functions_key(),
-        'app'      => 'Nutra-forecast-tool',
+        'app'      => process_functions_uat_app_label(),
+        'profile'  => 'uat',
     ];
+}
+
+function process_functions_prod_target(): array
+{
+    return [
+        'base_url' => process_functions_prod_base_url(),
+        'key'      => process_functions_prod_key(),
+        'app'      => process_functions_prod_app_label(),
+        'profile'  => 'production',
+    ];
+}
+
+function process_functions_should_use_prod_app(string $code): bool
+{
+    if (function_exists('data_profile_is_uat') && data_profile_is_uat()) {
+        return false;
+    }
+
+    return in_array($code, process_functions_prod_codes(), true);
+}
+
+function process_functions_resolve_target(string $code): array
+{
+    if (process_functions_should_use_prod_app($code) && process_functions_prod_is_configured()) {
+        return process_functions_prod_target();
+    }
+
+    return process_functions_uat_target();
+}
+
+function process_functions_target_label(string $code): string
+{
+    $target = process_functions_resolve_target($code);
+
+    return (string) ($target['app'] ?? process_functions_uat_app_label());
 }
 
 function process_functions_base_url(): string
@@ -77,7 +119,7 @@ function process_functions_request(array $payload): array
     $target = process_functions_resolve_target($code);
     $key = $target['key'];
     if ($key === '') {
-        $missing = $target['app'] === 'Nutra-forecast-tool-prod'
+        $missing = $target['app'] === process_functions_prod_app_label()
             ? 'NUTRA_FUNCTIONS_PROD_KEY'
             : 'NUTRA_FUNCTIONS_KEY';
 

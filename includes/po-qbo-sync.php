@@ -360,6 +360,18 @@ function qbo_refresh_ops_invoice_from_qbo_bill(int $invoiceId, array $bill): arr
         $amount = (float) ($invoice['TotalAmt'] ?? $bill['TotalAmt'] ?? 0);
         if ($amount > 0) {
             $poId = !empty($invoice['POID']) ? (int) $invoice['POID'] : null;
+            $supplierId = (int) ($invoice['SupplierID'] ?? 0);
+            if ($supplierId <= 0) {
+                return [
+                    'ok'               => false,
+                    'error'            => 'Supplier invoice is missing a supplier ID for payment sync.',
+                    'paid'             => true,
+                    'payments_updated' => $summary['payments_updated'],
+                    'payment_created'  => false,
+                    'po_marked_paid'   => false,
+                ];
+            }
+
             $ledgerProfile = procurement_row_ledger_profile($invoice);
             $actorId = auth_user()['UserID'] ?? null;
             $paymentDate = date('Y-m-d H:i:s');
@@ -367,16 +379,17 @@ function qbo_refresh_ops_invoice_from_qbo_bill(int $invoiceId, array $bill): arr
             if (po_payment_has_ledger_profile_column()) {
                 $insert = $pdo->prepare(<<<SQL
                     INSERT INTO dbo.POPayment (
-                        POID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
-                        PaymentComments, LedgerProfile, CreatedByUser, ModifiedbyUser
+                        POID, SupplierID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
+                        PaymentComments, PaymentRecordType, LedgerProfile, CreatedByUser, ModifiedbyUser
                     )
                     VALUES (
-                        :po_id, :supplier_invoice_id, :payment_date, :amount, N'Check', N'Paid',
-                        N'Synced from QuickBooks bill payment.', :ledger_profile, :actor, :actor
+                        :po_id, :supplier_id, :supplier_invoice_id, :payment_date, :amount, N'Check', N'Paid',
+                        N'Synced from QuickBooks bill payment.', N'Manual', :ledger_profile, :actor, :actor
                     )
                 SQL);
                 $insert->execute([
                     'po_id'               => $poId,
+                    'supplier_id'         => $supplierId,
                     'supplier_invoice_id' => $invoiceId,
                     'payment_date'        => $paymentDate,
                     'amount'              => $amount,
@@ -386,16 +399,17 @@ function qbo_refresh_ops_invoice_from_qbo_bill(int $invoiceId, array $bill): arr
             } else {
                 $insert = $pdo->prepare(<<<SQL
                     INSERT INTO dbo.POPayment (
-                        POID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
-                        PaymentComments, CreatedByUser, ModifiedbyUser
+                        POID, SupplierID, SupplierInvoiceID, PaymentDate, PaymentAmount, PaymentType, PaymentStatus,
+                        PaymentComments, PaymentRecordType, CreatedByUser, ModifiedbyUser
                     )
                     VALUES (
-                        :po_id, :supplier_invoice_id, :payment_date, :amount, N'Check', N'Paid',
-                        N'Synced from QuickBooks bill payment.', :actor, :actor
+                        :po_id, :supplier_id, :supplier_invoice_id, :payment_date, :amount, N'Check', N'Paid',
+                        N'Synced from QuickBooks bill payment.', N'Manual', :actor, :actor
                     )
                 SQL);
                 $insert->execute([
                     'po_id'               => $poId,
+                    'supplier_id'         => $supplierId,
                     'supplier_invoice_id' => $invoiceId,
                     'payment_date'        => $paymentDate,
                     'amount'              => $amount,

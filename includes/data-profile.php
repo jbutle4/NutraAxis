@@ -146,7 +146,7 @@ function data_profile_page_path(string $productionPath): string
         '/accounting/inventory.php'         => '/accounting/inventory-uat.php',
         '/accounting/suppliers.php'         => '/accounting/suppliers-uat.php',
         '/accounting/chart-of-accounts.php' => '/accounting/chart-of-accounts-uat.php',
-        '/accounting/sync-bills.php'        => '/accounting/sync-bills-uat.php',
+        '/accounting/sync-bills.php'        => '/scheduled-jobs-uat/',
         '/accounting/supplier-invoices'     => '/accounting/supplier-invoices-uat',
         '/accounting/supplier-invoices/'    => '/accounting/supplier-invoices-uat/',
         '/accounting/invoice-payments'      => '/accounting/invoice-payments-uat',
@@ -165,6 +165,8 @@ function data_profile_page_path(string $productionPath): string
         '/inventory-qbo-recon/'             => '/inventory-qbo-recon-uat/',
         '/inventory-movement-recon'         => '/inventory-movement-recon-uat',
         '/inventory-movement-recon/'        => '/inventory-movement-recon-uat/',
+        '/scheduled-jobs-uat'               => '/scheduled-jobs-uat',
+        '/scheduled-jobs-uat/'              => '/scheduled-jobs-uat/',
     ];
 
     if (isset($map[$productionPath])) {

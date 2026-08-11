@@ -1,17 +1,19 @@
 <?php
+require dirname(__DIR__) . '/includes/process-log-page.php';
+
+$dataProfile = process_log_normalize_profile($dataProfile ?? ($_POST['data_profile'] ?? 'production'));
 require dirname(__DIR__) . '/includes/init.php';
+data_profile_set($dataProfile);
 require dirname(__DIR__) . '/includes/process-runner.php';
 
 auth_require_module_read('process-log');
 
 if (!auth_can_update(MODULE_PERMISSION_COLUMNS['process-log'])) {
-    header('Location: /process-log/?error=' . rawurlencode('You do not have permission to rerun processes.'));
-    exit;
+    process_log_redirect($dataProfile, 'error=' . rawurlencode('You do not have permission to rerun processes.'));
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /process-log/');
-    exit;
+    process_log_redirect($dataProfile);
 }
 
 $logId = (int) ($_POST['log_id'] ?? 0);
@@ -27,5 +29,4 @@ if (!$result['ok'] && !empty($result['error'])) {
     $query .= '&error=' . rawurlencode((string) $result['error']);
 }
 
-header('Location: /process-log/?' . $query);
-exit;
+process_log_redirect($dataProfile, $query);
