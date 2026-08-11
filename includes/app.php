@@ -651,6 +651,22 @@ $salesReportingSubModules = [
         'icon'  => 'clipboard',
         'tier'  => 'uat',
     ],
+    [
+        'slug'  => 'sales-rep-reporting',
+        'title' => 'Sales Rep Reporting',
+        'desc'  => 'ACCS production orders with company territory matching to sales reps.',
+        'href'  => '/sales-reporting/sales-rep-reporting/',
+        'icon'  => 'chart',
+        'tier'  => 'production',
+    ],
+    [
+        'slug'  => 'sales-rep-reporting-uat',
+        'title' => 'Sales Rep Reporting',
+        'desc'  => 'UAT System ACCS Stage orders with company territory matching to sales reps.',
+        'href'  => '/sales-reporting/sales-rep-reporting-uat/',
+        'icon'  => 'chart',
+        'tier'  => 'uat',
+    ],
 ];
 
 $appFunctions = [
@@ -740,6 +756,14 @@ $appFunctions = [
         'desc'  => 'Shortcuts to Microsoft 365, QuickBooks, Adobe Commerce, and support tools.',
         'href'  => '/',
         'icon'  => 'dashboard',
+        'group' => 'admin',
+    ],
+    [
+        'slug'  => 'sales-rep-territory-assignment',
+        'title' => 'Sales Rep Territory Assignment',
+        'desc'  => 'Maintain state/zip/county sales territory assignments for Sales Rep Reporting.',
+        'href'  => '/sales-rep-territory-assignment/',
+        'icon'  => 'clipboard',
         'group' => 'admin',
     ],
     [
@@ -978,8 +1002,29 @@ $modulePages = [
         'lead'        => 'ACCS order lookup plus daily and monthly SKU sales summary tables populated by scheduled background jobs.',
         'capabilities' => [
             ['title' => 'ACCS Order Report', 'desc' => 'Search and view Adobe Commerce orders with line-item detail.'],
+            ['title' => 'Sales Rep Reporting', 'desc' => 'Orders with company territory matching to sales reps.'],
             ['title' => 'Daily Sales Summary', 'desc' => 'SKU quantities sold per day from the nightly ACCS rollup.'],
             ['title' => 'Monthly Sales Summary', 'desc' => 'SKU quantities sold per month for forecasting and trend analysis.'],
+        ],
+    ],
+    'sales-rep-reporting' => [
+        'label'       => 'Sales',
+        'headline'    => 'Sales Rep Reporting',
+        'lead'        => 'Synced ACCS orders with company state/zip matched to SalesTeamTerritoryAssignments.',
+        'capabilities' => [
+            ['title' => 'Order + Rep Match', 'desc' => 'Show order amounts, status, company, ship-to, and assigned sales rep.'],
+            ['title' => 'Territory Match', 'desc' => 'Exact zip first, otherwise statewide ZipCode = All.'],
+            ['title' => 'Manual Refresh', 'desc' => 'Trigger ACCS sales order sync and show last refresh time.'],
+        ],
+    ],
+    'sales-rep-territory-assignment' => [
+        'label'       => 'Operations',
+        'headline'    => 'Sales Rep Territory Assignment',
+        'lead'        => 'Maintain State / Zip / County → sales rep assignments used by Sales Rep Reporting.',
+        'capabilities' => [
+            ['title' => 'Territory Directory', 'desc' => 'Search and filter assignments by state, zip, county, or rep.'],
+            ['title' => 'Reassignment History', 'desc' => 'PreviousRepAssigned is set when a rep changes.'],
+            ['title' => 'Statewide Catch-All', 'desc' => 'Use ZipCode = All (and County = All) for state-level coverage.'],
         ],
     ],
     'accs-order-report' => [

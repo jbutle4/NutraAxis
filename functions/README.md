@@ -56,7 +56,7 @@ Set `WEBSITE_TIME_ZONE=America/Chicago`. Override schedules via app settings:
 | `inventory-sales-sync` | `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 3 * * *` (daily 3:00 AM) |
 | `inventory-movement-recon` | `INVENTORY_MOVEMENT_RECON_SCHEDULE` | `0 0 4 * * *` (daily 4:00 AM) |
 | `qbo-coa-sync` | `QBO_COA_SYNC_SCHEDULE` | `0 0 18 * * 5` (Fri 6:00 PM) |
-| `accs-sales-order-sync` | `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 */2 * * *` (every 2 hours) |
+| `accs-sales-order-sync` | `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 * * * *` (hourly) |
 | `jazz-inventory-snapshot` | `JAZZ_INVENTORY_SNAPSHOT_SCHEDULE` | `0 0 12 * * 0` (Sun 12:00 PM) |
 
 ## Local development
@@ -111,7 +111,7 @@ Two deployed apps share the same `functions/` codebase but **must** use differen
 | `QBO_CLIENT_ID` / `SECRET` | Sandbox OAuth app | Production OAuth app (`*_PROD` if split) |
 | Jazz credentials | `JAZZ_UAT_*` or `JAZZ_*` pointing at UAT | Production Jazz (`JAZZ_*_PROD` when wired) |
 | Inventory timers | **Disabled** (`0 0 0 1 1 2099`) — manual via Process Log | **Enabled** when production cutover (2:30 / 3:00 / 4:00 AM) |
-| `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 0 1 1 2099` (skipped in code) | `0 0 */2 * * *` |
+| `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 0 1 1 2099` (skipped in code) | `0 0 * * * *` |
 
 `IMS_LEDGER_PROFILE` is the source of truth for which `Inv*` rows jobs read/write. If unset, it is derived from `QBO_ENVIRONMENT` (sandbox → `uat`, production → `production`) or `ADOBE_COMMERCE_ENVIRONMENT` (stage → `uat`).
 
@@ -134,7 +134,7 @@ Production app settings for ACCS order sync:
 | `ADOBE_COMMERCE_CLIENT_ID` | Production IMS client ID |
 | `ADOBE_COMMERCE_CLIENT_SECRET` | Production IMS client secret |
 | `ADOBE_COMMERCE_PRODUCTION` | Production ACCS tenant ID |
-| `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 */2 * * *` (every 2 hours; uses `WEBSITE_TIME_ZONE`) |
+| `ACCS_SALES_ORDER_SYNC_SCHEDULE` | `0 0 * * * *` (hourly; uses `WEBSITE_TIME_ZONE`) |
 | `ACCS_SALES_ORDER_DETAIL_RECONCILE_BATCH` | `200` (open orders re-checked each run; set `0` to disable) |
 
 Manual run from Process Log or HTTP:
