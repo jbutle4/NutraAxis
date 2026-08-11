@@ -42,6 +42,14 @@ function operations_dashboard_sections(): array
                     'module'   => 'contacts-list',
                 ],
                 [
+                    'title'    => 'Sales Rep Territory Assignment',
+                    'desc'     => 'Maintain state/zip/county sales territory assignments for Sales Rep Reporting.',
+                    'href'     => '/sales-rep-territory-assignment/',
+                    'icon'     => 'clipboard',
+                    'internal' => true,
+                    'module'   => 'sales-rep-territory-assignment',
+                ],
+                [
                     'title' => 'QuickBooks',
                     'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                     'href'  => 'https://qbo.intuit.com/app/my-accountant',
