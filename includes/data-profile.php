@@ -136,6 +136,8 @@ function data_profile_page_path(string $productionPath): string
         '/sales-reporting/sales-rep-reporting'  => '/sales-reporting/sales-rep-reporting-uat',
         '/sales-reporting/sales-rep-reporting/' => '/sales-reporting/sales-rep-reporting-uat/',
         '/sales-reporting/sales-rep-reporting/refresh.php' => '/sales-reporting/sales-rep-reporting-uat/refresh.php',
+        '/sales-reporting/sales-rep-reporting/export.php'  => '/sales-reporting/sales-rep-reporting-uat/export.php',
+        '/sales-reporting/sales-rep-reporting/view.php'    => '/sales-reporting/sales-rep-reporting-uat/view.php',
         '/sales-reporting/order.php'        => '/sales-reporting/order-uat.php',
         '/sales-reporting/jazz-order-report'  => '/sales-reporting/jazz-order-report-uat',
         '/sales-reporting/jazz-order-report/' => '/sales-reporting/jazz-order-report-uat/',

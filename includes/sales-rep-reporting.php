@@ -1,8 +1,7 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/adobe-commerce.php';
+require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/data-profile.php';
 require_once __DIR__ . '/sales-reporting.php';
 
@@ -12,12 +11,12 @@ const SALES_REP_REPORTING_SORT_COLUMNS = [
     'amount'         => 'Amount',
     'item_subtotal'  => 'Item subtotal',
     'status'         => 'Status',
-    'purchaser'      => 'Purchaser',
+    'sales_rep'      => 'Sales rep',
     'company_name'   => 'Company name',
     'company_id'     => 'Company ID',
     'company_state'  => 'Company state',
     'company_zip'    => 'Company zip',
-    'sales_rep'      => 'Sales rep',
+    'purchaser'      => 'Purchaser',
     'ship_state'     => 'Ship-to state',
     'ship_zip'       => 'Ship-to zip',
 ];
@@ -27,6 +26,21 @@ const SALES_REP_REPORTING_SORT_NUMERIC = [
     'item_subtotal',
     'company_id',
 ];
+
+/** @var list<int> */
+const SALES_REP_REPORTING_PAGE_SIZES = [25, 50, 100, 250, 500];
+
+const SALES_REP_REPORTING_DEFAULT_PAGE_SIZE = 50;
+
+function sales_rep_reporting_page_size(mixed $value): int
+{
+    $size = (int) $value;
+    if (in_array($size, SALES_REP_REPORTING_PAGE_SIZES, true)) {
+        return $size;
+    }
+
+    return SALES_REP_REPORTING_DEFAULT_PAGE_SIZE;
+}
 
 function sales_rep_reporting_source_environment(): string
 {
@@ -146,121 +160,18 @@ function sales_rep_reporting_last_synced_at(?string $sourceEnvironment = null): 
 }
 
 /**
- * @return array<int|string, string> region_id => state code
- */
-function sales_rep_reporting_us_region_map(): array
-{
-    static $map = null;
-    if (is_array($map)) {
-        return $map;
-    }
-
-    $map = [];
-    $result = adobe_commerce_api_request('GET', '/directory/countries/US');
-    if (empty($result['ok']) || !is_array($result['data'] ?? null)) {
-        return $map;
-    }
-    foreach ($result['data']['available_regions'] ?? [] as $region) {
-        if (!is_array($region)) {
-            continue;
-        }
-        $id = (string) ($region['id'] ?? '');
-        $code = trim((string) ($region['code'] ?? ''));
-        if ($id !== '' && $code !== '') {
-            $map[$id] = strtoupper($code);
-        }
-    }
-
-    return $map;
-}
-
-/**
- * @return array{state: string, zip: string, name: string}
- */
-function sales_rep_reporting_company_address(int $companyId): array
-{
-    static $cache = [];
-    if (isset($cache[$companyId])) {
-        return $cache[$companyId];
-    }
-
-    $empty = ['state' => '', 'zip' => '', 'name' => ''];
-    if ($companyId <= 0) {
-        return $empty;
-    }
-
-    $result = adobe_commerce_api_request('GET', '/company/' . $companyId);
-    if (empty($result['ok']) || !is_array($result['data'] ?? null)) {
-        $cache[$companyId] = $empty;
-
-        return $empty;
-    }
-
-    $company = $result['data'];
-    $state = '';
-    $region = $company['region'] ?? null;
-    if (is_string($region)) {
-        $state = sales_rep_reporting_normalize_state($region);
-    } elseif (is_array($region)) {
-        $state = sales_rep_reporting_normalize_state(
-            (string) ($region['region_code'] ?? $region['code'] ?? $region['region'] ?? '')
-        );
-    }
-    if ($state === '' && !empty($company['region_id'])) {
-        $regions = sales_rep_reporting_us_region_map();
-        $state = $regions[(string) $company['region_id']] ?? '';
-    }
-
-    $cache[$companyId] = [
-        'state' => $state,
-        'zip'   => sales_rep_reporting_normalize_zip($company['postcode'] ?? ''),
-        'name'  => trim((string) ($company['company_name'] ?? '')),
-    ];
-
-    return $cache[$companyId];
-}
-
-function sales_rep_reporting_extract_company_id(?string $rawPayloadJson): ?int
-{
-    if ($rawPayloadJson === null || $rawPayloadJson === '') {
-        return null;
-    }
-    try {
-        $payload = json_decode($rawPayloadJson, true, 512, JSON_THROW_ON_ERROR);
-    } catch (Throwable) {
-        return null;
-    }
-    if (!is_array($payload)) {
-        return null;
-    }
-    $ext = $payload['extension_attributes'] ?? [];
-    if (!is_array($ext)) {
-        return null;
-    }
-    $companyAttrs = $ext['company_order_attributes'] ?? null;
-    $candidates = [
-        is_array($companyAttrs) ? ($companyAttrs['company_id'] ?? null) : null,
-        $ext['company_id'] ?? null,
-        is_array($ext['company'] ?? null) ? ($ext['company']['id'] ?? null) : null,
-    ];
-    foreach ($candidates as $candidate) {
-        $id = (int) $candidate;
-        if ($id > 0) {
-            return $id;
-        }
-    }
-
-    return null;
-}
-
-/**
  * @param array<string, mixed> $filters
  * @return list<array<string, mixed>>
  */
 function sales_rep_reporting_list(array $filters = []): array
 {
     $env = sales_rep_reporting_source_environment();
-    $limit = max(1, min(2000, (int) ($filters['limit'] ?? 500)));
+    $rawLimit = (int) ($filters['limit'] ?? SALES_REP_REPORTING_DEFAULT_PAGE_SIZE);
+    if (!empty($filters['for_export'])) {
+        $limit = max(1, min(5000, $rawLimit > 0 ? $rawLimit : 5000));
+    } else {
+        $limit = sales_rep_reporting_page_size($rawLimit);
+    }
     $q = trim((string) ($filters['q'] ?? ''));
     $repFilter = trim((string) ($filters['rep'] ?? ''));
     $statusFilter = trim((string) ($filters['status'] ?? ''));
@@ -287,8 +198,16 @@ function sales_rep_reporting_list(array $filters = []): array
             h.ShipRegionCode,
             h.ShipRegion,
             h.ShipPostcode,
-            h.RawPayloadJson,
-            h.LastSyncedAt
+            h.LastSyncedAt,
+            TRY_CONVERT(int, COALESCE(
+                JSON_VALUE(h.RawPayloadJson, '$.extension_attributes.company_order_attributes.company_id'),
+                JSON_VALUE(h.RawPayloadJson, '$.extension_attributes.company_id'),
+                JSON_VALUE(h.RawPayloadJson, '$.extension_attributes.company.id')
+            )) AS CompanyId,
+            NULLIF(LTRIM(RTRIM(JSON_VALUE(
+                h.RawPayloadJson,
+                '$.extension_attributes.company_order_attributes.company_name'
+            ))), N'') AS PayloadCompanyName
         FROM dbo.AccsSalesOrderHeader h
         WHERE h.SourceEnvironment = :env
           AND h.AccsEntityId < 500000
@@ -329,29 +248,26 @@ function sales_rep_reporting_list(array $filters = []): array
 
     $out = [];
     foreach ($rows as $row) {
-        $companyId = sales_rep_reporting_extract_company_id(
-            isset($row['RawPayloadJson']) ? (string) $row['RawPayloadJson'] : null
-        );
+        $companyId = isset($row['CompanyId']) && $row['CompanyId'] !== null && $row['CompanyId'] !== ''
+            ? (int) $row['CompanyId']
+            : null;
+        if ($companyId !== null && $companyId <= 0) {
+            $companyId = null;
+        }
+
         $companyName = trim((string) ($row['BillCompany'] ?? ''));
         if ($companyName === '') {
             $companyName = trim((string) ($row['ShipCompany'] ?? ''));
         }
-
-        $companyState = '';
-        $companyZip = '';
-        if ($companyId !== null) {
-            $company = sales_rep_reporting_company_address($companyId);
-            if ($companyName === '' && $company['name'] !== '') {
-                $companyName = $company['name'];
-            }
-            $companyState = $company['state'] !== ''
-                ? $company['state']
-                : sales_rep_reporting_normalize_state($row['BillRegionCode'] ?? '');
-            $companyZip = $company['zip'] !== ''
-                ? $company['zip']
-                : sales_rep_reporting_normalize_zip($row['BillPostcode'] ?? '');
+        if ($companyName === '') {
+            $companyName = trim((string) ($row['PayloadCompanyName'] ?? ''));
         }
 
+        // Synced SQL columns only (no live ACCS; no RawPayloadJson transfer to PHP).
+        $companyState = sales_rep_reporting_normalize_state($row['BillRegionCode'] ?? '');
+        $companyZip = sales_rep_reporting_normalize_zip($row['BillPostcode'] ?? '');
+
+        // Territory match only when the order is tied to an ACCS company.
         $salesRep = $companyId !== null
             ? sales_rep_reporting_lookup_rep($companyState, $companyZip)
             : '';
@@ -452,4 +368,63 @@ function sales_rep_reporting_format_date(?string $value): string
     $ts = strtotime($value);
 
     return $ts === false ? substr($value, 0, 10) : date('Y-m-d', $ts);
+}
+
+function sales_rep_reporting_export_filename(?string $sourceEnvironment = null): string
+{
+    $env = $sourceEnvironment ?? sales_rep_reporting_source_environment();
+    $safeEnv = preg_replace('/[^a-z0-9_-]+/i', '-', $env) ?: 'orders';
+
+    return 'sales-rep-reporting-' . strtolower($safeEnv) . '-' . gmdate('Y-m-d') . '.csv';
+}
+
+/**
+ * @param list<array<string, mixed>> $rows
+ */
+function sales_rep_reporting_export_csv(array $rows): string
+{
+    $handle = fopen('php://temp', 'r+');
+    if ($handle === false) {
+        return '';
+    }
+
+    fputcsv($handle, [
+        'Order ID',
+        'Date',
+        'Amount',
+        'Item subtotal',
+        'Status',
+        'Sales rep',
+        'Company name',
+        'Company ID',
+        'Company state',
+        'Company zip',
+        'Purchaser',
+        'Ship-to state',
+        'Ship-to zip',
+    ]);
+
+    foreach ($rows as $row) {
+        fputcsv($handle, [
+            (string) ($row['order_id'] ?? ''),
+            sales_rep_reporting_format_date($row['date'] ?? null),
+            number_format((float) ($row['amount'] ?? 0), 2, '.', ''),
+            number_format((float) ($row['item_subtotal'] ?? 0), 2, '.', ''),
+            (string) ($row['status'] ?? ''),
+            (string) ($row['sales_rep'] ?? ''),
+            (string) ($row['company_name'] ?? ''),
+            $row['company_id'] !== null && $row['company_id'] !== '' ? (string) $row['company_id'] : '',
+            (string) ($row['company_state'] ?? ''),
+            (string) ($row['company_zip'] ?? ''),
+            (string) ($row['purchaser'] ?? ''),
+            (string) ($row['ship_state'] ?? ''),
+            (string) ($row['ship_zip'] ?? ''),
+        ]);
+    }
+
+    rewind($handle);
+    $csv = stream_get_contents($handle);
+    fclose($handle);
+
+    return $csv === false ? '' : $csv;
 }

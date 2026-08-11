@@ -10,7 +10,10 @@ sales_reporting_require_read();
 $activeSlug = $activeSlug ?? 'sales-rep-reporting';
 $reportListPath = data_profile_page_path('/sales-reporting/sales-rep-reporting/');
 $refreshPath = data_profile_page_path('/sales-reporting/sales-rep-reporting/refresh.php');
+$exportPath = data_profile_page_path('/sales-reporting/sales-rep-reporting/export.php');
+$orderViewPath = data_profile_page_path('/sales-reporting/sales-rep-reporting/view.php');
 $sourceEnvironment = sales_rep_reporting_source_environment();
+$pageSize = sales_rep_reporting_page_size($_GET['limit'] ?? SALES_REP_REPORTING_DEFAULT_PAGE_SIZE);
 
 $filters = [
     'q'         => trim($_GET['q'] ?? ''),
@@ -18,7 +21,7 @@ $filters = [
     'status'    => trim($_GET['status'] ?? ''),
     'date_from' => trim($_GET['date_from'] ?? ''),
     'date_to'   => trim($_GET['date_to'] ?? ''),
-    'limit'     => 500,
+    'limit'     => $pageSize,
 ] + table_sort_state(SALES_REP_REPORTING_SORT_COLUMNS, 'date', 'desc', $_GET);
 
 $rows = [];
@@ -38,12 +41,12 @@ try {
             'amount'        => fn(array $r) => $r['amount'] ?? 0,
             'item_subtotal' => fn(array $r) => $r['item_subtotal'] ?? 0,
             'status'        => fn(array $r): string => (string) ($r['status'] ?? ''),
-            'purchaser'     => fn(array $r): string => (string) ($r['purchaser'] ?? ''),
+            'sales_rep'     => fn(array $r): string => (string) ($r['sales_rep'] ?? ''),
             'company_name'  => fn(array $r): string => (string) ($r['company_name'] ?? ''),
             'company_id'    => fn(array $r) => $r['company_id'] ?? 0,
             'company_state' => fn(array $r): string => (string) ($r['company_state'] ?? ''),
             'company_zip'   => fn(array $r): string => (string) ($r['company_zip'] ?? ''),
-            'sales_rep'     => fn(array $r): string => (string) ($r['sales_rep'] ?? ''),
+            'purchaser'     => fn(array $r): string => (string) ($r['purchaser'] ?? ''),
             'ship_state'    => fn(array $r): string => (string) ($r['ship_state'] ?? ''),
             'ship_zip'      => fn(array $r): string => (string) ($r['ship_zip'] ?? ''),
         ],
@@ -60,6 +63,7 @@ try {
 
 $notice = $_GET['notice'] ?? null;
 $errorNotice = trim((string) ($_GET['error'] ?? ''));
+$filterPreserve = ['q', 'rep', 'status', 'date_from', 'date_to', 'limit'];
 
 $pageTitle = 'Sales Rep Reporting | Sales Reporting Summaries';
 $pageDescription = data_profile_is_uat()
@@ -71,8 +75,8 @@ $hubBack = app_module_hub_back_link($activeSlug);
 require dirname(__DIR__, 2) . '/includes/head.php';
 require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
-  <main class="page-main">
-    <div class="container page-inner">
+  <main class="page-main page-main--fluid">
+    <div class="container page-inner page-inner--full page-inner--sales-rep-reporting">
       <?php
       render_list_page_header([
           'back_href'  => $hubBack['href'],
@@ -80,8 +84,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           'category'   => 'Sales',
           'title'      => 'Sales Rep Reporting' . (data_profile_is_uat() ? ' (UAT)' : ''),
           'lead'       => data_profile_is_uat()
-              ? 'ACCS Stage orders with company territory → sales rep matching. Stage sync is manual only.'
-              : 'ACCS production orders with company territory → sales rep matching. Orders sync hourly from ACCS.',
+              ? 'Reads synced ACCS Stage orders from SQL and matches billing state/zip to territory assignments when a Company ID is present. Refresh runs the Stage sync job (manual only).'
+              : 'Reads synced ACCS production orders from SQL and matches billing state/zip to territory assignments when a Company ID is present. Refresh runs the production sync job (also hourly).',
           'permission' => permission_label(sales_reporting_permission_value()),
       ]);
       ?>
@@ -147,6 +151,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <label for="date_to">Date to</label>
             <input class="form-input" type="date" id="date_to" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" />
           </div>
+          <div>
+            <label for="limit">Rows per page</label>
+            <select class="form-input" id="limit" name="limit">
+              <?php foreach (SALES_REP_REPORTING_PAGE_SIZES as $size): ?>
+              <option value="<?= (int) $size ?>" <?= $pageSize === $size ? 'selected' : '' ?>><?= (int) $size ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
@@ -157,18 +169,31 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="status-banner">
         <div>
           <strong><?= count($rows) ?> order<?= count($rows) === 1 ? '' : 's' ?></strong>
-          <p>Showing up to 500 rows from synced ACCS <?= htmlspecialchars($sourceEnvironment) ?> orders.</p>
+          <p>Showing up to <?= (int) $pageSize ?> rows from synced ACCS <?= htmlspecialchars($sourceEnvironment) ?> orders.</p>
         </div>
+        <?php
+        $exportQuery = array_filter([
+            'q'         => $filters['q'] !== '' ? $filters['q'] : null,
+            'rep'       => $filters['rep'] !== '' ? $filters['rep'] : null,
+            'status'    => $filters['status'] !== '' ? $filters['status'] : null,
+            'date_from' => $filters['date_from'] !== '' ? $filters['date_from'] : null,
+            'date_to'   => $filters['date_to'] !== '' ? $filters['date_to'] : null,
+            'sort'      => $filters['sort'] ?? null,
+            'dir'       => $filters['dir'] ?? null,
+        ], static fn($v) => $v !== null && $v !== '');
+        $exportHref = $exportPath . ($exportQuery !== [] ? ('?' . http_build_query($exportQuery)) : '');
+        ?>
+        <a class="btn-secondary" href="<?= htmlspecialchars($exportHref) ?>">Export CSV</a>
       </div>
 
       <div class="admin-table-wrap">
-        <table class="admin-table">
+        <table class="admin-table admin-table--sales-rep-reporting">
           <thead>
             <?php table_sort_render_head_row(
                 SALES_REP_REPORTING_SORT_COLUMNS,
                 rtrim($reportListPath, '/'),
                 $filters,
-                ['q', 'rep', 'status', 'date_from', 'date_to'],
+                $filterPreserve,
                 SALES_REP_REPORTING_SORT_NUMERIC,
                 'date',
                 'desc'
@@ -180,17 +205,23 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <?php else: ?>
             <?php foreach ($rows as $row): ?>
             <tr>
-              <td><?= htmlspecialchars((string) $row['order_id']) ?></td>
+              <td>
+                <?php if ((string) $row['order_id'] !== ''): ?>
+                <a href="<?= htmlspecialchars($orderViewPath . '?order=' . rawurlencode((string) $row['order_id'])) ?>"><?= htmlspecialchars((string) $row['order_id']) ?></a>
+                <?php else: ?>
+                —
+                <?php endif; ?>
+              </td>
               <td><?= htmlspecialchars(sales_rep_reporting_format_date($row['date'] ?? null)) ?></td>
               <td><?= htmlspecialchars(sales_rep_reporting_format_money($row['amount'] ?? 0)) ?></td>
               <td><?= htmlspecialchars(sales_rep_reporting_format_money($row['item_subtotal'] ?? 0)) ?></td>
               <td><?= htmlspecialchars((string) ($row['status'] !== '' ? $row['status'] : '—')) ?></td>
-              <td><?= htmlspecialchars((string) ($row['purchaser'] !== '' ? $row['purchaser'] : '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($row['sales_rep'] !== '' ? $row['sales_rep'] : '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['company_name'] !== '' ? $row['company_name'] : '—')) ?></td>
               <td><?= htmlspecialchars($row['company_id'] !== null ? (string) $row['company_id'] : '—') ?></td>
               <td><?= htmlspecialchars((string) ($row['company_state'] !== '' ? $row['company_state'] : '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['company_zip'] !== '' ? $row['company_zip'] : '—')) ?></td>
-              <td><?= htmlspecialchars((string) ($row['sales_rep'] !== '' ? $row['sales_rep'] : '—')) ?></td>
+              <td><?= htmlspecialchars((string) ($row['purchaser'] !== '' ? $row['purchaser'] : '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['ship_state'] !== '' ? $row['ship_state'] : '—')) ?></td>
               <td><?= htmlspecialchars((string) ($row['ship_zip'] !== '' ? $row['ship_zip'] : '—')) ?></td>
             </tr>

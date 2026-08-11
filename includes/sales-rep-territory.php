@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/sales-reporting.php';
 require_once __DIR__ . '/contacts.php';
 
@@ -159,7 +159,13 @@ function sales_rep_territory_list(array $filters = []): array
         $params['q'] = '%' . $q . '%';
     }
 
-    $sql .= " ORDER BY {$orderBy} {$sortDir}, State ASC, ZipCode ASC, County ASC";
+    $orderParts = ["{$orderBy} {$sortDir}"];
+    foreach (['State', 'ZipCode', 'County'] as $tiebreaker) {
+        if (strcasecmp($tiebreaker, $orderBy) !== 0) {
+            $orderParts[] = "{$tiebreaker} ASC";
+        }
+    }
+    $sql .= ' ORDER BY ' . implode(', ', $orderParts);
 
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
