@@ -19,21 +19,6 @@ function envInt(name, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-function formatAccsDateTime(date) {
-  const pad = (num) => String(num).padStart(2, '0');
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} `
-    + `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
-}
-
-function overlapDate(date, minutes) {
-  return new Date(date.getTime() - minutes * 60 * 1000);
-}
-
-function isStageLikeEnvironment() {
-  const env = adobeCommerce.environment();
-  return env === 'stage' || env === 'dev';
-}
-
 function stageSmokeEntityIdFloor() {
   return envInt('ACCS_STAGE_SMOKE_ENTITY_ID_FLOOR', 500000);
 }
@@ -50,23 +35,6 @@ async function loadMaxRealEntityId(pool, sourceEnvironment) {
     `);
 
   return Number(result.recordset[0]?.max_entity_id || 0);
-}
-
-async function loadExistingSyncState(pool, sourceEnvironment) {
-  const result = await pool.request()
-    .input('sourceEnvironment', sql.NVarChar, sourceEnvironment)
-    .query(`
-      SELECT TOP (1)
-        AccsSalesOrderHeaderID,
-        AccsEntityId,
-        OrderUpdatedAt,
-        LastSyncedAt
-      FROM dbo.AccsSalesOrderHeader
-      WHERE SourceEnvironment = @sourceEnvironment
-      ORDER BY ISNULL(OrderUpdatedAt, OrderCreatedAt) DESC, AccsSalesOrderHeaderID DESC
-    `);
-
-  return result.recordset[0] ?? null;
 }
 
 async function loadExistingOrderMap(pool, sourceEnvironment, entityIds) {
@@ -106,18 +74,6 @@ function headerIsUnchanged(existingRow, order) {
   return false;
 }
 
-async function fetchOrdersUpdatedSince(updatedSince, maxPages) {
-  const query = {
-    'searchCriteria[filter_groups][0][filters][0][field]': 'updated_at',
-    'searchCriteria[filter_groups][0][filters][0][value]': formatAccsDateTime(updatedSince),
-    'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gte',
-    'searchCriteria[sortOrders][0][field]': 'updated_at',
-    'searchCriteria[sortOrders][0][direction]': 'ASC',
-  };
-
-  return adobeCommerce.fetchPaginatedOrders(query, maxPages);
-}
-
 async function fetchOrdersSinceEntityId(minEntityId, maxPages) {
   const query = {
     'searchCriteria[filter_groups][0][filters][0][field]': 'entity_id',
@@ -131,40 +87,20 @@ async function fetchOrdersSinceEntityId(minEntityId, maxPages) {
 }
 
 async function fetchOrdersForSync(pool, sourceEnvironment, options = {}) {
-  const overlapMinutes = envInt('ACCS_SALES_ORDER_SYNC_OVERLAP_MINUTES', 15);
-  const lookbackDays = envInt('ACCS_SALES_ORDER_SYNC_LOOKBACK_DAYS', 365);
   const maxPages = envInt('ACCS_SALES_ORDER_SYNC_MAX_PAGES', 200);
   const forceFull = Boolean(options.force);
 
-  if (isStageLikeEnvironment()) {
-    const minEntityId = forceFull ? 0 : await loadMaxRealEntityId(pool, sourceEnvironment);
-    const fetchResult = await fetchOrdersSinceEntityId(minEntityId, maxPages);
-
-    return {
-      fetchResult,
-      fetchMode: 'entity_id',
-      updatedSince: null,
-      minEntityId,
-      maxPages,
-    };
-  }
-
-  const latest = await loadExistingSyncState(pool, sourceEnvironment);
-  let updatedSince;
-
-  if (forceFull || !latest?.OrderUpdatedAt) {
-    updatedSince = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
-  } else {
-    updatedSince = overlapDate(new Date(latest.OrderUpdatedAt), overlapMinutes);
-  }
-
-  const fetchResult = await fetchOrdersUpdatedSince(updatedSince, maxPages);
+  // Production ACCS datetime searchCriteria (updated_at/created_at) is unreliable:
+  // broad lookbacks return 0 rows even when orders exist. Use entity_id for both
+  // stage and production (same bootstrap + incremental path that works on Stage).
+  const minEntityId = forceFull ? 0 : await loadMaxRealEntityId(pool, sourceEnvironment);
+  const fetchResult = await fetchOrdersSinceEntityId(minEntityId, maxPages);
 
   return {
     fetchResult,
-    fetchMode: 'updated_at',
-    updatedSince,
-    minEntityId: null,
+    fetchMode: 'entity_id',
+    updatedSince: null,
+    minEntityId,
     maxPages,
   };
 }

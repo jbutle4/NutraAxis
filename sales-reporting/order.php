@@ -6,8 +6,10 @@ require dirname(__DIR__) . '/includes/sales-reporting.php';
 sales_reporting_require_read();
 
 $activeSlug = $activeSlug ?? 'accs-order-report';
-$reportListPath = data_profile_page_path('/sales-reporting/accs-order-report/');
-$orderDetailPath = data_profile_page_path('/sales-reporting/order.php');
+$reportListPath = $reportListPath ?? data_profile_page_path('/sales-reporting/accs-order-report/');
+$orderDetailPath = $orderDetailPath ?? data_profile_page_path('/sales-reporting/order.php');
+$orderDetailBackLabel = $orderDetailBackLabel ?? 'Back to ACCS Order Report';
+$orderDetailTitleSuffix = $orderDetailTitleSuffix ?? 'ACCS Order Report';
 $orderNumber = trim($_GET['order'] ?? '');
 $configError = adobe_commerce_config_error();
 $order = null;
@@ -54,7 +56,7 @@ if ($error === null) {
     }
 }
 
-$pageTitle = ($orderNumber !== '' ? 'Order ' . $orderNumber : 'Order Detail') . ' | ACCS Order Report';
+$pageTitle = ($orderNumber !== '' ? 'Order ' . $orderNumber : 'Order Detail') . ' | ' . $orderDetailTitleSuffix;
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -65,7 +67,7 @@ require dirname(__DIR__) . '/includes/header.php';
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
-        Back to ACCS Order Report
+        <?= htmlspecialchars($orderDetailBackLabel) ?>
       </a>
 
       <?php if ($error !== null): ?>

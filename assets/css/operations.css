@@ -2026,6 +2026,35 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   box-shadow: var(--shadow);
 }
 
+/* Sales Rep Reporting: fit all columns without horizontal scroll */
+.page-inner--sales-rep-reporting .admin-table-wrap {
+  overflow-x: visible;
+}
+
+.admin-table--sales-rep-reporting {
+  table-layout: fixed;
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.admin-table--sales-rep-reporting th,
+.admin-table--sales-rep-reporting td {
+  padding: 8px 6px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.admin-table--sales-rep-reporting .admin-table-sort {
+  white-space: normal;
+}
+
+.admin-table--sales-rep-reporting .admin-table-sort-link {
+  white-space: normal;
+  line-height: 1.25;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
