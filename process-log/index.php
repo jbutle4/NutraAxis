@@ -1,11 +1,17 @@
 <?php
+require dirname(__DIR__) . '/includes/process-log-page.php';
+$dataProfile = process_log_normalize_profile($dataProfile ?? 'production');
 require dirname(__DIR__) . '/includes/init.php';
+data_profile_set($dataProfile);
 require dirname(__DIR__) . '/includes/process-log.php';
 require dirname(__DIR__) . '/includes/process-runner.php';
 
 auth_require_module_read('process-log');
 
-$activeSlug = 'process-log';
+$activeSlug = data_profile_is_uat() ? 'scheduled-jobs-uat' : 'process-log';
+$processLogBasePath = process_log_base_path();
+$otherProfile = data_profile_is_uat() ? 'production' : 'uat';
+$otherProfilePath = process_log_base_path($otherProfile);
 $canRerun = auth_can_update(MODULE_PERMISSION_COLUMNS['process-log']);
 
 $filters = [
@@ -19,8 +25,10 @@ $registry = process_registry();
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 
-$pageTitle = 'Process Log | NutraAxis Operations';
-$pageDescription = 'Scheduled job execution history, results, and manual reruns.';
+$pageTitle = (data_profile_is_uat() ? 'Process Log (UAT) | ' : 'Process Log | ') . 'NutraAxis Operations';
+$pageDescription = data_profile_is_uat()
+    ? 'Manual UAT / sandbox background jobs — ACCS Stage, QBO Sandbox, IMS uat ledger.'
+    : 'Production background job execution history and manual runs.';
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -39,8 +47,21 @@ require dirname(__DIR__) . '/includes/header.php';
           <div class="module-icon"><?= icon_svg('dashboard', 28) ?></div>
         </div>
         <div class="section-label">Operations</div>
-        <h1>Process Log</h1>
-        <p class="page-lead">Execution history for background jobs on Azure Function App Nutra-forecast-tool. Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.</p>
+        <h1>Process Log<?= data_profile_is_uat() ? ' (UAT)' : '' ?></h1>
+        <p class="page-lead">
+          <?php if (data_profile_is_uat()): ?>
+          Run sandbox / test jobs on <strong><?= htmlspecialchars(process_functions_uat_app_label()) ?></strong>
+          (ACCS Stage, QBO Sandbox, IMS <code>uat</code>). Use this page for procurement + inventory UAT E2E — not production ACCS or QBO.
+          <?php else: ?>
+          Run production-oriented jobs. ACCS order sync and employee customer provisioning route to
+          <strong><?= htmlspecialchars(process_functions_prod_app_label()) ?></strong>; other jobs use
+          <?= htmlspecialchars(process_functions_uat_app_label()) ?> unless configured otherwise.
+          <?php endif; ?>
+        </p>
+        <p class="permission-note">
+          Switch profile:
+          <a href="<?= htmlspecialchars($otherProfilePath) ?>"><?= $otherProfile === 'uat' ? 'UAT / Sandbox processes' : 'Production processes' ?></a>
+        </p>
         <p class="permission-note">Your access: <?= htmlspecialchars(auth_module_permission_label('process-log')) ?></p>
       </div>
 
@@ -56,8 +77,29 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
       <?php endif; ?>
 
+      <?php if (data_profile_is_uat() && $canRerun): ?>
+      <section class="operations-dashboard-section">
+        <h2 class="operations-dashboard-section-title">UAT E2E run order</h2>
+        <p class="page-lead">Typical inventory cycle on test systems after PO receipt and ACCS Stage order ship:</p>
+        <ol class="process-log-e2e-steps">
+          <?php foreach (process_registry_uat_e2e() as $entry): ?>
+          <li>
+            <strong><?= htmlspecialchars($entry['name']) ?></strong>
+            <span class="permission-note">→ <?= htmlspecialchars(process_registry_resolved_app_label($entry)) ?></span>
+            <form class="process-log-inline-run" method="post" action="<?= htmlspecialchars($processLogBasePath) ?>run.php">
+              <input type="hidden" name="data_profile" value="uat" />
+              <input type="hidden" name="process_code" value="<?= htmlspecialchars($entry['code']) ?>" />
+              <button type="submit" class="btn-secondary btn-small">Run</button>
+            </form>
+          </li>
+          <?php endforeach; ?>
+        </ol>
+      </section>
+      <?php endif; ?>
+
       <?php if ($canRerun): ?>
-      <form class="po-filter audit-filter process-log-run-form" method="post" action="/process-log/run.php">
+      <form class="po-filter audit-filter process-log-run-form" method="post" action="<?= htmlspecialchars($processLogBasePath) ?>run.php">
+        <input type="hidden" name="data_profile" value="<?= htmlspecialchars(data_profile()) ?>" />
         <div class="audit-filter-grid">
           <div class="process-log-run-field">
             <label for="run_process_code">Run process</label>
@@ -77,7 +119,7 @@ require dirname(__DIR__) . '/includes/header.php';
       </form>
       <?php endif; ?>
 
-      <form class="po-filter audit-filter" method="get" action="/process-log/">
+      <form class="po-filter audit-filter" method="get" action="<?= htmlspecialchars($processLogBasePath) ?>">
         <?php table_sort_hidden_inputs($filters, 'started', 'desc'); ?>
         <div class="audit-filter-grid">
           <div>
@@ -104,7 +146,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
         <div class="audit-filter-actions">
           <button type="submit" class="btn-primary">Apply Filters</button>
-          <a class="btn-secondary" href="/process-log/">Clear</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars($processLogBasePath) ?>">Clear</a>
         </div>
       </form>
 
@@ -117,7 +159,7 @@ require dirname(__DIR__) . '/includes/header.php';
                   table_sort_render_th(
                       $column,
                       $label,
-                      '/process-log',
+                      rtrim($processLogBasePath, '/'),
                       PROCESS_LOG_LIST_SORT_COLUMNS,
                       $filters,
                       ['process_code', 'status'],
@@ -175,7 +217,8 @@ require dirname(__DIR__) . '/includes/header.php';
               <?php if ($canRerun): ?>
               <td>
                 <?php if (process_log_can_rerun($log)): ?>
-                <form method="post" action="/process-log/rerun.php">
+                <form method="post" action="<?= htmlspecialchars($processLogBasePath) ?>rerun.php">
+                  <input type="hidden" name="data_profile" value="<?= htmlspecialchars(data_profile()) ?>" />
                   <input type="hidden" name="log_id" value="<?= (int) $log['ProcessExecutionLogID'] ?>" />
                   <button type="submit" class="btn-secondary btn-small">Rerun</button>
                 </form>
@@ -193,13 +236,17 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <section class="operations-dashboard-section">
         <h2 class="operations-dashboard-section-title">Registered Processes</h2>
-        <p class="page-lead">These names come from the portal PHP registry after deploy. A process appears in the history table only after it has run at least once on Function App <code>Nutra-forecast-tool</code>.</p>
+        <p class="page-lead">
+          Manual runs from this page use the <?= data_profile_is_uat() ? 'UAT' : 'production' ?> profile below.
+          Failed runs schedule Service Bus retries (2, 4, 8 minutes) before being marked abandoned.
+        </p>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
               <tr>
                 <th>Process</th>
                 <th>Description</th>
+                <th>Runs on</th>
                 <th>Azure Function</th>
                 <th>Schedule</th>
                 <?php if ($canRerun): ?>
@@ -215,11 +262,13 @@ require dirname(__DIR__) . '/includes/header.php';
                   <div class="permission-note"><?= htmlspecialchars($entry['code']) ?></div>
                 </td>
                 <td><?= htmlspecialchars($entry['description']) ?></td>
+                <td><code><?= htmlspecialchars(process_registry_resolved_app_label($entry)) ?></code></td>
                 <td><code><?= htmlspecialchars($entry['function_name']) ?></code></td>
                 <td><?= htmlspecialchars($entry['schedule']) ?></td>
                 <?php if ($canRerun): ?>
                 <td>
-                  <form method="post" action="/process-log/run.php">
+                  <form method="post" action="<?= htmlspecialchars($processLogBasePath) ?>run.php">
+                    <input type="hidden" name="data_profile" value="<?= htmlspecialchars(data_profile()) ?>" />
                     <input type="hidden" name="process_code" value="<?= htmlspecialchars($entry['code']) ?>" />
                     <button type="submit" class="btn-secondary btn-small">Run</button>
                   </form>

@@ -70,10 +70,19 @@ function operations_dashboard_sections(): array
                 ],
                 [
                     'title'    => 'Process Log',
-                    'desc'     => 'Scheduled job history for sales summaries, inventory snapshots, and demand runs.',
+                    'desc'     => 'Production scheduled job history and manual runs (ACCS Production, forecasting).',
                     'href'     => '/process-log/',
                     'icon'     => 'clipboard',
                     'internal' => true,
+                    'tier'     => ENVIRONMENT_TIER_PRODUCTION,
+                ],
+                [
+                    'title'    => 'Process Log (UAT)',
+                    'desc'     => 'Manual UAT / sandbox jobs — ACCS Stage import, inventory receipt/sales sync, QBO Sandbox.',
+                    'href'     => '/scheduled-jobs-uat/',
+                    'icon'     => 'clipboard',
+                    'internal' => true,
+                    'tier'     => ENVIRONMENT_TIER_UAT,
                 ],
                 [
                     'title'    => 'Provider Signup Management',

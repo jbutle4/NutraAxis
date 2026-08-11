@@ -131,7 +131,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <a class="btn-secondary" href="/po-management/new.php?copy_from=<?= $poId ?>">Duplicate PO</a>
           <?php endif; ?>
           <?php if (por_can_create()): ?>
-          <a class="btn-secondary" href="/po-receiving/new.php?po_id=<?= $poId ?>">New PO Receipt</a>
+          <a class="btn-secondary" href="<?= htmlspecialchars(por_href_for_profile('/po-receiving/new.php', $poLedgerProfile, ['po_id' => $poId])) ?>">New PO Receipt</a>
           <?php endif; ?>
         </div>
       </div>

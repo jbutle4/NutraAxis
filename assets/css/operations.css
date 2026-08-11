@@ -2722,6 +2722,21 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   min-width: 100%;
 }
 
+.process-log-e2e-steps {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+}
+
+.process-log-e2e-steps li {
+  margin: 0.5rem 0;
+}
+
+.process-log-inline-run {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 .audit-filter-actions {
   display: flex;
   flex-wrap: wrap;

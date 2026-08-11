@@ -3,7 +3,7 @@
 **Environment:** Sandbox / UAT only  
 **Portal:** https://operations.nutraaxislabs.com  
 **QBO realm:** `9341457230168529` (Sandbox Company US 7988)  
-**Function App:** `Nutra-forecast-tool` (sandbox) — run jobs via Process Log, not prod  
+**Function App:** `Nutra-forecast-tool` (sandbox) — run UAT jobs via **Process Log (UAT)** at `/scheduled-jobs-uat/`, not production Process Log  
 **Related:** [QBO Inventory Cycle Runbook](./QBO_INVENTORY_CYCLE_RUNBOOK.md)
 
 Use this checklist for a full end-to-end pass of inventory use cases while `QBO_ENVIRONMENT=sandbox`.  
@@ -72,7 +72,7 @@ WHERE SKUCode IN (N'NA-MT-004', N'NA-HR-006');
 | | |
 |--|--|
 | **UI** | `/po-receiving/` — transmit / complete ASN for CART |
-| **Job** | Process Log → **Inventory Receipt Sync** → Run |
+| **Job** | Process Log (UAT) → **Inventory Receipt Sync** → Run |
 
 - [ ] IMS CART OK increases by receipt qty
 - [ ] QBO QtyOnHand increases by same qty
@@ -97,8 +97,8 @@ ORDER BY CreateDate DESC;
 
 | | |
 |--|--|
-| **Data** | ACCS shipped/complete lines in `AccsSalesOrder*` (or apply `sql/123_seed_sandbox_sales_sync_smoke_order.sql`) |
-| **Job** | Process Log → **Inventory Sales Sync** → Run |
+| **Data** | ACCS Stage shipped order in `AccsSalesOrder*` (run **ACCS Sales Order Sync** from `/scheduled-jobs-uat/` after ship) |
+| **Job** | Process Log (UAT) → **ACCS Sales Order Sync**, then **Inventory Sales Sync** → Run |
 
 - [ ] IMS facility qty decreases
 - [ ] QBO QtyOnHand decreases
@@ -289,7 +289,8 @@ ORDER BY SKUCode, CreateDate;
 | Hub | `/inventory/` (Inventory Reporting) |
 | Balances | `/inventory-balances/` |
 | PO receiving | `/po-receiving/` |
-| Process Log | `/process-log/` |
+| Process Log (UAT) | `/scheduled-jobs-uat/` |
+| Process Log (Production) | `/process-log/` |
 | Adjustments | `/inventory-adjustments/` |
 | Transfers | `/inventory-transfers/` |
 | Movement recon | `/inventory-movement-recon/` |

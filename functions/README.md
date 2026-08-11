@@ -94,7 +94,12 @@ On **Nutra-forecast-tool** (test), all timer schedules are disabled (`0 0 0 1 1 
 | `INVENTORY_SALES_SYNC_SCHEDULE` | `0 0 0 1 1 2099` |
 | `INVENTORY_MOVEMENT_RECON_SCHEDULE` | `0 0 0 1 1 2099` |
 
-Process Log reruns for `accs-sales-order-sync` and `accs-employee-customer-create` route to the prod Function App when `NUTRA_FUNCTIONS_PROD_BASE_URL` / `NUTRA_FUNCTIONS_PROD_KEY` are set on the PHP App Service. All other Process Log runs (including inventory UAT jobs) use `NUTRA_FUNCTIONS_BASE_URL` / `NUTRA_FUNCTIONS_KEY` → **Nutra-forecast-tool**.
+Process Log reruns route by profile:
+
+- **`/scheduled-jobs-uat/`** — all jobs on **Nutra-forecast-tool** (ACCS Stage, QBO Sandbox, IMS `uat`).
+- **`/process-log/`** — ACCS order sync and employee customer create on **Nutra-forecast-tool-prod** when configured; other jobs on **Nutra-forecast-tool**.
+
+All other Process Log runs (inventory UAT jobs) use `NUTRA_FUNCTIONS_BASE_URL` / `NUTRA_FUNCTIONS_KEY` → **Nutra-forecast-tool**.
 
 ## Production vs Test/UAT Function Apps
 

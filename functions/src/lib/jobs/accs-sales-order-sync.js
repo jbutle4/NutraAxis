@@ -29,6 +29,29 @@ function overlapDate(date, minutes) {
   return new Date(date.getTime() - minutes * 60 * 1000);
 }
 
+function isStageLikeEnvironment() {
+  const env = adobeCommerce.environment();
+  return env === 'stage' || env === 'dev';
+}
+
+function stageSmokeEntityIdFloor() {
+  return envInt('ACCS_STAGE_SMOKE_ENTITY_ID_FLOOR', 500000);
+}
+
+async function loadMaxRealEntityId(pool, sourceEnvironment) {
+  const result = await pool.request()
+    .input('sourceEnvironment', sql.NVarChar, sourceEnvironment)
+    .input('smokeFloor', sql.Int, stageSmokeEntityIdFloor())
+    .query(`
+      SELECT MAX(AccsEntityId) AS max_entity_id
+      FROM dbo.AccsSalesOrderHeader
+      WHERE SourceEnvironment = @sourceEnvironment
+        AND AccsEntityId < @smokeFloor
+    `);
+
+  return Number(result.recordset[0]?.max_entity_id || 0);
+}
+
 async function loadExistingSyncState(pool, sourceEnvironment) {
   const result = await pool.request()
     .input('sourceEnvironment', sql.NVarChar, sourceEnvironment)
@@ -93,6 +116,57 @@ async function fetchOrdersUpdatedSince(updatedSince, maxPages) {
   };
 
   return adobeCommerce.fetchPaginatedOrders(query, maxPages);
+}
+
+async function fetchOrdersSinceEntityId(minEntityId, maxPages) {
+  const query = {
+    'searchCriteria[filter_groups][0][filters][0][field]': 'entity_id',
+    'searchCriteria[filter_groups][0][filters][0][value]': String(Math.max(0, minEntityId)),
+    'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gt',
+    'searchCriteria[sortOrders][0][field]': 'entity_id',
+    'searchCriteria[sortOrders][0][direction]': 'ASC',
+  };
+
+  return adobeCommerce.fetchPaginatedOrders(query, maxPages);
+}
+
+async function fetchOrdersForSync(pool, sourceEnvironment, options = {}) {
+  const overlapMinutes = envInt('ACCS_SALES_ORDER_SYNC_OVERLAP_MINUTES', 15);
+  const lookbackDays = envInt('ACCS_SALES_ORDER_SYNC_LOOKBACK_DAYS', 365);
+  const maxPages = envInt('ACCS_SALES_ORDER_SYNC_MAX_PAGES', 200);
+  const forceFull = Boolean(options.force);
+
+  if (isStageLikeEnvironment()) {
+    const minEntityId = forceFull ? 0 : await loadMaxRealEntityId(pool, sourceEnvironment);
+    const fetchResult = await fetchOrdersSinceEntityId(minEntityId, maxPages);
+
+    return {
+      fetchResult,
+      fetchMode: 'entity_id',
+      updatedSince: null,
+      minEntityId,
+      maxPages,
+    };
+  }
+
+  const latest = await loadExistingSyncState(pool, sourceEnvironment);
+  let updatedSince;
+
+  if (forceFull || !latest?.OrderUpdatedAt) {
+    updatedSince = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+  } else {
+    updatedSince = overlapDate(new Date(latest.OrderUpdatedAt), overlapMinutes);
+  }
+
+  const fetchResult = await fetchOrdersUpdatedSince(updatedSince, maxPages);
+
+  return {
+    fetchResult,
+    fetchMode: 'updated_at',
+    updatedSince,
+    minEntityId: null,
+    maxPages,
+  };
 }
 
 async function upsertHeader(transaction, header) {
@@ -382,22 +456,7 @@ async function run(options = {}) {
     return { ok: false, error: configError };
   }
 
-  if (adobeCommerce.environment() !== 'production') {
-    return {
-      ok: true,
-      skipped: true,
-      fetched: 0,
-      inserted: 0,
-      updated: 0,
-      detail_updated: 0,
-      message: 'Skipped — ACCS sales order sync runs on Nutra-forecast-tool-prod only (ADOBE_COMMERCE_ENVIRONMENT=production).',
-    };
-  }
-
   const sourceEnvironment = sourceEnvironmentLabel();
-  const overlapMinutes = envInt('ACCS_SALES_ORDER_SYNC_OVERLAP_MINUTES', 15);
-  const lookbackDays = envInt('ACCS_SALES_ORDER_SYNC_LOOKBACK_DAYS', 365);
-  const maxPages = envInt('ACCS_SALES_ORDER_SYNC_MAX_PAGES', 200);
   const detailReconcileBatch = envInt('ACCS_SALES_ORDER_DETAIL_RECONCILE_BATCH', 200);
   const forceFull = Boolean(options.force);
 
@@ -409,16 +468,8 @@ async function run(options = {}) {
   }
 
   try {
-    const latest = await loadExistingSyncState(pool, sourceEnvironment);
-    let updatedSince;
-
-    if (forceFull || !latest?.OrderUpdatedAt) {
-      updatedSince = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
-    } else {
-      updatedSince = overlapDate(new Date(latest.OrderUpdatedAt), overlapMinutes);
-    }
-
-    const fetchResult = await fetchOrdersUpdatedSince(updatedSince, maxPages);
+    const syncFetch = await fetchOrdersForSync(pool, sourceEnvironment, { force: forceFull });
+    const { fetchResult, fetchMode, updatedSince, minEntityId } = syncFetch;
     if (!fetchResult.ok) {
       return { ok: false, error: fetchResult.error };
     }
@@ -498,7 +549,9 @@ async function run(options = {}) {
       error: null,
       source_environment: sourceEnvironment,
       api_environment: adobeCommerce.environment(),
-      updated_since: updatedSince.toISOString(),
+      fetch_mode: fetchMode,
+      updated_since: updatedSince ? updatedSince.toISOString() : null,
+      min_entity_id: minEntityId,
       fetched: fetchResult.rows.length,
       inserted,
       updated,
