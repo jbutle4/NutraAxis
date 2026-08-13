@@ -1,10 +1,16 @@
 <?php
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup.php';
+require dirname(__DIR__) . '/includes/provider-signup-accs.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /provider-signup/', true, 302);
     exit;
+}
+
+$pendingAccsEnv = trim((string) ($_POST['accs_env'] ?? ''));
+if ($pendingAccsEnv !== '') {
+    provider_signup_accs_set_pending_environment($pendingAccsEnv);
 }
 
 $providerEmail = trim((string) ($_POST['provider_email'] ?? ''));

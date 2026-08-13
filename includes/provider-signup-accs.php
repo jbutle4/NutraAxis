@@ -7,6 +7,145 @@ require_once __DIR__ . '/provider-signup-crypto.php';
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
 const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
+const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
+
+function provider_signup_accs_allowed_environments(): array
+{
+    return ['stage', 'dev', 'production'];
+}
+
+function provider_signup_accs_normalize_environment(?string $raw): ?string
+{
+    $raw = strtolower(trim((string) $raw));
+    if ($raw === 'uat') {
+        return 'stage';
+    }
+
+    return in_array($raw, provider_signup_accs_allowed_environments(), true) ? $raw : null;
+}
+
+/**
+ * Public signup entry URL. Pass stage/dev for UAT applications from staging storefronts.
+ */
+function provider_signup_accs_application_start_url(?string $accsEnvironment = null): string
+{
+    $env = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
+    if ($env === null) {
+        return '/provider-signup/application.php';
+    }
+
+    return '/provider-signup/application.php?accs_env=' . rawurlencode($env);
+}
+
+function provider_signup_accs_capture_environment_from_request(): void
+{
+    $env = provider_signup_accs_normalize_environment((string) ($_GET['accs_env'] ?? ''));
+    if ($env === null) {
+        $uatFlag = strtolower(trim((string) ($_GET['uat'] ?? '')));
+        if (in_array($uatFlag, ['1', 'true', 'yes'], true)) {
+            $env = 'stage';
+        }
+    }
+
+    if ($env !== null) {
+        provider_signup_accs_set_pending_environment($env);
+    }
+}
+
+function provider_signup_accs_pending_environment(): ?string
+{
+    return provider_signup_accs_normalize_environment((string) ($_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE] ?? ''));
+}
+
+function provider_signup_accs_set_pending_environment(?string $environment): void
+{
+    $environment = provider_signup_accs_normalize_environment($environment ?? '');
+    if ($environment === null) {
+        provider_signup_accs_clear_pending_environment();
+
+        return;
+    }
+
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie(PROVIDER_SIGNUP_ACCS_ENV_COOKIE, $environment, [
+        'expires'  => time() + (7 * 24 * 60 * 60),
+        'path'     => '/provider-signup',
+        'secure'   => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    $_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE] = $environment;
+}
+
+function provider_signup_accs_clear_pending_environment(): void
+{
+    if (!isset($_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE])) {
+        return;
+    }
+
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie(PROVIDER_SIGNUP_ACCS_ENV_COOKIE, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/provider-signup',
+        'secure'   => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    unset($_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE]);
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_application_accs_environment(array $application): string
+{
+    $stored = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
+    if ($stored !== null) {
+        return $stored;
+    }
+
+    return provider_signup_accs_target_environment();
+}
+
+/**
+ * @template T
+ * @param callable(): T $callback
+ * @return T
+ */
+function provider_signup_accs_with_environment(string $environment, callable $callback)
+{
+    $environment = provider_signup_accs_normalize_environment($environment) ?? provider_signup_accs_target_environment();
+    $previous = getenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');
+    $hadPrevious = $previous !== false;
+
+    putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT=' . $environment);
+    $_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT'] = $environment;
+    adobe_commerce_reset_access_token_cache();
+
+    try {
+        return $callback();
+    } finally {
+        if ($hadPrevious) {
+            putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT=' . $previous);
+            $_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT'] = $previous;
+        } else {
+            putenv('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');
+            unset($_ENV['PROVIDER_SIGNUP_ACCS_ENVIRONMENT']);
+        }
+        adobe_commerce_reset_access_token_cache();
+    }
+}
+
+function provider_signup_accs_format_provision_error(string $error): string
+{
+    if (stripos($error, 'recaptcha') === false) {
+        return $error;
+    }
+
+    return $error
+        . ' This is returned by Adobe Commerce customer registration protection (not the Operations portal). '
+        . 'Disable Google reCAPTCHA on customer create in ACCS admin for server-side provisioning, or provision using an admin email that already exists in ACCS.';
+}
 
 function provider_signup_accs_target_environment(): string
 {

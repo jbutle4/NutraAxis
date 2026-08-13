@@ -149,6 +149,9 @@ $reviewWarnings = provider_signup_ops_review_warnings(
     $canApprove || $canProvision
 );
 $showReviewOverride = $canUpdate && $reviewWarnings !== [] && ($canApprove || $canProvision);
+$targetAccsEnvironment = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
+$serverAccsEnvironment = provider_signup_accs_target_environment();
+$provisionErrorMessage = provider_signup_accs_format_provision_error((string) ($application['LastProvisionError'] ?? ''));
 
 $pageTitle = 'Provider Application #' . $applicationId . ' | NutraAxis Operations';
 $pageDescription = 'Review provider signup application details.';
@@ -169,7 +172,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       ?>
 
       <?php if (!empty($_GET['error'])): ?>
-      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars((string) $_GET['error']) ?></div>
+      <div class="admin-notice is-error" role="alert"><?= htmlspecialchars(provider_signup_accs_format_provision_error((string) $_GET['error'])) ?></div>
       <?php endif; ?>
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -209,6 +212,22 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
       <?php endif; ?>
 
+      <?php if ($targetAccsEnvironment !== null): ?>
+      <div class="admin-notice" role="status">
+        This application is tagged for <strong><?= htmlspecialchars(provider_signup_accs_environment_label($targetAccsEnvironment)) ?> ACCS</strong> provisioning.
+        <?php if ($targetAccsEnvironment !== $serverAccsEnvironment): ?>
+        Server default is <?= htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment)) ?>.
+        <?php endif; ?>
+      </div>
+      <?php elseif ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
+      <div class="admin-notice" role="status">
+        No ACCS environment tag on this application. Provisioning will use the server default:
+        <strong><?= htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment)) ?></strong>.
+        For UAT clinics, have the provider restart from
+        <code><?= htmlspecialchars('https://provider-signup.nutraaxislabs.com/provider-signup/application.php?accs_env=stage') ?></code>.
+      </div>
+      <?php endif; ?>
+
       <?php if ($canApprove && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_DRAFT): ?>
       <div class="admin-notice" role="status">This application is in <strong>Draft</strong>. Validate the data and documents, approve it, then create the ACCS company from this page.</div>
       <?php endif; ?>
@@ -222,7 +241,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php endif; ?>
 
       <?php if (!empty($application['LastProvisionError']) && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
-      <div class="admin-notice is-error" role="alert">Last ACCS provisioning attempt failed: <?= htmlspecialchars((string) $application['LastProvisionError']) ?></div>
+      <div class="admin-notice is-error" role="alert">Last ACCS provisioning attempt failed: <?= htmlspecialchars($provisionErrorMessage) ?></div>
       <?php endif; ?>
 
       <?php if ($canUpdate && $canEdit && !$approvalChecklist['complete']): ?>
@@ -276,7 +295,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             ?></dd></div>
             <div><dt>NPI validation</dt><dd><?= htmlspecialchars((string) ($application['NpiValidationStatus'] ?? '—')) ?><?= !empty($application['NpiValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['NpiValidationSummary']) : '' ?></dd></div>
             <div><dt>Banking validation</dt><dd><?= htmlspecialchars((string) ($application['BankingValidationStatus'] ?? '—')) ?><?= !empty($application['BankingValidationSummary']) ? ' — ' . htmlspecialchars((string) $application['BankingValidationSummary']) : '' ?></dd></div>
-            <div><dt>ACCS environment</dt><dd><?= htmlspecialchars(provider_signup_accs_environment_label($application['AccsEnvironment'] ?? null)) ?></dd></div>
+            <div><dt>ACCS environment</dt><dd><?php
+              if ($targetAccsEnvironment !== null) {
+                  echo htmlspecialchars(provider_signup_accs_environment_label($targetAccsEnvironment));
+              } elseif ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+                  echo '—';
+              } else {
+                  echo htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment) . ' (default)');
+              }
+            ?></dd></div>
             <div><dt>ACCS company ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCompanyId'] ?? '—')) ?></dd></div>
             <div><dt>ACCS customer ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCustomerId'] ?? '—')) ?></dd></div>
             <div><dt>Clinic ID</dt><dd><?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '—')) ?></dd></div>

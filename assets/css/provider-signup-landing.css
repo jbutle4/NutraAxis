@@ -1253,6 +1253,12 @@ body.marketing-site .na-providers ul {
   border: 1px solid #f5c4bc;
 }
 
+.na-providers .apply-alert--info {
+  background: #e8f5f4;
+  color: #1a4f4a;
+  border-color: #b8ddd8;
+}
+
 .na-providers .disclaimer {
   padding: 32px 24px;
   background: var(--white);

@@ -42,14 +42,6 @@ function operations_dashboard_sections(): array
                     'module'   => 'contacts-list',
                 ],
                 [
-                    'title'    => 'Sales Rep Territory Assignment',
-                    'desc'     => 'Maintain state/zip/county sales territory assignments for Sales Rep Reporting.',
-                    'href'     => '/sales-rep-territory-assignment/',
-                    'icon'     => 'clipboard',
-                    'internal' => true,
-                    'module'   => 'sales-rep-territory-assignment',
-                ],
-                [
                     'title' => 'QuickBooks',
                     'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                     'href'  => 'https://qbo.intuit.com/app/my-accountant',
@@ -223,6 +215,13 @@ function operations_dashboard_sections(): array
                     'desc'  => 'UAT System — NutraAxis staging storefront on Adobe Edge Delivery Services.',
                     'href'  => 'https://main--nutrasync-eds-staging--capocommerce.aem.live/',
                     'icon'  => 'chart',
+                    'tier'  => ENVIRONMENT_TIER_UAT,
+                ],
+                [
+                    'title' => 'Provider Signup (UAT)',
+                    'desc'  => 'UAT System — Start a provider application tagged for ACCS Stage provisioning.',
+                    'href'  => 'https://provider-signup.nutraaxislabs.com/provider-signup/application.php?accs_env=stage',
+                    'icon'  => 'document',
                     'tier'  => ENVIRONMENT_TIER_UAT,
                 ],
                 [

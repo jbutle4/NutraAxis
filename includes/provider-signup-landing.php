@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/marketing-site.php';
 require_once __DIR__ . '/provider-signup-mail.php';
+require_once __DIR__ . '/provider-signup-accs.php';
 
 function provider_signup_landing_css_version(): string
 {
@@ -39,7 +40,7 @@ function provider_signup_landing_hero_image_url(): string
 
 function provider_signup_landing_apply_url(): string
 {
-    return '/provider-signup/application.php';
+    return provider_signup_accs_application_start_url(provider_signup_accs_pending_environment());
 }
 
 function provider_signup_render_support_link(string $wrapperClass = 'provider-support-link'): void
@@ -482,8 +483,10 @@ function provider_signup_render_application_start_page(string $startError = ''):
 {
     $heroImage = provider_signup_landing_hero_image_url();
     require_once dirname(__DIR__) . '/includes/provider-signup-recaptcha.php';
+    require_once dirname(__DIR__) . '/includes/provider-signup-accs.php';
     $recaptchaSiteKey = provider_signup_recaptcha_site_key();
     $showRecaptcha = $recaptchaSiteKey !== '';
+    $pendingAccsEnv = provider_signup_accs_pending_environment();
     ?>
 <div class="na-providers">
   <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">
@@ -499,6 +502,14 @@ function provider_signup_render_application_start_page(string $startError = ''):
             <div class="apply-alert" role="alert"><?= htmlspecialchars($startError) ?></div>
             <?php endif; ?>
             <form class="apply-form" method="post" action="/provider-signup/start.php">
+              <?php if ($pendingAccsEnv !== null): ?>
+              <input type="hidden" name="accs_env" value="<?= htmlspecialchars($pendingAccsEnv) ?>" />
+              <div class="apply-alert apply-alert--info" role="status">
+                Applications started from this link will provision into
+                <strong><?= htmlspecialchars(provider_signup_accs_environment_label($pendingAccsEnv)) ?> ACCS</strong>
+                after operations approval.
+              </div>
+              <?php endif; ?>
               <label>Practitioner email address
                 <input type="email" name="provider_email" required autocomplete="email" placeholder="you@yourpractice.com" />
               </label>

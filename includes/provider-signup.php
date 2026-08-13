@@ -711,7 +711,7 @@ function provider_signup_ops_mark_config_step(int $applicationId, string $step, 
             $setClauses[] = 'AccsStepClinicAt = SYSUTCDATETIME()';
             $params['accs_company_id'] = $companyId;
             $params['accs_clinic_id'] = trim((string) ($extra['accs_clinic_id'] ?? $application['AccsClinicId'] ?? (string) $companyId));
-            $params['accs_environment'] = provider_signup_accs_target_environment();
+            $params['accs_environment'] = provider_signup_application_accs_environment($application);
             $logDetail = 'company ID ' . $companyId;
             break;
 
@@ -936,7 +936,10 @@ function provider_signup_ops_complete_accs_configuration(int $applicationId): ar
         return ['ok' => true, 'error' => null, 'configuration_complete' => true, 'already' => true];
     }
 
-    $result = provider_signup_accs_complete_clinic_configuration($application);
+    $result = provider_signup_accs_with_environment(
+        provider_signup_application_accs_environment($application),
+        static fn (): array => provider_signup_accs_complete_clinic_configuration($application)
+    );
     if (!$result['ok']) {
         return ['ok' => false, 'error' => $result['error'] ?? 'ACCS clinic configuration failed.'];
     }
@@ -1368,7 +1371,8 @@ function provider_signup_banking_validate_format(array $form, int $applicationId
 function provider_signup_create_application(
     string $providerEmail,
     bool $sendProviderContinueEmail = true,
-    bool $notifyOps = true
+    bool $notifyOps = true,
+    ?string $accsEnvironment = null
 ): array {
     $providerEmail = provider_signup_normalize_email($providerEmail);
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
@@ -1380,22 +1384,43 @@ function provider_signup_create_application(
         return ['ok' => true, 'error' => null, 'application' => $existing, 'resumed' => true];
     }
 
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment(
+        $accsEnvironment ?? provider_signup_accs_pending_environment() ?? ''
+    );
+
     try {
         $pdo = db();
         $token = provider_signup_generate_token();
-        $stmt = $pdo->prepare(<<<SQL
-            INSERT INTO dbo.ProviderSignupApplication (
-                AccessToken, Status, ProviderEmail, AdminEmail, CountryCode
-            )
-            VALUES (?, ?, ?, ?, ?)
-        SQL);
-        $stmt->execute([
-            $token,
-            PROVIDER_SIGNUP_STATUS_DRAFT,
-            $providerEmail,
-            $providerEmail,
-            'US',
-        ]);
+        if ($targetAccsEnvironment !== null) {
+            $stmt = $pdo->prepare(<<<SQL
+                INSERT INTO dbo.ProviderSignupApplication (
+                    AccessToken, Status, ProviderEmail, AdminEmail, CountryCode, AccsEnvironment
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            SQL);
+            $stmt->execute([
+                $token,
+                PROVIDER_SIGNUP_STATUS_DRAFT,
+                $providerEmail,
+                $providerEmail,
+                'US',
+                $targetAccsEnvironment,
+            ]);
+        } else {
+            $stmt = $pdo->prepare(<<<SQL
+                INSERT INTO dbo.ProviderSignupApplication (
+                    AccessToken, Status, ProviderEmail, AdminEmail, CountryCode
+                )
+                VALUES (?, ?, ?, ?, ?)
+            SQL);
+            $stmt->execute([
+                $token,
+                PROVIDER_SIGNUP_STATUS_DRAFT,
+                $providerEmail,
+                $providerEmail,
+                'US',
+            ]);
+        }
 
         $application = provider_signup_get_by_token($token);
         if ($application === null) {
@@ -1412,6 +1437,14 @@ function provider_signup_create_application(
             ? 'Application started by provider after email confirmation.'
             : 'Application shell created by Operations (backend create).';
         provider_signup_add_review_log((int) $application['ApplicationID'], null, 'Comment', $logMessage);
+        if ($targetAccsEnvironment !== null) {
+            provider_signup_add_review_log(
+                (int) $application['ApplicationID'],
+                null,
+                'Comment',
+                'Tagged for ACCS ' . provider_signup_accs_environment_label($targetAccsEnvironment) . ' provisioning.'
+            );
+        }
     } catch (Throwable $e) {
         error_log('provider_signup_create_application review log: ' . $e->getMessage());
     }
@@ -1424,6 +1457,10 @@ function provider_signup_create_application(
         }
     } catch (Throwable $e) {
         error_log('provider_signup_create_application mail: ' . $e->getMessage());
+    }
+
+    if ($targetAccsEnvironment !== null) {
+        provider_signup_accs_clear_pending_environment();
     }
 
     return ['ok' => true, 'error' => null, 'application' => $application, 'resumed' => false];
@@ -1737,8 +1774,14 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
         return ['ok' => false, 'error' => 'Application must be approved before creating the ACCS company.'];
     }
 
-    $provision = provider_signup_provision($applicationId);
+    $provision = provider_signup_accs_with_environment(
+        provider_signup_application_accs_environment($application),
+        static fn (): array => provider_signup_accs_provision($application)
+    );
     if (!$provision['ok']) {
+        $provisionError = provider_signup_accs_format_provision_error(
+            (string) ($provision['error'] ?? 'Provisioning failed.')
+        );
         try {
             $pdo = db();
             $pdo->prepare(<<<SQL
@@ -1747,7 +1790,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
                     LastSavedAt = SYSUTCDATETIME()
                 WHERE ApplicationID = ?
             SQL)->execute([
-                provider_signup_nullable_string((string) ($provision['error'] ?? 'Provisioning failed.')),
+                provider_signup_nullable_string($provisionError),
                 $applicationId,
             ]);
         } catch (Throwable) {
@@ -1758,10 +1801,10 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             $applicationId,
             $reviewerUserId,
             'ProvisionFailed',
-            (string) ($provision['error'] ?? 'Provisioning failed.')
+            $provisionError
         );
 
-        return $provision;
+        return ['ok' => false, 'error' => $provisionError];
     }
 
     try {
@@ -1786,7 +1829,7 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             WHERE ApplicationID = ?
         SQL)->execute([
             PROVIDER_SIGNUP_STATUS_PROVISIONED,
-            provider_signup_accs_target_environment(),
+            provider_signup_application_accs_environment($application),
             $provision['company_id'] ?? null,
             $provision['customer_id'] ?? null,
             provider_signup_nullable_string((string) ($provision['clinic_id'] ?? '')),
@@ -1804,7 +1847,10 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             isset($provision['temporary_password']) ? (string) $provision['temporary_password'] : null
         );
 
-        $configResult = provider_signup_accs_complete_clinic_configuration($updated);
+        $configResult = provider_signup_accs_with_environment(
+            provider_signup_application_accs_environment($updated),
+            static fn (): array => provider_signup_accs_complete_clinic_configuration($updated)
+        );
         if ($configResult['ok']) {
             $persist = provider_signup_persist_accs_config_result($applicationId, $configResult);
             if ($persist['ok'] && !empty($persist['configuration_complete'])) {
@@ -2658,11 +2704,14 @@ function provider_signup_provision(int $applicationId): array
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
-    $result = provider_signup_accs_provision($application);
+    $result = provider_signup_accs_with_environment(
+        provider_signup_application_accs_environment($application),
+        static fn (): array => provider_signup_accs_provision($application)
+    );
     if (!$result['ok']) {
         return [
             'ok'          => false,
-            'error'       => $result['error'] ?? 'ACCS provisioning failed.',
+            'error'       => provider_signup_accs_format_provision_error((string) ($result['error'] ?? 'ACCS provisioning failed.')),
             'company_id'  => null,
             'customer_id' => null,
             'clinic_id'   => null,
