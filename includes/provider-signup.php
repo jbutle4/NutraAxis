@@ -218,8 +218,28 @@ function provider_signup_default_form(): array
         'tax_id'              => '',
         'ach_routing_number'  => '',
         'ach_account_number'  => '',
+        'ach_account_number_confirm' => '',
         'ach_account_type'    => '',
     ];
+}
+
+function provider_signup_validate_ach_account_confirmation(array $form, int $applicationId): ?string
+{
+    $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
+    if ($account === '') {
+        return null;
+    }
+
+    $confirm = preg_replace('/\D+/', '', (string) ($form['ach_account_number_confirm'] ?? '')) ?? '';
+    if ($confirm === '') {
+        return 'Please confirm your ACH account number.';
+    }
+
+    if ($account !== $confirm) {
+        return 'ACH account numbers do not match. Please re-enter both fields.';
+    }
+
+    return null;
 }
 
 function provider_signup_form_from_post(array $post): array
@@ -256,6 +276,7 @@ function provider_signup_form_from_row(array $row): array
         'tax_id'              => '',
         'ach_routing_number'  => (string) ($row['AchRoutingNumber'] ?? ''),
         'ach_account_number'  => '',
+        'ach_account_number_confirm' => '',
         'ach_account_type'    => (string) ($row['AchAccountType'] ?? ''),
     ];
 }
@@ -374,6 +395,35 @@ function provider_signup_config_steps_complete(array $application): bool
     }
 
     return true;
+}
+
+function provider_signup_ops_can_run_accs_configuration(array $application): bool
+{
+    if (!provider_signup_can_update()) {
+        return false;
+    }
+
+    if ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+        return false;
+    }
+
+    return (int) ($application['AccsCompanyId'] ?? 0) > 0;
+}
+
+function provider_signup_accs_configuration_assignment_verified(array $application): ?bool
+{
+    $catalogId = (int) ($application['AccsSharedCatalogId'] ?? 0);
+    $companyId = (int) ($application['AccsCompanyId'] ?? 0);
+    if ($catalogId <= 0 || $companyId <= 0) {
+        return null;
+    }
+
+    $verify = provider_signup_accs_with_environment(
+        provider_signup_application_accs_environment($application),
+        static fn (): array => provider_signup_accs_config_verify_catalog_assignment($catalogId, $companyId)
+    );
+
+    return (bool) ($verify['ok'] ?? false);
 }
 
 function provider_signup_config_step_table_title(array $application, string $step): string
@@ -932,7 +982,12 @@ function provider_signup_ops_complete_accs_configuration(int $applicationId): ar
         return ['ok' => false, 'error' => 'ACCS company ID is required before clinic configuration can run.'];
     }
 
-    if (provider_signup_config_steps_complete($application)) {
+    $assignmentVerified = provider_signup_accs_configuration_assignment_verified($application);
+    if (
+        provider_signup_config_steps_complete($application)
+        && !empty($application['AccsConfigurationComplete'])
+        && $assignmentVerified === true
+    ) {
         return ['ok' => true, 'error' => null, 'configuration_complete' => true, 'already' => true];
     }
 
@@ -1591,8 +1646,10 @@ function provider_signup_request_email_challenge(string $providerEmail, ?string 
         return ['ok' => false, 'error' => 'Unable to start the application right now. Please try again.'];
     }
 
+    $pendingAccsEnvironment = provider_signup_accs_pending_environment();
+
     try {
-        provider_signup_mail_email_challenge($providerEmail, $token);
+        provider_signup_mail_email_challenge($providerEmail, $token, $pendingAccsEnvironment);
     } catch (Throwable $e) {
         error_log('provider_signup_request_email_challenge mail: ' . $e->getMessage());
 
@@ -1924,6 +1981,11 @@ function provider_signup_persist_form(int $applicationId, array $form, bool $sub
         return ['ok' => false, 'error' => 'Application not found.'];
     }
 
+    $achConfirmError = provider_signup_validate_ach_account_confirmation($form, $applicationId);
+    if ($achConfirmError !== null) {
+        return ['ok' => false, 'error' => $achConfirmError];
+    }
+
     $taxEncrypted = $taxId !== ''
         ? provider_signup_encrypt($taxId)
         : (string) ($existing['TaxIdEncrypted'] ?? null);
@@ -2011,6 +2073,11 @@ function provider_signup_save_documents(string $accessToken, array $form): array
     $account = preg_replace('/\D+/', '', (string) ($form['ach_account_number'] ?? '')) ?? '';
     $type = (string) ($form['ach_account_type'] ?? '');
     $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '';
+
+    $achConfirmError = provider_signup_validate_ach_account_confirmation($form, $applicationId);
+    if ($achConfirmError !== null) {
+        return ['ok' => false, 'error' => $achConfirmError];
+    }
 
     $anyProvided = $routing !== '' || $account !== '' || $type !== '';
     if (!$anyProvided && !$hasStoredAccount) {
@@ -2574,8 +2641,18 @@ function provider_signup_ops_reject(int $applicationId, string $comments): array
     $pdo->prepare('UPDATE dbo.ProviderSignupApplication SET Status = :status WHERE ApplicationID = :id')
         ->execute(['status' => PROVIDER_SIGNUP_STATUS_REJECTED, 'id' => $applicationId]);
 
+    $comments = trim($comments);
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
-    provider_signup_add_review_log($applicationId, $reviewerId, 'Rejected', trim($comments));
+    provider_signup_add_review_log($applicationId, $reviewerId, 'Rejected', $comments);
+
+    $updated = provider_signup_get($applicationId);
+    if ($updated !== null) {
+        try {
+            provider_signup_mail_rejected($updated, $comments);
+        } catch (Throwable $e) {
+            error_log('provider_signup_ops_reject mail: ' . $e->getMessage());
+        }
+    }
 
     return ['ok' => true, 'error' => null];
 }
@@ -2746,21 +2823,6 @@ function provider_signup_status_badge_class(string $status): string
         default:
             return 'status-draft';
     }
-}
-
-function provider_signup_accs_environment_label(?string $environment): string
-{
-    $environment = strtolower(trim((string) $environment));
-    if ($environment === '') {
-        return '—';
-    }
-
-    return match ($environment) {
-        'production' => 'Production',
-        'stage'      => 'Stage',
-        'dev'        => 'Dev',
-        default      => ucfirst($environment),
-    };
 }
 
 function provider_signup_format_datetime(DateTimeInterface|string|null $value): string

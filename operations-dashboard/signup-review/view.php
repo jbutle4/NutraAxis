@@ -139,10 +139,9 @@ $taxId = provider_signup_decrypt($application['TaxIdEncrypted'] ?? null);
 $accountNumber = provider_signup_decrypt($application['AchAccountNumberEncrypted'] ?? null);
 $configSteps = provider_signup_config_steps($application);
 $canMarkConfig = $canUpdate && provider_signup_ops_can_mark_config_step($application);
-$canRunAccsConfig = $canUpdate
-    && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED
-    && (int) ($application['AccsCompanyId'] ?? 0) > 0
-    && empty($application['AccsConfigurationComplete']);
+$canRunAccsConfig = provider_signup_ops_can_run_accs_configuration($application);
+$accsConfigLooksComplete = !empty($application['AccsConfigurationComplete'])
+    && provider_signup_config_steps_complete($application);
 $reviewWarnings = provider_signup_ops_review_warnings(
     $application,
     $applicationId,
@@ -190,7 +189,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php elseif (($_GET['notice'] ?? '') === 'already_provisioned'): ?>
       <div class="admin-notice is-success" role="status">This application was already provisioned.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'rejected'): ?>
-      <div class="admin-notice is-success" role="status">Application rejected.</div>
+      <div class="admin-notice is-success" role="status">Application rejected. The provider was emailed with your notes.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'npi_validated'): ?>
       <div class="admin-notice is-success" role="status">NPI validation refreshed.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'updated'): ?>
@@ -326,9 +325,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <form class="admin-form provider-signup-config-automation-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
             <input type="hidden" name="action" value="complete_accs_config" />
             <div class="module-actions">
-              <button class="btn-primary" type="submit">Complete ACCS clinic configuration</button>
+              <button class="btn-primary" type="submit"><?= $accsConfigLooksComplete ? 'Re-run ACCS clinic configuration' : 'Complete ACCS clinic configuration' ?></button>
             </div>
-            <p class="form-hint">Creates or reuses <code>SC-{clinic name}</code>, clones master catalog categories/products, assigns the company, and clones template roles.</p>
+            <p class="form-hint">Creates or reuses <code>SC-{clinic name}</code>, clones master catalog categories/products, assigns the clinic company to that shared catalog, and clones template roles. Safe to re-run to repair a missing shared catalog link.</p>
           </form>
           <?php endif; ?>
           <dl class="detail-list detail-list-inline">

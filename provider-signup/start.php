@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup.php';
-require dirname(__DIR__) . '/includes/provider-signup-accs.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /provider-signup/', true, 302);

@@ -147,6 +147,59 @@ function provider_signup_accs_format_provision_error(string $error): string
         . 'Disable Google reCAPTCHA on customer create in ACCS admin for server-side provisioning, or provision using an admin email that already exists in ACCS.';
 }
 
+function provider_signup_accs_environment_label(?string $environment): string
+{
+    $environment = strtolower(trim((string) $environment));
+    if ($environment === '') {
+        return '—';
+    }
+
+    return match ($environment) {
+        'production' => 'Production',
+        'stage'      => 'Stage',
+        'dev'        => 'Dev',
+        default      => ucfirst($environment),
+    };
+}
+
+/**
+ * @param array<string, mixed> $application
+ * @return array{label: string, tagged: bool, effective: string}
+ */
+function provider_signup_application_accs_environment_display(array $application): array
+{
+    $stored = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
+    $effective = provider_signup_application_accs_environment($application);
+
+    return [
+        'label'     => provider_signup_accs_environment_label($effective),
+        'tagged'    => $stored !== null,
+        'effective' => $effective,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_render_provision_environment_notice(array $application): void
+{
+    $env = provider_signup_application_accs_environment_display($application);
+    if ($env['label'] === '—') {
+        return;
+    }
+    ?>
+    <div class="signup-alert signup-alert--info signup-provision-env" role="status">
+      <?php if ($env['effective'] === 'production'): ?>
+      This clinic store will be provisioned after the review process is completed and application approved.
+      <?php elseif ($env['tagged']): ?>
+      This application is tagged for <strong><?= htmlspecialchars($env['label']) ?> ACCS</strong> provisioning after operations approval.
+      <?php else: ?>
+      This clinic store will be provisioned after the review process is completed and application approved.
+      <?php endif; ?>
+    </div>
+    <?php
+}
+
 function provider_signup_accs_target_environment(): string
 {
     $runtime = env_runtime_value('PROVIDER_SIGNUP_ACCS_ENVIRONMENT');

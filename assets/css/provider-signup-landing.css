@@ -993,6 +993,42 @@ body.marketing-site .na-providers ul {
   color: var(--text-muted);
 }
 
+.na-providers .signup-input-with-toggle {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.na-providers .signup-input-with-toggle input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.na-providers .signup-input-toggle {
+  flex: 0 0 auto;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  background: var(--white);
+  color: var(--teal-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.na-providers .signup-input-toggle:hover {
+  background: #f0f8f7;
+}
+
+.na-providers .signup-input-toggle:focus {
+  outline: 2px solid var(--teal-light);
+  outline-offset: 1px;
+}
+
 .na-providers .signup-form__actions {
   display: flex;
   flex-wrap: wrap;

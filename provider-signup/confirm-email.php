@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup.php';
 
 $token = trim((string) ($_GET['token'] ?? ''));
+provider_signup_accs_capture_environment_from_request();
 $result = provider_signup_confirm_email_challenge($token);
 
 if (!$result['ok'] || !is_array($result['application'] ?? null)) {

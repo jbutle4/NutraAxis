@@ -17,10 +17,12 @@ require_once __DIR__ . '/../includes/provider-signup-accs.php';
 require_once __DIR__ . '/../includes/provider-signup-accs-config.php';
 
 $options = getopt('', ['super-user-id::']);
-$superUserId = isset($options['super-user-id']) ? (int) $options['super-user-id'] : (int) env('PROVIDER_SIGNUP_ACCS_BOOTSTRAP_SUPER_USER_ID', '398');
+$superUserId = isset($options['super-user-id'])
+    ? (int) $options['super-user-id']
+    : provider_signup_accs_config_bootstrap_super_user_id();
 
 if ($superUserId <= 0) {
-  fwrite(STDERR, "Unable to resolve super user ID. Pass --super-user-id=<customer_id>.\n");
+  fwrite(STDERR, "Unable to resolve super user ID. Pass --super-user-id=<customer_id> or set PROVIDER_SIGNUP_ACCS_BOOTSTRAP_SUPER_USER_ID_STAGE / PROVIDER_SIGNUP_ACCS_BOOTSTRAP_SUPER_USER_ID.\n");
   exit(1);
 }
 

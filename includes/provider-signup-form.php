@@ -10,6 +10,69 @@
 /** @var ?string $notice */
 /** @var ?string $warn */
 
+function provider_signup_render_ach_payout_fields(array $form, array $application, string $accountPlaceholder): void
+{
+    $hasStoredAccount = trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '';
+    $accountSuffix = $hasStoredAccount ? ' — enter to replace' : '';
+    ?>
+      <div class="signup-grid">
+        <label><span>ACH routing #</span>
+          <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
+        </label>
+        <label><span>ACH account #</span>
+          <div class="signup-input-with-toggle">
+            <input
+              type="password"
+              name="ach_account_number"
+              id="ach_account_number"
+              inputmode="numeric"
+              autocomplete="off"
+              value="<?= htmlspecialchars($form['ach_account_number']) ?>"
+              placeholder="<?= htmlspecialchars($accountPlaceholder) ?>"
+            />
+            <button
+              type="button"
+              class="signup-input-toggle"
+              data-toggle-for="ach_account_number"
+              data-toggle-label="ACH account number"
+              aria-label="Show ACH account number"
+              aria-pressed="false"
+            >Show</button>
+          </div>
+        </label>
+        <label><span>ACH account type</span>
+          <select name="ach_account_type">
+            <option value="">Select type</option>
+            <?php foreach (PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES as $type): ?>
+            <option value="<?= htmlspecialchars($type) ?>" <?= $form['ach_account_type'] === $type ? 'selected' : '' ?>><?= htmlspecialchars($type) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label><span>Confirm ACH account #</span>
+          <div class="signup-input-with-toggle">
+            <input
+              type="password"
+              name="ach_account_number_confirm"
+              id="ach_account_number_confirm"
+              inputmode="numeric"
+              autocomplete="off"
+              value="<?= htmlspecialchars($form['ach_account_number_confirm']) ?>"
+              placeholder="<?= htmlspecialchars('Re-enter account number' . $accountSuffix) ?>"
+            />
+            <button
+              type="button"
+              class="signup-input-toggle"
+              data-toggle-for="ach_account_number_confirm"
+              data-toggle-label="confirmed ACH account number"
+              aria-label="Show confirmed ACH account number"
+              aria-pressed="false"
+            >Show</button>
+          </div>
+        </label>
+      </div>
+    <?php
+}
+
 $editable = $editable ?? provider_signup_provider_can_edit($application);
 $canSubmit = $canSubmit ?? provider_signup_provider_can_submit($application);
 $canCompleteDocuments = $canCompleteDocuments ?? provider_signup_provider_can_complete_documents($application);
@@ -36,11 +99,16 @@ $documentsOnly = !$editable && $canCompleteDocuments;
   <div class="signup-submitted">
     <div class="section-label">Application Submitted</div>
     <h2 class="section-heading">Thank you for submitting your application</h2>
+    <?php $provisionEnv = provider_signup_application_accs_environment_display($application); ?>
     <div class="signup-meta">
       <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
       <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
       <span><strong>Submitted:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['SubmittedAt'] ?? null)) ?></span>
+      <?php if ($provisionEnv['label'] !== '—'): ?>
+      <span><strong>Provision environment:</strong> <?= htmlspecialchars($provisionEnv['label']) ?><?= $provisionEnv['tagged'] ? '' : ' (default)' ?></span>
+      <?php endif; ?>
     </div>
+    <?php provider_signup_render_provision_environment_notice($application); ?>
     <div class="signup-submitted__body">
       <p>Thank you for submitting your application. Your application will be validated for completeness and eligibility for Tax Exemption status. Your store will be provisioned and you will receive further instruction on the next steps. Please note that it can take up to 3-5 business days to set up your clinic store once your application has been reviewed and approved. You will be able, however, to log in and purchase at wholesale prices plus applicable state sales tax. Once your application has been validated for tax exemption, you will no longer be charged any state tax for purchases for resale. If you are operating in a state with existing tax exemptions on food and dietary supplements, that will already be applied at checkout.</p>
       <p>We also emailed you a secure return link<?= $canCompleteDocuments ? ' so you can upload your reseller certificate and/or add ACH payout details later' : '' ?>.</p>
@@ -50,11 +118,18 @@ $documentsOnly = !$editable && $canCompleteDocuments;
   <?php endif; ?>
 
   <?php if ($editable): ?>
+  <?php
+  $provisionEnv = provider_signup_application_accs_environment_display($application);
+  ?>
   <div class="signup-meta">
     <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
     <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
     <span><strong>Last saved:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></span>
+    <?php if ($provisionEnv['label'] !== '—'): ?>
+    <span><strong>Provision environment:</strong> <?= htmlspecialchars($provisionEnv['label']) ?><?= $provisionEnv['tagged'] ? '' : ' (default)' ?></span>
+    <?php endif; ?>
   </div>
+  <?php provider_signup_render_provision_environment_notice($application); ?>
 
   <?php foreach ($documentWarnings as $documentWarning): ?>
   <div class="signup-alert signup-alert--warn" role="status"><?= htmlspecialchars($documentWarning) ?></div>
@@ -143,7 +218,23 @@ $documentsOnly = !$editable && $canCompleteDocuments;
           </select>
         </label>
         <label><span>Tax ID (SSN or EIN) *</span>
-          <input type="password" name="tax_id" autocomplete="off" placeholder="<?= trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Required for submit' ?>" />
+          <div class="signup-input-with-toggle">
+            <input
+              type="password"
+              name="tax_id"
+              id="tax_id"
+              autocomplete="off"
+              placeholder="<?= trim((string) ($application['TaxIdEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Required for submit' ?>"
+            />
+            <button
+              type="button"
+              class="signup-input-toggle"
+              data-toggle-for="tax_id"
+              data-toggle-label="Tax ID"
+              aria-label="Show Tax ID"
+              aria-pressed="false"
+            >Show</button>
+          </div>
         </label>
       </div>
     </fieldset>
@@ -151,22 +242,15 @@ $documentsOnly = !$editable && $canCompleteDocuments;
     <fieldset class="signup-fieldset">
       <legend>Payouts</legend>
       <p class="signup-fieldset__hint">Banking details for monthly sales proceeds payouts (optional for submit). All practitioners receive a Clinic Store.</p>
-      <div class="signup-grid">
-        <label><span>ACH routing #</span>
-          <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
-        </label>
-        <label><span>ACH account #</span>
-          <input type="password" name="ach_account_number" autocomplete="off" placeholder="<?= trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Optional — required for payouts' ?>" />
-        </label>
-        <label><span>ACH account type</span>
-          <select name="ach_account_type">
-            <option value="">Select type</option>
-            <?php foreach (PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES as $type): ?>
-            <option value="<?= htmlspecialchars($type) ?>" <?= $form['ach_account_type'] === $type ? 'selected' : '' ?>><?= htmlspecialchars($type) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-      </div>
+      <?php
+      provider_signup_render_ach_payout_fields(
+          $form,
+          $application,
+          trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== ''
+              ? 'Saved — enter to replace'
+              : 'Optional — required for payouts'
+      );
+      ?>
     </fieldset>
 
     <div class="signup-form__actions">
@@ -179,11 +263,16 @@ $documentsOnly = !$editable && $canCompleteDocuments;
 
   <?php elseif ($documentsOnly): ?>
   <?php if (!$isSubmittedForReview): ?>
+  <?php $provisionEnv = provider_signup_application_accs_environment_display($application); ?>
   <div class="signup-meta">
     <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
     <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
     <span><strong>Last saved:</strong> <?= htmlspecialchars(provider_signup_format_datetime($application['LastSavedAt'] ?? null)) ?></span>
+    <?php if ($provisionEnv['label'] !== '—'): ?>
+    <span><strong>Provision environment:</strong> <?= htmlspecialchars($provisionEnv['label']) ?><?= $provisionEnv['tagged'] ? '' : ' (default)' ?></span>
+    <?php endif; ?>
   </div>
+  <?php provider_signup_render_provision_environment_notice($application); ?>
   <?php endif; ?>
 
   <div class="signup-complete-documents">
@@ -200,22 +289,15 @@ $documentsOnly = !$editable && $canCompleteDocuments;
       <fieldset class="signup-fieldset">
         <legend>Payouts</legend>
         <p class="signup-fieldset__hint">Required before you can receive clinic payouts.</p>
-        <div class="signup-grid">
-          <label><span>ACH routing #</span>
-            <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
-          </label>
-          <label><span>ACH account #</span>
-            <input type="password" name="ach_account_number" autocomplete="off" placeholder="<?= trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== '' ? 'Saved — enter to replace' : 'Enter account number' ?>" />
-          </label>
-          <label><span>ACH account type</span>
-            <select name="ach_account_type">
-              <option value="">Select type</option>
-              <?php foreach (PROVIDER_SIGNUP_ACH_ACCOUNT_TYPES as $type): ?>
-              <option value="<?= htmlspecialchars($type) ?>" <?= $form['ach_account_type'] === $type ? 'selected' : '' ?>><?= htmlspecialchars($type) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </label>
-        </div>
+        <?php
+        provider_signup_render_ach_payout_fields(
+            $form,
+            $application,
+            trim((string) ($application['AchAccountNumberEncrypted'] ?? '')) !== ''
+                ? 'Saved — enter to replace'
+                : 'Enter account number'
+        );
+        ?>
       </fieldset>
       <div class="signup-form__actions">
         <button class="btn-cta" type="submit" name="action" value="save_documents">Save ACH details</button>
@@ -224,10 +306,15 @@ $documentsOnly = !$editable && $canCompleteDocuments;
   </div>
 
   <?php elseif (!$editable): ?>
+  <?php $provisionEnv = provider_signup_application_accs_environment_display($application); ?>
   <div class="signup-meta">
     <span><strong>Status:</strong> <?= htmlspecialchars($status) ?></span>
     <span><strong>Application ID:</strong> <?= (int) $application['ApplicationID'] ?></span>
+    <?php if ($provisionEnv['label'] !== '—'): ?>
+    <span><strong>Provision environment:</strong> <?= htmlspecialchars($provisionEnv['label']) ?><?= $provisionEnv['tagged'] ? '' : ' (default)' ?></span>
+    <?php endif; ?>
   </div>
+  <?php provider_signup_render_provision_environment_notice($application); ?>
   <?php if ($status === PROVIDER_SIGNUP_STATUS_APPROVED): ?>
   <div class="signup-alert signup-alert--info" role="status">
     Your application is approved. Our operations team is creating your Clinic Store. You will receive email when your account is ready.
@@ -284,3 +371,4 @@ $documentsOnly = !$editable && $canCompleteDocuments;
 
   <p class="signup-back-link"><a href="/provider-signup/">← Back to For Practitioners</a></p>
 </div>
+<script src="/assets/js/provider-signup-form.js?v=<?= htmlspecialchars(provider_signup_form_js_version()) ?>" defer></script>

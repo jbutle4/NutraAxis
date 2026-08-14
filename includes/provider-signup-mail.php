@@ -102,22 +102,33 @@ function provider_signup_mail_ops_silent(string $subject, string $plainBody, str
     mail_send_html_multi_result($recipients, [], $subject, $htmlBody, $plainBody);
 }
 
-function provider_signup_confirm_email_url(string $challengeToken): string
+function provider_signup_confirm_email_url(string $challengeToken, ?string $accsEnvironment = null): string
 {
-    return provider_signup_mail_base_url() . '/provider-signup/confirm-email.php?token=' . rawurlencode($challengeToken);
+    $url = provider_signup_mail_base_url()
+        . '/provider-signup/confirm-email.php?token='
+        . rawurlencode($challengeToken);
+    $env = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
+    if ($env !== null) {
+        $url .= '&accs_env=' . rawurlencode($env);
+    }
+
+    return $url;
 }
 
 /**
  * Email ownership challenge — sent before an application row exists.
  */
-function provider_signup_mail_email_challenge(string $providerEmail, string $challengeToken): void
-{
+function provider_signup_mail_email_challenge(
+    string $providerEmail,
+    string $challengeToken,
+    ?string $accsEnvironment = null
+): void {
     $providerEmail = strtolower(trim($providerEmail));
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
         return;
     }
 
-    $confirmUrl = provider_signup_confirm_email_url($challengeToken);
+    $confirmUrl = provider_signup_confirm_email_url($challengeToken, $accsEnvironment);
     $subject = 'Confirm your email to continue your NutraAxis provider application';
     $plain = implode("\n", [
         'Confirm your email address to start (or resume) your NutraAxis provider application.',
@@ -324,6 +335,36 @@ function provider_signup_mail_returned(array $application, string $comments): vo
     }
     $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">Update your application</a></p>'
         . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
+        . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
+
+    provider_signup_mail_provider($application, $subject, $plain, $html);
+}
+
+/**
+ * @param array<string, mixed> $application
+ */
+function provider_signup_mail_rejected(array $application, string $comments): void
+{
+    $applyUrl = provider_signup_apply_url((string) $application['AccessToken']);
+    $subject = 'Update on your NutraAxis provider application';
+    $plain = implode("\n", [
+        'Your NutraAxis provider application was not approved at this time.',
+        '',
+        $comments !== '' ? "Reviewer notes:\n" . $comments . "\n" : '',
+        'You can view your application here:',
+        $applyUrl,
+        '',
+        'If you have questions or believe this was in error, email ' . PROVIDER_SIGNUP_SUPPORT_EMAIL . '.',
+        '',
+        '— NutraAxis Operations',
+    ]);
+    $html = '<p>Your NutraAxis provider application was not approved at this time.</p>';
+    if ($comments !== '') {
+        $html .= '<blockquote>' . nl2br(htmlspecialchars($comments)) . '</blockquote>';
+    }
+    $html .= '<p><a href="' . htmlspecialchars($applyUrl) . '">View your application</a></p>'
+        . '<p>If you have questions or believe this was in error, email <a href="'
+        . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
         . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
     provider_signup_mail_provider($application, $subject, $plain, $html);

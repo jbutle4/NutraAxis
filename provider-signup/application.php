@@ -5,7 +5,6 @@
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup-landing.php';
 require dirname(__DIR__) . '/includes/provider-signup-recaptcha.php';
-require dirname(__DIR__) . '/includes/provider-signup-accs.php';
 
 provider_signup_accs_capture_environment_from_request();
 
