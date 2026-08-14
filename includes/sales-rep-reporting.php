@@ -227,17 +227,24 @@ function sales_rep_reporting_list(array $filters = []): array
         $params['date_to'] = $dateTo;
     }
     if ($q !== '') {
+        // ODBC/SQL Server PDO requires a distinct placeholder per bind (cannot reuse :q).
+        $like = '%' . $q . '%';
         $sql .= <<<SQL
           AND (
-            h.IncrementId LIKE :q
-            OR h.CustomerFirstName LIKE :q
-            OR h.CustomerLastName LIKE :q
-            OR h.BillCompany LIKE :q
-            OR h.ShipCompany LIKE :q
-            OR h.CustomerEmail LIKE :q
+            h.IncrementId LIKE :q1
+            OR h.CustomerFirstName LIKE :q2
+            OR h.CustomerLastName LIKE :q3
+            OR h.BillCompany LIKE :q4
+            OR h.ShipCompany LIKE :q5
+            OR h.CustomerEmail LIKE :q6
           )
         SQL;
-        $params['q'] = '%' . $q . '%';
+        $params['q1'] = $like;
+        $params['q2'] = $like;
+        $params['q3'] = $like;
+        $params['q4'] = $like;
+        $params['q5'] = $like;
+        $params['q6'] = $like;
     }
 
     $sql .= ' ORDER BY h.OrderCreatedAt DESC, h.AccsEntityId DESC';

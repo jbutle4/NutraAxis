@@ -147,16 +147,22 @@ function sales_rep_territory_list(array $filters = []): array
 
     $q = trim((string) ($filters['q'] ?? ''));
     if ($q !== '') {
+        // ODBC/SQL Server PDO requires a distinct placeholder per bind (cannot reuse :q).
+        $like = '%' . $q . '%';
         $sql .= <<<SQL
           AND (
-            State LIKE :q
-            OR ZipCode LIKE :q
-            OR County LIKE :q
-            OR Rep LIKE :q
-            OR PreviousRepAssigned LIKE :q
+            State LIKE :q1
+            OR ZipCode LIKE :q2
+            OR County LIKE :q3
+            OR Rep LIKE :q4
+            OR PreviousRepAssigned LIKE :q5
           )
         SQL;
-        $params['q'] = '%' . $q . '%';
+        $params['q1'] = $like;
+        $params['q2'] = $like;
+        $params['q3'] = $like;
+        $params['q4'] = $like;
+        $params['q5'] = $like;
     }
 
     $orderParts = ["{$orderBy} {$sortDir}"];
