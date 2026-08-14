@@ -31,7 +31,7 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_header([
           'back_href'  => '/sales-rep-territory-assignment/',
           'back_label' => 'Back to Sales Rep Territory Assignment',
-          'category'   => 'Operations',
+          'category'   => 'Sales',
           'title'      => 'New Territory Assignment',
           'lead'       => 'Add a State / Zip / County → sales rep row.',
       ]);

@@ -25,8 +25,9 @@ try {
 
 $notice = $_GET['notice'] ?? null;
 
-$pageTitle = 'Sales Rep Territory Assignment | NutraAxis Operations';
+$pageTitle = 'Sales Rep Territory Assignment | Sales Reporting';
 $pageDescription = 'Maintain zip/county sales territory assignments for Sales Rep Reporting.';
+$hubBack = app_module_hub_back_link($activeSlug);
 
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -35,9 +36,9 @@ require dirname(__DIR__) . '/includes/header.php';
     <div class="container page-inner">
       <?php
       render_list_page_header([
-          'back_href'  => '/',
-          'back_label' => 'Back to Operations Home',
-          'category'   => 'Operations',
+          'back_href'  => $hubBack['href'],
+          'back_label' => $hubBack['label'],
+          'category'   => 'Sales',
           'title'      => 'Sales Rep Territory Assignment',
           'lead'       => 'Maintain State / Zip / County → sales rep assignments used by Sales Rep Reporting.',
           'permission' => permission_label(sales_rep_territory_permission_value()),

@@ -667,6 +667,14 @@ $salesReportingSubModules = [
         'icon'  => 'chart',
         'tier'  => 'uat',
     ],
+    [
+        'slug'  => 'sales-rep-territory-assignment',
+        'title' => 'Sales Rep Territory Assignment',
+        'desc'  => 'Maintain state/zip/county sales territory assignments for Sales Rep Reporting.',
+        'href'  => '/sales-rep-territory-assignment/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+    ],
 ];
 
 $appFunctions = [
@@ -712,8 +720,8 @@ $appFunctions = [
     ],
     [
         'slug'  => 'sales-reporting',
-        'title' => 'Sales & Order Reporting',
-        'desc'  => 'ACCS and Jazz order lookup, daily sales, and monthly sales summaries.',
+        'title' => 'Sales Reporting',
+        'desc'  => 'ACCS and Jazz order lookup, sales summaries, sales-rep reporting, and territory assignments.',
         'href'  => '/sales-reporting/',
         'icon'  => 'chart',
         'group' => 'supply-chain',
@@ -756,14 +764,6 @@ $appFunctions = [
         'desc'  => 'Shortcuts to Microsoft 365, QuickBooks, Adobe Commerce, and support tools.',
         'href'  => '/',
         'icon'  => 'dashboard',
-        'group' => 'admin',
-    ],
-    [
-        'slug'  => 'sales-rep-territory-assignment',
-        'title' => 'Sales Rep Territory Assignment',
-        'desc'  => 'Maintain state/zip/county sales territory assignments for Sales Rep Reporting.',
-        'href'  => '/sales-rep-territory-assignment/',
-        'icon'  => 'clipboard',
         'group' => 'admin',
     ],
     [
@@ -998,13 +998,13 @@ $modulePages = [
     ],
     'sales-reporting' => [
         'label'       => 'Sales',
-        'headline'    => 'Sales Reporting Summaries',
-        'lead'        => 'ACCS order lookup plus daily and monthly SKU sales summary tables populated by scheduled background jobs.',
+        'headline'    => 'Sales Reporting',
+        'lead'        => 'Order lookup, sales summaries, sales-rep reporting, and territory assignments for NutraAxis sales operations.',
         'capabilities' => [
             ['title' => 'ACCS Order Report', 'desc' => 'Search and view Adobe Commerce orders with line-item detail.'],
             ['title' => 'Sales Rep Reporting', 'desc' => 'Orders with company territory matching to sales reps.'],
-            ['title' => 'Daily Sales Summary', 'desc' => 'SKU quantities sold per day from the nightly ACCS rollup.'],
-            ['title' => 'Monthly Sales Summary', 'desc' => 'SKU quantities sold per month for forecasting and trend analysis.'],
+            ['title' => 'Daily & Monthly Summaries', 'desc' => 'SKU quantities sold per day and month from ACCS rollups.'],
+            ['title' => 'Territory Assignment', 'desc' => 'Maintain State / Zip / County → sales rep mappings.'],
         ],
     ],
     'sales-rep-reporting' => [
@@ -1018,7 +1018,7 @@ $modulePages = [
         ],
     ],
     'sales-rep-territory-assignment' => [
-        'label'       => 'Operations',
+        'label'       => 'Sales',
         'headline'    => 'Sales Rep Territory Assignment',
         'lead'        => 'Maintain State / Zip / County → sales rep assignments used by Sales Rep Reporting.',
         'capabilities' => [

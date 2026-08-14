@@ -516,6 +516,16 @@ function auth_render_access_denied(string $message): void
     exit;
 }
 
+function auth_is_reporting_user(): bool
+{
+    $user = auth_user();
+    if (!is_array($user)) {
+        return false;
+    }
+
+    return strcasecmp((string) ($user['RoleName'] ?? ''), 'Reporting User') === 0;
+}
+
 function auth_filter_modules(array $modules): array
 {
     if (!auth_is_logged_in()) {
@@ -525,11 +535,21 @@ function auth_filter_modules(array $modules): array
         ));
     }
 
-    return array_values(array_filter(
+    $filtered = array_values(array_filter(
         $modules,
         fn(array $item): bool => !app_module_nav_hidden((string) ($item['slug'] ?? ''))
             && auth_can_read_module($item['slug'])
     ));
+
+    // Reporting User role: Sales Reporting hub only (home cards + left nav).
+    if (auth_is_reporting_user()) {
+        return array_values(array_filter(
+            $filtered,
+            static fn(array $item): bool => ($item['slug'] ?? '') === 'sales-reporting'
+        ));
+    }
+
+    return $filtered;
 }
 
 function auth_filter_account_links(array $links): array

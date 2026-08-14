@@ -73,16 +73,17 @@ WHERE RoleName = N'Labeling User';
 GO
 
 -- ---------------------------------------------------------------------------
--- Reporting User — read-only on reporting and dashboard modules only
+-- Reporting User — read-only Sales Reporting hub only
+-- Prefer sql/141_seed_reporting_user_role.sql for MERGE insert + full clear.
 -- ---------------------------------------------------------------------------
 UPDATE dbo.Role
 SET
     POManagement           = NULL,
-    InventoryReporting     = N'R',
+    InventoryReporting     = NULL,
     SalesReporting         = N'R',
     InventoryForecasting   = NULL,
     LabelingOperations     = NULL,
-    OperationsDashboard    = N'R',
+    OperationsDashboard    = NULL,
     UserAdmin              = NULL,
     RoleAdmin              = NULL
 WHERE RoleName = N'Reporting User';
