@@ -233,6 +233,14 @@ $formActions = capture_form_actions(function () use ($isEdit, $form) {
             </select>
           </div>
           <div class="form-group">
+            <label for="qbo_tracking_mode">QuickBooks tracking</label>
+            <select class="form-input" id="qbo_tracking_mode" name="qbo_tracking_mode">
+              <?php foreach (CATALOG_QBO_TRACKING_MODES as $trackingMode): ?>
+              <option value="<?= htmlspecialchars($trackingMode) ?>" <?= catalog_normalize_qbo_tracking_mode($form['qbo_tracking_mode'] ?? 'Inventory') === $trackingMode ? 'selected' : '' ?>><?= htmlspecialchars(catalog_qbo_tracking_mode_label($trackingMode)) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="form-group">
             <label for="qbo_income_account_ref_value">Income account</label>
             <select class="form-input qbo-account-select" id="qbo_income_account_ref_value" name="qbo_income_account_ref_value" data-name-target="qbo_income_account_ref_name">
               <option value="">Select income account</option>

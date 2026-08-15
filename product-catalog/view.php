@@ -154,6 +154,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <div><dt>Sync status</dt><dd><?= htmlspecialchars(catalog_qbo_sync_status_label((string) ($sku['QBO_SyncStatus'] ?? 'NotSynced'))) ?></dd></div>
             <div><dt>QBO item ID</dt><dd><?= htmlspecialchars($sku['QBO_ItemID'] ?? '—') ?></dd></div>
             <div><dt>Display name</dt><dd><?= htmlspecialchars($sku['QBO_DisplayName'] ?? catalog_build_qbo_item_name($sku) ?: '—') ?></dd></div>
+            <div><dt>QuickBooks tracking</dt><dd><?= htmlspecialchars(catalog_qbo_tracking_mode_label($sku['QBO_TrackingMode'] ?? 'Inventory')) ?></dd></div>
             <div><dt>Taxable</dt><dd><?= !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']) ? 'Yes' : 'No' ?></dd></div>
             <div><dt>Income account</dt><dd><?= htmlspecialchars(trim(($sku['QBO_IncomeAccountRefName'] ?? '') . ($sku['QBO_IncomeAccountRefValue'] ?? '' ? ' (' . $sku['QBO_IncomeAccountRefValue'] . ')' : '')) ?: '—') ?></dd></div>
             <div><dt>COGS account</dt><dd><?= htmlspecialchars(trim(($sku['QBO_ExpenseAccountRefName'] ?? '') . ($sku['QBO_ExpenseAccountRefValue'] ?? '' ? ' (' . $sku['QBO_ExpenseAccountRefValue'] . ')' : '')) ?: '—') ?></dd></div>
