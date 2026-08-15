@@ -309,19 +309,25 @@ async function run() {
           continue;
         }
         const resolved = await qboInventory.resolveInventoryItemId(pool, sql, line.sku);
+        if (resolved.skip) {
+          continue;
+        }
         if (!resolved.ok || !resolved.item_id) {
           missingItem = true;
           failures.push({
             por_id: porId,
             sku: line.sku,
+            canonical_sku: resolved.canonical_sku || line.sku,
             error: resolved.error || 'Missing QBO Inventory Item Id.',
           });
           break;
         }
+        const canonicalSku = String(resolved.canonical_sku || line.sku).trim();
         qboLines.push({
           docNumber,
           detail_id: line.detail_id,
-          sku: line.sku,
+          sku: canonicalSku,
+          source_sku: line.sku,
           qty: line.qty,
           qbo_item_id: resolved.item_id,
         });

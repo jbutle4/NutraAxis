@@ -30,6 +30,8 @@ const CATALOG_SKU_STATUSES = [
 
 const CATALOG_QBO_SYNC_STATUSES = ['NotSynced', 'Synced', 'Error', 'Pending'];
 
+const CATALOG_QBO_TRACKING_MODES = ['Inventory', 'NonInventory'];
+
 const CATALOG_QBO_NAME_MAX_LENGTH = 100;
 
 const CATALOG_QBO_DESCRIPTION_MAX_LENGTH = 4000;
@@ -398,6 +400,36 @@ function catalog_supplier_options(?int $selectedId = null): array
     return $options;
 }
 
+function catalog_normalize_qbo_tracking_mode(?string $mode): string
+{
+    $value = trim((string) $mode);
+
+    return strcasecmp($value, 'NonInventory') === 0 ? 'NonInventory' : 'Inventory';
+}
+
+function catalog_qbo_tracking_mode_for_sku(array $sku): string
+{
+    if (array_key_exists('QBO_TrackingMode', $sku) && trim((string) $sku['QBO_TrackingMode']) !== '') {
+        return catalog_normalize_qbo_tracking_mode($sku['QBO_TrackingMode']);
+    }
+
+    require_once __DIR__ . '/quickbooks.php';
+
+    return qbo_sku_item_type();
+}
+
+function catalog_sku_uses_inventory_tracking(array $sku): bool
+{
+    return catalog_qbo_tracking_mode_for_sku($sku) === 'Inventory';
+}
+
+function catalog_qbo_tracking_mode_label(?string $mode): string
+{
+    return catalog_normalize_qbo_tracking_mode($mode) === 'NonInventory'
+        ? 'Non-inventory (expense only)'
+        : 'Inventory (quantity tracked)';
+}
+
 function catalog_sku_to_form(array $sku): array
 {
     return [
@@ -436,6 +468,7 @@ function catalog_sku_to_form(array $sku): array
         'certs_on_label'              => (string) ($sku['CertsOnLabel'] ?? ''),
         'qbo_purchase_desc'           => (string) ($sku['QBO_PurchaseDesc'] ?? ''),
         'qbo_taxable'                 => !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']),
+        'qbo_tracking_mode'           => catalog_qbo_tracking_mode_for_sku($sku),
         'qbo_income_account_ref_value'=> (string) ($sku['QBO_IncomeAccountRefValue'] ?? ''),
         'qbo_income_account_ref_name' => (string) ($sku['QBO_IncomeAccountRefName'] ?? ''),
         'qbo_expense_account_ref_value'=> (string) ($sku['QBO_ExpenseAccountRefValue'] ?? ''),
@@ -579,6 +612,7 @@ function catalog_sku_from_input(array $input): array
         'certs_on_label'               => trim($input['certs_on_label'] ?? ''),
         'qbo_purchase_desc'            => trim($input['qbo_purchase_desc'] ?? ''),
         'qbo_taxable'                  => (string) ($input['qbo_taxable'] ?? '1') === '1',
+        'qbo_tracking_mode'            => trim($input['qbo_tracking_mode'] ?? 'Inventory'),
         'qbo_income_account_ref_value' => trim($input['qbo_income_account_ref_value'] ?? ''),
         'qbo_income_account_ref_name'  => trim($input['qbo_income_account_ref_name'] ?? ''),
         'qbo_expense_account_ref_value'=> trim($input['qbo_expense_account_ref_value'] ?? ''),
@@ -616,6 +650,12 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
     if (!in_array($data['sku_status'], CATALOG_SKU_STATUSES, true)) {
         return ['ok' => false, 'error' => 'Select a valid status.'];
     }
+
+    if (!in_array(catalog_normalize_qbo_tracking_mode($data['qbo_tracking_mode']), CATALOG_QBO_TRACKING_MODES, true)) {
+        return ['ok' => false, 'error' => 'Select a valid QuickBooks tracking mode.'];
+    }
+
+    $data['qbo_tracking_mode'] = catalog_normalize_qbo_tracking_mode($data['qbo_tracking_mode']);
 
     $invalidAllergens = array_diff($data['allergens'], CATALOG_ALLERGENS);
     if ($invalidAllergens !== []) {
@@ -711,6 +751,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
         'certs_on_label'   => $data['certs_on_label'] !== '' ? $data['certs_on_label'] : null,
         'qbo_purchase_desc'=> $data['qbo_purchase_desc'] !== '' ? $data['qbo_purchase_desc'] : null,
         'qbo_taxable'      => $data['qbo_taxable'] ? 1 : 0,
+        'qbo_tracking_mode'=> $data['qbo_tracking_mode'],
         'qbo_income_value' => $data['qbo_income_account_ref_value'] !== '' ? $data['qbo_income_account_ref_value'] : null,
         'qbo_income_name'  => $data['qbo_income_account_ref_name'] !== '' ? $data['qbo_income_account_ref_name'] : null,
         'qbo_expense_value'=> $data['qbo_expense_account_ref_value'] !== '' ? $data['qbo_expense_account_ref_value'] : null,
@@ -732,7 +773,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     COGS, WholesalePrice, MSRP, SFPLink, LabelPrintReadyLink,
                     LaunchDate, Notes, Formulation, Product, LabelSelection,
                     Directions, CapsuleCount, CertsOnLabel,
-                    QBO_PurchaseDesc, QBO_Taxable,
+                    QBO_PurchaseDesc, QBO_Taxable, QBO_TrackingMode,
                     QBO_IncomeAccountRefValue, QBO_IncomeAccountRefName,
                     QBO_ExpenseAccountRefValue, QBO_ExpenseAccountRefName,
                     QBO_AssetAccountRefValue, QBO_AssetAccountRefName,
@@ -748,7 +789,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     :cogs, :wholesale, :msrp, :sfp_link, :label_link,
                     :launch, :notes, :formulation, :product, :label_selection,
                     :directions, :capsule_count, :certs_on_label,
-                    :qbo_purchase_desc, :qbo_taxable,
+                    :qbo_purchase_desc, :qbo_taxable, :qbo_tracking_mode,
                     :qbo_income_value, :qbo_income_name,
                     :qbo_expense_value, :qbo_expense_name,
                     :qbo_asset_value, :qbo_asset_name,
@@ -799,6 +840,7 @@ function catalog_save_sku(array $input, ?int $skuId = null): array
                     CertsOnLabel = :certs_on_label,
                     QBO_PurchaseDesc = :qbo_purchase_desc,
                     QBO_Taxable = :qbo_taxable,
+                    QBO_TrackingMode = :qbo_tracking_mode,
                     QBO_IncomeAccountRefValue = :qbo_income_value,
                     QBO_IncomeAccountRefName = :qbo_income_name,
                     QBO_ExpenseAccountRefValue = :qbo_expense_value,
@@ -1037,7 +1079,7 @@ function catalog_qbo_sync_blockers(array $sku): array
     if (trim((string) ($sku['QBO_ExpenseAccountRefValue'] ?? '')) === '') {
         $blockers[] = 'COGS account is required.';
     }
-    if (qbo_sku_uses_inventory_tracking() && trim((string) ($sku['QBO_AssetAccountRefValue'] ?? '')) === '') {
+    if (catalog_sku_uses_inventory_tracking($sku) && trim((string) ($sku['QBO_AssetAccountRefValue'] ?? '')) === '') {
         $blockers[] = 'Inventory asset account is required.';
     }
 
@@ -1072,7 +1114,7 @@ function catalog_build_qbo_item_payload(array $sku, bool $isCreate, ?string $ite
 {
     require_once __DIR__ . '/quickbooks.php';
 
-    $itemType = $itemType ?? qbo_sku_item_type();
+    $itemType = $itemType ?? catalog_qbo_tracking_mode_for_sku($sku);
     $useInventoryTracking = strcasecmp($itemType, 'NonInventory') !== 0;
 
     $name = catalog_build_qbo_item_name($sku);

@@ -1019,6 +1019,18 @@ function qbo_item_matches_sku_sync_mode(?array $item): bool
         : strcasecmp($type, 'NonInventory') === 0;
 }
 
+function qbo_sku_item_type_for_sku(array $sku): string
+{
+    require_once __DIR__ . '/catalog.php';
+
+    return catalog_qbo_tracking_mode_for_sku($sku);
+}
+
+function qbo_sku_uses_inventory_tracking_for_sku(array $sku): bool
+{
+    return qbo_sku_item_type_for_sku($sku) === 'Inventory';
+}
+
 function qbo_sku_uses_inventory_tracking(): bool
 {
     return qbo_sku_item_type() === 'Inventory';
@@ -2193,7 +2205,7 @@ function qbo_sync_sku_to_quickbooks(int $skuId): array
             $sku,
             $isCreate,
             $freshItem,
-            qbo_sku_uses_inventory_tracking() ? 'Inventory' : 'NonInventory'
+            qbo_sku_item_type_for_sku($sku)
         );
         $sku = $attempt['sku'] ?? $sku;
 
@@ -2205,7 +2217,7 @@ function qbo_sync_sku_to_quickbooks(int $skuId): array
 
         $result = $attempt['result'];
 
-        if (!$attempt['ok'] && qbo_sku_uses_inventory_tracking()
+        if (!$attempt['ok'] && qbo_sku_uses_inventory_tracking_for_sku($sku)
             && qbo_error_is_inventory_subscription_limit($attempt['raw_error'])) {
             $freshItem = qbo_load_fresh_item_for_sku($sku);
             $fallbackAttempt = qbo_sync_sku_item_attempt(

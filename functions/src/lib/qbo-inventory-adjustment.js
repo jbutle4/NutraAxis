@@ -63,6 +63,78 @@ async function postInventoryAdjustment({ docNumber, lines, adjustAccountId, priv
   };
 }
 
+function legacySkuAlias(skuCode) {
+  const sku = String(skuCode || '').trim();
+  if (!/^NS-/i.test(sku) || sku.length <= 3) {
+    return null;
+  }
+
+  return `NA-${sku.slice(3)}`;
+}
+
+async function loadSkuMasterRow(pool, sql, skuCode) {
+  const sku = String(skuCode || '').trim();
+  if (!sku) {
+    return null;
+  }
+
+  const result = await pool.request()
+    .input('sku', sql.NVarChar(100), sku)
+    .query(`
+      SELECT TOP (1) SKUCode, QBO_TrackingMode
+      FROM dbo.SKUMaster
+      WHERE SKUCode = @sku
+    `);
+
+  return result.recordset[0] || null;
+}
+
+/**
+ * Resolve order-line SKU to canonical SKUMaster.SKUCode (NS-* → NA-* when twin exists).
+ */
+async function resolveCanonicalSku(pool, sql, skuCode) {
+  const sourceSku = String(skuCode || '').trim();
+  if (!sourceSku) {
+    return {
+      ok: false,
+      source_sku: '',
+      canonical_sku: '',
+      tracks_inventory: false,
+      error: 'SKU is required.',
+    };
+  }
+
+  let row = await loadSkuMasterRow(pool, sql, sourceSku);
+  if (!row) {
+    const alias = legacySkuAlias(sourceSku);
+    if (alias) {
+      row = await loadSkuMasterRow(pool, sql, alias);
+    }
+  }
+
+  if (!row) {
+    return {
+      ok: false,
+      source_sku: sourceSku,
+      canonical_sku: sourceSku,
+      tracks_inventory: false,
+      error: `SKU ${sourceSku} is not in SKUMaster.`,
+    };
+  }
+
+  const canonicalSku = String(row.SKUCode || sourceSku).trim();
+  const trackingMode = String(row.QBO_TrackingMode || 'Inventory').trim();
+  const tracksInventory = trackingMode.toLowerCase() !== 'noninventory';
+
+  return {
+    ok: true,
+    source_sku: sourceSku,
+    canonical_sku: canonicalSku,
+    tracks_inventory: tracksInventory,
+    error: null,
+  };
+}
+
 async function findItemBySku(skuCode) {
   const sku = String(skuCode || '').trim().replace(/'/g, "\\'");
   if (!sku) {
@@ -90,26 +162,58 @@ async function findItemBySku(skuCode) {
  * Prefer QBO over the local QBO_ItemID — conversion can leave stale NonInventory/Service Ids.
  */
 async function resolveInventoryItemId(pool, sql, skuCode) {
-  const sku = String(skuCode || '').trim();
-  if (!sku) {
-    return { ok: false, item_id: '', error: 'SKU is required.' };
+  const canonical = await resolveCanonicalSku(pool, sql, skuCode);
+  if (!canonical.ok) {
+    return {
+      ok: false,
+      item_id: '',
+      error: canonical.error || 'SKU is required.',
+      source_sku: canonical.source_sku,
+      canonical_sku: canonical.canonical_sku,
+    };
   }
 
+  if (!canonical.tracks_inventory) {
+    return {
+      ok: false,
+      item_id: '',
+      skip: true,
+      error: `SKU ${canonical.canonical_sku} is NonInventory in SKUMaster; skipped for quantity sync.`,
+      source_sku: canonical.source_sku,
+      canonical_sku: canonical.canonical_sku,
+    };
+  }
+
+  const sku = canonical.canonical_sku;
   const remote = await findItemBySku(sku);
   if (!remote.ok) {
-    return { ok: false, item_id: '', error: remote.error || 'QBO item lookup failed.' };
+    return {
+      ok: false,
+      item_id: '',
+      error: remote.error || 'QBO item lookup failed.',
+      source_sku: canonical.source_sku,
+      canonical_sku: sku,
+    };
   }
   if (!remote.item) {
     return {
       ok: false,
       item_id: '',
       error: `No active QuickBooks Inventory item found for SKU ${sku}.`,
+      source_sku: canonical.source_sku,
+      canonical_sku: sku,
     };
   }
 
   const itemId = String(remote.item.Id || '').trim();
   if (!itemId) {
-    return { ok: false, item_id: '', error: `QuickBooks Inventory item for ${sku} has no Id.` };
+    return {
+      ok: false,
+      item_id: '',
+      error: `QuickBooks Inventory item for ${sku} has no Id.`,
+      source_sku: canonical.source_sku,
+      canonical_sku: sku,
+    };
   }
 
   await pool.request()
@@ -129,12 +233,21 @@ async function resolveInventoryItemId(pool, sql, skuCode) {
         )
     `);
 
-  return { ok: true, item_id: itemId, error: null, item: remote.item };
+  return {
+    ok: true,
+    item_id: itemId,
+    error: null,
+    item: remote.item,
+    source_sku: canonical.source_sku,
+    canonical_sku: sku,
+  };
 }
 
 module.exports = {
   postInventoryAdjustment,
   findItemBySku,
+  legacySkuAlias,
+  resolveCanonicalSku,
   resolveInventoryItemId,
   connectionStore,
 };

@@ -289,21 +289,33 @@ async function run() {
 
       for (const line of headerLines) {
         const resolved = await qboInventory.resolveInventoryItemId(pool, sql, line.sku);
+        if (resolved.skip) {
+          continue;
+        }
         const itemId = resolved.ok ? String(resolved.item_id || '').trim() : '';
         if (!itemId) {
           missing = true;
           failures.push({
             header_id: headerId,
             sku: line.sku,
+            canonical_sku: resolved.canonical_sku || line.sku,
             error: resolved.error || 'Missing QBO Inventory Item Id for SKU.',
           });
           break;
         }
+        const canonicalSku = String(resolved.canonical_sku || line.sku).trim();
         qboLines.push({
           ...line,
+          sku: canonicalSku,
+          source_sku: line.sku,
           qbo_item_id: itemId,
           doc_number: `NA-SAL-${line.header_id}-${line.detail_id}`,
         });
+      }
+
+      if (qboLines.length === 0 && !missing) {
+        skipped += 1;
+        continue;
       }
 
       if (missing) {
