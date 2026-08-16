@@ -262,9 +262,10 @@ async function loadReceiptLines(pool, porId) {
 async function run() {
   const accountId = adjustAccountId();
   if (!accountId) {
+    const env = qboConfig.environment();
     return {
       ok: false,
-      error: 'Set QBO_INV_ADJUST_ACCOUNT_ID (or QBO_INV_ASSET_ACCOUNT_CART) on the function app.',
+      error: `Set QBO_INV_ADJUST_ACCOUNT_ID (or QBO_INV_ASSET_ACCOUNT_CART) on the function app for QBO_ENVIRONMENT=${env} (use QBO_INV_*_${env === 'production' ? 'PROD' : 'SANDBOX'} or unsuffixed keys).`,
       processed: 0,
       posted: 0,
       skipped: 0,
