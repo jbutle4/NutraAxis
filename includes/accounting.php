@@ -174,7 +174,8 @@ function accounting_skumaster_qbo_links(): array
     try {
         $pdo = db();
         $stmt = $pdo->query(<<<SQL
-            SELECT SKUID, SKUCode, ProductName, QBO_ItemID, QBO_SyncStatus
+            SELECT SKUID, SKUCode, ProductName,
+                   QBO_ItemID_Sandbox, QBO_ItemID_Production, QBO_SyncStatus
             FROM dbo.SKUMaster
         SQL);
         $bySkuCode = [];
@@ -185,9 +186,11 @@ function accounting_skumaster_qbo_links(): array
                 $bySkuCode[strtoupper($skuCode)] = $row;
             }
 
-            $qboItemId = trim((string) ($row['QBO_ItemID'] ?? ''));
-            if ($qboItemId !== '') {
-                $byQboItemId[$qboItemId] = $row;
+            foreach (['QBO_ItemID_Sandbox', 'QBO_ItemID_Production'] as $idField) {
+                $qboItemId = trim((string) ($row[$idField] ?? ''));
+                if ($qboItemId !== '') {
+                    $byQboItemId[$qboItemId] = $row;
+                }
             }
         }
 

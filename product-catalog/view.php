@@ -152,7 +152,8 @@ require dirname(__DIR__) . '/includes/header.php';
           <h2>QuickBooks</h2>
           <dl class="account-details">
             <div><dt>Sync status</dt><dd><?= htmlspecialchars(catalog_qbo_sync_status_label((string) ($sku['QBO_SyncStatus'] ?? 'NotSynced'))) ?></dd></div>
-            <div><dt>QBO item ID</dt><dd><?= htmlspecialchars($sku['QBO_ItemID'] ?? '—') ?></dd></div>
+            <div><dt>QBO item ID (Sandbox)</dt><dd><?= htmlspecialchars(trim((string) ($sku['QBO_ItemID_Sandbox'] ?? '')) ?: '—') ?></dd></div>
+            <div><dt>QBO item ID (Production)</dt><dd><?= htmlspecialchars(trim((string) ($sku['QBO_ItemID_Production'] ?? '')) ?: '—') ?></dd></div>
             <div><dt>Display name</dt><dd><?= htmlspecialchars($sku['QBO_DisplayName'] ?? catalog_build_qbo_item_name($sku) ?: '—') ?></dd></div>
             <div><dt>QuickBooks tracking</dt><dd><?= htmlspecialchars(catalog_qbo_tracking_mode_label($sku['QBO_TrackingMode'] ?? 'Inventory')) ?></dd></div>
             <div><dt>Taxable</dt><dd><?= !array_key_exists('QBO_Taxable', $sku) || !empty($sku['QBO_Taxable']) ? 'Yes' : 'No' ?></dd></div>

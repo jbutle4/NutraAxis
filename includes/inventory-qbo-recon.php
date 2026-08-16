@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/inventory-ledger.php';
 require_once __DIR__ . '/quickbooks.php';
+require_once __DIR__ . '/catalog.php';
 
 function inventory_qbo_recon_require_read(): void
 {
@@ -41,11 +42,13 @@ function inventory_qbo_recon_build_rows(): array
     ];
 
     try {
+        $qboRealm = catalog_qbo_realm_from_ledger_profile(inventory_ledger_profile());
+        $qboItemIdColumn = catalog_qbo_item_id_column($qboRealm);
         $imsStmt = $pdo->prepare(<<<SQL
             SELECT
                 b.SKUCode,
                 SUM(b.QtyOK + b.QtyQuarantine + b.QtyOnHold) AS ImsQty,
-                MAX(m.QBO_ItemID) AS QBO_ItemID,
+                MAX(m.{$qboItemIdColumn}) AS QBO_ItemID,
                 MAX(m.SKUStatus) AS SKUStatus
             FROM dbo.InvCurrentBalance b
             LEFT JOIN dbo.SKUMaster m ON m.SKUCode = b.SKUCode
@@ -134,7 +137,7 @@ function inventory_qbo_recon_build_rows(): array
         $qbo = $qboBySku[$key] ?? null;
         $matchMethod = $qbo !== null ? 'sku' : null;
 
-        // Prefer SKUMaster.QBO_ItemID when Sku match is missing or Id disagrees.
+        // Prefer realm-specific SKUMaster item Id when Sku match is missing or Id disagrees.
         if ($ims !== null && ($ims['qbo_item_id'] ?? '') !== '') {
             $byId = $qboById[$ims['qbo_item_id']] ?? null;
             if ($byId !== null) {

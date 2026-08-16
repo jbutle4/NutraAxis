@@ -159,7 +159,7 @@ async function findItemBySku(skuCode) {
 
 /**
  * Resolve the live QBO Inventory Item Id for a SKU and keep SKUMaster in sync.
- * Prefer QBO over the local QBO_ItemID — conversion can leave stale NonInventory/Service Ids.
+ * Prefer QBO SKU lookup over cached realm-specific item Id columns.
  */
 async function resolveInventoryItemId(pool, sql, skuCode) {
   const canonical = await resolveCanonicalSku(pool, sql, skuCode);
@@ -216,22 +216,48 @@ async function resolveInventoryItemId(pool, sql, skuCode) {
     };
   }
 
-  await pool.request()
+  const syncToken = String(remote.item.SyncToken || '').trim();
+  const isProduction = qboConfigEnvironment() === 'production';
+  const idColumn = isProduction ? 'QBO_ItemID_Production' : 'QBO_ItemID_Sandbox';
+  const tokenColumn = isProduction ? 'QBO_SyncToken_Production' : 'QBO_SyncToken_Sandbox';
+
+  const req = pool.request()
     .input('sku', sql.NVarChar(100), sku)
-    .input('itemId', sql.NVarChar(32), itemId)
-    .query(`
+    .input('itemId', sql.NVarChar(32), itemId);
+
+  let updateSql = `
       UPDATE dbo.SKUMaster
-      SET QBO_ItemID = @itemId,
+      SET ${idColumn} = @itemId,
           QBO_SyncStatus = N'Synced',
           QBO_SyncError = NULL,
           QBO_SyncedAt = SYSUTCDATETIME()
       WHERE SKUCode = @sku
         AND (
-          QBO_ItemID IS NULL
-          OR LTRIM(RTRIM(QBO_ItemID)) = N''
-          OR QBO_ItemID <> @itemId
+          ${idColumn} IS NULL
+          OR LTRIM(RTRIM(${idColumn})) = N''
+          OR ${idColumn} <> @itemId
         )
-    `);
+    `;
+
+  if (syncToken !== '') {
+    req.input('syncToken', sql.NVarChar(32), syncToken);
+    updateSql = `
+      UPDATE dbo.SKUMaster
+      SET ${idColumn} = @itemId,
+          ${tokenColumn} = @syncToken,
+          QBO_SyncStatus = N'Synced',
+          QBO_SyncError = NULL,
+          QBO_SyncedAt = SYSUTCDATETIME()
+      WHERE SKUCode = @sku
+        AND (
+          ${idColumn} IS NULL
+          OR LTRIM(RTRIM(${idColumn})) = N''
+          OR ${idColumn} <> @itemId
+        )
+    `;
+  }
+
+  await req.query(updateSql);
 
   return {
     ok: true,

@@ -2069,14 +2069,6 @@ function qbo_apply_fresh_item_identity(array $payload, ?array $freshItem): array
 
 function qbo_load_fresh_item_for_sku(array $sku): ?array
 {
-    $qboId = trim((string) ($sku['QBO_ItemID'] ?? ''));
-    if ($qboId !== '') {
-        $fetch = qbo_fetch_item($qboId);
-        if ($fetch['ok'] && qbo_item_matches_sku_sync_mode($fetch['item'] ?? null)) {
-            return $fetch['item'] ?? null;
-        }
-    }
-
     $skuCode = trim((string) ($sku['SKUCode'] ?? ''));
     if ($skuCode !== '') {
         $fetch = qbo_find_item_by_sku($skuCode);
@@ -2086,6 +2078,14 @@ function qbo_load_fresh_item_for_sku(array $sku): ?array
     }
 
     require_once __DIR__ . '/catalog.php';
+    $qboId = catalog_qbo_item_id_for_sku($sku);
+    if ($qboId !== '') {
+        $fetch = qbo_fetch_item($qboId);
+        if ($fetch['ok'] && qbo_item_matches_sku_sync_mode($fetch['item'] ?? null)) {
+            return $fetch['item'] ?? null;
+        }
+    }
+
     $displayName = catalog_build_qbo_item_name($sku);
     if ($displayName === '') {
         return null;
@@ -2197,7 +2197,8 @@ function qbo_sync_sku_to_quickbooks(int $skuId): array
             $sku = catalog_get_sku($skuId) ?? $sku;
         }
 
-        $hadQboId = trim((string) ($sku['QBO_ItemID'] ?? '')) !== '';
+        require_once __DIR__ . '/catalog.php';
+        $hadQboId = catalog_qbo_item_id_for_sku($sku) !== '';
         $isCreate = !$hadQboId && !is_array($freshItem);
         $syncWarning = null;
         $attempt = qbo_sync_sku_item_attempt(

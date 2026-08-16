@@ -194,36 +194,30 @@ function inventory_adjustments_resolve_qbo_item_id(string $skuCode): array
 
             $itemId = trim((string) ($inventory['Id'] ?? ''));
             if ($itemId !== '') {
+                require_once __DIR__ . '/catalog.php';
                 $pdo = db();
-                $pdo->prepare(<<<SQL
-                    UPDATE dbo.SKUMaster
-                    SET QBO_ItemID = :item_id,
-                        QBO_SyncStatus = N'Synced',
-                        QBO_SyncError = NULL,
-                        QBO_SyncedAt = SYSUTCDATETIME()
-                    WHERE SKUCode = :sku
-                      AND (
-                        QBO_ItemID IS NULL
-                        OR LTRIM(RTRIM(QBO_ItemID)) = N''
-                        OR QBO_ItemID <> :item_id2
-                      )
-                SQL)->execute([
-                    'item_id' => $itemId,
-                    'item_id2' => $itemId,
-                    'sku' => $skuCode,
-                ]);
+                $skuRow = $pdo->prepare('SELECT SKUID FROM dbo.SKUMaster WHERE SKUCode = :sku');
+                $skuRow->execute(['sku' => $skuCode]);
+                $skuId = (int) ($skuRow->fetchColumn() ?: 0);
+                if ($skuId > 0 && is_array($inventory)) {
+                    catalog_persist_qbo_item_link($skuId, $inventory);
+                }
 
                 return ['ok' => true, 'error' => null, 'item_id' => $itemId];
             }
         }
     }
 
+    require_once __DIR__ . '/catalog.php';
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT QBO_ItemID FROM dbo.SKUMaster WHERE SKUCode = :sku');
+    $stmt = $pdo->prepare('SELECT SKUID, SKUCode, QBO_ItemID_Sandbox, QBO_ItemID_Production FROM dbo.SKUMaster WHERE SKUCode = :sku');
     $stmt->execute(['sku' => $skuCode]);
-    $localId = trim((string) ($stmt->fetchColumn() ?: ''));
-    if ($localId !== '') {
-        return ['ok' => true, 'error' => null, 'item_id' => $localId];
+    $row = $stmt->fetch();
+    if ($row !== false) {
+        $localId = catalog_qbo_item_id_for_sku($row);
+        if ($localId !== '') {
+            return ['ok' => true, 'error' => null, 'item_id' => $localId];
+        }
     }
 
     return [

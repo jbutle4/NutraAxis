@@ -430,6 +430,111 @@ function catalog_qbo_tracking_mode_label(?string $mode): string
         : 'Inventory (quantity tracked)';
 }
 
+function catalog_qbo_normalize_realm(?string $realm = null): string
+{
+    if ($realm === 'production' || $realm === 'sandbox') {
+        return $realm;
+    }
+
+    require_once __DIR__ . '/quickbooks.php';
+
+    return qbo_environment() === QBO_ENV_PRODUCTION ? 'production' : 'sandbox';
+}
+
+/** Map IMS ledger profile (uat | production) to QBO item-id realm key. */
+function catalog_qbo_realm_from_ledger_profile(?string $ledgerProfile = null): string
+{
+    $profile = strtolower(trim((string) $ledgerProfile));
+
+    return $profile === 'production' ? 'production' : 'sandbox';
+}
+
+function catalog_qbo_item_id_column(?string $realm = null): string
+{
+    return catalog_qbo_normalize_realm($realm) === 'production'
+        ? 'QBO_ItemID_Production'
+        : 'QBO_ItemID_Sandbox';
+}
+
+function catalog_qbo_sync_token_column(?string $realm = null): string
+{
+    return catalog_qbo_normalize_realm($realm) === 'production'
+        ? 'QBO_SyncToken_Production'
+        : 'QBO_SyncToken_Sandbox';
+}
+
+function catalog_qbo_item_id_for_sku(array $sku, ?string $realm = null): string
+{
+    $field = catalog_qbo_item_id_column($realm);
+    $id = trim((string) ($sku[$field] ?? ''));
+
+    return $id;
+}
+
+function catalog_qbo_sync_token_for_sku(array $sku, ?string $realm = null): string
+{
+    $field = catalog_qbo_sync_token_column($realm);
+    $token = trim((string) ($sku[$field] ?? ''));
+
+    return $token;
+}
+
+/**
+ * Persist QBO Item Id / SyncToken for the given realm (sandbox or production).
+ */
+function catalog_persist_qbo_item_link(int $skuId, array $item, ?string $realm = null): void
+{
+    $realm = catalog_qbo_normalize_realm($realm);
+    $itemId = trim((string) ($item['Id'] ?? ''));
+    $syncToken = trim((string) ($item['SyncToken'] ?? ''));
+    $displayName = trim((string) ($item['Name'] ?? ''));
+
+    $idColumn = catalog_qbo_item_id_column($realm);
+    $tokenColumn = catalog_qbo_sync_token_column($realm);
+
+    $sets = [
+        "{$idColumn} = :qbo_id",
+        "{$tokenColumn} = :sync_token",
+        'QBO_SyncStatus = N\'Synced\'',
+        'QBO_SyncError = NULL',
+        'QBO_SyncedAt = SYSUTCDATETIME()',
+        'ModifiedDate = SYSUTCDATETIME()',
+    ];
+    if ($displayName !== '') {
+        $sets[] = 'QBO_DisplayName = :display_name';
+    }
+
+    $pdo = db();
+    $params = [
+        'qbo_id'     => $itemId !== '' ? $itemId : null,
+        'sync_token' => $syncToken !== '' ? $syncToken : null,
+        'id'         => $skuId,
+    ];
+    if ($displayName !== '') {
+        $params['display_name'] = $displayName;
+    }
+
+    $pdo->prepare('UPDATE dbo.SKUMaster SET ' . implode(', ', $sets) . ' WHERE SKUID = :id')
+        ->execute($params);
+}
+
+function catalog_clear_qbo_item_link(int $skuId, ?string $realm = null): void
+{
+    $realm = catalog_qbo_normalize_realm($realm);
+    $idColumn = catalog_qbo_item_id_column($realm);
+    $tokenColumn = catalog_qbo_sync_token_column($realm);
+
+    db()->prepare(<<<SQL
+        UPDATE dbo.SKUMaster
+        SET {$idColumn} = NULL,
+            {$tokenColumn} = NULL,
+            QBO_SyncStatus = N'Pending',
+            QBO_SyncError = NULL,
+            ModifiedDate = SYSUTCDATETIME()
+        WHERE SKUID = :id
+    SQL)->execute(['id' => $skuId]);
+}
+
 function catalog_sku_to_form(array $sku): array
 {
     return [
@@ -968,7 +1073,7 @@ function catalog_qbo_item_name_needs_sku_suffix(array $sku): bool
     }
 
     $item = $fetch['item'];
-    $linkedId = trim((string) ($sku['QBO_ItemID'] ?? ''));
+    $linkedId = catalog_qbo_item_id_for_sku($sku);
     $existingId = trim((string) ($item['Id'] ?? ''));
     if ($linkedId !== '' && $existingId !== '' && $linkedId === $existingId) {
         return false;
@@ -1150,11 +1255,13 @@ function catalog_build_qbo_item_payload(array $sku, bool $isCreate, ?string $ite
         }
     }
 
-    if (!empty($sku['QBO_ItemID'])) {
-        $payload['Id'] = (string) $sku['QBO_ItemID'];
+    $itemId = catalog_qbo_item_id_for_sku($sku);
+    if ($itemId !== '') {
+        $payload['Id'] = $itemId;
     }
-    if (!empty($sku['QBO_SyncToken'])) {
-        $payload['SyncToken'] = (string) $sku['QBO_SyncToken'];
+    $syncToken = catalog_qbo_sync_token_for_sku($sku);
+    if ($syncToken !== '') {
+        $payload['SyncToken'] = $syncToken;
     }
 
     foreach (['Description', 'PurchaseDesc'] as $optionalField) {
@@ -1238,23 +1345,7 @@ function catalog_mark_qbo_sync(int $skuId, string $status, ?string $error = null
 
 function catalog_apply_qbo_item_response(int $skuId, array $item): void
 {
-    $pdo = db();
-    $pdo->prepare(<<<SQL
-        UPDATE dbo.SKUMaster
-        SET QBO_ItemID = :qbo_id,
-            QBO_SyncToken = :sync_token,
-            QBO_DisplayName = :display_name,
-            QBO_SyncStatus = N'Synced',
-            QBO_SyncError = NULL,
-            QBO_SyncedAt = SYSUTCDATETIME(),
-            ModifiedDate = SYSUTCDATETIME()
-        WHERE SKUID = :id
-    SQL)->execute([
-        'qbo_id'       => (string) ($item['Id'] ?? ''),
-        'sync_token'   => (string) ($item['SyncToken'] ?? ''),
-        'display_name' => (string) ($item['Name'] ?? ''),
-        'id'           => $skuId,
-    ]);
+    catalog_persist_qbo_item_link($skuId, $item);
 }
 
 function catalog_store_qbo_item_identity(int $skuId, array $item): void
@@ -1266,11 +1357,15 @@ function catalog_store_qbo_item_identity(int $skuId, array $item): void
     ];
     $displayName = trim((string) ($item['Name'] ?? ''));
 
+    $realm = catalog_qbo_normalize_realm();
+    $idColumn = catalog_qbo_item_id_column($realm);
+    $tokenColumn = catalog_qbo_sync_token_column($realm);
+
     if ($displayName !== '') {
         db()->prepare(<<<SQL
             UPDATE dbo.SKUMaster
-            SET QBO_ItemID = :qbo_id,
-                QBO_SyncToken = :sync_token,
+            SET {$idColumn} = :qbo_id,
+                {$tokenColumn} = :sync_token,
                 QBO_DisplayName = :display_name,
                 ModifiedDate = SYSUTCDATETIME()
             WHERE SKUID = :id
@@ -1281,8 +1376,8 @@ function catalog_store_qbo_item_identity(int $skuId, array $item): void
 
     db()->prepare(<<<SQL
         UPDATE dbo.SKUMaster
-        SET QBO_ItemID = :qbo_id,
-            QBO_SyncToken = :sync_token,
+        SET {$idColumn} = :qbo_id,
+            {$tokenColumn} = :sync_token,
             ModifiedDate = SYSUTCDATETIME()
         WHERE SKUID = :id
     SQL)->execute($params);
@@ -1453,7 +1548,7 @@ function catalog_convert_sku_to_qbo_inventory(int $skuId): array
         return ['ok' => false, 'error' => $readyError];
     }
 
-    $existingId = trim((string) ($sku['QBO_ItemID'] ?? ''));
+    $existingId = catalog_qbo_item_id_for_sku($sku);
     if ($existingId !== '') {
         $fetch = qbo_fetch_item($existingId);
         if ($fetch['ok'] && is_array($fetch['item'] ?? null)) {
@@ -1490,17 +1585,7 @@ function catalog_convert_sku_to_qbo_inventory(int $skuId): array
         }
     }
 
-    // Clear local identity so create path does not update the inactivated item.
-    $pdo = db();
-    $pdo->prepare(<<<SQL
-        UPDATE dbo.SKUMaster
-        SET QBO_ItemID = NULL,
-            QBO_SyncToken = NULL,
-            QBO_SyncStatus = N'Pending',
-            QBO_SyncError = NULL,
-            ModifiedDate = SYSUTCDATETIME()
-        WHERE SKUID = :id
-    SQL)->execute(['id' => $skuId]);
+    catalog_clear_qbo_item_link($skuId);
 
     $sku = catalog_get_sku($skuId);
     if ($sku === null) {
