@@ -486,7 +486,8 @@ function provider_signup_render_application_start_page(string $startError = ''):
     require_once dirname(__DIR__) . '/includes/provider-signup-accs.php';
     $recaptchaSiteKey = provider_signup_recaptcha_site_key();
     $showRecaptcha = $recaptchaSiteKey !== '';
-    $pendingAccsEnv = provider_signup_accs_pending_environment();
+    $pendingAccsEnv = provider_signup_accs_pending_environment()
+        ?? provider_signup_accs_normalize_environment((string) ($_GET['accs_env'] ?? ''));
     ?>
 <div class="na-providers">
   <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">

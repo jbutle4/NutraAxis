@@ -24,6 +24,21 @@ function provider_signup_accs_normalize_environment(?string $raw): ?string
     return in_array($raw, provider_signup_accs_allowed_environments(), true) ? $raw : null;
 }
 
+function provider_signup_accs_environment_label(?string $environment): string
+{
+    $environment = strtolower(trim((string) $environment));
+    if ($environment === '') {
+        return '—';
+    }
+
+    return match ($environment) {
+        'production' => 'Production',
+        'stage'      => 'Stage',
+        'dev'        => 'Dev',
+        default      => ucfirst($environment),
+    };
+}
+
 /**
  * Public signup entry URL. Pass stage/dev for UAT applications from staging storefronts.
  */

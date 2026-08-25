@@ -2748,21 +2748,6 @@ function provider_signup_status_badge_class(string $status): string
     }
 }
 
-function provider_signup_accs_environment_label(?string $environment): string
-{
-    $environment = strtolower(trim((string) $environment));
-    if ($environment === '') {
-        return '—';
-    }
-
-    return match ($environment) {
-        'production' => 'Production',
-        'stage'      => 'Stage',
-        'dev'        => 'Dev',
-        default      => ucfirst($environment),
-    };
-}
-
 function provider_signup_format_datetime(DateTimeInterface|string|null $value): string
 {
     if ($value === null || $value === '') {
