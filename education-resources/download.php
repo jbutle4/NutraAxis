@@ -1,7 +1,6 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/education-resources.php';
-require dirname(__DIR__) . '/includes/attachment-storage.php';
 
 education_resources_require_read();
 
@@ -10,12 +9,14 @@ $row = education_resources_get($id);
 
 if ($row === null || strtoupper((string) ($row['Type'] ?? '')) !== 'PDF') {
     http_response_code(404);
+    header('Content-Type: text/plain; charset=UTF-8');
     exit('PDF not found.');
 }
 
 $blobPath = trim((string) ($row['BlobPath'] ?? ''));
 if ($blobPath === '') {
     http_response_code(404);
+    header('Content-Type: text/plain; charset=UTF-8');
     exit('PDF file is not available.');
 }
 
@@ -27,6 +28,7 @@ $resolved = attachment_storage_resolve_content([
 
 if (!$resolved['ok']) {
     http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
     exit($resolved['error'] ?? 'Unable to read PDF.');
 }
 

@@ -43,6 +43,15 @@ $hasExistingPdf = $isEdit
     </div>
 
     <div class="form-group form-grid-full" id="education-pdf-fields" <?= $type === 'PDF' ? '' : 'hidden' ?>>
+      <?php if ($hasExistingPdf): ?>
+      <div class="admin-notice is-success" role="status" style="margin-bottom: 1rem;">
+        <strong>Current PDF on file:</strong>
+        <a href="<?= htmlspecialchars(education_resources_download_path((int) ($existing['ERID'] ?? 0))) ?>" target="_blank" rel="noopener noreferrer">
+          <?= htmlspecialchars((string) ($existing['FileName'] ?? 'Open PDF')) ?>
+        </a>
+        <span class="form-hint"> — leave the upload blank to keep this file.</span>
+      </div>
+      <?php endif; ?>
       <?php
       $uploadFieldId = 'pdf_file';
       $uploadFieldName = 'pdf_file';
@@ -50,7 +59,7 @@ $hasExistingPdf = $isEdit
       $uploadTitle = 'Drop, paste, or choose PDF';
       $uploadHint = 'PDF only · max 25 MB';
       $uploadFormHint = $hasExistingPdf
-          ? 'Current file: ' . htmlspecialchars((string) ($existing['FileName'] ?? 'PDF on file')) . '. Leave blank to keep it.'
+          ? null
           : 'Uploaded PDFs are stored in Azure Blob Storage. The list link opens a secure download.';
       $uploadAccept = '.pdf,application/pdf';
       $uploadMaxBytes = EDUCATION_RESOURCE_MAX_UPLOAD_BYTES;
