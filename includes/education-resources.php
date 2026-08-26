@@ -536,3 +536,124 @@ function education_resources_open_href(array $row): string
 
     return $url !== '' ? $url : '#';
 }
+
+function education_resources_public_site_base_url(): string
+{
+    require_once __DIR__ . '/coa-public-api.php';
+
+    return coa_public_site_base_url();
+}
+
+function education_resources_public_pdf_url(int $erid): string
+{
+    return education_resources_public_site_base_url() . '/education-documents/download.php?id=' . $erid;
+}
+
+/**
+ * Public marketing site resources (all current rows; no Publish gate yet).
+ *
+ * @return list<array<string, mixed>>
+ */
+function education_resources_list_public(): array
+{
+    $stmt = db()->query(<<<SQL
+        SELECT
+            ERID,
+            Description,
+            Type,
+            URL,
+            BlobPath,
+            FileName,
+            CreateDate,
+            UpdateDate
+        FROM dbo.NA_Education_Resources
+        ORDER BY Description ASC, ERID ASC
+    SQL);
+
+    return $stmt->fetchAll() ?: [];
+}
+
+function education_resources_get_public(int $erid): ?array
+{
+    $row = education_resources_get($erid);
+    if ($row === null) {
+        return null;
+    }
+
+    $type = strtoupper((string) ($row['Type'] ?? ''));
+    if ($type !== 'PDF') {
+        return null;
+    }
+
+    if (trim((string) ($row['BlobPath'] ?? '')) === '') {
+        return null;
+    }
+
+    return $row;
+}
+
+/**
+ * @param array<string, mixed> $row
+ * @return array{id: string, description: string, type: string, url: string}
+ */
+function education_resources_to_api_item(array $row): array
+{
+    $erid = (int) ($row['ERID'] ?? 0);
+    $type = (string) ($row['Type'] ?? '');
+    $url = $type === 'PDF'
+        ? education_resources_public_pdf_url($erid)
+        : trim((string) ($row['URL'] ?? ''));
+
+    return [
+        'id'          => 'edu-' . $erid,
+        'description' => (string) ($row['Description'] ?? ''),
+        'type'        => $type,
+        'url'         => $url,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $row
+ */
+function education_resources_stream_document(array $row, bool $inline = true): void
+{
+    $blobPath = trim((string) ($row['BlobPath'] ?? ''));
+    if ($blobPath === '') {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        exit('PDF file is not available.');
+    }
+
+    $resolved = attachment_storage_resolve_content([
+        'BlobPath'    => $blobPath,
+        'ContentType' => 'application/pdf',
+        'FileName'    => (string) ($row['FileName'] ?? 'education-resource.pdf'),
+    ]);
+
+    if (!$resolved['ok']) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        exit('PDF file is not available.');
+    }
+
+    $fileName = trim((string) ($row['FileName'] ?? ''));
+    if ($fileName === '') {
+        $fileName = 'education-resource-' . (int) ($row['ERID'] ?? 0) . '.pdf';
+    }
+
+    $contentType = trim((string) ($resolved['content_type'] ?? ''));
+    if ($contentType === '') {
+        $contentType = 'application/pdf';
+    }
+
+    header('Content-Type: ' . $contentType);
+    header(
+        'Content-Disposition: ' . ($inline ? 'inline' : 'attachment')
+        . '; filename="' . str_replace('"', '', $fileName) . '"'
+    );
+    header('Content-Length: ' . strlen((string) $resolved['content']));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: public, max-age=300');
+    echo $resolved['content'];
+    exit;
+}

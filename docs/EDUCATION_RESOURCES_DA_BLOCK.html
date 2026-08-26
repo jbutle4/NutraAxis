@@ -1,0 +1,328 @@
+metadata
+
+Title
+
+Education Resources | NutraAxis
+
+Description
+
+Access NutraAxis practitioner education resources, including product one-pagers and training videos grounded in scientific research and clinical practice.
+
+
+
+html-loader
+
+<style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal:        #3d8b85;
+      --teal-dark:   #2a6b65;
+      --teal-light:  #5aaca7;
+      --teal-pale:   #e8f5f4;
+      --salmon-dark: #8f4225;
+      --salmon:      #b35632;
+      --text:        #1a2e2d;
+      --text-muted:  #5a7170;
+      --border:      #d6ecea;
+      --white:       #ffffff;
+      --bg-light:    #f5fafa;
+      --radius:      12px;
+      --shadow:      0 4px 24px rgba(42,107,101,.10);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--white);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    ul { list-style: none; }
+    .container {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--salmon); color: var(--white);
+      font-size: .88rem; font-weight: 600;
+      padding: 10px 20px; border-radius: 50px;
+      border: none; cursor: pointer;
+      transition: background .2s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-cta:hover { background: var(--salmon-dark); transform: translateY(-1px); }
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; color: var(--teal);
+      font-size: .95rem; font-weight: 600;
+      padding: 12px 28px; border-radius: 50px;
+      border: 2px solid var(--teal);
+      cursor: pointer; transition: background .2s, color .2s;
+    }
+    .btn-outline:hover { background: var(--teal); color: var(--white); }
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(234,247,246,.62) 0%, rgba(240,251,249,.45) 50%, rgba(254,246,241,.62) 100%),
+        url('images/ourscience.jpg') center/cover no-repeat;
+      padding: 80px 0 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .pillars { padding: 72px 0; background: var(--white); }
+    .section-label {
+      display: inline-block;
+      background: var(--teal-pale);
+      color: var(--teal-dark);
+      font-size: .78rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 50px;
+      margin-bottom: 12px;
+    }
+    .section-heading {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800; line-height: 1.2;
+      color: var(--text); margin-bottom: 14px;
+    }
+    .section-sub {
+      font-size: 1rem; color: var(--text-muted);
+      max-width: 580px; margin: 0 auto 56px;
+    }
+    .section-header { text-align: center; }
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    .pillar-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 28px;
+      text-align: center;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .pillar-card:hover { box-shadow: var(--shadow); transform: translateY(-3px); }
+    .pillar-icon {
+      width: 64px; height: 64px;
+      background: var(--teal-pale);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      color: var(--teal);
+    }
+    .pillar-card h3 {
+      font-size: 1.2rem; font-weight: 700;
+      color: var(--text); margin-bottom: 10px;
+    }
+    .pillar-card p { font-size: .9rem; color: var(--text-muted); line-height: 1.6; }
+    .commitment { padding: 80px 0; background: var(--white); }
+    .commitment-inner { text-align: center; max-width: 700px; margin: 0 auto; }
+    .commitment-inner h2 { margin-bottom: 16px; }
+    .commitment-inner p { color: var(--text-muted); font-size: 1.05rem; }
+    .cta-banner {
+      background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal) 100%);
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .cta-banner h2 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 800; color: var(--white);
+      margin-bottom: 12px;
+    }
+    .cta-banner p {
+      color: rgba(255,255,255,.8);
+      margin-bottom: 32px; font-size: 1rem;
+    }
+    .btn-white {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--white); color: var(--teal-dark);
+      font-size: .95rem; font-weight: 700;
+      padding: 14px 32px; border-radius: 50px;
+      border: none; cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .text-on-dark  { color: #ffffff !important; }
+    @media (max-width: 768px) {
+      .pillars-grid { grid-template-columns: 1fr; }
+      .pillar-card { padding: 28px 20px; }
+    }
+  </style>
+
+<!-- ===== HERO ===== -->
+<section class="hero" style="background:url('images/ourscience.jpg') center/cover no-repeat;">
+<div class="container">
+<div class="hero-inner" style="display:flex; flex-direction:column; align-items:center; text-align:center; padding-bottom:80px; padding-top:20px;">
+<div class="hero-text" style="display:flex; flex-direction:column; align-items:center; max-width:680px;">
+<h1 style="text-align:center; font-size:clamp(2rem,4vw,3rem); font-weight:800; line-height:1.15; color:#1a2e2d; margin-bottom:20px;">Education That Supports<br/><span style="color:#3d8b85;">Confident Clinical Use.</span></h1>
+<p style="font-size:1.05rem; color:#5a7170; margin-bottom:32px; text-align:center; max-width:600px;">Browse NutraAxis practitioner one-pagers and training videos designed to help you understand formulation intent, product positioning, and clinical context.</p>
+<div style="display:flex; gap:16px; flex-wrap:wrap; justify-content:center;">
+<a href="#education-resources" style="display:inline-flex; align-items:center; background:#3d8b85; color:#ffffff; font-size:1rem; font-weight:600; padding:13px 32px; border-radius:50px; text-decoration:none; white-space:nowrap;">Browse Resources</a>
+<a href="https://main--nutrasync-eds--capocommerce.aem.live/categories" style="display:inline-flex; align-items:center; background:transparent; color:#3d8b85; font-size:1rem; font-weight:600; padding:12px 30px; border-radius:50px; border:2px solid #3d8b85; text-decoration:none; white-space:nowrap;">Explore Our Products</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ===== THREE PILLARS ===== -->
+<section class="pillars">
+<div class="container">
+<div class="section-header">
+<div class="section-label">Education Resources</div>
+<h2 class="section-heading">Tools for Practitioners and Partners</h2>
+<p class="section-sub">Use these resources to quickly review product fundamentals, share patient-facing education, and stay aligned with NutraAxis formulation standards.</p>
+</div>
+
+<div class="pillars-grid">
+<div class="pillar-card">
+<div class="pillar-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28">
+<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>
+</svg>
+</div>
+<h3>Practitioner One-Pagers</h3>
+<p>Download concise product flyers that summarize formulation highlights and clinical positioning for each NutraAxis SKU.</p>
+</div>
+<div class="pillar-card">
+<div class="pillar-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28">
+<polygon points="5 3 19 12 5 21 5 3"></polygon>
+</svg>
+</div>
+<h3>Training Videos</h3>
+<p>Watch Vimeo training content that expands on product rationale, usage context, and practitioner education themes.</p>
+</div>
+<div class="pillar-card">
+<div class="pillar-icon">
+<svg aria-hidden="true" focusable="false" fill="none" height="28" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="28">
+<path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+</svg>
+</div>
+<h3>Always Current</h3>
+<p>Resources are managed in NutraAxis Operations and published here so practitioners always have the latest approved materials.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ===== Education Resources Table (dynamic rows from NutraAxis API) ===== -->
+<section id="education-resources" class="edu-section" style="padding: 72px 0; background: var(--bg-light);">
+  <div class="container">
+
+    <div class="section-header" style="margin-bottom: 40px;">
+      <div class="section-label">Resource Library</div>
+      <h2 class="section-heading">PDFs &amp; Videos</h2>
+      <p class="section-sub" style="margin-bottom: 0;">
+        Search by product or topic, then open the PDF or video resource you need. PDFs open in a new tab;
+        videos launch on Vimeo.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; align-items: center;">
+      <input
+        id="edu-search"
+        type="search"
+        placeholder="Search by description or type…"
+        aria-label="Search education resources"
+        oninput="filterEdu(this.value)"
+        style="flex: 1 1 260px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 50px; font-size: .9rem; color: var(--text); background: var(--white); outline-offset: 2px;"
+      />
+      <span id="edu-count" style="font-size: .85rem; color: var(--text-muted); white-space: nowrap;"></span>
+    </div>
+
+    <div style="background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);">
+      <div style="overflow-x: auto;">
+        <table id="edu-table" style="width: 100%; border-collapse: collapse; font-size: .9rem; color: var(--text);">
+          <thead>
+            <tr style="background: var(--teal); color: var(--white);">
+              <th scope="col" style="padding: 14px 20px; text-align: left; font-weight: 700; white-space: nowrap;">Description</th>
+              <th scope="col" style="padding: 14px 20px; text-align: left; font-weight: 700; white-space: nowrap;">Type</th>
+              <th scope="col" style="padding: 14px 20px; text-align: center; font-weight: 700; white-space: nowrap;">Resource</th>
+            </tr>
+          </thead>
+          <tbody id="edu-tbody">
+            <tr>
+              <td colspan="3" style="padding: 24px; text-align: center; color: var(--text-muted);">
+                Loading education resources…
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr id="edu-empty" style="display: none;">
+              <td colspan="3" style="padding: 36px; text-align: center; color: var(--text-muted);">
+                No results found. Try a different search term.
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <p style="margin-top: 16px; font-size: .8rem; color: var(--text-muted); text-align: center;">
+      Need something that isn’t listed?
+      <a href="https://main--nutrasync-eds--capocommerce.aem.live/contact" style="color: var(--teal); font-weight: 600; text-decoration: underline;">Contact us</a>
+      and we’ll help you find the right material.
+    </p>
+
+  </div>
+</section>
+
+<script>
+(function () {
+  function filterEdu(query) {
+    var rows   = document.querySelectorAll('#edu-tbody .edu-row');
+    var empty  = document.getElementById('edu-empty');
+    var count  = document.getElementById('edu-count');
+    var q      = query.trim().toLowerCase();
+    var visible = 0;
+
+    rows.forEach(function (row) {
+      var text = row.textContent.toLowerCase();
+      var show = !q || text.indexOf(q) !== -1;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    if (empty) {
+      empty.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
+    }
+    if (count) {
+      count.textContent = q ? (visible + ' result' + (visible !== 1 ? 's' : '')) : '';
+    }
+  }
+
+  window.filterEdu = filterEdu;
+})();
+</script>
+<script src="https://nutraaxisweb.azurewebsites.net/education-test/education-table-dynamic.js"></script>
+
+<!-- ===== COMMITMENT ===== -->
+<section class="commitment">
+<div class="container">
+<div class="commitment-inner">
+<div class="section-label">Clinical Partnership</div>
+<h2 class="section-heading">Built to Support Practitioner Conversations</h2>
+<p>These materials are designed to make product education clearer, faster, and easier to share — so you can stay focused on patient care.</p>
+</div>
+</div>
+</section>
+
+<!-- ===== CTA BANNER ===== -->
+<section class="cta-banner">
+<div class="container">
+<h2>Explore Our Formulations</h2>
+<p class="text-on-dark">Discover products designed with a science-first approach.</p>
+<a class="btn-white" href="https://main--nutrasync-eds--capocommerce.aem.live/categories">
+      View Products
+      <svg aria-hidden="true" focusable="false" fill="none" height="16" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24" width="16"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+</a>
+</div>
+</section>
