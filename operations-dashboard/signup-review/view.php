@@ -328,7 +328,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div class="module-actions">
               <button class="btn-primary" type="submit">Complete ACCS clinic configuration</button>
             </div>
-            <p class="form-hint">Creates or reuses <code>SC-{clinic name}</code>, clones master catalog categories/products, assigns the company, and clones template roles.</p>
+            <p class="form-hint">Creates or reuses <code>SC-{clinic name}</code>, clones master catalog categories/products, sets the admin <code>patient_shared_catalog_id</code>, and clones template roles.</p>
           </form>
           <?php endif; ?>
           <dl class="detail-list detail-list-inline">

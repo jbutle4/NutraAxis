@@ -6,6 +6,7 @@ require_once __DIR__ . '/provider-signup-accs.php';
 const PROVIDER_SIGNUP_ACCS_CONFIG_API_TIMEOUT_SECONDS = 120;
 const PROVIDER_SIGNUP_ACCS_CONFIG_SHARED_CATALOG_TAX_CLASS_ID = 3;
 const PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT = 'Clinic_Template';
+const PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE = 'patient_shared_catalog_id';
 
 function provider_signup_accs_config_api_request_for_environment(
     string $environment,
@@ -317,12 +318,128 @@ function provider_signup_accs_config_ensure_shared_catalog(array $application, ?
 }
 
 /**
+ * @param array<string, mixed> $application
+ * @return array{ok: bool, error: ?string, customer_id: int}
+ */
+function provider_signup_accs_config_resolve_admin_customer_id(array $application, int $companyId): array
+{
+    $customerId = (int) ($application['AccsCustomerId'] ?? 0);
+    if ($customerId > 0) {
+        return ['ok' => true, 'error' => null, 'customer_id' => $customerId];
+    }
+
+    if ($companyId <= 0) {
+        return [
+            'ok'          => false,
+            'error'       => 'ACCS company admin customer ID is required.',
+            'customer_id' => 0,
+        ];
+    }
+
+    $company = provider_signup_accs_config_api_request('GET', '/company/' . $companyId);
+    if (!$company['ok'] || !is_array($company['data'] ?? null)) {
+        return [
+            'ok'          => false,
+            'error'       => provider_signup_accs_format_api_error($company),
+            'customer_id' => 0,
+        ];
+    }
+
+    $customerId = (int) ($company['data']['super_user_id'] ?? 0);
+    if ($customerId <= 0) {
+        return [
+            'ok'          => false,
+            'error'       => 'ACCS company is missing a super user (company admin) ID.',
+            'customer_id' => 0,
+        ];
+    }
+
+    return ['ok' => true, 'error' => null, 'customer_id' => $customerId];
+}
+
+/**
+ * @param array<string, mixed> $customer
+ */
+function provider_signup_accs_config_customer_attribute_value(array $customer, string $attributeCode): string
+{
+    foreach ($customer['custom_attributes'] ?? [] as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+        if ((string) ($attribute['attribute_code'] ?? '') === $attributeCode) {
+            return trim((string) ($attribute['value'] ?? ''));
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Set patient_shared_catalog_id on the company admin customer. Does not call assignCompanies.
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_accs_config_set_admin_patient_shared_catalog(int $customerId, int $catalogId): array
+{
+    if ($customerId <= 0 || $catalogId <= 0) {
+        return ['ok' => false, 'error' => 'Customer ID and shared catalog ID are required.'];
+    }
+
+    $current = provider_signup_accs_config_api_request('GET', '/customers/' . $customerId);
+    if (!$current['ok'] || !is_array($current['data'] ?? null)) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($current)];
+    }
+
+    $customer = $current['data'];
+    $catalogValue = (string) $catalogId;
+    if (provider_signup_accs_config_customer_attribute_value($customer, PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE) === $catalogValue) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    $attributes = [];
+    foreach ($customer['custom_attributes'] ?? [] as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+        $code = trim((string) ($attribute['attribute_code'] ?? ''));
+        if ($code === '' || $code === PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE) {
+            continue;
+        }
+        $attributes[] = [
+            'attribute_code' => $code,
+            'value'          => $attribute['value'] ?? '',
+        ];
+    }
+    $attributes[] = [
+        'attribute_code' => PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE,
+        'value'          => $catalogValue,
+    ];
+
+    $result = provider_signup_accs_config_api_request('PUT', '/customers/' . $customerId, null, [
+        'customer' => [
+            'id'                 => $customerId,
+            'email'              => (string) ($customer['email'] ?? ''),
+            'firstname'          => (string) ($customer['firstname'] ?? ''),
+            'lastname'           => (string) ($customer['lastname'] ?? ''),
+            'website_id'         => (int) ($customer['website_id'] ?? provider_signup_accs_website_id()),
+            'group_id'           => (int) ($customer['group_id'] ?? provider_signup_accs_customer_group_id()),
+            'custom_attributes'  => $attributes,
+        ],
+    ]);
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($result)];
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
  * @return array{ok: bool, error: ?string, category_count: int, product_count: int}
  */
-function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int $companyId): array
+function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int $customerId): array
 {
-    if ($catalogId <= 0 || $companyId <= 0) {
-        return ['ok' => false, 'error' => 'Catalog ID and company ID are required.', 'category_count' => 0, 'product_count' => 0];
+    if ($catalogId <= 0 || $customerId <= 0) {
+        return ['ok' => false, 'error' => 'Catalog ID and company admin customer ID are required.', 'category_count' => 0, 'product_count' => 0];
     }
 
     $masterCatalogId = provider_signup_accs_config_master_catalog_id();
@@ -429,30 +546,11 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
         }
     }
 
-    $companyPayloads = [
-        ['companies' => [$companyId]],
-        ['companies' => [(string) $companyId]],
-    ];
-    $companyAssigned = false;
-    $lastCompanyError = 'Unable to assign company to shared catalog.';
-    foreach ($companyPayloads as $payload) {
-        $assignCompany = provider_signup_accs_config_api_request(
-            'POST',
-            '/sharedCatalog/' . $catalogId . '/assignCompanies',
-            null,
-            $payload
-        );
-        if ($assignCompany['ok']) {
-            $companyAssigned = true;
-            break;
-        }
-        $lastCompanyError = provider_signup_accs_format_api_error($assignCompany);
-    }
-
-    if (!$companyAssigned) {
+    $adminCatalog = provider_signup_accs_config_set_admin_patient_shared_catalog($customerId, $catalogId);
+    if (!$adminCatalog['ok']) {
         return [
             'ok'             => false,
-            'error'          => $lastCompanyError,
+            'error'          => $adminCatalog['error'] ?? 'Unable to set patient_shared_catalog_id on the company admin.',
             'category_count' => count($categoryIds),
             'product_count'  => count($skus),
         ];
@@ -641,13 +739,13 @@ function provider_signup_accs_config_clone_roles(int $companyId): array
 }
 
 /**
- * @return array{ok: bool, error: ?string, category_count: int, product_count: int, company_assigned: bool}
+ * @return array{ok: bool, error: ?string, category_count: int, product_count: int, patient_catalog_assigned: bool}
  */
-function provider_signup_accs_config_verify_catalog_assignment(int $catalogId, int $companyId): array
+function provider_signup_accs_config_verify_catalog_assignment(int $catalogId, int $customerId): array
 {
     $categoryCount = 0;
     $productCount = 0;
-    $companyAssigned = false;
+    $patientCatalogAssigned = false;
 
     $categories = provider_signup_accs_config_api_request('GET', '/sharedCatalog/' . $catalogId . '/categories');
     if ($categories['ok'] && is_array($categories['data'] ?? null)) {
@@ -664,45 +762,32 @@ function provider_signup_accs_config_verify_catalog_assignment(int $catalogId, i
         }
     }
 
-    $companies = provider_signup_accs_config_api_request('GET', '/sharedCatalog/' . $catalogId . '/companies');
-    if ($companies['ok']) {
-        $companyData = $companies['data'] ?? null;
-        if (is_array($companyData) && array_is_list($companyData)) {
-            foreach ($companyData as $assignedCompanyId) {
-                if ((int) $assignedCompanyId === $companyId) {
-                    $companyAssigned = true;
-                    break;
-                }
-            }
-        } elseif (is_array($companyData)) {
-            foreach ($companyData['items'] ?? [] as $item) {
-                $assignedId = is_array($item)
-                    ? (int) ($item['id'] ?? $item['company_id'] ?? 0)
-                    : (int) $item;
-                if ($assignedId === $companyId) {
-                    $companyAssigned = true;
-                    break;
-                }
-            }
+    if ($customerId > 0) {
+        $customer = provider_signup_accs_config_api_request('GET', '/customers/' . $customerId);
+        if ($customer['ok'] && is_array($customer['data'] ?? null)) {
+            $patientCatalogAssigned = provider_signup_accs_config_customer_attribute_value(
+                $customer['data'],
+                PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE
+            ) === (string) $catalogId;
         }
     }
 
-    if ($categoryCount <= 0 || $productCount <= 0 || !$companyAssigned) {
+    if ($categoryCount <= 0 || $productCount <= 0 || !$patientCatalogAssigned) {
         return [
-            'ok'               => false,
-            'error'            => 'Shared catalog assignment is incomplete (categories, products, or company link).',
-            'category_count'   => $categoryCount,
-            'product_count'    => $productCount,
-            'company_assigned' => $companyAssigned,
+            'ok'                       => false,
+            'error'                    => 'Shared catalog assignment is incomplete (categories, products, or admin patient_shared_catalog_id).',
+            'category_count'           => $categoryCount,
+            'product_count'            => $productCount,
+            'patient_catalog_assigned' => $patientCatalogAssigned,
         ];
     }
 
     return [
-        'ok'               => true,
-        'error'            => null,
-        'category_count'   => $categoryCount,
-        'product_count'    => $productCount,
-        'company_assigned' => true,
+        'ok'                       => true,
+        'error'                    => null,
+        'category_count'           => $categoryCount,
+        'product_count'            => $productCount,
+        'patient_catalog_assigned' => true,
     ];
 }
 
@@ -764,6 +849,22 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
         ];
     }
 
+    $admin = provider_signup_accs_config_resolve_admin_customer_id($application, $companyId);
+    if (!$admin['ok'] || (int) ($admin['customer_id'] ?? 0) <= 0) {
+        return [
+            'ok'                     => false,
+            'error'                  => $admin['error'] ?? 'ACCS company admin customer ID is required before clinic configuration can run.',
+            'company_id'             => $companyId,
+            'shared_catalog_id'      => null,
+            'category_count'         => null,
+            'product_count'          => null,
+            'roles_summary'          => null,
+            'configuration_complete' => false,
+            'steps'                  => [],
+        ];
+    }
+    $customerId = (int) $admin['customer_id'];
+
     $steps = [
         'shared_catalog' => ['done' => false, 'action' => null],
         'catalog_assign' => ['done' => false, 'action' => null],
@@ -814,9 +915,9 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
             ];
         }
 
-        $verify = provider_signup_accs_config_verify_catalog_assignment($sharedCatalogId, $companyId);
+        $verify = provider_signup_accs_config_verify_catalog_assignment($sharedCatalogId, $customerId);
         if (!$verify['ok']) {
-            $assign = provider_signup_accs_config_assign_catalog_contents($sharedCatalogId, $companyId);
+            $assign = provider_signup_accs_config_assign_catalog_contents($sharedCatalogId, $customerId);
             if (!$assign['ok']) {
                 return [
                     'ok'                     => false,
