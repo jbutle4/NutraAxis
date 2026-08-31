@@ -7,6 +7,7 @@ require_once __DIR__ . '/provider-signup-crypto.php';
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
 const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
+/** @deprecated Legacy cookie — expired on public pages; no longer read for routing. */
 const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
 
 function provider_signup_accs_allowed_environments(): array
@@ -40,6 +41,24 @@ function provider_signup_accs_environment_label(?string $environment): string
 }
 
 /**
+ * Resolve ACCS target from the current request only (query or POST). No cookies.
+ */
+function provider_signup_accs_environment_from_request(): ?string
+{
+    $env = provider_signup_accs_normalize_environment((string) ($_GET['accs_env'] ?? $_POST['accs_env'] ?? ''));
+    if ($env !== null) {
+        return $env;
+    }
+
+    $uatFlag = strtolower(trim((string) ($_GET['uat'] ?? $_POST['uat'] ?? '')));
+    if (in_array($uatFlag, ['1', 'true', 'yes'], true)) {
+        return 'stage';
+    }
+
+    return null;
+}
+
+/**
  * Public signup entry URL. Pass stage/dev for UAT applications from staging storefronts.
  */
 function provider_signup_accs_application_start_url(?string $accsEnvironment = null): string
@@ -52,47 +71,10 @@ function provider_signup_accs_application_start_url(?string $accsEnvironment = n
     return '/provider-signup/application.php?accs_env=' . rawurlencode($env);
 }
 
-function provider_signup_accs_capture_environment_from_request(): void
-{
-    $env = provider_signup_accs_normalize_environment((string) ($_GET['accs_env'] ?? ''));
-    if ($env === null) {
-        $uatFlag = strtolower(trim((string) ($_GET['uat'] ?? '')));
-        if (in_array($uatFlag, ['1', 'true', 'yes'], true)) {
-            $env = 'stage';
-        }
-    }
-
-    if ($env !== null) {
-        provider_signup_accs_set_pending_environment($env);
-    }
-}
-
-function provider_signup_accs_pending_environment(): ?string
-{
-    return provider_signup_accs_normalize_environment((string) ($_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE] ?? ''));
-}
-
-function provider_signup_accs_set_pending_environment(?string $environment): void
-{
-    $environment = provider_signup_accs_normalize_environment($environment ?? '');
-    if ($environment === null) {
-        provider_signup_accs_clear_pending_environment();
-
-        return;
-    }
-
-    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-    setcookie(PROVIDER_SIGNUP_ACCS_ENV_COOKIE, $environment, [
-        'expires'  => time() + (7 * 24 * 60 * 60),
-        'path'     => '/provider-signup',
-        'secure'   => $secure,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    $_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE] = $environment;
-}
-
-function provider_signup_accs_clear_pending_environment(): void
+/**
+ * Drop leftover Stage/Dev cookies from older builds so they cannot sticky-tag links.
+ */
+function provider_signup_accs_discard_legacy_environment_cookie(): void
 {
     if (!isset($_COOKIE[PROVIDER_SIGNUP_ACCS_ENV_COOKIE])) {
         return;

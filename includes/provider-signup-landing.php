@@ -40,7 +40,8 @@ function provider_signup_landing_hero_image_url(): string
 
 function provider_signup_landing_apply_url(): string
 {
-    return provider_signup_accs_application_start_url(provider_signup_accs_pending_environment());
+    // Public landing is always Production — Stage/Dev entry must use an explicit tagged URL.
+    return provider_signup_accs_application_start_url(null);
 }
 
 function provider_signup_render_support_link(string $wrapperClass = 'provider-support-link'): void
@@ -486,8 +487,8 @@ function provider_signup_render_application_start_page(string $startError = ''):
     require_once dirname(__DIR__) . '/includes/provider-signup-accs.php';
     $recaptchaSiteKey = provider_signup_recaptcha_site_key();
     $showRecaptcha = $recaptchaSiteKey !== '';
-    $pendingAccsEnv = provider_signup_accs_pending_environment()
-        ?? provider_signup_accs_normalize_environment((string) ($_GET['accs_env'] ?? ''));
+    // Banner / hidden field only when this request carries an explicit tag.
+    $pendingAccsEnv = provider_signup_accs_environment_from_request();
     ?>
 <div class="na-providers">
   <section class="hero apply-hero" style="background: url('<?= htmlspecialchars($heroImage) ?>') center/cover no-repeat;">

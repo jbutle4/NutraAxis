@@ -6,6 +6,8 @@
 require dirname(__DIR__) . '/includes/marketing-init.php';
 require dirname(__DIR__) . '/includes/provider-signup-landing.php';
 
+provider_signup_accs_discard_legacy_environment_cookie();
+
 $pageTitle = 'For Providers | NutraAxis';
 $pageDescription = 'Launch your co-branded NutraAxis Clinic Store with provider-set pricing, zero inventory, and fulfillment handled for you.';
 

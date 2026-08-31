@@ -1384,9 +1384,7 @@ function provider_signup_create_application(
         return ['ok' => true, 'error' => null, 'application' => $existing, 'resumed' => true];
     }
 
-    $targetAccsEnvironment = provider_signup_accs_normalize_environment(
-        $accsEnvironment ?? provider_signup_accs_pending_environment() ?? ''
-    );
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     try {
         $pdo = db();
@@ -1459,10 +1457,6 @@ function provider_signup_create_application(
         error_log('provider_signup_create_application mail: ' . $e->getMessage());
     }
 
-    if ($targetAccsEnvironment !== null) {
-        provider_signup_accs_clear_pending_environment();
-    }
-
     return ['ok' => true, 'error' => null, 'application' => $application, 'resumed' => false];
 }
 
@@ -1519,12 +1513,17 @@ function provider_signup_find_resumable_by_email(string $providerEmail): ?array
  *
  * @return array{ok: bool, error: ?string}
  */
-function provider_signup_request_email_challenge(string $providerEmail, ?string $recaptchaResponse): array
-{
+function provider_signup_request_email_challenge(
+    string $providerEmail,
+    ?string $recaptchaResponse,
+    ?string $accsEnvironment = null
+): array {
     $providerEmail = provider_signup_normalize_email($providerEmail);
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'A valid provider email address is required.'];
     }
+
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     $captcha = provider_signup_recaptcha_verify($recaptchaResponse, provider_signup_request_ip());
     if (!$captcha['ok']) {
@@ -1592,9 +1591,15 @@ function provider_signup_request_email_challenge(string $providerEmail, ?string 
     }
 
     try {
-        provider_signup_mail_email_challenge($providerEmail, $token);
+        $mail = provider_signup_mail_email_challenge($providerEmail, $token, $targetAccsEnvironment);
     } catch (Throwable $e) {
         error_log('provider_signup_request_email_challenge mail: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to send the confirmation email. Please try again.'];
+    }
+
+    if (!$mail['ok']) {
+        error_log('provider_signup_request_email_challenge mail: ' . ($mail['error'] ?? 'send failed'));
 
         return ['ok' => false, 'error' => 'Unable to send the confirmation email. Please try again.'];
     }
@@ -1607,12 +1612,14 @@ function provider_signup_request_email_challenge(string $providerEmail, ?string 
  *
  * @return array{ok: bool, error: ?string, application: ?array}
  */
-function provider_signup_confirm_email_challenge(string $challengeToken): array
+function provider_signup_confirm_email_challenge(string $challengeToken, ?string $accsEnvironment = null): array
 {
     $challengeToken = trim($challengeToken);
     if ($challengeToken === '' || !preg_match('/^[a-f0-9]{64}$/', $challengeToken)) {
         return ['ok' => false, 'error' => 'This confirmation link is invalid.', 'application' => null];
     }
+
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     try {
         $pdo = db();
@@ -1644,7 +1651,7 @@ function provider_signup_confirm_email_challenge(string $challengeToken): array
         }
 
         $email = provider_signup_normalize_email((string) ($challenge['ProviderEmail'] ?? ''));
-        $created = provider_signup_create_application($email, false);
+        $created = provider_signup_create_application($email, false, true, $targetAccsEnvironment);
         if (!$created['ok'] || !is_array($created['application'])) {
             return [
                 'ok'          => false,
