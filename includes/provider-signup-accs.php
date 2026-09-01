@@ -7,6 +7,7 @@ require_once __DIR__ . '/provider-signup-crypto.php';
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
 const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
+const PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE = 'clinic_doctor';
 /** @deprecated Legacy cookie — expired on public pages; no longer read for routing. */
 const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
 
@@ -379,12 +380,20 @@ function provider_signup_accs_create_customer(array $application, int $groupId):
         'website_id' => provider_signup_accs_website_id(),
     ];
 
+    $customAttributes = [
+        [
+            'attribute_code' => PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE,
+            'value'          => '1',
+        ],
+    ];
     $phone = trim((string) ($application['AdminPhone'] ?? ''));
     if ($phone !== '') {
-        $customer['custom_attributes'] = [
-            ['attribute_code' => 'phone_number', 'value' => $phone],
+        $customAttributes[] = [
+            'attribute_code' => 'phone_number',
+            'value'          => $phone,
         ];
     }
+    $customer['custom_attributes'] = $customAttributes;
 
     $password = provider_signup_accs_generate_password();
     $result = provider_signup_accs_api_request('POST', '/customers', null, [
@@ -435,11 +444,11 @@ function provider_signup_accs_ensure_company_admin(array $application, int $grou
 
     if (is_array($existing['customer']) && !empty($existing['customer']['id'])) {
         $customerId = (int) $existing['customer']['id'];
-        $groupSync = provider_signup_accs_set_customer_group($customerId, $groupId, $existing['customer']);
-        if (!$groupSync['ok']) {
+        $adminSync = provider_signup_accs_sync_company_admin_customer($customerId, $groupId, $existing['customer']);
+        if (!$adminSync['ok']) {
             return [
                 'ok'          => false,
-                'error'       => $groupSync['error'] ?? 'Unable to set Practitioner customer group on admin user.',
+                'error'       => $adminSync['error'] ?? 'Unable to sync Practitioner group / Clinic Doctor on admin user.',
                 'customer_id' => null,
                 'created'     => false,
                 'password'    => null,
@@ -476,6 +485,63 @@ function provider_signup_accs_ensure_company_admin(array $application, int $grou
 }
 
 /**
+ * Read a customer custom attribute value.
+ *
+ * @param array<string, mixed> $customer
+ */
+function provider_signup_accs_customer_attribute_value(array $customer, string $attributeCode): string
+{
+    foreach ($customer['custom_attributes'] ?? [] as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+        if (trim((string) ($attribute['attribute_code'] ?? '')) === $attributeCode) {
+            return trim((string) ($attribute['value'] ?? ''));
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Preserve existing custom attributes, replacing selected codes.
+ *
+ * @param array<string, mixed> $customer
+ * @param array<string, string> $overrides attribute_code => value
+ * @return list<array{attribute_code: string, value: string}>
+ */
+function provider_signup_accs_merge_customer_attributes(array $customer, array $overrides): array
+{
+    $attributes = [];
+    foreach ($customer['custom_attributes'] ?? [] as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+        $code = trim((string) ($attribute['attribute_code'] ?? ''));
+        if ($code === '' || array_key_exists($code, $overrides)) {
+            continue;
+        }
+        $attributes[] = [
+            'attribute_code' => $code,
+            'value'          => (string) ($attribute['value'] ?? ''),
+        ];
+    }
+
+    foreach ($overrides as $code => $value) {
+        $code = trim((string) $code);
+        if ($code === '') {
+            continue;
+        }
+        $attributes[] = [
+            'attribute_code' => $code,
+            'value'          => (string) $value,
+        ];
+    }
+
+    return $attributes;
+}
+
+/**
  * Ensure an existing ACCS customer is on the Practitioner group.
  *
  * @param array<string, mixed> $customer
@@ -483,11 +549,28 @@ function provider_signup_accs_ensure_company_admin(array $application, int $grou
  */
 function provider_signup_accs_set_customer_group(int $customerId, int $groupId, array $customer): array
 {
+    return provider_signup_accs_sync_company_admin_customer($customerId, $groupId, $customer);
+}
+
+/**
+ * Ensure company admin has Practitioner group and Clinic Doctor = Yes.
+ *
+ * @param array<string, mixed> $customer
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_accs_sync_company_admin_customer(int $customerId, int $groupId, array $customer): array
+{
     if ($customerId <= 0 || $groupId <= 0) {
         return ['ok' => false, 'error' => 'Customer ID and group ID are required.'];
     }
 
-    if ((int) ($customer['group_id'] ?? 0) === $groupId) {
+    $needsGroup = (int) ($customer['group_id'] ?? 0) !== $groupId;
+    $needsClinicDoctor = provider_signup_accs_customer_attribute_value(
+        $customer,
+        PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE
+    ) !== '1';
+
+    if (!$needsGroup && !$needsClinicDoctor) {
         return ['ok' => true, 'error' => null];
     }
 
@@ -498,6 +581,9 @@ function provider_signup_accs_set_customer_group(int $customerId, int $groupId, 
         'lastname'   => (string) ($customer['lastname'] ?? ''),
         'website_id' => (int) ($customer['website_id'] ?? provider_signup_accs_website_id()),
         'group_id'   => $groupId,
+        'custom_attributes' => provider_signup_accs_merge_customer_attributes($customer, [
+            PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE => '1',
+        ]),
     ];
 
     $result = provider_signup_accs_api_request('PUT', '/customers/' . $customerId, null, [
@@ -512,7 +598,7 @@ function provider_signup_accs_set_customer_group(int $customerId, int $groupId, 
 }
 
 /**
- * Force company customer_group_id and sales_representative_id after create/update.
+ * Force company Practitioner group, Sales_Support, and Advanced Settings flags after create/update.
  *
  * @return array{ok: bool, error: ?string}
  */
@@ -539,6 +625,19 @@ function provider_signup_accs_set_company_defaults(int $companyId, int $groupId,
         $company['sales_representative_id'] = $salesRepresentativeId;
         $needsUpdate = true;
     }
+
+    $extension = is_array($company['extension_attributes'] ?? null)
+        ? $company['extension_attributes']
+        : [];
+    if (empty($extension['is_company_address_book_enabled'])) {
+        $extension['is_company_address_book_enabled'] = true;
+        $needsUpdate = true;
+    }
+    if (empty($extension['is_custom_shipping_address_allowed'])) {
+        $extension['is_custom_shipping_address_allowed'] = true;
+        $needsUpdate = true;
+    }
+    $company['extension_attributes'] = $extension;
 
     if (!$needsUpdate) {
         return ['ok' => true, 'error' => null];
@@ -590,6 +689,10 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
             'customer_group_id'        => $groupId,
             'sales_representative_id'  => provider_signup_accs_sales_representative_id(),
             'super_user_id'            => $superUserId,
+            'extension_attributes'     => [
+                'is_company_address_book_enabled'   => true,
+                'is_custom_shipping_address_allowed'=> true,
+            ],
         ],
     ];
 }

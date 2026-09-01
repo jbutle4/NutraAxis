@@ -434,6 +434,249 @@ function provider_signup_accs_config_set_admin_patient_shared_catalog(int $custo
 }
 
 /**
+ * Resolve MSRP used for shared-catalog custom pricing.
+ * Prefer the product `msrp` attribute when set; otherwise Magento base `price`
+ * (the value shown as MSRP in Set Pricing and Structure).
+ *
+ * @param array<string, mixed> $product
+ */
+function provider_signup_accs_config_product_msrp(array $product): ?float
+{
+    foreach ($product['custom_attributes'] ?? [] as $attribute) {
+        if (!is_array($attribute)) {
+            continue;
+        }
+        if (trim((string) ($attribute['attribute_code'] ?? '')) !== 'msrp') {
+            continue;
+        }
+        $raw = $attribute['value'] ?? null;
+        if ($raw === null || $raw === '') {
+            break;
+        }
+        $msrp = round((float) $raw, 4);
+
+        return $msrp > 0 ? $msrp : null;
+    }
+
+    if (!array_key_exists('price', $product) || $product['price'] === null || $product['price'] === '') {
+        return null;
+    }
+
+    $price = round((float) $product['price'], 4);
+
+    return $price > 0 ? $price : null;
+}
+
+/**
+ * Magento product status: 1 = Enabled, 2 = Disabled.
+ */
+function provider_signup_accs_config_product_is_enabled(array $product): bool
+{
+    return (int) ($product['status'] ?? 0) === 1;
+}
+
+/**
+ * Keep only Enabled product SKUs (skip Disabled products for shared catalogs).
+ *
+ * @param list<string> $skus
+ * @return array{ok: bool, error: ?string, skus: list<string>, skipped: list<string>}
+ */
+function provider_signup_accs_config_filter_enabled_skus(array $skus): array
+{
+    $skus = array_values(array_unique(array_filter(array_map(
+        static fn ($sku): string => trim((string) $sku),
+        $skus
+    ))));
+    if ($skus === []) {
+        return ['ok' => true, 'error' => null, 'skus' => [], 'skipped' => []];
+    }
+
+    $loaded = provider_signup_accs_config_load_products_by_sku($skus);
+    if (!$loaded['ok']) {
+        return [
+            'ok'      => false,
+            'error'   => $loaded['error'] ?? 'Unable to load products while filtering disabled SKUs.',
+            'skus'    => [],
+            'skipped' => [],
+        ];
+    }
+
+    $enabled = [];
+    $skipped = [];
+    foreach ($skus as $sku) {
+        $product = $loaded['products'][$sku] ?? null;
+        if (!is_array($product)) {
+            $skipped[] = $sku;
+            continue;
+        }
+        if (provider_signup_accs_config_product_is_enabled($product)) {
+            $enabled[] = $sku;
+        } else {
+            $skipped[] = $sku;
+        }
+    }
+
+    return [
+        'ok'      => true,
+        'error'   => null,
+        'skus'    => $enabled,
+        'skipped' => $skipped,
+    ];
+}
+
+/**
+ * Load product records for the given SKUs.
+ *
+ * @param list<string> $skus
+ * @return array{ok: bool, error: ?string, products: array<string, array<string, mixed>>}
+ */
+function provider_signup_accs_config_load_products_by_sku(array $skus): array
+{
+    $skus = array_values(array_unique(array_filter(array_map(
+        static fn ($sku): string => trim((string) $sku),
+        $skus
+    ))));
+    if ($skus === []) {
+        return ['ok' => true, 'error' => null, 'products' => []];
+    }
+
+    $products = [];
+    foreach (array_chunk($skus, 50) as $chunk) {
+        $result = provider_signup_accs_config_api_request('GET', '/products', [
+            'searchCriteria[pageSize]' => (string) count($chunk),
+            'searchCriteria[currentPage]' => '1',
+            'searchCriteria[filterGroups][0][filters][0][field]' => 'sku',
+            'searchCriteria[filterGroups][0][filters][0][value]' => implode(',', $chunk),
+            'searchCriteria[filterGroups][0][filters][0][conditionType]' => 'in',
+        ]);
+        if (!$result['ok'] || !is_array($result['data'] ?? null)) {
+            return [
+                'ok'       => false,
+                'error'    => provider_signup_accs_format_api_error($result),
+                'products' => [],
+            ];
+        }
+
+        foreach ($result['data']['items'] ?? [] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $sku = trim((string) ($item['sku'] ?? ''));
+            if ($sku !== '') {
+                $products[$sku] = $item;
+            }
+        }
+    }
+
+    return ['ok' => true, 'error' => null, 'products' => $products];
+}
+
+/**
+ * Set shared-catalog custom prices (tier prices for the catalog customer group) to each product MSRP.
+ *
+ * @param list<string> $skus
+ * @return array{ok: bool, error: ?string, price_count: int}
+ */
+function provider_signup_accs_config_set_catalog_prices_to_msrp(int $catalogId, array $skus): array
+{
+    if ($catalogId <= 0) {
+        return ['ok' => false, 'error' => 'Shared catalog ID is required.', 'price_count' => 0];
+    }
+
+    $skus = array_values(array_unique(array_filter(array_map(
+        static fn ($sku): string => trim((string) $sku),
+        $skus
+    ))));
+    if ($skus === []) {
+        return ['ok' => true, 'error' => null, 'price_count' => 0];
+    }
+
+    $catalog = provider_signup_accs_config_api_request('GET', '/sharedCatalog/' . $catalogId);
+    if (!$catalog['ok'] || !is_array($catalog['data'] ?? null)) {
+        return [
+            'ok'          => false,
+            'error'       => provider_signup_accs_format_api_error($catalog),
+            'price_count' => 0,
+        ];
+    }
+
+    $groupId = (int) ($catalog['data']['customer_group_id'] ?? 0);
+    $groupCode = trim((string) ($catalog['data']['name'] ?? ''));
+    if ($groupId > 0) {
+        $group = provider_signup_accs_config_api_request('GET', '/customerGroups/' . $groupId);
+        if ($group['ok'] && is_array($group['data'] ?? null)) {
+            $fromGroup = trim((string) ($group['data']['code'] ?? ''));
+            if ($fromGroup !== '') {
+                $groupCode = $fromGroup;
+            }
+        }
+    }
+    if ($groupCode === '') {
+        return [
+            'ok'          => false,
+            'error'       => 'Unable to resolve shared catalog customer group for custom pricing.',
+            'price_count' => 0,
+        ];
+    }
+
+    $loaded = provider_signup_accs_config_load_products_by_sku($skus);
+    if (!$loaded['ok']) {
+        return [
+            'ok'          => false,
+            'error'       => $loaded['error'] ?? 'Unable to load products for MSRP pricing.',
+            'price_count' => 0,
+        ];
+    }
+
+    $prices = [];
+    foreach ($skus as $sku) {
+        $product = $loaded['products'][$sku] ?? null;
+        if (!is_array($product)) {
+            return [
+                'ok'          => false,
+                'error'       => 'Product SKU "' . $sku . '" was not found while setting shared catalog MSRP prices.',
+                'price_count' => 0,
+            ];
+        }
+        $msrp = provider_signup_accs_config_product_msrp($product);
+        if ($msrp === null) {
+            return [
+                'ok'          => false,
+                'error'       => 'Product SKU "' . $sku . '" has no MSRP/base price for shared catalog custom pricing.',
+                'price_count' => 0,
+            ];
+        }
+        $prices[] = [
+            'price'          => $msrp,
+            'price_type'     => 'fixed',
+            'website_id'     => 0,
+            'sku'            => $sku,
+            'customer_group' => $groupCode,
+            'quantity'       => 1,
+        ];
+    }
+
+    foreach (array_chunk($prices, 50) as $chunk) {
+        $result = provider_signup_accs_config_api_request('POST', '/products/tier-prices', null, [
+            'prices' => $chunk,
+        ]);
+        if (!$result['ok']) {
+            return [
+                'ok'          => false,
+                'error'       => provider_signup_accs_format_api_error($result),
+                'price_count' => 0,
+            ];
+        }
+    }
+
+    return [
+        'ok'          => true,
+        'error'       => null,
+        'price_count' => count($prices),
+    ];
+}
+
+/**
  * @return array{ok: bool, error: ?string, category_count: int, product_count: int}
  */
 function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int $customerId): array
@@ -516,6 +759,19 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
     }
 
     if ($skus !== []) {
+        $enabledFilter = provider_signup_accs_config_filter_enabled_skus($skus);
+        if (!$enabledFilter['ok']) {
+            return [
+                'ok'             => false,
+                'error'          => $enabledFilter['error'] ?? 'Unable to filter disabled products before shared catalog assignment.',
+                'category_count' => count($categoryIds),
+                'product_count'  => 0,
+            ];
+        }
+        $skus = $enabledFilter['skus'];
+    }
+
+    if ($skus !== []) {
         $productPayloads = [
             ['products' => array_map(static fn (string $sku): array => ['sku' => $sku], $skus)],
             ['products' => $skus],
@@ -542,6 +798,16 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
                 'error'          => $lastError,
                 'category_count' => count($categoryIds),
                 'product_count'  => 0,
+            ];
+        }
+
+        $msrpPrices = provider_signup_accs_config_set_catalog_prices_to_msrp($catalogId, $skus);
+        if (!$msrpPrices['ok']) {
+            return [
+                'ok'             => false,
+                'error'          => $msrpPrices['error'] ?? 'Unable to set shared catalog custom prices to MSRP.',
+                'category_count' => count($categoryIds),
+                'product_count'  => count($skus),
             ];
         }
     }
