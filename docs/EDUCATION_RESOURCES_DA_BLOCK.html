@@ -13,6 +13,8 @@ Access NutraAxis practitioner education resources, including product one-pagers 
 html-loader
 
 <style>
+    /* Hide education content until ACCS group gate allows it (4, 8, 9, 10). */
+    html:not(.edu-access-ok) .html-loader { visibility: hidden !important; }
     /* ===== RESET & BASE ===== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {

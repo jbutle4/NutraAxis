@@ -6,11 +6,136 @@
  *   2. Include search + filterEdu() from the page HTML
  *   3. Load this script:
  *        <script src="https://nutraaxisweb.azurewebsites.net/education/education-table-dynamic.js"></script>
+ *
+ * Access: guests and non-allowed ACCS groups are redirected home.
+ * Allowed group IDs: 4 Practitioner, 8 Employee, 9 Sales, 10 Practitioner-Not Exempt.
  */
 (function educationTableDynamic(global) {
   'use strict';
 
   var DEFAULT_API_URL = 'https://nutraaxisweb.azurewebsites.net/api/public/education-resources.php';
+  var DEFAULT_GRAPHQL_ENDPOINT = 'https://na1.api.commerce.adobe.com/VLuKe3eeTwf1D5oxmLBfcr/graphql';
+  var AUTH_COOKIE = 'auth_dropin_user_token';
+  var DEFAULT_ALLOWED_GROUP_IDS = [4, 8, 9, 10];
+  var ACCESS_OK_CLASS = 'edu-access-ok';
+
+  function allowedGroupIds() {
+    return Array.isArray(global.EDU_ALLOWED_GROUP_IDS) && global.EDU_ALLOWED_GROUP_IDS.length
+      ? global.EDU_ALLOWED_GROUP_IDS.map(Number)
+      : DEFAULT_ALLOWED_GROUP_IDS.slice();
+  }
+
+  function homeUrl() {
+    if (typeof global.EDU_ACCESS_HOME_URL === 'string' && global.EDU_ACCESS_HOME_URL) {
+      return global.EDU_ACCESS_HOME_URL;
+    }
+    return String(global.location.origin || 'https://www.nutraaxislabs.com') + '/';
+  }
+
+  function graphqlEndpoint() {
+    return global.EDU_GRAPHQL_ENDPOINT || DEFAULT_GRAPHQL_ENDPOINT;
+  }
+
+  function getCookie(name) {
+    var parts = String(document.cookie || '').split(';');
+    var prefix = name + '=';
+    for (var i = 0; i < parts.length; i += 1) {
+      var part = parts[i].trim();
+      if (part.indexOf(prefix) === 0) {
+        return decodeURIComponent(part.slice(prefix.length));
+      }
+    }
+    return '';
+  }
+
+  function decodeGroupUid(uid) {
+    if (uid == null || uid === '') {
+      return 0;
+    }
+    var raw = String(uid).trim();
+    if (/^\d+$/.test(raw)) {
+      return parseInt(raw, 10);
+    }
+    try {
+      var decoded = global.atob(raw);
+      var match = String(decoded).match(/(\d+)\s*$/);
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+    } catch (e) {
+      /* not base64 */
+    }
+    return 0;
+  }
+
+  function redirectHome() {
+    var dest = homeUrl();
+    if (global.location.href === dest) {
+      return false;
+    }
+    global.location.replace(dest);
+    return false;
+  }
+
+  function markAccessOk() {
+    document.documentElement.classList.add(ACCESS_OK_CLASS);
+    return true;
+  }
+
+  function fetchCustomerGroupId(token) {
+    var query = 'query EDU_CUSTOMER_GROUP { customer { group { uid } } }';
+    return fetch(graphqlEndpoint(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: 'Bearer ' + token,
+        Store: 'default',
+      },
+      credentials: 'omit',
+      mode: 'cors',
+      body: JSON.stringify({ query: query }),
+    }).then(function (response) {
+      if (!response.ok) {
+        throw new Error('Group lookup failed (HTTP ' + response.status + ').');
+      }
+      return response.json();
+    }).then(function (payload) {
+      var errors = payload && Array.isArray(payload.errors) ? payload.errors : [];
+      var authError = errors.some(function (err) {
+        return err && err.extensions && err.extensions.category === 'graphql-authentication';
+      });
+      if (authError || !payload || !payload.data || !payload.data.customer) {
+        return 0;
+      }
+      return decodeGroupUid(payload.data.customer.group && payload.data.customer.group.uid);
+    });
+  }
+
+  function ensurePractitionerAccess() {
+    if (global.EDU_SKIP_ACCESS_GATE === true) {
+      return Promise.resolve(markAccessOk());
+    }
+    if (document.documentElement.classList.contains(ACCESS_OK_CLASS)) {
+      return Promise.resolve(true);
+    }
+
+    var token = getCookie(AUTH_COOKIE);
+    if (!token) {
+      return Promise.resolve(redirectHome());
+    }
+
+    return fetchCustomerGroupId(token)
+      .then(function (groupId) {
+        if (allowedGroupIds().indexOf(groupId) === -1) {
+          return redirectHome();
+        }
+        return markAccessOk();
+      })
+      .catch(function () {
+        return redirectHome();
+      });
+  }
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -135,22 +260,29 @@
       });
   }
 
+  function start() {
+    ensurePractitionerAccess().then(function (allowed) {
+      if (!allowed) {
+        return;
+      }
+      loadEducationTable().catch(function () {
+        /* surfaced in table */
+      });
+    });
+  }
+
   global.EducationTableDynamic = {
     load: loadEducationTable,
+    ensureAccess: ensurePractitionerAccess,
     DEFAULT_API_URL: DEFAULT_API_URL,
+    ALLOWED_GROUP_IDS: DEFAULT_ALLOWED_GROUP_IDS.slice(),
   };
 
   if (global.EDU_TABLE_AUTO_LOAD !== false) {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function () {
-        loadEducationTable().catch(function () {
-          /* surfaced in table */
-        });
-      });
+      document.addEventListener('DOMContentLoaded', start);
     } else {
-      loadEducationTable().catch(function () {
-        /* surfaced in table */
-      });
+      start();
     }
   }
 })(window);
