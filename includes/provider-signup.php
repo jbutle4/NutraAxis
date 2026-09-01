@@ -221,6 +221,7 @@ function provider_signup_default_form(): array
         'ach_routing_number'  => '',
         'ach_account_number'  => '',
         'ach_account_type'    => '',
+        'accs_environment'    => '',
     ];
 }
 
@@ -259,6 +260,9 @@ function provider_signup_form_from_row(array $row): array
         'ach_routing_number'  => (string) ($row['AchRoutingNumber'] ?? ''),
         'ach_account_number'  => '',
         'ach_account_type'    => (string) ($row['AchAccountType'] ?? ''),
+        'accs_environment'    => (string) (provider_signup_accs_normalize_environment(
+            (string) ($row['AccsEnvironment'] ?? '')
+        ) ?? ''),
     ];
 }
 
@@ -1904,6 +1908,20 @@ function provider_signup_ops_provision(int $applicationId, array $options = []):
         return ['ok' => false, 'error' => 'This application is not ready for ACCS company creation.'];
     }
 
+    $requestedEnv = provider_signup_accs_normalize_environment((string) ($options['accs_environment'] ?? ''));
+    if ($requestedEnv !== null) {
+        $envResult = provider_signup_ops_set_accs_environment($applicationId, $requestedEnv);
+        if (!$envResult['ok']) {
+            return ['ok' => false, 'error' => $envResult['error'] ?? 'Unable to set ACCS environment.'];
+        }
+        $application = provider_signup_get($applicationId) ?? $application;
+    } elseif (provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? '')) === null) {
+        return [
+            'ok'    => false,
+            'error' => 'Select an ACCS environment (Stage or Production) before creating the Clinic Store.',
+        ];
+    }
+
     $warnings = provider_signup_ops_review_warnings($application, $applicationId, true);
     $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
     $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'create the Clinic Store');
@@ -2335,6 +2353,64 @@ function provider_signup_add_review_log(
     ]);
 }
 
+/**
+ * Tag an application for Stage / Dev / Production ACCS before Clinic Store creation.
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_ops_set_accs_environment(int $applicationId, string $environment): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+        return ['ok' => false, 'error' => 'ACCS environment cannot be changed after Clinic Store provisioning.'];
+    }
+
+    $normalized = provider_signup_accs_normalize_environment($environment);
+    if ($normalized === null) {
+        return ['ok' => false, 'error' => 'Select Stage, Dev, or Production for ACCS provisioning.'];
+    }
+
+    $current = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
+    if ($current === $normalized) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET AccsEnvironment = :env,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'env' => $normalized,
+            'id'  => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_ops_set_accs_environment: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to save ACCS environment.'];
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Comment',
+        'ACCS environment set to ' . provider_signup_accs_environment_label($normalized)
+        . ($current !== null
+            ? ' (was ' . provider_signup_accs_environment_label($current) . ').'
+            : '.')
+    );
+
+    return ['ok' => true, 'error' => null];
+}
+
 function provider_signup_ops_update(int $applicationId, array $form, string $editNote = ''): array
 {
     provider_signup_require_update();
@@ -2350,6 +2426,14 @@ function provider_signup_ops_update(int $applicationId, array $form, string $edi
     $result = provider_signup_persist_form($applicationId, $form, false);
     if (!$result['ok']) {
         return $result;
+    }
+
+    $requestedEnv = provider_signup_accs_normalize_environment((string) ($form['accs_environment'] ?? ''));
+    if ($requestedEnv !== null) {
+        $envResult = provider_signup_ops_set_accs_environment($applicationId, $requestedEnv);
+        if (!$envResult['ok']) {
+            return $envResult;
+        }
     }
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
@@ -2436,7 +2520,16 @@ function provider_signup_ops_create_clinic(array $form, bool $markApproved = fal
         ];
     }
 
-    $created = provider_signup_create_application($providerEmail, false, false);
+    $accsEnvironment = provider_signup_accs_normalize_environment((string) ($form['accs_environment'] ?? ''));
+    if ($accsEnvironment === null) {
+        return [
+            'ok'             => false,
+            'error'          => 'Select an ACCS environment (Stage or Production) for Clinic Store provisioning.',
+            'application_id' => null,
+        ];
+    }
+
+    $created = provider_signup_create_application($providerEmail, false, false, $accsEnvironment);
     if (!$created['ok'] || !is_array($created['application'] ?? null)) {
         return [
             'ok'             => false,

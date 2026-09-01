@@ -10,6 +10,7 @@ provider_signup_require_update();
 $activeSlug = 'signup-review';
 $error = null;
 $form = provider_signup_default_form();
+$form['accs_environment'] = 'production';
 $markApproved = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'create') {

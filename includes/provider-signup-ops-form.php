@@ -14,6 +14,10 @@ $opsFormCancelHref = $opsFormCancelHref
     ?? '/operations-dashboard/signup-review/view.php?id=' . (int) ($application['ApplicationID'] ?? 0);
 $submitLabel = $opsFormIsCreate ? 'Create clinic application' : 'Save changes';
 $submitValue = $opsFormIsCreate ? 'create' : 'save';
+$opsFormCanSetAccsEnv = $opsFormIsCreate
+    || (string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED;
+$opsFormAccsEnvironment = provider_signup_accs_normalize_environment((string) ($form['accs_environment'] ?? ''))
+    ?? ($opsFormIsCreate ? 'production' : '');
 ?>
 <?php
 $opsAttachments = provider_signup_list_attachments((int) ($application['ApplicationID'] ?? 0));
@@ -75,6 +79,17 @@ $hasResellerCertificate = provider_signup_has_reseller_certificate((int) ($appli
       </select>
       <p class="form-hint">Required for ACCS company creation (maps to the clinic-type company attribute).</p>
     </div>
+    <?php if ($opsFormCanSetAccsEnv): ?>
+    <div class="form-group form-grid-full">
+      <label for="accs_environment">ACCS environment *</label>
+      <select class="form-input" id="accs_environment" name="accs_environment" required>
+        <option value="production" <?= $opsFormAccsEnvironment === 'production' ? 'selected' : '' ?>>Production</option>
+        <option value="stage" <?= $opsFormAccsEnvironment === 'stage' ? 'selected' : '' ?>>Stage</option>
+        <option value="dev" <?= $opsFormAccsEnvironment === 'dev' ? 'selected' : '' ?>>Dev</option>
+      </select>
+      <p class="form-hint">Where Create Clinic Store will provision the company, clinic admin, and shared catalog. Choose <strong>Stage</strong> for UAT/test clinics.</p>
+    </div>
+    <?php endif; ?>
   </div>
 
   <h2 class="admin-form-subhead">Admin user</h2>

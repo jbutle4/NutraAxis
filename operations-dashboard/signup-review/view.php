@@ -80,6 +80,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to approve application.'), true, 302);
             }
             exit;
+        case 'set_accs_environment':
+            $result = provider_signup_ops_set_accs_environment(
+                $applicationId,
+                (string) ($_POST['accs_environment'] ?? '')
+            );
+            $suffix = $result['ok']
+                ? 'notice=accs_env_updated'
+                : 'error=' . rawurlencode($result['error'] ?? 'Unable to set ACCS environment.');
+            header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            exit;
         case 'provision':
             $result = provider_signup_ops_provision($applicationId, $_POST);
             if ($result['ok']) {
@@ -216,24 +226,23 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">ACCS clinic configuration completed (shared catalog, categories/products, and roles).</div>
       <?php elseif (($_GET['notice'] ?? '') === 'accs_config_partial'): ?>
       <div class="admin-notice is-success" role="status">ACCS clinic configuration updated. Review remaining checklist items if any are still pending.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'accs_env_updated'): ?>
+      <div class="admin-notice is-success" role="status">ACCS environment updated for Clinic Store provisioning.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
       <?php endif; ?>
 
-      <?php if ($targetAccsEnvironment !== null): ?>
+      <?php if ($targetAccsEnvironment !== null && (string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
       <div class="admin-notice" role="status">
         This application is tagged for <strong><?= htmlspecialchars(provider_signup_accs_environment_label($targetAccsEnvironment)) ?> ACCS</strong> provisioning.
         <?php if ($targetAccsEnvironment !== $serverAccsEnvironment): ?>
         Server default is <?= htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment)) ?>.
         <?php endif; ?>
       </div>
-      <?php elseif ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
+      <?php elseif ((string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED && $canUpdate): ?>
       <div class="admin-notice" role="status">
-        No ACCS environment tag on this application. Provisioning will use the server default:
-        <strong><?= htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment)) ?></strong>.
-        For UAT clinics, have the provider restart from
-        <code><?= htmlspecialchars('https://provider-signup.nutraaxislabs.com/provider-signup/application.php?accs_env=stage') ?></code>.
+        Choose an ACCS environment below before creating the Clinic Store. Untagged applications no longer fall back silently to the server default for ops provisioning.
       </div>
       <?php endif; ?>
 
@@ -310,7 +319,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               } elseif ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED) {
                   echo '—';
               } else {
-                  echo htmlspecialchars(provider_signup_accs_environment_label($serverAccsEnvironment) . ' (default)');
+                  echo 'Not set';
               }
             ?></dd></div>
             <div><dt>ACCS company ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCompanyId'] ?? '—')) ?></dd></div>
@@ -581,6 +590,26 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         </section>
       </div>
 
+      <?php if ($canUpdate && (string) ($application['Status'] ?? '') !== PROVIDER_SIGNUP_STATUS_PROVISIONED): ?>
+      <form class="admin-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>" style="margin-bottom: 1.5rem;">
+        <h2 class="admin-form-subhead">ACCS environment</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="accs_environment_view">Provision into *</label>
+            <select class="form-input" id="accs_environment_view" name="accs_environment" required>
+              <option value="production" <?= ($targetAccsEnvironment ?? 'production') === 'production' ? 'selected' : '' ?>>Production</option>
+              <option value="stage" <?= $targetAccsEnvironment === 'stage' ? 'selected' : '' ?>>Stage</option>
+              <option value="dev" <?= $targetAccsEnvironment === 'dev' ? 'selected' : '' ?>>Dev</option>
+            </select>
+            <p class="form-hint">Controls where Create Clinic Store builds the company, clinic admin, and shared catalog. Use <strong>Stage</strong> for UAT/test clinics.</p>
+          </div>
+        </div>
+        <div class="module-actions">
+          <button class="btn-secondary" type="submit" name="action" value="set_accs_environment">Save ACCS environment</button>
+        </div>
+      </form>
+      <?php endif; ?>
+
       <?php if ($canUpdate): ?>
       <form class="admin-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
         <h2 class="admin-form-subhead">Reviewer actions</h2>
@@ -588,6 +617,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <label for="comments">Comments / return notes</label>
           <textarea class="form-input form-textarea" id="comments" name="comments" rows="4"></textarea>
         </div>
+        <?php if ($canProvision): ?>
+        <div class="form-group">
+          <label for="accs_environment_provision">ACCS environment for Clinic Store *</label>
+          <select class="form-input" id="accs_environment_provision" name="accs_environment" required>
+            <option value="production" <?= ($targetAccsEnvironment ?? 'production') === 'production' ? 'selected' : '' ?>>Production</option>
+            <option value="stage" <?= $targetAccsEnvironment === 'stage' ? 'selected' : '' ?>>Stage</option>
+            <option value="dev" <?= $targetAccsEnvironment === 'dev' ? 'selected' : '' ?>>Dev</option>
+          </select>
+          <p class="form-hint">Confirm Stage vs Production before provisioning. This value is saved on the application.</p>
+        </div>
+        <?php endif; ?>
         <?php if ($showReviewOverride): ?>
         <div class="form-group form-group--stacked provider-signup-review-override">
           <label class="checkbox-label">
