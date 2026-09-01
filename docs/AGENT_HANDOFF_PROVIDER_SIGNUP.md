@@ -181,7 +181,7 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 | Clinic (company) | Yes | Sets `AccsStepClinicDone` + `AccsCompanyId` |
 | Clinic admin | Yes | Sets `AccsStepAdminDone` + `AccsCustomerId` |
 | Shared catalog | Yes (automation) or manual | Creates/reuses `SC-{CompanyName}`; ops can still mark manually |
-| Categories & products | Yes (automation) or manual | Clones from master shared catalog; assigns company |
+| Categories & products | Yes (automation) or manual | Clones from master shared catalog; sets admin `patient_shared_catalog_id` (does not call `assignCompanies`) |
 | Company roles | Yes (automation) or manual | Clones template roles; verifies required role names |
 
 **Ops UI:** Application view → **Clinic configuration** card with checklist, **Complete ACCS clinic configuration** button (Provisioned + incomplete), and per-step **Mark complete** forms (Approved or Provisioned only).

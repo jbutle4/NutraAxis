@@ -20,6 +20,7 @@ const ROLE_PERMISSION_FIELDS = [
     'ProductCatalog'       => 'Product Catalog / SKU Master',
     'LinksIndex'           => 'Links Index',
     'ContactsList'         => 'Contacts List',
+    'EducationResources'   => 'Education Resources',
     'Support'              => 'Support',
     'Accounting'           => 'Accounting',
     'ProviderAccountReview'=> 'Provider Account Review',
@@ -385,7 +386,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 POManagement, POApproval, TEManagement, TEApproval, TEProcessing,
                 QBOInsertApproval, PaymentApproval,
                 InventoryReporting, SalesReporting, InventoryForecasting,
-                LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, ContactsList, Support, Accounting,
+                LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, ContactsList, EducationResources, Support, Accounting,
                 ProviderAccountReview,
                 UserAdmin, RoleAdmin
             )
@@ -395,7 +396,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 :po, :po_approval, :te_mgmt, :te_approval, :te_processing,
                 :qbo_insert_approval, :payment_approval,
                 :inv_rep, :sales_rep, :inv_forecast,
-                :labeling, :dashboard, :legal, :catalog, :links, :contacts, :support, :accounting,
+                :labeling, :dashboard, :legal, :catalog, :links, :contacts, :education, :support, :accounting,
                 :provider_review,
                 :user_admin, :role_admin
             )
@@ -420,6 +421,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'catalog'             => $permissions['ProductCatalog'],
             'links'               => $permissions['LinksIndex'],
             'contacts'            => $permissions['ContactsList'],
+            'education'           => $permissions['EducationResources'],
             'support'             => $permissions['Support'],
             'accounting'          => $permissions['Accounting'],
             'provider_review'     => $permissions['ProviderAccountReview'],
@@ -464,6 +466,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             ProductCatalog = :catalog,
             LinksIndex = :links,
             ContactsList = :contacts,
+            EducationResources = :education,
             Support = :support,
             Accounting = :accounting,
             ProviderAccountReview = :provider_review,
@@ -491,6 +494,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'catalog'             => $permissions['ProductCatalog'],
         'links'               => $permissions['LinksIndex'],
         'contacts'            => $permissions['ContactsList'],
+        'education'           => $permissions['EducationResources'],
         'support'             => $permissions['Support'],
         'accounting'          => $permissions['Accounting'],
         'provider_review'     => $permissions['ProviderAccountReview'],

@@ -11,6 +11,7 @@ function coa_public_allowed_origins(): array
     return [
         'https://www.nutraaxislabs.com',
         'https://nutraaxislabs.com',
+        'https://main--nutrasync-eds--capocommerce.aem.live',
         'https://main--nutrasync-eds-staging--capocommerce.aem.live',
         'http://localhost:3000',
         'http://127.0.0.1:3000',

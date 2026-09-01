@@ -51,6 +51,8 @@ const PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_SUBMITTED,
     PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
     PROVIDER_SIGNUP_STATUS_APPROVED,
+    PROVIDER_SIGNUP_STATUS_PROVISIONED,
+    PROVIDER_SIGNUP_STATUS_REJECTED,
 ];
 
 const PROVIDER_SIGNUP_OPS_REVERT_SOURCE_STATUSES = [
@@ -219,6 +221,7 @@ function provider_signup_default_form(): array
         'ach_routing_number'  => '',
         'ach_account_number'  => '',
         'ach_account_type'    => '',
+        'accs_environment'    => '',
     ];
 }
 
@@ -257,6 +260,9 @@ function provider_signup_form_from_row(array $row): array
         'ach_routing_number'  => (string) ($row['AchRoutingNumber'] ?? ''),
         'ach_account_number'  => '',
         'ach_account_type'    => (string) ($row['AchAccountType'] ?? ''),
+        'accs_environment'    => (string) (provider_signup_accs_normalize_environment(
+            (string) ($row['AccsEnvironment'] ?? '')
+        ) ?? ''),
     ];
 }
 
@@ -1384,9 +1390,7 @@ function provider_signup_create_application(
         return ['ok' => true, 'error' => null, 'application' => $existing, 'resumed' => true];
     }
 
-    $targetAccsEnvironment = provider_signup_accs_normalize_environment(
-        $accsEnvironment ?? provider_signup_accs_pending_environment() ?? ''
-    );
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     try {
         $pdo = db();
@@ -1459,10 +1463,6 @@ function provider_signup_create_application(
         error_log('provider_signup_create_application mail: ' . $e->getMessage());
     }
 
-    if ($targetAccsEnvironment !== null) {
-        provider_signup_accs_clear_pending_environment();
-    }
-
     return ['ok' => true, 'error' => null, 'application' => $application, 'resumed' => false];
 }
 
@@ -1519,12 +1519,17 @@ function provider_signup_find_resumable_by_email(string $providerEmail): ?array
  *
  * @return array{ok: bool, error: ?string}
  */
-function provider_signup_request_email_challenge(string $providerEmail, ?string $recaptchaResponse): array
-{
+function provider_signup_request_email_challenge(
+    string $providerEmail,
+    ?string $recaptchaResponse,
+    ?string $accsEnvironment = null
+): array {
     $providerEmail = provider_signup_normalize_email($providerEmail);
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'A valid provider email address is required.'];
     }
+
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     $captcha = provider_signup_recaptcha_verify($recaptchaResponse, provider_signup_request_ip());
     if (!$captcha['ok']) {
@@ -1592,9 +1597,15 @@ function provider_signup_request_email_challenge(string $providerEmail, ?string 
     }
 
     try {
-        provider_signup_mail_email_challenge($providerEmail, $token);
+        $mail = provider_signup_mail_email_challenge($providerEmail, $token, $targetAccsEnvironment);
     } catch (Throwable $e) {
         error_log('provider_signup_request_email_challenge mail: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to send the confirmation email. Please try again.'];
+    }
+
+    if (!$mail['ok']) {
+        error_log('provider_signup_request_email_challenge mail: ' . ($mail['error'] ?? 'send failed'));
 
         return ['ok' => false, 'error' => 'Unable to send the confirmation email. Please try again.'];
     }
@@ -1607,12 +1618,14 @@ function provider_signup_request_email_challenge(string $providerEmail, ?string 
  *
  * @return array{ok: bool, error: ?string, application: ?array}
  */
-function provider_signup_confirm_email_challenge(string $challengeToken): array
+function provider_signup_confirm_email_challenge(string $challengeToken, ?string $accsEnvironment = null): array
 {
     $challengeToken = trim($challengeToken);
     if ($challengeToken === '' || !preg_match('/^[a-f0-9]{64}$/', $challengeToken)) {
         return ['ok' => false, 'error' => 'This confirmation link is invalid.', 'application' => null];
     }
+
+    $targetAccsEnvironment = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
 
     try {
         $pdo = db();
@@ -1644,7 +1657,7 @@ function provider_signup_confirm_email_challenge(string $challengeToken): array
         }
 
         $email = provider_signup_normalize_email((string) ($challenge['ProviderEmail'] ?? ''));
-        $created = provider_signup_create_application($email, false);
+        $created = provider_signup_create_application($email, false, true, $targetAccsEnvironment);
         if (!$created['ok'] || !is_array($created['application'])) {
             return [
                 'ok'          => false,
@@ -1895,6 +1908,20 @@ function provider_signup_ops_provision(int $applicationId, array $options = []):
         return ['ok' => false, 'error' => 'This application is not ready for ACCS company creation.'];
     }
 
+    $requestedEnv = provider_signup_accs_normalize_environment((string) ($options['accs_environment'] ?? ''));
+    if ($requestedEnv !== null) {
+        $envResult = provider_signup_ops_set_accs_environment($applicationId, $requestedEnv);
+        if (!$envResult['ok']) {
+            return ['ok' => false, 'error' => $envResult['error'] ?? 'Unable to set ACCS environment.'];
+        }
+        $application = provider_signup_get($applicationId) ?? $application;
+    } elseif (provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? '')) === null) {
+        return [
+            'ok'    => false,
+            'error' => 'Select an ACCS environment (Stage or Production) before creating the Clinic Store.',
+        ];
+    }
+
     $warnings = provider_signup_ops_review_warnings($application, $applicationId, true);
     $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
     $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'create the Clinic Store');
@@ -2085,32 +2112,33 @@ function provider_signup_nullable_string(string $value): ?string
     return $value === '' ? null : $value;
 }
 
-function provider_signup_save_attachment(string $accessToken, array $file): array
+/**
+ * Persist a reseller / tax certificate for an application (replaces prior ResellerCertificate).
+ *
+ * @param array<string, mixed> $file $_FILES entry
+ * @return array{ok: bool, error: ?string, id: ?int}
+ */
+function provider_signup_store_reseller_certificate(int $applicationId, array $file): array
 {
-    $application = provider_signup_get_by_token($accessToken);
-    if ($application === null) {
-        return ['ok' => false, 'error' => 'Application not found.'];
-    }
-
-    if (!provider_signup_provider_can_complete_documents($application)) {
-        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.'];
+    if ($applicationId <= 0) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
     }
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return ['ok' => false, 'error' => 'No file uploaded.'];
+        return ['ok' => false, 'error' => 'No file uploaded.', 'id' => null];
     }
 
     if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-        return ['ok' => false, 'error' => 'File upload failed.'];
+        return ['ok' => false, 'error' => 'File upload failed.', 'id' => null];
     }
 
     if (($file['size'] ?? 0) > PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES) {
-        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.'];
+        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.', 'id' => null];
     }
 
     $content = file_get_contents((string) ($file['tmp_name'] ?? ''));
     if ($content === false) {
-        return ['ok' => false, 'error' => 'Unable to read uploaded file.'];
+        return ['ok' => false, 'error' => 'Unable to read uploaded file.', 'id' => null];
     }
 
     $fileName = (string) ($file['name'] ?? 'reseller-certificate');
@@ -2118,8 +2146,6 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
     if ($contentType === '') {
         $contentType = 'application/octet-stream';
     }
-
-    $applicationId = (int) $application['ApplicationID'];
 
     try {
         $pdo = db();
@@ -2159,7 +2185,11 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
             $pdo->prepare('DELETE FROM dbo.ProviderSignupAttachment WHERE AttachmentID = :id')
                 ->execute(['id' => $attachmentId]);
 
-            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save the reseller certificate.'];
+            return [
+                'ok'    => false,
+                'error' => $stored['error'] ?? 'Unable to save the reseller certificate.',
+                'id'    => null,
+            ];
         }
 
         $pdo->prepare(<<<SQL
@@ -2182,8 +2212,58 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
 
         return ['ok' => true, 'error' => null, 'id' => $attachmentId];
     } catch (Throwable) {
-        return ['ok' => false, 'error' => 'Unable to save the reseller certificate.'];
+        return ['ok' => false, 'error' => 'Unable to save the reseller certificate.', 'id' => null];
     }
+}
+
+function provider_signup_save_attachment(string $accessToken, array $file): array
+{
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
+    }
+
+    if (!provider_signup_provider_can_complete_documents($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.', 'id' => null];
+    }
+
+    return provider_signup_store_reseller_certificate((int) $application['ApplicationID'], $file);
+}
+
+/**
+ * Operations upload / replace of reseller (tax) certificate after the fact.
+ *
+ * @param array<string, mixed> $file $_FILES entry
+ * @return array{ok: bool, error: ?string, id: ?int}
+ */
+function provider_signup_ops_save_attachment(int $applicationId, array $file): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
+    }
+
+    if (!provider_signup_ops_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.', 'id' => null];
+    }
+
+    $result = provider_signup_store_reseller_certificate($applicationId, $file);
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $fileName = trim((string) ($file['name'] ?? 'reseller-certificate'));
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId,
+        'Updated',
+        'Reseller / tax certificate uploaded by operations'
+            . ($fileName !== '' ? ': ' . $fileName : '.')
+    );
+
+    return $result;
 }
 
 function provider_signup_list_attachments(int $applicationId): array
@@ -2273,6 +2353,64 @@ function provider_signup_add_review_log(
     ]);
 }
 
+/**
+ * Tag an application for Stage / Dev / Production ACCS before Clinic Store creation.
+ *
+ * @return array{ok: bool, error: ?string}
+ */
+function provider_signup_ops_set_accs_environment(int $applicationId, string $environment): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if ((string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED) {
+        return ['ok' => false, 'error' => 'ACCS environment cannot be changed after Clinic Store provisioning.'];
+    }
+
+    $normalized = provider_signup_accs_normalize_environment($environment);
+    if ($normalized === null) {
+        return ['ok' => false, 'error' => 'Select Stage, Dev, or Production for ACCS provisioning.'];
+    }
+
+    $current = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
+    if ($current === $normalized) {
+        return ['ok' => true, 'error' => null];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET AccsEnvironment = :env,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'env' => $normalized,
+            'id'  => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_ops_set_accs_environment: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to save ACCS environment.'];
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Comment',
+        'ACCS environment set to ' . provider_signup_accs_environment_label($normalized)
+        . ($current !== null
+            ? ' (was ' . provider_signup_accs_environment_label($current) . ').'
+            : '.')
+    );
+
+    return ['ok' => true, 'error' => null];
+}
+
 function provider_signup_ops_update(int $applicationId, array $form, string $editNote = ''): array
 {
     provider_signup_require_update();
@@ -2288,6 +2426,14 @@ function provider_signup_ops_update(int $applicationId, array $form, string $edi
     $result = provider_signup_persist_form($applicationId, $form, false);
     if (!$result['ok']) {
         return $result;
+    }
+
+    $requestedEnv = provider_signup_accs_normalize_environment((string) ($form['accs_environment'] ?? ''));
+    if ($requestedEnv !== null) {
+        $envResult = provider_signup_ops_set_accs_environment($applicationId, $requestedEnv);
+        if (!$envResult['ok']) {
+            return $envResult;
+        }
     }
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
@@ -2374,7 +2520,16 @@ function provider_signup_ops_create_clinic(array $form, bool $markApproved = fal
         ];
     }
 
-    $created = provider_signup_create_application($providerEmail, false, false);
+    $accsEnvironment = provider_signup_accs_normalize_environment((string) ($form['accs_environment'] ?? ''));
+    if ($accsEnvironment === null) {
+        return [
+            'ok'             => false,
+            'error'          => 'Select an ACCS environment (Stage or Production) for Clinic Store provisioning.',
+            'application_id' => null,
+        ];
+    }
+
+    $created = provider_signup_create_application($providerEmail, false, false, $accsEnvironment);
     if (!$created['ok'] || !is_array($created['application'] ?? null)) {
         return [
             'ok'             => false,
@@ -2746,21 +2901,6 @@ function provider_signup_status_badge_class(string $status): string
         default:
             return 'status-draft';
     }
-}
-
-function provider_signup_accs_environment_label(?string $environment): string
-{
-    $environment = strtolower(trim((string) $environment));
-    if ($environment === '') {
-        return '—';
-    }
-
-    return match ($environment) {
-        'production' => 'Production',
-        'stage'      => 'Stage',
-        'dev'        => 'Dev',
-        default      => ucfirst($environment),
-    };
 }
 
 function provider_signup_format_datetime(DateTimeInterface|string|null $value): string

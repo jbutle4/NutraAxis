@@ -1192,6 +1192,17 @@ $modulePages = [
             ['title' => 'Role-Based Access', 'desc' => 'Contacts List permissions control create, read, update, and delete access.'],
         ],
     ],
+    'education-resources' => [
+        'label'       => 'Operations',
+        'headline'    => 'Education Resources',
+        'lead'        => 'Maintain clickable education PDFs and Vimeo video links for NutraAxis training and reference.',
+        'capabilities' => [
+            ['title' => 'PDF Documents', 'desc' => 'Upload PDFs to Azure Blob Storage and open them through a secure download link.'],
+            ['title' => 'Vimeo Videos', 'desc' => 'Store Vimeo URLs as clickable video resources.'],
+            ['title' => 'Search & Filter', 'desc' => 'Filter by PDF or Video and search descriptions or URLs.'],
+            ['title' => 'Role-Based Access', 'desc' => 'Education Resources permissions control create, read, update, and delete access.'],
+        ],
+    ],
     'support' => [
         'label'       => 'Help',
         'headline'    => 'Support',

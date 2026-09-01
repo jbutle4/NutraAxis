@@ -5,3 +5,6 @@ node_modules/
 nutraaxis_test/
 artifacts/uat/
 functions/node_modules/
+
+# Local Azure infra artifacts (certs, plans)
+.azure/

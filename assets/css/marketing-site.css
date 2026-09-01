@@ -602,8 +602,10 @@ body.marketing-site .marketing-footer__payments img {
 @media (min-width: 744px) {
   .marketing-nav {
     display: flex;
+    flex-wrap: nowrap;
     justify-content: space-between;
-    gap: 2rem;
+    align-items: center;
+    gap: 1rem 1.25rem;
     padding: 0 var(--spacing-big);
     min-height: 4.9375rem;
   }
@@ -613,8 +615,8 @@ body.marketing-site .marketing-footer__payments img {
   }
 
   .marketing-nav__brand {
-    min-width: 150px;
-    flex: 0 1 auto;
+    min-width: 0;
+    flex: 0 0 auto;
   }
 
   body.marketing-site .marketing-nav__brand img {
@@ -623,19 +625,24 @@ body.marketing-site .marketing-footer__payments img {
 
   .marketing-nav__sections {
     display: block;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .marketing-nav__sections ul {
     flex-direction: row;
+    flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    gap: var(--spacing-xxbig);
+    gap: 0.75rem 1rem;
   }
 
   .marketing-nav__sections a {
     padding: 1rem 0;
     position: relative;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    white-space: nowrap;
   }
 
   .marketing-nav__sections a:hover {
@@ -643,7 +650,7 @@ body.marketing-site .marketing-footer__payments img {
   }
 
   .marketing-nav__cta-item a {
-    padding: 1rem 1.75rem !important;
+    padding: 0.75rem 1.25rem !important;
     background-color: var(--color-teal-700);
     border: var(--shape-border-width-3) solid transparent;
     color: var(--color-neutral-50) !important;
@@ -656,7 +663,8 @@ body.marketing-site .marketing-footer__payments img {
   }
 
   .marketing-nav__tools {
-    gap: var(--spacing-xbig);
+    flex: 0 0 auto;
+    gap: 0.75rem;
   }
 
   .marketing-header__spacer {

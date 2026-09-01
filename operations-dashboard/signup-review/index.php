@@ -33,8 +33,8 @@ $pageDescription = 'Review and approve NutraAxis provider signup applications.';
 require dirname(__DIR__, 2) . '/includes/head.php';
 require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
-  <main class="page-main">
-    <div class="container page-inner page-inner--wide">
+  <main class="page-main page-main--fluid">
+    <div class="container page-inner page-inner--full">
       <?php
       render_list_page_header([
           'back_href'  => '/',

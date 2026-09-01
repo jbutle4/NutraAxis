@@ -42,6 +42,14 @@ function operations_dashboard_sections(): array
                     'module'   => 'contacts-list',
                 ],
                 [
+                    'title'    => 'Education Resources',
+                    'desc'     => 'Manage education PDFs and Vimeo video links for training and reference.',
+                    'href'     => '/education-resources/',
+                    'icon'     => 'document',
+                    'internal' => true,
+                    'module'   => 'education-resources',
+                ],
+                [
                     'title' => 'QuickBooks',
                     'desc'  => 'QuickBooks Online accountant view for NutraAxis financials.',
                     'href'  => 'https://qbo.intuit.com/app/my-accountant',

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/mail.php';
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/provider-signup-accs.php';
 
 const PROVIDER_SIGNUP_SUPPORT_EMAIL = 'sales@nutraaxislabs.com';
 const PROVIDER_SIGNUP_PROVISIONED_SUPPORT_EMAIL = 'support@nutraaxislabs.com';
@@ -102,22 +103,33 @@ function provider_signup_mail_ops_silent(string $subject, string $plainBody, str
     mail_send_html_multi_result($recipients, [], $subject, $htmlBody, $plainBody);
 }
 
-function provider_signup_confirm_email_url(string $challengeToken): string
+function provider_signup_confirm_email_url(string $challengeToken, ?string $accsEnvironment = null): string
 {
-    return provider_signup_mail_base_url() . '/provider-signup/confirm-email.php?token=' . rawurlencode($challengeToken);
+    $url = provider_signup_mail_base_url() . '/provider-signup/confirm-email.php?token=' . rawurlencode($challengeToken);
+    $env = provider_signup_accs_normalize_environment($accsEnvironment ?? '');
+    if ($env !== null) {
+        $url .= '&accs_env=' . rawurlencode($env);
+    }
+
+    return $url;
 }
 
 /**
  * Email ownership challenge — sent before an application row exists.
+ *
+ * @return array{ok: bool, error: ?string}
  */
-function provider_signup_mail_email_challenge(string $providerEmail, string $challengeToken): void
-{
+function provider_signup_mail_email_challenge(
+    string $providerEmail,
+    string $challengeToken,
+    ?string $accsEnvironment = null
+): array {
     $providerEmail = strtolower(trim($providerEmail));
     if ($providerEmail === '' || !filter_var($providerEmail, FILTER_VALIDATE_EMAIL)) {
-        return;
+        return ['ok' => false, 'error' => 'A valid provider email address is required.'];
     }
 
-    $confirmUrl = provider_signup_confirm_email_url($challengeToken);
+    $confirmUrl = provider_signup_confirm_email_url($challengeToken, $accsEnvironment);
     $subject = 'Confirm your email to continue your NutraAxis provider application';
     $plain = implode("\n", [
         'Confirm your email address to start (or resume) your NutraAxis provider application.',
@@ -138,7 +150,15 @@ function provider_signup_mail_email_challenge(string $providerEmail, string $cha
         . '<p>If you need help, email <a href="' . htmlspecialchars(provider_signup_support_mailto_url()) . '">'
         . htmlspecialchars(PROVIDER_SIGNUP_SUPPORT_EMAIL) . '</a>.</p>';
 
-    mail_send_html_result($providerEmail, $subject, $html, $plain);
+    $send = mail_send_html_result($providerEmail, $subject, $html, $plain);
+    if (!$send['ok']) {
+        return [
+            'ok'    => false,
+            'error' => $send['error'] ?? 'Unable to send the confirmation email.',
+        ];
+    }
+
+    return ['ok' => true, 'error' => null];
 }
 
 /**

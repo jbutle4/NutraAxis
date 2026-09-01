@@ -1526,6 +1526,37 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   min-width: 1340px;
 }
 
+.page-inner--full .admin-table--signup-review {
+  width: 100%;
+  min-width: 1480px;
+  table-layout: auto;
+}
+
+.admin-table--signup-review th,
+.admin-table--signup-review td {
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  vertical-align: middle;
+}
+
+.admin-table--signup-review th:nth-child(2),
+.admin-table--signup-review td:nth-child(2),
+.admin-table--signup-review th:nth-child(3),
+.admin-table--signup-review td:nth-child(3) {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table--signup-review th:nth-child(5),
+.admin-table--signup-review td:nth-child(5),
+.admin-table--signup-review th:nth-child(6),
+.admin-table--signup-review td:nth-child(6) {
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
 .admin-table--signup-review th.accs-env-col,
 .admin-table--signup-review td.accs-env-col {
   white-space: nowrap;
@@ -1534,6 +1565,23 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 
 .admin-table-wrap--signup-review {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table--signup-review th:last-child,
+.admin-table--signup-review td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--white);
+  box-shadow: -6px 0 10px rgba(26, 46, 45, 0.06);
+  white-space: nowrap;
+}
+
+.admin-table--signup-review thead th:last-child {
+  z-index: 2;
+  background: var(--bg-light);
 }
 
 .admin-table--signup-review th.config-step-col,
