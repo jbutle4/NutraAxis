@@ -15,7 +15,11 @@ $opsFormCancelHref = $opsFormCancelHref
 $submitLabel = $opsFormIsCreate ? 'Create clinic application' : 'Save changes';
 $submitValue = $opsFormIsCreate ? 'create' : 'save';
 ?>
-<form class="admin-form" method="post" action="<?= htmlspecialchars($opsFormAction) ?>" novalidate>
+<?php
+$opsAttachments = provider_signup_list_attachments((int) ($application['ApplicationID'] ?? 0));
+$hasResellerCertificate = provider_signup_has_reseller_certificate((int) ($application['ApplicationID'] ?? 0));
+?>
+<form class="admin-form" method="post" action="<?= htmlspecialchars($opsFormAction) ?>" enctype="multipart/form-data" novalidate>
   <?php if ($opsFormErrorHtml !== null && $opsFormErrorHtml !== ''): ?>
   <div class="admin-notice is-error" role="alert"><?= $opsFormErrorHtml ?></div>
   <?php elseif (!empty($error)): ?>
@@ -140,6 +144,44 @@ $submitValue = $opsFormIsCreate ? 'create' : 'save';
       </select>
     </div>
   </div>
+
+  <?php if (!$opsFormIsCreate): ?>
+  <h2 class="admin-form-subhead">Reseller / tax certificate</h2>
+  <?php if ($opsAttachments !== []): ?>
+  <ul class="form-hint" style="margin-top: 0;">
+    <?php foreach ($opsAttachments as $attachment): ?>
+    <li>
+      <a href="/operations-dashboard/signup-review/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
+        <?= htmlspecialchars((string) $attachment['FileName']) ?>
+      </a>
+      <?php if (!empty($attachment['AttachmentKind'])): ?>
+      · <?= htmlspecialchars((string) $attachment['AttachmentKind']) ?>
+      <?php endif; ?>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+  <?php else: ?>
+  <p class="form-hint">No documents on file yet.</p>
+  <?php endif; ?>
+  <p class="form-hint"><?= $hasResellerCertificate ? 'Uploading a new file replaces the current reseller certificate.' : 'Optional for approval; required for tax-exempt status.' ?></p>
+  <?php
+  $uploadFieldId = 'reseller_certificate';
+  $uploadFieldName = 'reseller_certificate';
+  $uploadLabel = 'State reseller certificate / Business License';
+  $uploadTitle = 'Drop, paste, or choose certificate';
+  $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
+  $uploadAccept = '.pdf,image/*,application/pdf';
+  $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
+  $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
+  $uploadSuccessMessage = 'Document selected';
+  $uploadOnSelectHint = 'Use Upload certificate below to send %s, or save field changes separately.';
+  $uploadGridClass = 'form-grid-full';
+  require __DIR__ . '/file-upload-dropzone-field.php';
+  ?>
+  <div class="module-actions" style="margin-bottom: 1.5rem;">
+    <button class="btn-secondary" type="submit" name="action" value="upload_certificate">Upload certificate</button>
+  </div>
+  <?php endif; ?>
 
   <?php if ($opsFormIsCreate): ?>
   <div class="form-group form-group--stacked">

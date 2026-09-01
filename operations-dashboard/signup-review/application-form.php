@@ -31,19 +31,35 @@ if (!$canUpdate || !$canEdit) {
     auth_render_access_denied('You do not have permission to edit this provider application.');
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'save') {
-    $form = provider_signup_form_from_post($_POST);
-    $form['provider_email'] = (string) ($application['ProviderEmail'] ?? '');
-    $result = provider_signup_ops_update($applicationId, $form, (string) ($_POST['edit_note'] ?? ''));
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $postAction = (string) ($_POST['action'] ?? '');
+    if ($postAction === 'save') {
+        $form = provider_signup_form_from_post($_POST);
+        $form['provider_email'] = (string) ($application['ProviderEmail'] ?? '');
+        $result = provider_signup_ops_update($applicationId, $form, (string) ($_POST['edit_note'] ?? ''));
 
-    if ($result['ok']) {
-        header('Location: /operations-dashboard/signup-review/view.php?id=' . $applicationId . '&notice=updated', true, 302);
-        exit;
+        if ($result['ok']) {
+            header('Location: /operations-dashboard/signup-review/view.php?id=' . $applicationId . '&notice=updated', true, 302);
+            exit;
+        }
+
+        $error = $result['error'] ?? 'Unable to save application.';
+        $application = provider_signup_get($applicationId) ?? $application;
+        $checklist = provider_signup_submit_checklist($form, $applicationId);
+    } elseif ($postAction === 'upload_certificate') {
+        $result = provider_signup_ops_save_attachment($applicationId, $_FILES['reseller_certificate'] ?? []);
+        if ($result['ok']) {
+            header(
+                'Location: /operations-dashboard/signup-review/view.php?id=' . $applicationId . '&notice=document_uploaded',
+                true,
+                302
+            );
+            exit;
+        }
+
+        $error = $result['error'] ?? 'Unable to upload certificate.';
+        $application = provider_signup_get($applicationId) ?? $application;
     }
-
-    $error = $result['error'] ?? 'Unable to save application.';
-    $application = provider_signup_get($applicationId) ?? $application;
-    $checklist = provider_signup_submit_checklist($form, $applicationId);
 }
 
 $pageTitle = 'Edit Application #' . $applicationId . ' | NutraAxis Operations';

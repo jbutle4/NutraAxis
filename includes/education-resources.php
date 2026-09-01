@@ -567,7 +567,7 @@ function education_resources_list_public(): array
             CreateDate,
             UpdateDate
         FROM dbo.NA_Education_Resources
-        ORDER BY Description ASC, ERID ASC
+        ORDER BY Type ASC, Description ASC, ERID ASC
     SQL);
 
     return $stmt->fetchAll() ?: [];

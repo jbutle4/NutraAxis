@@ -51,6 +51,8 @@ const PROVIDER_SIGNUP_OPS_EDITABLE_STATUSES = [
     PROVIDER_SIGNUP_STATUS_SUBMITTED,
     PROVIDER_SIGNUP_STATUS_PENDING_VALIDATION,
     PROVIDER_SIGNUP_STATUS_APPROVED,
+    PROVIDER_SIGNUP_STATUS_PROVISIONED,
+    PROVIDER_SIGNUP_STATUS_REJECTED,
 ];
 
 const PROVIDER_SIGNUP_OPS_REVERT_SOURCE_STATUSES = [
@@ -2092,32 +2094,33 @@ function provider_signup_nullable_string(string $value): ?string
     return $value === '' ? null : $value;
 }
 
-function provider_signup_save_attachment(string $accessToken, array $file): array
+/**
+ * Persist a reseller / tax certificate for an application (replaces prior ResellerCertificate).
+ *
+ * @param array<string, mixed> $file $_FILES entry
+ * @return array{ok: bool, error: ?string, id: ?int}
+ */
+function provider_signup_store_reseller_certificate(int $applicationId, array $file): array
 {
-    $application = provider_signup_get_by_token($accessToken);
-    if ($application === null) {
-        return ['ok' => false, 'error' => 'Application not found.'];
-    }
-
-    if (!provider_signup_provider_can_complete_documents($application)) {
-        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.'];
+    if ($applicationId <= 0) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
     }
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-        return ['ok' => false, 'error' => 'No file uploaded.'];
+        return ['ok' => false, 'error' => 'No file uploaded.', 'id' => null];
     }
 
     if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
-        return ['ok' => false, 'error' => 'File upload failed.'];
+        return ['ok' => false, 'error' => 'File upload failed.', 'id' => null];
     }
 
     if (($file['size'] ?? 0) > PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES) {
-        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.'];
+        return ['ok' => false, 'error' => 'File is too large. Maximum size is 15 MB.', 'id' => null];
     }
 
     $content = file_get_contents((string) ($file['tmp_name'] ?? ''));
     if ($content === false) {
-        return ['ok' => false, 'error' => 'Unable to read uploaded file.'];
+        return ['ok' => false, 'error' => 'Unable to read uploaded file.', 'id' => null];
     }
 
     $fileName = (string) ($file['name'] ?? 'reseller-certificate');
@@ -2125,8 +2128,6 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
     if ($contentType === '') {
         $contentType = 'application/octet-stream';
     }
-
-    $applicationId = (int) $application['ApplicationID'];
 
     try {
         $pdo = db();
@@ -2166,7 +2167,11 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
             $pdo->prepare('DELETE FROM dbo.ProviderSignupAttachment WHERE AttachmentID = :id')
                 ->execute(['id' => $attachmentId]);
 
-            return ['ok' => false, 'error' => $stored['error'] ?? 'Unable to save the reseller certificate.'];
+            return [
+                'ok'    => false,
+                'error' => $stored['error'] ?? 'Unable to save the reseller certificate.',
+                'id'    => null,
+            ];
         }
 
         $pdo->prepare(<<<SQL
@@ -2189,8 +2194,58 @@ function provider_signup_save_attachment(string $accessToken, array $file): arra
 
         return ['ok' => true, 'error' => null, 'id' => $attachmentId];
     } catch (Throwable) {
-        return ['ok' => false, 'error' => 'Unable to save the reseller certificate.'];
+        return ['ok' => false, 'error' => 'Unable to save the reseller certificate.', 'id' => null];
     }
+}
+
+function provider_signup_save_attachment(string $accessToken, array $file): array
+{
+    $application = provider_signup_get_by_token($accessToken);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
+    }
+
+    if (!provider_signup_provider_can_complete_documents($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.', 'id' => null];
+    }
+
+    return provider_signup_store_reseller_certificate((int) $application['ApplicationID'], $file);
+}
+
+/**
+ * Operations upload / replace of reseller (tax) certificate after the fact.
+ *
+ * @param array<string, mixed> $file $_FILES entry
+ * @return array{ok: bool, error: ?string, id: ?int}
+ */
+function provider_signup_ops_save_attachment(int $applicationId, array $file): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.', 'id' => null];
+    }
+
+    if (!provider_signup_ops_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer accept document uploads.', 'id' => null];
+    }
+
+    $result = provider_signup_store_reseller_certificate($applicationId, $file);
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $fileName = trim((string) ($file['name'] ?? 'reseller-certificate'));
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId,
+        'Updated',
+        'Reseller / tax certificate uploaded by operations'
+            . ($fileName !== '' ? ': ' . $fileName : '.')
+    );
+
+    return $result;
 }
 
 function provider_signup_list_attachments(int $applicationId): array

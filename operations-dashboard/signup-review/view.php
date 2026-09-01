@@ -123,6 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to complete ACCS clinic configuration.'), true, 302);
             }
             exit;
+        case 'upload_certificate':
+            $result = provider_signup_ops_save_attachment($applicationId, $_FILES['reseller_certificate'] ?? []);
+            $suffix = $result['ok']
+                ? 'notice=document_uploaded'
+                : 'error=' . rawurlencode($result['error'] ?? 'Unable to upload certificate.');
+            header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            exit;
         default:
             $error = 'Unknown action.';
     }
@@ -195,6 +202,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">NPI validation refreshed.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'updated'): ?>
       <div class="admin-notice is-success" role="status">Application data saved.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'document_uploaded'): ?>
+      <div class="admin-notice is-success" role="status">Reseller / tax certificate uploaded.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'created'): ?>
       <div class="admin-notice is-success" role="status">Clinic application created. Review the details, approve if needed, then use <strong>Create Clinic Store</strong> to provision ACCS.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'created_approved'): ?>
@@ -268,7 +277,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($canUpdate && $canEdit): ?>
       <div class="module-actions" style="margin-bottom: 1.5rem;">
-        <a class="btn-secondary" href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
+        <a class="btn-primary" href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
       </div>
       <?php endif; ?>
 
@@ -529,10 +538,45 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               <a href="/operations-dashboard/signup-review/attachment.php?id=<?= (int) $attachment['AttachmentID'] ?>">
                 <?= htmlspecialchars((string) $attachment['FileName']) ?>
               </a>
+              <?php if (!empty($attachment['AttachmentKind'])): ?>
+              · <?= htmlspecialchars((string) $attachment['AttachmentKind']) ?>
+              <?php endif; ?>
               (<?= htmlspecialchars(provider_signup_format_datetime($attachment['UploadDate'] ?? null)) ?>)
             </li>
             <?php endforeach; ?>
           </ul>
+          <?php endif; ?>
+
+          <?php if ($canUpdate && $canEdit): ?>
+          <form
+            class="admin-form"
+            method="post"
+            enctype="multipart/form-data"
+            action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>"
+            style="margin-top: 1rem;"
+          >
+            <input type="hidden" name="action" value="upload_certificate" />
+            <h3 class="admin-form-subhead">Upload reseller / tax certificate</h3>
+            <p class="form-hint">PDF or image, up to 15 MB. Replaces any prior reseller certificate on this application.</p>
+            <?php
+            $uploadFieldId = 'reseller_certificate';
+            $uploadFieldName = 'reseller_certificate';
+            $uploadLabel = 'State reseller certificate / Business License';
+            $uploadTitle = 'Drop, paste, or choose certificate';
+            $uploadHint = 'Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
+            $uploadAccept = '.pdf,image/*,application/pdf';
+            $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
+            $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
+            $uploadSuccessMessage = 'Document selected';
+            $uploadOnSelectHint = 'Click Upload certificate to send %s.';
+            $uploadGridClass = 'form-grid-full';
+            require dirname(__DIR__, 2) . '/includes/file-upload-dropzone-field.php';
+            ?>
+            <div class="module-actions">
+              <button class="btn-secondary" type="submit">Upload certificate</button>
+              <a class="btn-text" href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit Tax ID and other fields</a>
+            </div>
+          </form>
           <?php endif; ?>
         </section>
       </div>
