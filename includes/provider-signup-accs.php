@@ -5,11 +5,34 @@ require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/provider-signup-crypto.php';
 
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
-const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
+const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Production Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 const PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE = 'clinic_doctor';
 /** @deprecated Legacy cookie — expired on public pages; no longer read for routing. */
 const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
+
+/**
+ * ACCS Admin user IDs for Sales_Support (company.sales_representative_id).
+ * IDs are per tenant — do not reuse Production 12 on Stage.
+ *
+ * @var array<string, int>
+ */
+const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_BY_ENVIRONMENT = [
+    'production' => 12,
+    'stage'      => 18,
+    'dev'        => 1,
+];
+
+/**
+ * Clinic_Template company IDs (full clinic roles). Per tenant.
+ *
+ * @var array<string, int>
+ */
+const PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_BY_ENVIRONMENT = [
+    'production' => 3,
+    'stage'      => 9,
+    'dev'        => 7,
+];
 
 function provider_signup_accs_allowed_environments(): array
 {
@@ -155,28 +178,77 @@ function provider_signup_accs_target_environment(): string
     return strtolower(trim((string) env('PROVIDER_SIGNUP_ACCS_ENVIRONMENT', 'stage')));
 }
 
+function provider_signup_accs_environment_setting_suffix(?string $environment = null): string
+{
+    $environment = provider_signup_accs_normalize_environment($environment)
+        ?? provider_signup_accs_normalize_environment(provider_signup_accs_target_environment())
+        ?? 'stage';
+
+    return match ($environment) {
+        'production' => 'PRODUCTION',
+        'stage'      => 'STAGE',
+        'dev'        => 'DEV',
+        default      => strtoupper($environment),
+    };
+}
+
+/**
+ * Read an env-specific setting first (KEY_STAGE / KEY_PRODUCTION / KEY_DEV),
+ * then the shared KEY when $allowShared is true.
+ */
+function provider_signup_accs_setting_value(string $baseKey, bool $allowShared = true): ?string
+{
+    $envKey = $baseKey . '_' . provider_signup_accs_environment_setting_suffix();
+    $keys = $allowShared ? [$envKey, $baseKey] : [$envKey];
+
+    foreach ($keys as $key) {
+        $runtime = env_runtime_value($key);
+        if ($runtime !== null && $runtime !== '') {
+            return $runtime;
+        }
+
+        $configured = env($key, null);
+        if ($configured !== null && $configured !== '') {
+            return $configured;
+        }
+    }
+
+    return null;
+}
+
+function provider_signup_accs_setting_int(string $baseKey, int $fallback, bool $allowShared = true): int
+{
+    $configured = (int) (provider_signup_accs_setting_value($baseKey, $allowShared) ?? 0);
+
+    return $configured > 0 ? $configured : $fallback;
+}
+
 function provider_signup_accs_customer_group_id(): int
 {
-    $configured = (int) env('PROVIDER_SIGNUP_ACCS_USER_GROUP_ID', (string) PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT);
-
-    return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT;
+    return provider_signup_accs_setting_int(
+        'PROVIDER_SIGNUP_ACCS_USER_GROUP_ID',
+        PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT
+    );
 }
 
 function provider_signup_accs_sales_representative_id(): int
 {
-    $configured = (int) env(
-        'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
-        (string) PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT
-    );
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    $fallback = PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_BY_ENVIRONMENT[$environment]
+        ?? PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT;
 
-    return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT;
+    // Shared PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID is Production-oriented.
+    // Do not apply it to Stage/Dev — those tenants have different Admin user IDs.
+    return provider_signup_accs_setting_int(
+        'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
+        $fallback,
+        false
+    );
 }
 
 function provider_signup_accs_website_id(): int
 {
-    $configured = (int) env('PROVIDER_SIGNUP_ACCS_WEBSITE_ID', '1');
-
-    return $configured > 0 ? $configured : 1;
+    return provider_signup_accs_setting_int('PROVIDER_SIGNUP_ACCS_WEBSITE_ID', 1);
 }
 
 function provider_signup_accs_generate_password(): string
