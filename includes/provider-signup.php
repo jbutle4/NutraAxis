@@ -1587,6 +1587,8 @@ function provider_signup_request_email_challenge(
         }
 
         $token = provider_signup_generate_token();
+        // Inline TTL minutes: PDO/sqlsrv binds ints as nvarchar, and DATEADD rejects that.
+        $ttlMinutes = (int) PROVIDER_SIGNUP_EMAIL_CHALLENGE_TTL_MINUTES;
         $pdo->prepare(<<<SQL
             INSERT INTO dbo.ProviderSignupEmailChallenge (
                 ChallengeToken, ProviderEmail, RequestIp, ExpiresAt
@@ -1595,13 +1597,12 @@ function provider_signup_request_email_challenge(
                 :token,
                 :email,
                 :ip,
-                DATEADD(MINUTE, :ttl, SYSUTCDATETIME())
+                DATEADD(MINUTE, {$ttlMinutes}, SYSUTCDATETIME())
             )
         SQL)->execute([
             'token' => $token,
             'email' => $providerEmail,
             'ip'    => $ip !== '' ? $ip : null,
-            'ttl'   => PROVIDER_SIGNUP_EMAIL_CHALLENGE_TTL_MINUTES,
         ]);
     } catch (Throwable $e) {
         error_log('provider_signup_request_email_challenge: ' . $e->getMessage());
