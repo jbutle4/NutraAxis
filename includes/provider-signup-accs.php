@@ -290,6 +290,10 @@ function provider_signup_accs_format_api_error(array $result): string
     $value = $parameters['value'] ?? null;
     $valueLabel = $value === null || $value === '' ? '(empty)' : (is_scalar($value) ? (string) $value : json_encode($value));
 
+    if ($fieldName !== '' && str_contains($message, '%fieldName') && str_contains($message, 'is not supported')) {
+        return 'ACCS does not support ' . $fieldName . ' in this environment.';
+    }
+
     if ($fieldName !== '' && str_contains($message, '%fieldName')) {
         return 'ACCS rejected ' . $fieldName . ' (' . $valueLabel . ').';
     }
@@ -299,6 +303,54 @@ function provider_signup_accs_format_api_error(array $result): string
     }
 
     return $message;
+}
+
+/**
+ * Whether the current ACCS tenant supports company address-book extension attributes.
+ * Stage has Magento_CompanyAddressStorefrontCompatibility*; Production currently does not.
+ */
+function provider_signup_accs_supports_company_address_book(): bool
+{
+    static $cache = [];
+
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    if (array_key_exists($environment, $cache)) {
+        return $cache[$environment];
+    }
+
+    $modules = provider_signup_accs_api_request('GET', '/modules');
+    if (!($modules['ok'] ?? false) || !is_array($modules['data'] ?? null)) {
+        // Fail closed on Production (known unsupported); allow Stage/Dev when module probe fails.
+        return $cache[$environment] = ($environment !== 'production');
+    }
+
+    foreach ($modules['data'] as $module) {
+        $name = is_string($module) ? $module : (string) ($module['name'] ?? '');
+        if (
+            $name === 'Magento_CompanyAddressStorefrontCompatibility'
+            || $name === 'Magento_CompanyAddressStorefrontCompatibilityRest'
+            || str_contains($name, 'CompanyAddressStorefrontCompatibility')
+        ) {
+            return $cache[$environment] = true;
+        }
+    }
+
+    return $cache[$environment] = false;
+}
+
+/**
+ * @return array{is_company_address_book_enabled?: bool, is_custom_shipping_address_allowed?: bool}
+ */
+function provider_signup_accs_company_address_book_extension_attributes(): array
+{
+    if (!provider_signup_accs_supports_company_address_book()) {
+        return [];
+    }
+
+    return [
+        'is_company_address_book_enabled'    => true,
+        'is_custom_shipping_address_allowed' => true,
+    ];
 }
 
 function provider_signup_accs_region_id_for_state(string $stateCode, string $countryId = 'US'): ?int
@@ -746,18 +798,19 @@ function provider_signup_accs_set_company_defaults(int $companyId, int $groupId,
         $needsUpdate = true;
     }
 
-    $extension = is_array($company['extension_attributes'] ?? null)
-        ? $company['extension_attributes']
-        : [];
-    if (empty($extension['is_company_address_book_enabled'])) {
-        $extension['is_company_address_book_enabled'] = true;
-        $needsUpdate = true;
+    $addressBookFlags = provider_signup_accs_company_address_book_extension_attributes();
+    if ($addressBookFlags !== []) {
+        $extension = is_array($company['extension_attributes'] ?? null)
+            ? $company['extension_attributes']
+            : [];
+        foreach ($addressBookFlags as $flag => $value) {
+            if (empty($extension[$flag])) {
+                $extension[$flag] = $value;
+                $needsUpdate = true;
+            }
+        }
+        $company['extension_attributes'] = $extension;
     }
-    if (empty($extension['is_custom_shipping_address_allowed'])) {
-        $extension['is_custom_shipping_address_allowed'] = true;
-        $needsUpdate = true;
-    }
-    $company['extension_attributes'] = $extension;
 
     if (!$needsUpdate) {
         return ['ok' => true, 'error' => null];
@@ -791,7 +844,7 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
         'State reseller certificate on file in Operations portal.',
     ]);
 
-    return [
+    $payload = [
         'company' => [
             'status'                   => 1,
             'company_name'             => trim((string) ($application['CompanyName'] ?? '')),
@@ -809,12 +862,15 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
             'customer_group_id'        => $groupId,
             'sales_representative_id'  => provider_signup_accs_sales_representative_id(),
             'super_user_id'            => $superUserId,
-            'extension_attributes'     => [
-                'is_company_address_book_enabled'   => true,
-                'is_custom_shipping_address_allowed'=> true,
-            ],
         ],
     ];
+
+    $addressBookFlags = provider_signup_accs_company_address_book_extension_attributes();
+    if ($addressBookFlags !== []) {
+        $payload['company']['extension_attributes'] = $addressBookFlags;
+    }
+
+    return $payload;
 }
 
 function provider_signup_accs_create_company(array $application, int $groupId, int $superUserId): array
