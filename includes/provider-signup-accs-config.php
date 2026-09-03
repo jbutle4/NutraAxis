@@ -1159,6 +1159,21 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
     }
     $customerId = (int) $admin['customer_id'];
 
+    $adminClinicId = provider_signup_accs_set_admin_clinic_id($customerId, $companyId);
+    if (!$adminClinicId['ok']) {
+        return [
+            'ok'                     => false,
+            'error'                  => $adminClinicId['error'] ?? 'Unable to set Clinic ID on ACCS company admin.',
+            'company_id'             => $companyId,
+            'shared_catalog_id'      => null,
+            'category_count'         => null,
+            'product_count'          => null,
+            'roles_summary'          => null,
+            'configuration_complete' => false,
+            'steps'                  => [],
+        ];
+    }
+
     $steps = [
         'shared_catalog' => ['done' => false, 'action' => null],
         'catalog_assign' => ['done' => false, 'action' => null],

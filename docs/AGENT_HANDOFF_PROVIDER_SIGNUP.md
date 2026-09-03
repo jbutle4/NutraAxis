@@ -169,7 +169,7 @@ Status constraint migration: `sql/124_provider_signup_status_submitted_for_revie
 
 - `AccsCompanyId` — ACCS company ID
 - `AccsCustomerId` — company admin customer ID
-- `AccsClinicId` — currently set to **company ID string** (clinic storefront ID for email)
+- `AccsClinicId` — mirrors **ACCS company ID**; also written to company admin custom attribute `clinic_id` (storefront doctor dropdown)
 - `ProvisionedAt`, `LastProvisionError`
 
 ### Clinic configuration step tracking (`sql/135_provider_signup_accs_config_steps.sql`)
@@ -411,7 +411,7 @@ Plus standard `ADOBE_COMMERCE_*` for ACCS API auth.
 1. **Live vs `main` drift** — Confirm Azure wwwroot matches `main` for `provider-signup/` and `includes/provider-signup*` after fast-moving merges.
 2. **Clinic storefront Aug 3 messaging** — Hardcoded in welcome email copy; update when go-live date changes.
 3. **Per-clinic QR in email** — Not implemented; welcome email points users to Clinic Store admin after storefront is live.
-4. **ACCS `AccsClinicId`** — Currently mirrors company ID; confirm if a separate clinic entity ID is introduced later.
+4. **ACCS `clinic_id` on company admin** — Must equal current company ID (`AccsClinicId` / `AccsCompanyId`). Repair: `php scripts/repair-provider-signup-clinic-id.php`
 5. **reCAPTCHA keys** — Must be set on Azure App Service; domains include `provider-signup.nutraaxislabs.com` and `nutraaxisweb.azurewebsites.net`.
 
 ---

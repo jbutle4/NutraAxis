@@ -8,6 +8,7 @@ const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
 const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Production Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 const PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE = 'clinic_doctor';
+const PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE = 'clinic_id';
 /** @deprecated Legacy cookie — expired on public pages; no longer read for routing. */
 const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
 
@@ -670,6 +671,53 @@ function provider_signup_accs_sync_company_admin_customer(int $customerId, int $
 }
 
 /**
+ * Set Clinic ID on the company admin customer (ACCS custom attribute clinic_id).
+ * Must match the current ACCS company ID so storefront doctor dropdowns resolve.
+ *
+ * @param array<string, mixed>|null $customer
+ * @return array{ok: bool, error: ?string, updated: bool}
+ */
+function provider_signup_accs_set_admin_clinic_id(int $customerId, int $companyId, ?array $customer = null): array
+{
+    if ($customerId <= 0 || $companyId <= 0) {
+        return ['ok' => false, 'error' => 'Customer ID and company ID are required.', 'updated' => false];
+    }
+
+    if ($customer === null) {
+        $current = provider_signup_accs_api_request('GET', '/customers/' . $customerId);
+        if (!$current['ok'] || !is_array($current['data'] ?? null)) {
+            return ['ok' => false, 'error' => provider_signup_accs_format_api_error($current), 'updated' => false];
+        }
+        $customer = $current['data'];
+    }
+
+    $clinicIdValue = (string) $companyId;
+    if (provider_signup_accs_customer_attribute_value($customer, PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE) === $clinicIdValue) {
+        return ['ok' => true, 'error' => null, 'updated' => false];
+    }
+
+    $result = provider_signup_accs_api_request('PUT', '/customers/' . $customerId, null, [
+        'customer' => [
+            'id'                => $customerId,
+            'email'             => (string) ($customer['email'] ?? ''),
+            'firstname'         => (string) ($customer['firstname'] ?? ''),
+            'lastname'          => (string) ($customer['lastname'] ?? ''),
+            'website_id'        => (int) ($customer['website_id'] ?? provider_signup_accs_website_id()),
+            'group_id'          => (int) ($customer['group_id'] ?? provider_signup_accs_customer_group_id()),
+            'custom_attributes' => provider_signup_accs_merge_customer_attributes($customer, [
+                PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE => $clinicIdValue,
+            ]),
+        ],
+    ]);
+
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($result), 'updated' => false];
+    }
+
+    return ['ok' => true, 'error' => null, 'updated' => true];
+}
+
+/**
  * Force company Practitioner group, Sales_Support, and Advanced Settings flags after create/update.
  *
  * @return array{ok: bool, error: ?string}
@@ -878,6 +926,14 @@ function provider_signup_accs_provision(array $application): array
     $attribute = provider_signup_accs_set_clinic_type($companyId, $clinicType);
     if (!$attribute['ok']) {
         return ['ok' => false, 'error' => $attribute['error'] ?? 'Unable to set clinic-type on ACCS company.'];
+    }
+
+    $adminClinicId = provider_signup_accs_set_admin_clinic_id((int) $admin['customer_id'], $companyId);
+    if (!$adminClinicId['ok']) {
+        return [
+            'ok'    => false,
+            'error' => $adminClinicId['error'] ?? 'Unable to set Clinic ID on ACCS company admin.',
+        ];
     }
 
     return [

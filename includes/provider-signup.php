@@ -711,14 +711,27 @@ function provider_signup_ops_mark_config_step(int $applicationId, string $step, 
                 return ['ok' => false, 'error' => 'ACCS company ID is required to mark the clinic step complete.'];
             }
             $setClauses[] = 'AccsCompanyId = :accs_company_id';
-            $setClauses[] = 'AccsClinicId = COALESCE(AccsClinicId, :accs_clinic_id)';
+            $setClauses[] = 'AccsClinicId = :accs_clinic_id';
             $setClauses[] = 'AccsEnvironment = COALESCE(AccsEnvironment, :accs_environment)';
             $setClauses[] = 'AccsStepClinicDone = 1';
             $setClauses[] = 'AccsStepClinicAt = SYSUTCDATETIME()';
             $params['accs_company_id'] = $companyId;
-            $params['accs_clinic_id'] = trim((string) ($extra['accs_clinic_id'] ?? $application['AccsClinicId'] ?? (string) $companyId));
+            $params['accs_clinic_id'] = (string) $companyId;
             $params['accs_environment'] = provider_signup_application_accs_environment($application);
-            $logDetail = 'company ID ' . $companyId;
+            $customerId = (int) ($extra['accs_customer_id'] ?? $application['AccsCustomerId'] ?? 0);
+            if ($customerId > 0) {
+                $clinicIdResult = provider_signup_accs_with_environment(
+                    provider_signup_application_accs_environment($application),
+                    static fn (): array => provider_signup_accs_set_admin_clinic_id($customerId, $companyId)
+                );
+                if (!$clinicIdResult['ok']) {
+                    return [
+                        'ok'    => false,
+                        'error' => $clinicIdResult['error'] ?? 'Unable to set Clinic ID on ACCS company admin.',
+                    ];
+                }
+            }
+            $logDetail = 'company ID ' . $companyId . ', Clinic ID ' . $companyId;
             break;
 
         case 'admin':
