@@ -5,11 +5,35 @@ require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/provider-signup-crypto.php';
 
 const PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT = 4;
-const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Sales_Support
+const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT = 12; // Production Sales_Support
 const PROVIDER_SIGNUP_ACCS_CLINIC_TYPE_ATTRIBUTE = 'clinic-type';
 const PROVIDER_SIGNUP_ACCS_CLINIC_DOCTOR_ATTRIBUTE = 'clinic_doctor';
+const PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE = 'clinic_id';
 /** @deprecated Legacy cookie — expired on public pages; no longer read for routing. */
 const PROVIDER_SIGNUP_ACCS_ENV_COOKIE = 'provider_signup_accs_env';
+
+/**
+ * ACCS Admin user IDs for Sales_Support (company.sales_representative_id).
+ * IDs are per tenant — do not reuse Production 12 on Stage.
+ *
+ * @var array<string, int>
+ */
+const PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_BY_ENVIRONMENT = [
+    'production' => 12,
+    'stage'      => 18,
+    'dev'        => 1,
+];
+
+/**
+ * Clinic_Template company IDs (full clinic roles). Per tenant.
+ *
+ * @var array<string, int>
+ */
+const PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_BY_ENVIRONMENT = [
+    'production' => 3,
+    'stage'      => 9,
+    'dev'        => 7,
+];
 
 function provider_signup_accs_allowed_environments(): array
 {
@@ -155,28 +179,77 @@ function provider_signup_accs_target_environment(): string
     return strtolower(trim((string) env('PROVIDER_SIGNUP_ACCS_ENVIRONMENT', 'stage')));
 }
 
+function provider_signup_accs_environment_setting_suffix(?string $environment = null): string
+{
+    $environment = provider_signup_accs_normalize_environment($environment)
+        ?? provider_signup_accs_normalize_environment(provider_signup_accs_target_environment())
+        ?? 'stage';
+
+    return match ($environment) {
+        'production' => 'PRODUCTION',
+        'stage'      => 'STAGE',
+        'dev'        => 'DEV',
+        default      => strtoupper($environment),
+    };
+}
+
+/**
+ * Read an env-specific setting first (KEY_STAGE / KEY_PRODUCTION / KEY_DEV),
+ * then the shared KEY when $allowShared is true.
+ */
+function provider_signup_accs_setting_value(string $baseKey, bool $allowShared = true): ?string
+{
+    $envKey = $baseKey . '_' . provider_signup_accs_environment_setting_suffix();
+    $keys = $allowShared ? [$envKey, $baseKey] : [$envKey];
+
+    foreach ($keys as $key) {
+        $runtime = env_runtime_value($key);
+        if ($runtime !== null && $runtime !== '') {
+            return $runtime;
+        }
+
+        $configured = env($key, null);
+        if ($configured !== null && $configured !== '') {
+            return $configured;
+        }
+    }
+
+    return null;
+}
+
+function provider_signup_accs_setting_int(string $baseKey, int $fallback, bool $allowShared = true): int
+{
+    $configured = (int) (provider_signup_accs_setting_value($baseKey, $allowShared) ?? 0);
+
+    return $configured > 0 ? $configured : $fallback;
+}
+
 function provider_signup_accs_customer_group_id(): int
 {
-    $configured = (int) env('PROVIDER_SIGNUP_ACCS_USER_GROUP_ID', (string) PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT);
-
-    return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT;
+    return provider_signup_accs_setting_int(
+        'PROVIDER_SIGNUP_ACCS_USER_GROUP_ID',
+        PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT
+    );
 }
 
 function provider_signup_accs_sales_representative_id(): int
 {
-    $configured = (int) env(
-        'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
-        (string) PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT
-    );
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    $fallback = PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_BY_ENVIRONMENT[$environment]
+        ?? PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT;
 
-    return $configured > 0 ? $configured : PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEFAULT;
+    // Shared PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID is Production-oriented.
+    // Do not apply it to Stage/Dev — those tenants have different Admin user IDs.
+    return provider_signup_accs_setting_int(
+        'PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID',
+        $fallback,
+        false
+    );
 }
 
 function provider_signup_accs_website_id(): int
 {
-    $configured = (int) env('PROVIDER_SIGNUP_ACCS_WEBSITE_ID', '1');
-
-    return $configured > 0 ? $configured : 1;
+    return provider_signup_accs_setting_int('PROVIDER_SIGNUP_ACCS_WEBSITE_ID', 1);
 }
 
 function provider_signup_accs_generate_password(): string
@@ -217,6 +290,10 @@ function provider_signup_accs_format_api_error(array $result): string
     $value = $parameters['value'] ?? null;
     $valueLabel = $value === null || $value === '' ? '(empty)' : (is_scalar($value) ? (string) $value : json_encode($value));
 
+    if ($fieldName !== '' && str_contains($message, '%fieldName') && str_contains($message, 'is not supported')) {
+        return 'ACCS does not support ' . $fieldName . ' in this environment.';
+    }
+
     if ($fieldName !== '' && str_contains($message, '%fieldName')) {
         return 'ACCS rejected ' . $fieldName . ' (' . $valueLabel . ').';
     }
@@ -226,6 +303,54 @@ function provider_signup_accs_format_api_error(array $result): string
     }
 
     return $message;
+}
+
+/**
+ * Whether the current ACCS tenant supports company address-book extension attributes.
+ * Stage has Magento_CompanyAddressStorefrontCompatibility*; Production currently does not.
+ */
+function provider_signup_accs_supports_company_address_book(): bool
+{
+    static $cache = [];
+
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    if (array_key_exists($environment, $cache)) {
+        return $cache[$environment];
+    }
+
+    $modules = provider_signup_accs_api_request('GET', '/modules');
+    if (!($modules['ok'] ?? false) || !is_array($modules['data'] ?? null)) {
+        // Fail closed on Production (known unsupported); allow Stage/Dev when module probe fails.
+        return $cache[$environment] = ($environment !== 'production');
+    }
+
+    foreach ($modules['data'] as $module) {
+        $name = is_string($module) ? $module : (string) ($module['name'] ?? '');
+        if (
+            $name === 'Magento_CompanyAddressStorefrontCompatibility'
+            || $name === 'Magento_CompanyAddressStorefrontCompatibilityRest'
+            || str_contains($name, 'CompanyAddressStorefrontCompatibility')
+        ) {
+            return $cache[$environment] = true;
+        }
+    }
+
+    return $cache[$environment] = false;
+}
+
+/**
+ * @return array{is_company_address_book_enabled?: bool, is_custom_shipping_address_allowed?: bool}
+ */
+function provider_signup_accs_company_address_book_extension_attributes(): array
+{
+    if (!provider_signup_accs_supports_company_address_book()) {
+        return [];
+    }
+
+    return [
+        'is_company_address_book_enabled'    => true,
+        'is_custom_shipping_address_allowed' => true,
+    ];
 }
 
 function provider_signup_accs_region_id_for_state(string $stateCode, string $countryId = 'US'): ?int
@@ -598,6 +723,53 @@ function provider_signup_accs_sync_company_admin_customer(int $customerId, int $
 }
 
 /**
+ * Set Clinic ID on the company admin customer (ACCS custom attribute clinic_id).
+ * Must match the current ACCS company ID so storefront doctor dropdowns resolve.
+ *
+ * @param array<string, mixed>|null $customer
+ * @return array{ok: bool, error: ?string, updated: bool}
+ */
+function provider_signup_accs_set_admin_clinic_id(int $customerId, int $companyId, ?array $customer = null): array
+{
+    if ($customerId <= 0 || $companyId <= 0) {
+        return ['ok' => false, 'error' => 'Customer ID and company ID are required.', 'updated' => false];
+    }
+
+    if ($customer === null) {
+        $current = provider_signup_accs_api_request('GET', '/customers/' . $customerId);
+        if (!$current['ok'] || !is_array($current['data'] ?? null)) {
+            return ['ok' => false, 'error' => provider_signup_accs_format_api_error($current), 'updated' => false];
+        }
+        $customer = $current['data'];
+    }
+
+    $clinicIdValue = (string) $companyId;
+    if (provider_signup_accs_customer_attribute_value($customer, PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE) === $clinicIdValue) {
+        return ['ok' => true, 'error' => null, 'updated' => false];
+    }
+
+    $result = provider_signup_accs_api_request('PUT', '/customers/' . $customerId, null, [
+        'customer' => [
+            'id'                => $customerId,
+            'email'             => (string) ($customer['email'] ?? ''),
+            'firstname'         => (string) ($customer['firstname'] ?? ''),
+            'lastname'          => (string) ($customer['lastname'] ?? ''),
+            'website_id'        => (int) ($customer['website_id'] ?? provider_signup_accs_website_id()),
+            'group_id'          => (int) ($customer['group_id'] ?? provider_signup_accs_customer_group_id()),
+            'custom_attributes' => provider_signup_accs_merge_customer_attributes($customer, [
+                PROVIDER_SIGNUP_ACCS_CLINIC_ID_ATTRIBUTE => $clinicIdValue,
+            ]),
+        ],
+    ]);
+
+    if (!$result['ok']) {
+        return ['ok' => false, 'error' => provider_signup_accs_format_api_error($result), 'updated' => false];
+    }
+
+    return ['ok' => true, 'error' => null, 'updated' => true];
+}
+
+/**
  * Force company Practitioner group, Sales_Support, and Advanced Settings flags after create/update.
  *
  * @return array{ok: bool, error: ?string}
@@ -626,18 +798,19 @@ function provider_signup_accs_set_company_defaults(int $companyId, int $groupId,
         $needsUpdate = true;
     }
 
-    $extension = is_array($company['extension_attributes'] ?? null)
-        ? $company['extension_attributes']
-        : [];
-    if (empty($extension['is_company_address_book_enabled'])) {
-        $extension['is_company_address_book_enabled'] = true;
-        $needsUpdate = true;
+    $addressBookFlags = provider_signup_accs_company_address_book_extension_attributes();
+    if ($addressBookFlags !== []) {
+        $extension = is_array($company['extension_attributes'] ?? null)
+            ? $company['extension_attributes']
+            : [];
+        foreach ($addressBookFlags as $flag => $value) {
+            if (empty($extension[$flag])) {
+                $extension[$flag] = $value;
+                $needsUpdate = true;
+            }
+        }
+        $company['extension_attributes'] = $extension;
     }
-    if (empty($extension['is_custom_shipping_address_allowed'])) {
-        $extension['is_custom_shipping_address_allowed'] = true;
-        $needsUpdate = true;
-    }
-    $company['extension_attributes'] = $extension;
 
     if (!$needsUpdate) {
         return ['ok' => true, 'error' => null];
@@ -671,7 +844,7 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
         'State reseller certificate on file in Operations portal.',
     ]);
 
-    return [
+    $payload = [
         'company' => [
             'status'                   => 1,
             'company_name'             => trim((string) ($application['CompanyName'] ?? '')),
@@ -689,12 +862,15 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
             'customer_group_id'        => $groupId,
             'sales_representative_id'  => provider_signup_accs_sales_representative_id(),
             'super_user_id'            => $superUserId,
-            'extension_attributes'     => [
-                'is_company_address_book_enabled'   => true,
-                'is_custom_shipping_address_allowed'=> true,
-            ],
         ],
     ];
+
+    $addressBookFlags = provider_signup_accs_company_address_book_extension_attributes();
+    if ($addressBookFlags !== []) {
+        $payload['company']['extension_attributes'] = $addressBookFlags;
+    }
+
+    return $payload;
 }
 
 function provider_signup_accs_create_company(array $application, int $groupId, int $superUserId): array
@@ -806,6 +982,14 @@ function provider_signup_accs_provision(array $application): array
     $attribute = provider_signup_accs_set_clinic_type($companyId, $clinicType);
     if (!$attribute['ok']) {
         return ['ok' => false, 'error' => $attribute['error'] ?? 'Unable to set clinic-type on ACCS company.'];
+    }
+
+    $adminClinicId = provider_signup_accs_set_admin_clinic_id((int) $admin['customer_id'], $companyId);
+    if (!$adminClinicId['ok']) {
+        return [
+            'ok'    => false,
+            'error' => $adminClinicId['error'] ?? 'Unable to set Clinic ID on ACCS company admin.',
+        ];
     }
 
     return [

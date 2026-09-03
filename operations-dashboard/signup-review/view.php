@@ -102,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
         case 'mark_config_step':
             $result = provider_signup_ops_mark_config_step($applicationId, (string) ($_POST['step'] ?? ''), [
                 'accs_company_id'            => $_POST['accs_company_id'] ?? '',
-                'accs_clinic_id'             => $_POST['accs_clinic_id'] ?? '',
                 'accs_customer_id'           => $_POST['accs_customer_id'] ?? '',
                 'accs_shared_catalog_id'     => $_POST['accs_shared_catalog_id'] ?? '',
                 'accs_catalog_category_count'=> $_POST['accs_catalog_category_count'] ?? '',
@@ -385,10 +384,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                 <label for="accs_company_id_<?= htmlspecialchars($step['key']) ?>">ACCS company ID</label>
                 <input class="form-input" type="number" min="1" id="accs_company_id_<?= htmlspecialchars($step['key']) ?>" name="accs_company_id" value="<?= (int) ($application['AccsCompanyId'] ?? 0) > 0 ? (int) $application['AccsCompanyId'] : '' ?>" required />
               </div>
-              <div class="form-group form-group-inline">
-                <label for="accs_clinic_id_<?= htmlspecialchars($step['key']) ?>">Clinic ID (optional)</label>
-                <input class="form-input" type="text" id="accs_clinic_id_<?= htmlspecialchars($step['key']) ?>" name="accs_clinic_id" value="<?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '')) ?>" />
-              </div>
+              <p class="form-hint">Clinic ID is set automatically to the ACCS company ID on the company admin (<code>clinic_id</code> customer attribute).</p>
               <?php elseif ($step['key'] === 'admin'): ?>
               <div class="form-group form-group-inline">
                 <label for="accs_customer_id_<?= htmlspecialchars($step['key']) ?>">ACCS customer ID</label>

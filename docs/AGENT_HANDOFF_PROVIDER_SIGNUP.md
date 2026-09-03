@@ -160,8 +160,8 @@ Status constraint migration: `sql/124_provider_signup_status_submitted_for_revie
 | Setting | Env var | Default | Purpose |
 |---------|---------|---------|---------|
 | Target ACCS tenant | `PROVIDER_SIGNUP_ACCS_ENVIRONMENT` | `stage` locally; **`production`** on live App Service | Which Adobe tenant API to hit |
-| Customer group | `PROVIDER_SIGNUP_ACCS_USER_GROUP_ID` | **4** | Practitioner shared catalog |
-| Sales rep | `PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID` | **12** | `Sales_Support` admin user on company |
+| Customer group | `PROVIDER_SIGNUP_ACCS_USER_GROUP_ID` | **4** (same on Stage/Prod/Dev) | Practitioner shared catalog |
+| Sales rep | `PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_{STAGE\|PRODUCTION\|DEV}` | Prod **12**, Stage **18**, Dev **1** | `Sales_Support` admin user — IDs are per tenant |
 | Website | `PROVIDER_SIGNUP_ACCS_WEBSITE_ID` | **1** | Magento website ID |
 | Test password | `PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD` | (auto-generated) | Optional fixed password for stage |
 
@@ -169,7 +169,7 @@ Status constraint migration: `sql/124_provider_signup_status_submitted_for_revie
 
 - `AccsCompanyId` — ACCS company ID
 - `AccsCustomerId` — company admin customer ID
-- `AccsClinicId` — currently set to **company ID string** (clinic storefront ID for email)
+- `AccsClinicId` — mirrors **ACCS company ID**; also written to company admin custom attribute `clinic_id` (storefront doctor dropdown)
 - `ProvisionedAt`, `LastProvisionError`
 
 ### Clinic configuration step tracking (`sql/135_provider_signup_accs_config_steps.sql`)
@@ -206,12 +206,12 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Source catalog for categories/products |
-| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME` | `Clinic_Template` | Auto-resolved template company for role cloning |
-| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID` | (none) | Optional explicit ID; otherwise lookup by name |
+| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Source catalog (`Default (General)` on Stage/Prod/Dev). Optional `_*_STAGE` / `_*_PRODUCTION` |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME` | `Clinic_Template` | Looked up **in the current tenant** for role cloning |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_{STAGE\|PRODUCTION\|DEV}` | Stage **9**, Prod **3**, Dev **7** | Clinic_Template with full roles. Shared `TEMPLATE_COMPANY_ID` is ignored across tenants |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT` | `dev` | Bootstrap script copies role permissions from this ACCS tenant |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID` | `5` | Dev Butler Health (full clinic roles; Stage Butler only has Default User) |
-| `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS` | (none) | Optional comma-separated template role IDs instead of company clone |
+| `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS_{STAGE\|PRODUCTION\|DEV}` | (none) | Optional per-tenant role IDs instead of company clone. Shared list is not used |
 | `PROVIDER_SIGNUP_ACCS_REQUIRED_ROLE_NAMES` | `Default User,Owner,Company_Admin,Provider,Affiliated Patients` | Post-clone verification |
 
 ### Company payload highlights (`provider_signup_accs_build_company_payload`)
@@ -342,12 +342,16 @@ PROVIDER_SIGNUP_OPS_EMAIL=          # Internal new-application alert
 PROVIDER_ACCS_LOGIN_URL=            # Sign-in link in welcome email
 PROVIDER_SIGNUP_ACCS_ENVIRONMENT=   # production | stage
 PROVIDER_SIGNUP_ACCS_USER_GROUP_ID=4
-PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID=12
+PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_PRODUCTION=12
+PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_STAGE=18
+PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEV=1
 PROVIDER_SIGNUP_ACCS_WEBSITE_ID=1
 PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD=
 PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME=Clinic_Template
-PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID=
+PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_PRODUCTION=3
+PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_STAGE=9
+PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_DEV=7
 PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT=dev
 PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID=5
 PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS=
@@ -407,7 +411,7 @@ Plus standard `ADOBE_COMMERCE_*` for ACCS API auth.
 1. **Live vs `main` drift** — Confirm Azure wwwroot matches `main` for `provider-signup/` and `includes/provider-signup*` after fast-moving merges.
 2. **Clinic storefront Aug 3 messaging** — Hardcoded in welcome email copy; update when go-live date changes.
 3. **Per-clinic QR in email** — Not implemented; welcome email points users to Clinic Store admin after storefront is live.
-4. **ACCS `AccsClinicId`** — Currently mirrors company ID; confirm if a separate clinic entity ID is introduced later.
+4. **ACCS `clinic_id` on company admin** — Must equal current company ID (`AccsClinicId` / `AccsCompanyId`). Repair: `php scripts/repair-provider-signup-clinic-id.php`
 5. **reCAPTCHA keys** — Must be set on Azure App Service; domains include `provider-signup.nutraaxislabs.com` and `nutraaxisweb.azurewebsites.net`.
 
 ---

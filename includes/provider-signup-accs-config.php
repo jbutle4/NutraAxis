@@ -53,9 +53,7 @@ function provider_signup_accs_config_api_request(
 
 function provider_signup_accs_config_master_catalog_id(): int
 {
-    $configured = (int) env('PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID', '1');
-
-    return $configured > 0 ? $configured : 1;
+    return provider_signup_accs_setting_int('PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID', 1);
 }
 
 function provider_signup_accs_config_template_company_name(): string
@@ -119,16 +117,45 @@ function provider_signup_accs_config_find_company_id_by_name(string $companyName
     return null;
 }
 
-function provider_signup_accs_config_template_company_id(): int
+function provider_signup_accs_config_company_has_name(int $companyId, string $companyName): bool
 {
-    $configured = max(0, (int) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID', '0'));
-    if ($configured > 0) {
-        return $configured;
+    if ($companyId <= 0 || trim($companyName) === '') {
+        return false;
     }
 
-    return provider_signup_accs_config_find_company_id_by_name(
-        provider_signup_accs_config_template_company_name()
-    ) ?? 0;
+    $result = provider_signup_accs_config_api_request('GET', '/company/' . $companyId);
+    if (!($result['ok'] ?? false) || !is_array($result['data'] ?? null)) {
+        return false;
+    }
+
+    return strcasecmp(trim((string) ($result['data']['company_name'] ?? '')), trim($companyName)) === 0;
+}
+
+/**
+ * Resolve Clinic_Template in the current ACCS tenant.
+ * Never reuse a Production company ID (Azure TEMPLATE_COMPANY_ID=3) on Stage.
+ */
+function provider_signup_accs_config_template_company_id(): int
+{
+    $templateName = provider_signup_accs_config_template_company_name();
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    $fallback = PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_BY_ENVIRONMENT[$environment] ?? 0;
+
+    $explicit = provider_signup_accs_setting_int('PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID', 0, false);
+    if ($explicit > 0 && provider_signup_accs_config_company_has_name($explicit, $templateName)) {
+        return $explicit;
+    }
+
+    $lookedUp = provider_signup_accs_config_find_company_id_by_name($templateName);
+    if ($lookedUp !== null && $lookedUp > 0) {
+        return $lookedUp;
+    }
+
+    if ($explicit > 0) {
+        return $explicit;
+    }
+
+    return $fallback;
 }
 
 /**
@@ -136,7 +163,8 @@ function provider_signup_accs_config_template_company_id(): int
  */
 function provider_signup_accs_config_template_role_ids(): array
 {
-    $raw = trim((string) env('PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS', ''));
+    // Role IDs are per tenant. Do not fall back to a shared Production list on Stage.
+    $raw = trim((string) (provider_signup_accs_setting_value('PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS', false) ?? ''));
     if ($raw === '') {
         return [];
     }
@@ -1130,6 +1158,21 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
         ];
     }
     $customerId = (int) $admin['customer_id'];
+
+    $adminClinicId = provider_signup_accs_set_admin_clinic_id($customerId, $companyId);
+    if (!$adminClinicId['ok']) {
+        return [
+            'ok'                     => false,
+            'error'                  => $adminClinicId['error'] ?? 'Unable to set Clinic ID on ACCS company admin.',
+            'company_id'             => $companyId,
+            'shared_catalog_id'      => null,
+            'category_count'         => null,
+            'product_count'          => null,
+            'roles_summary'          => null,
+            'configuration_complete' => false,
+            'steps'                  => [],
+        ];
+    }
 
     $steps = [
         'shared_catalog' => ['done' => false, 'action' => null],
