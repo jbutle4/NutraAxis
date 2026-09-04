@@ -186,6 +186,25 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 
 **Ops UI:** Application view → **Clinic configuration** card with checklist, **Complete ACCS clinic configuration** button (Provisioned + incomplete), and per-step **Mark complete** forms (Approved or Provisioned only).
 
+### Remove Clinic Store (teardown)
+
+**Send back to provider / revert status does not delete ACCS.** Those actions only change the Operations application status.
+
+Provisioned applications get **Remove Clinic Store** on the review page (`operations-dashboard/signup-review/view.php`). It:
+
+1. Removes Advanced Pricing / tier prices for the clinic shared catalog (the `SC-…` rows on the product)
+2. Deletes the custom shared catalog (never catalog 1 / public Default)
+3. Deletes the ACCS company (roles go with it)
+4. Optionally deletes company customer accounts (unchecked by default — leave off for reused admins)
+5. Best-effort deletes the leftover shared-catalog customer group
+6. Resets Ops ACCS IDs/steps and sets status back to **Approved** (no provider email)
+
+Guards: type the exact practice name; Production requires an extra checkbox; blocked if the company/catalog is Clinic_Template, master/public catalog, or still linked to another Provisioned application in the same ACCS environment.
+
+SQL: `sql/147_provider_signup_review_log_deprovisioned.sql` adds review action `Deprovisioned`.
+
+Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_deprovision()`.
+
 **PHP helpers** (`includes/provider-signup.php`):
 
 - `provider_signup_config_steps($application)` — normalized step list for UI
@@ -413,6 +432,7 @@ Plus standard `ADOBE_COMMERCE_*` for ACCS API auth.
 3. **Per-clinic QR in email** — Not implemented; welcome email points users to Clinic Store admin after storefront is live.
 4. **ACCS `clinic_id` on company admin** — Must equal current company ID (`AccsClinicId` / `AccsCompanyId`). Repair: `php scripts/repair-provider-signup-clinic-id.php`
 5. **reCAPTCHA keys** — Must be set on Azure App Service; domains include `provider-signup.nutraaxislabs.com` and `nutraaxisweb.azurewebsites.net`.
+6. **Clinic catalog maintenance** — Design only: [`docs/ACCS_Clinic_Catalog_Maintenance.md`](ACCS_Clinic_Catalog_Maintenance.md). Select All for new-SKU membership; do not implement the Function App until Ops asks.
 
 ---
 
@@ -425,8 +445,8 @@ rg "PROVIDER_SIGNUP_STATUS" includes/provider-signup.php
 # ACCS provision
 rg "provider_signup_accs_provision" includes/
 
-# Ops provision button
-rg "provider_signup_ops_provision" operations-dashboard/signup-review/
+# Ops provision / teardown
+rg "provider_signup_ops_provision|provider_signup_ops_deprovision" operations-dashboard/signup-review/ includes/
 
 # Email templates
 rg "function provider_signup_mail_" includes/provider-signup-mail.php

@@ -9,6 +9,7 @@ require_once __DIR__ . '/provider-signup-mail.php';
 require_once __DIR__ . '/provider-signup-npi-snapshot.php';
 require_once __DIR__ . '/provider-signup-accs.php';
 require_once __DIR__ . '/provider-signup-accs-config.php';
+require_once __DIR__ . '/provider-signup-accs-deprovision.php';
 require_once __DIR__ . '/provider-signup-recaptcha.php';
 
 const PROVIDER_SIGNUP_PERMISSION_COLUMN = 'ProviderAccountReview';
@@ -343,6 +344,16 @@ function provider_signup_provider_can_submit(array $application): bool
 function provider_signup_ops_can_provision(array $application): bool
 {
     return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_APPROVED;
+}
+
+function provider_signup_ops_can_deprovision(array $application): bool
+{
+    return (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED
+        && (
+            (int) ($application['AccsCompanyId'] ?? 0) > 0
+            || (int) ($application['AccsCustomerId'] ?? 0) > 0
+            || (int) ($application['AccsSharedCatalogId'] ?? 0) > 0
+        );
 }
 
 /** @return list<string> */
@@ -1954,6 +1965,122 @@ function provider_signup_ops_provision(int $applicationId, array $options = []):
         $reviewerId > 0 ? $reviewerId : null,
         $logComments
     );
+}
+
+/**
+ * @param array<string, mixed> $input
+ * @return array{ok: bool, error: ?string, summary?: string}
+ */
+function provider_signup_ops_deprovision(int $applicationId, array $input = []): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_ops_can_deprovision($application)) {
+        return ['ok' => false, 'error' => 'This application has no provisioned Clinic Store to remove.'];
+    }
+
+    $expectedName = trim((string) ($application['CompanyName'] ?? ''));
+    $typedName = trim((string) ($input['confirm_company_name'] ?? ''));
+    if ($expectedName === '' || strcasecmp($typedName, $expectedName) !== 0) {
+        return ['ok' => false, 'error' => 'Type the exact practice name to confirm Clinic Store removal.'];
+    }
+
+    $environment = provider_signup_application_accs_environment($application);
+    if ($environment === 'production' && (string) ($input['confirm_production'] ?? '') !== '1') {
+        return ['ok' => false, 'error' => 'Production ACCS teardown requires the Production confirmation checkbox.'];
+    }
+
+    $result = provider_signup_accs_with_environment(
+        $environment,
+        static fn (): array => provider_signup_accs_deprovision($application, [
+            'delete_customers' => !empty($input['delete_customers']),
+        ])
+    );
+    if (!($result['ok'] ?? false)) {
+        $error = provider_signup_accs_format_provision_error(
+            (string) ($result['error'] ?? 'Unable to remove the ACCS Clinic Store.')
+        );
+        try {
+            db()->prepare(<<<SQL
+                UPDATE dbo.ProviderSignupApplication
+                SET LastProvisionError = ?,
+                    LastSavedAt = SYSUTCDATETIME()
+                WHERE ApplicationID = ?
+            SQL)->execute([$error, $applicationId]);
+        } catch (Throwable) {
+            /* keep original teardown error */
+        }
+        provider_signup_add_review_log(
+            $applicationId,
+            (int) (auth_user()['UserID'] ?? 0) ?: null,
+            'Comment',
+            'Clinic Store removal failed: ' . $error
+        );
+
+        return ['ok' => false, 'error' => $error];
+    }
+
+    try {
+        db()->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET Status = ?,
+                AccsCompanyId = NULL,
+                AccsCustomerId = NULL,
+                AccsClinicId = NULL,
+                AccsSharedCatalogId = NULL,
+                AccsCatalogCategoryCount = NULL,
+                AccsCatalogProductCount = NULL,
+                AccsRolesSummary = NULL,
+                AccsStepClinicDone = 0,
+                AccsStepClinicAt = NULL,
+                AccsStepAdminDone = 0,
+                AccsStepAdminAt = NULL,
+                AccsStepSharedCatalogDone = 0,
+                AccsStepSharedCatalogAt = NULL,
+                AccsStepCatalogAssignDone = 0,
+                AccsStepCatalogAssignAt = NULL,
+                AccsStepRolesDone = 0,
+                AccsStepRolesAt = NULL,
+                AccsConfigurationComplete = 0,
+                AccsConfigurationCompletedAt = NULL,
+                ProvisionedAt = NULL,
+                LastProvisionError = NULL,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = ?
+        SQL)->execute([
+            PROVIDER_SIGNUP_STATUS_APPROVED,
+            $applicationId,
+        ]);
+    } catch (Throwable) {
+        return [
+            'ok'    => false,
+            'error' => 'ACCS objects were removed, but the application record could not be reset. '
+                . ($result['summary'] ?? ''),
+        ];
+    }
+
+    $reviewerId = (int) (auth_user()['UserID'] ?? 0);
+    $logComments = trim((string) ($input['comments'] ?? ''));
+    $summary = trim((string) ($result['summary'] ?? ''));
+    if ($summary !== '') {
+        $logComments = trim($logComments . ($logComments !== '' ? ' — ' : '') . $summary);
+    }
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'Deprovisioned',
+        $logComments !== '' ? $logComments : 'ACCS Clinic Store removed.'
+    );
+
+    return [
+        'ok'      => true,
+        'error'   => null,
+        'summary' => $summary,
+    ];
 }
 
 function provider_signup_persist_form(int $applicationId, array $form, bool $submitting): array

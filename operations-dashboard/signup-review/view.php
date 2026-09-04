@@ -26,6 +26,7 @@ $canUpdate = provider_signup_can_update();
 $canEdit = provider_signup_ops_can_edit($application);
 $canApprove = provider_signup_ops_can_approve($application);
 $canProvision = provider_signup_ops_can_provision($application);
+$canDeprovision = provider_signup_ops_can_deprovision($application);
 $canRevert = provider_signup_ops_can_revert($application);
 $providerCanEdit = provider_signup_provider_can_edit($application);
 $approvalChecklist = provider_signup_submit_checklist(provider_signup_form_from_row($application), $applicationId);
@@ -117,6 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to mark configuration step.'), true, 302);
             }
             exit;
+        case 'deprovision':
+            $result = provider_signup_ops_deprovision($applicationId, $_POST);
+            if ($result['ok']) {
+                header('Location: ' . $redirect . '&notice=deprovisioned', true, 302);
+            } else {
+                header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? 'Unable to remove the Clinic Store.'), true, 302);
+            }
+            exit;
         case 'complete_accs_config':
             $result = provider_signup_ops_complete_accs_configuration($applicationId);
             if ($result['ok']) {
@@ -159,6 +168,13 @@ $canRunAccsConfig = $canUpdate
     && (string) ($application['Status'] ?? '') === PROVIDER_SIGNUP_STATUS_PROVISIONED
     && (int) ($application['AccsCompanyId'] ?? 0) > 0
     && empty($application['AccsConfigurationComplete']);
+$deprovisionPreview = null;
+if ($canUpdate && $canDeprovision) {
+    $deprovisionPreview = provider_signup_accs_with_environment(
+        provider_signup_application_accs_environment($application),
+        static fn (): array => provider_signup_accs_deprovision_preview($application)
+    );
+}
 $reviewWarnings = provider_signup_ops_review_warnings(
     $application,
     $applicationId,
@@ -227,6 +243,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">ACCS clinic configuration updated. Review remaining checklist items if any are still pending.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'accs_env_updated'): ?>
       <div class="admin-notice is-success" role="status">ACCS environment updated for Clinic Store provisioning.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'deprovisioned'): ?>
+      <div class="admin-notice is-success" role="status">ACCS Clinic Store removed. The application is back to Approved so you can provision again or reject the test record.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
@@ -418,6 +436,116 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php endforeach; ?>
           <?php endif; ?>
         </section>
+
+        <?php if ($canUpdate && $canDeprovision): ?>
+        <?php
+        $previewOk = is_array($deprovisionPreview) && !empty($deprovisionPreview['ok']);
+        $previewBlocked = $previewOk ? ($deprovisionPreview['blocked'] ?? []) : [];
+        $previewUsers = $previewOk ? ($deprovisionPreview['users'] ?? []) : [];
+        $canSubmitDeprovision = $previewOk && $previewBlocked === [];
+        $deprovisionEnv = provider_signup_application_accs_environment($application);
+        ?>
+        <section class="detail-card detail-card--wide provider-signup-deprovision">
+          <h2>Remove Clinic Store</h2>
+          <p class="form-hint">
+            Deletes the ACCS company, custom shared catalog (<code>SC-…</code>), and Advanced Pricing rows for that catalog.
+            Company roles go away with the company. This does <strong>not</strong> delete the Operations application.
+            After removal the application returns to <strong>Approved</strong> so you can provision again.
+          </p>
+          <?php if (!$previewOk): ?>
+          <div class="admin-notice is-error" role="alert">
+            Unable to load ACCS preview: <?= htmlspecialchars((string) ($deprovisionPreview['error'] ?? 'Unknown error.')) ?>
+          </div>
+          <?php else: ?>
+          <dl class="detail-list detail-list-inline">
+            <div><dt>ACCS environment</dt><dd><?= htmlspecialchars(provider_signup_accs_environment_label($deprovisionEnv)) ?></dd></div>
+            <div><dt>Company</dt><dd><?php
+              if (!empty($deprovisionPreview['company']['exists'])) {
+                  echo htmlspecialchars((string) ($deprovisionPreview['company']['name'] ?? ''))
+                      . ' · ID ' . (int) ($deprovisionPreview['company']['id'] ?? 0);
+              } elseif (!empty($deprovisionPreview['company']['id'])) {
+                  echo 'ID ' . (int) $deprovisionPreview['company']['id'] . ' (already absent)';
+              } else {
+                  echo '—';
+              }
+            ?></dd></div>
+            <div><dt>Shared catalog</dt><dd><?php
+              if (!empty($deprovisionPreview['catalog']['exists'])) {
+                  echo htmlspecialchars((string) ($deprovisionPreview['catalog']['name'] ?? ''))
+                      . ' · ID ' . (int) ($deprovisionPreview['catalog']['id'] ?? 0)
+                      . ' · ' . (int) ($deprovisionPreview['price_count'] ?? 0) . ' catalog prices';
+              } elseif (!empty($deprovisionPreview['catalog']['id'])) {
+                  echo 'ID ' . (int) $deprovisionPreview['catalog']['id'] . ' (already absent)';
+              } else {
+                  echo '—';
+              }
+            ?></dd></div>
+          </dl>
+          <?php if ($previewUsers !== []): ?>
+          <h3 class="admin-form-subhead">ACCS users on this company</h3>
+          <ul class="provider-signup-deprovision-users">
+            <?php foreach ($previewUsers as $user): ?>
+            <li>
+              <?= htmlspecialchars(trim((string) ($user['name'] ?? '') . ' · ' . (string) ($user['email'] ?? ''))) ?>
+              · customer #<?= (int) ($user['id'] ?? 0) ?>
+              <?php if (!empty($user['keep_reason'])): ?>
+              · <strong>will be kept</strong> (<?= htmlspecialchars((string) $user['keep_reason']) ?>)
+              <?php endif; ?>
+            </li>
+            <?php endforeach; ?>
+          </ul>
+          <?php endif; ?>
+          <?php if ($previewBlocked !== []): ?>
+          <div class="admin-notice is-error" role="alert">
+            Cannot remove this Clinic Store: <?= htmlspecialchars(implode(' ', $previewBlocked)) ?>
+          </div>
+          <?php endif; ?>
+          <?php endif; ?>
+
+          <form class="admin-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+            <input type="hidden" name="action" value="deprovision" />
+            <div class="form-group form-group-inline form-group-inline--wide">
+              <label for="confirm_company_name">Type practice name to confirm *</label>
+              <input
+                class="form-input"
+                type="text"
+                id="confirm_company_name"
+                name="confirm_company_name"
+                autocomplete="off"
+                required
+                placeholder="<?= htmlspecialchars((string) ($application['CompanyName'] ?? '')) ?>"
+              />
+            </div>
+            <div class="form-group form-group--stacked">
+              <label class="checkbox-label">
+                <input type="checkbox" name="delete_customers" value="1" />
+                Also delete ACCS customer accounts listed above
+              </label>
+              <p class="form-hint">Leave unchecked when the admin already existed (for example Kayla Mina). Check this for test users created only for this clinic.</p>
+            </div>
+            <?php if ($deprovisionEnv === 'production'): ?>
+            <div class="form-group form-group--stacked">
+              <label class="checkbox-label">
+                <input type="checkbox" name="confirm_production" value="1" required />
+                I understand this deletes Production ACCS objects
+              </label>
+            </div>
+            <?php endif; ?>
+            <div class="form-group form-group-inline form-group-inline--wide">
+              <label for="deprovision_comments">Notes (optional)</label>
+              <input class="form-input" type="text" id="deprovision_comments" name="comments" maxlength="500" />
+            </div>
+            <div class="module-actions">
+              <button
+                class="btn-danger"
+                type="submit"
+                <?= $canSubmitDeprovision ? '' : 'disabled title="Resolve preview errors before removing the Clinic Store"' ?>
+                onclick="return confirm('Remove the ACCS company, shared catalog, and catalog prices for this application? The Operations record will stay.');"
+              >Remove Clinic Store</button>
+            </div>
+          </form>
+        </section>
+        <?php endif; ?>
 
         <section class="detail-card">
           <h2>Company</h2>
