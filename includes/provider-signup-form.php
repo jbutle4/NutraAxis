@@ -129,7 +129,7 @@ $documentsOnly = !$editable && $canCompleteDocuments;
 
     <fieldset class="signup-fieldset">
       <legend>Qualifications for Wholesale</legend>
-      <p class="signup-fieldset__hint">Provide credentials required for wholesale pricing and tax-exempt status.</p>
+      <p class="signup-fieldset__hint">NPI and tax ID are required for wholesale pricing. A reseller certificate is optional — tax-exempt status is not configured until a certificate is uploaded and validated.</p>
       <div class="signup-grid">
         <label><span>NPI # *</span>
           <input type="text" name="npi_number" inputmode="numeric" maxlength="10" value="<?= htmlspecialchars($form['npi_number']) ?>" required />
@@ -150,7 +150,7 @@ $documentsOnly = !$editable && $canCompleteDocuments;
 
     <fieldset class="signup-fieldset">
       <legend>Payouts</legend>
-      <p class="signup-fieldset__hint">Banking details for monthly sales proceeds payouts (optional for submit). All practitioners receive a Clinic Store.</p>
+      <p class="signup-fieldset__hint">Optional. If you skip ACH details, your Clinic Store and payouts will not be configured until Operations receives and validates banking information.</p>
       <div class="signup-grid">
         <label><span>ACH routing #</span>
           <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
@@ -199,7 +199,7 @@ $documentsOnly = !$editable && $canCompleteDocuments;
       <input type="hidden" name="access_token" value="<?= htmlspecialchars($token) ?>" />
       <fieldset class="signup-fieldset">
         <legend>Payouts</legend>
-        <p class="signup-fieldset__hint">Required before you can receive clinic payouts.</p>
+        <p class="signup-fieldset__hint">Optional. Required before you can receive clinic payouts and before the Clinic Store is configured.</p>
         <div class="signup-grid">
           <label><span>ACH routing #</span>
             <input type="text" name="ach_routing_number" inputmode="numeric" maxlength="9" value="<?= htmlspecialchars($form['ach_routing_number']) ?>" />
@@ -256,7 +256,7 @@ $documentsOnly = !$editable && $canCompleteDocuments;
     $uploadFieldName = 'reseller_certificate';
     $uploadLabel = 'State reseller certificate and Business License (PDF or image)';
     $uploadTitle = 'Drop, paste, or choose certificate';
-    $uploadHint = 'Optional for submit — required for tax-exempt status. Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
+    $uploadHint = 'Optional. Tax-exempt status is not configured until a certificate is uploaded and validated. Drag a PDF or image here, click and paste (Ctrl+V / Cmd+V), or choose a file — up to 15 MB';
     $uploadAccept = '.pdf,image/*,application/pdf';
     $uploadMaxBytes = PROVIDER_SIGNUP_MAX_ATTACHMENT_BYTES;
     $uploadAllowedExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];

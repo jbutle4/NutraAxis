@@ -1284,20 +1284,22 @@ function provider_signup_optional_documents_warnings(array $form, int $applicati
     $warnings = [];
 
     if (!provider_signup_has_reseller_certificate($applicationId)) {
-        $warnings[] = 'No state reseller certificate was uploaded. Your account will default to taxable status until a certificate is uploaded and validated.';
+        $warnings[] = 'No state reseller certificate was uploaded. Tax-exempt status will not be configured until a certificate is uploaded and validated. Your account will stay taxable.';
     }
 
     if (!provider_signup_has_ach_info($form, $applicationId)) {
-        $warnings[] = 'ACH payout details are incomplete. Your clinic can still be provisioned, but you cannot receive a payout until ACH information is received and validated.';
+        $warnings[] = 'ACH payout details are incomplete. Your Clinic Store will not be configured until Operations receives and validates banking information. You can still submit this application.';
     }
 
     return $warnings;
 }
 
 /**
- * Review warnings that should block approve/provision unless ops explicitly overrides.
+ * Review warnings shown on the Operations application.
+ * Missing reseller certificate or ACH is informational only — those items stay
+ * unconfigured (tax-exempt / Clinic Store) until ops adds them and proceeds.
  *
- * @return list<array{key: string, label: string, message: string}>
+ * @return list<array{key: string, label: string, message: string, blocking: bool}>
  */
 function provider_signup_ops_review_warnings(array $application, int $applicationId, bool $includeProvisionChecks = false): array
 {
@@ -1308,19 +1310,21 @@ function provider_signup_ops_review_warnings(array $application, int $applicatio
     if ($npiStatus !== 'Validated') {
         $summary = trim((string) ($application['NpiValidationSummary'] ?? ''));
         $warnings[] = [
-            'key'     => 'npi',
-            'label'   => 'NPI validation',
-            'message' => $summary !== ''
+            'key'      => 'npi',
+            'label'    => 'NPI validation',
+            'message'  => $summary !== ''
                 ? $summary
                 : ($npiStatus !== '' ? $npiStatus : 'NPI has not been validated.'),
+            'blocking' => true,
         ];
     }
 
     if (!provider_signup_has_reseller_certificate($applicationId)) {
         $warnings[] = [
-            'key'     => 'reseller_certificate',
-            'label'   => 'Reseller certificate',
-            'message' => 'No state reseller certificate uploaded. The account will default to taxable status until a certificate is validated.',
+            'key'      => 'reseller_certificate',
+            'label'    => 'Reseller certificate',
+            'message'  => 'No state reseller certificate uploaded. Tax-exempt status will not be configured until a certificate is validated. You can still approve and create the Clinic Store.',
+            'blocking' => false,
         ];
     }
 
@@ -1328,9 +1332,11 @@ function provider_signup_ops_review_warnings(array $application, int $applicatio
     $bankStatus = (string) ($bankResult['status'] ?? '');
     if ($bankStatus === 'NotProvided' || $bankStatus === 'Invalid' || !($bankResult['ok'] ?? false)) {
         $warnings[] = [
-            'key'     => 'banking',
-            'label'   => 'Banking / ACH',
-            'message' => (string) ($bankResult['summary'] ?? 'Banking details are incomplete or invalid.'),
+            'key'      => 'banking',
+            'label'    => 'Banking / ACH',
+            'message'  => (string) ($bankResult['summary'] ?? 'Banking details are incomplete or invalid.')
+                . ' The Clinic Store will not be auto-configured until ACH is received and validated. You can still approve the application and configure the store from this page.',
+            'blocking' => false,
         ];
     }
 
@@ -1342,17 +1348,30 @@ function provider_signup_ops_review_warnings(array $application, int $applicatio
                 && is_array($existing['customer'] ?? null)
                 && !empty($existing['customer']['id'])) {
                 $warnings[] = [
-                    'key'     => 'existing_accs_admin',
-                    'label'   => 'Existing ACCS account',
-                    'message' => 'Admin email already exists in ACCS as customer #'
+                    'key'      => 'existing_accs_admin',
+                    'label'    => 'Existing ACCS account',
+                    'message'  => 'Admin email already exists in ACCS as customer #'
                         . (int) $existing['customer']['id']
                         . '. Provisioning will link that account as company admin (no new password).',
+                    'blocking' => true,
                 ];
             }
         }
     }
 
     return $warnings;
+}
+
+/**
+ * @param list<array{key: string, label: string, message: string, blocking?: bool}> $warnings
+ * @return list<array{key: string, label: string, message: string, blocking?: bool}>
+ */
+function provider_signup_ops_blocking_review_warnings(array $warnings): array
+{
+    return array_values(array_filter(
+        $warnings,
+        static fn (array $warning): bool => !empty($warning['blocking'])
+    ));
 }
 
 function provider_signup_ops_review_override_confirmed(array $input): bool
@@ -1420,7 +1439,7 @@ function provider_signup_banking_validate_format(array $form, int $applicationId
         return [
             'ok'      => true,
             'status'  => 'NotProvided',
-            'summary' => 'ACH details not provided. Payouts cannot be issued until banking information is received and validated.',
+            'summary' => 'ACH details not provided. The Clinic Store and payouts will not be auto-configured until banking information is received and validated.',
         ];
     }
 
@@ -2168,36 +2187,45 @@ function provider_signup_finalize_provision(int $applicationId, ?int $reviewerUs
             isset($provision['temporary_password']) ? (string) $provision['temporary_password'] : null
         );
 
-        $configResult = provider_signup_accs_with_environment(
-            provider_signup_application_accs_environment($updated),
-            static fn (): array => provider_signup_accs_complete_clinic_configuration($updated)
-        );
-        if ($configResult['ok']) {
-            $persist = provider_signup_persist_accs_config_result($applicationId, $configResult);
-            if ($persist['ok'] && !empty($persist['configuration_complete'])) {
-                provider_signup_add_review_log(
-                    $applicationId,
-                    $reviewerUserId,
-                    'Comment',
-                    'ACCS clinic configuration completed automatically after provision.'
-                );
-            } elseif (!$persist['ok']) {
-                provider_signup_add_review_log(
-                    $applicationId,
-                    $reviewerUserId,
-                    'Comment',
-                    'ACCS clinic configuration automation saved with errors: '
-                    . ($persist['error'] ?? 'Unable to persist configuration results.')
-                );
-            }
-        } else {
+        if (!provider_signup_has_ach_info(provider_signup_form_from_row($updated), $applicationId)) {
             provider_signup_add_review_log(
                 $applicationId,
                 $reviewerUserId,
                 'Comment',
-                'ACCS clinic configuration automation pending: '
-                . ($configResult['error'] ?? 'Unknown error')
+                'Clinic Store configuration skipped: ACH details are not on file. Tax-exempt status is also skipped until a reseller certificate is validated. Use Complete ACCS clinic configuration when ready.'
             );
+        } else {
+            $configResult = provider_signup_accs_with_environment(
+                provider_signup_application_accs_environment($updated),
+                static fn (): array => provider_signup_accs_complete_clinic_configuration($updated)
+            );
+            if ($configResult['ok']) {
+                $persist = provider_signup_persist_accs_config_result($applicationId, $configResult);
+                if ($persist['ok'] && !empty($persist['configuration_complete'])) {
+                    provider_signup_add_review_log(
+                        $applicationId,
+                        $reviewerUserId,
+                        'Comment',
+                        'ACCS clinic configuration completed automatically after provision.'
+                    );
+                } elseif (!$persist['ok']) {
+                    provider_signup_add_review_log(
+                        $applicationId,
+                        $reviewerUserId,
+                        'Comment',
+                        'ACCS clinic configuration automation saved with errors: '
+                        . ($persist['error'] ?? 'Unable to persist configuration results.')
+                    );
+                }
+            } else {
+                provider_signup_add_review_log(
+                    $applicationId,
+                    $reviewerUserId,
+                    'Comment',
+                    'ACCS clinic configuration automation pending: '
+                    . ($configResult['error'] ?? 'Unknown error')
+                );
+            }
         }
     }
 
@@ -2231,16 +2259,17 @@ function provider_signup_ops_provision(int $applicationId, array $options = []):
     }
 
     $warnings = provider_signup_ops_review_warnings($application, $applicationId, true);
+    $blockingWarnings = provider_signup_ops_blocking_review_warnings($warnings);
     $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
-    $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'create the Clinic Store');
+    $gate = provider_signup_ops_require_review_override_or_fail($blockingWarnings, $overrideConfirmed, 'create the Clinic Store');
     if (!$gate['ok']) {
         return ['ok' => false, 'error' => $gate['error']];
     }
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
     $logComments = 'ACCS company created by operations reviewer.';
-    if ($overrideConfirmed && $warnings !== []) {
-        $logComments .= ' ' . provider_signup_ops_format_review_override_log($warnings);
+    if ($overrideConfirmed && $blockingWarnings !== []) {
+        $logComments .= ' ' . provider_signup_ops_format_review_override_log($blockingWarnings);
     }
 
     return provider_signup_finalize_provision(
@@ -3218,8 +3247,9 @@ function provider_signup_ops_approve(int $applicationId, string $comments = '', 
     }
 
     $warnings = provider_signup_ops_review_warnings($application, $applicationId, false);
+    $blockingWarnings = provider_signup_ops_blocking_review_warnings($warnings);
     $overrideConfirmed = provider_signup_ops_review_override_confirmed($options);
-    $gate = provider_signup_ops_require_review_override_or_fail($warnings, $overrideConfirmed, 'approve this application');
+    $gate = provider_signup_ops_require_review_override_or_fail($blockingWarnings, $overrideConfirmed, 'approve this application');
     if (!$gate['ok']) {
         return ['ok' => false, 'error' => $gate['error']];
     }
@@ -3267,8 +3297,8 @@ function provider_signup_ops_approve(int $applicationId, string $comments = '', 
 
     $reviewerId = (int) (auth_user()['UserID'] ?? 0);
     $logComments = trim($comments);
-    if ($overrideConfirmed && $warnings !== []) {
-        $overrideLog = provider_signup_ops_format_review_override_log($warnings);
+    if ($overrideConfirmed && $blockingWarnings !== []) {
+        $overrideLog = provider_signup_ops_format_review_override_log($blockingWarnings);
         $logComments = trim($logComments . ($logComments !== '' ? ' ' : '') . $overrideLog);
     }
     provider_signup_add_review_log($applicationId, $reviewerId, 'Approved', $logComments);

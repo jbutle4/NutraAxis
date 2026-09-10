@@ -122,6 +122,7 @@ $hasResellerCertificate = provider_signup_has_reseller_certificate((int) ($appli
   </div>
 
   <h2 class="admin-form-subhead">Compliance &amp; banking</h2>
+  <p class="form-hint">ACH is optional. The Clinic Store is not auto-configured until banking details are on file. Tax-exempt status is not configured until a reseller certificate is uploaded and validated.</p>
   <div class="form-grid">
     <div class="form-group">
       <label for="npi_number">NPI number *</label>
@@ -178,7 +179,7 @@ $hasResellerCertificate = provider_signup_has_reseller_certificate((int) ($appli
   <?php else: ?>
   <p class="form-hint">No documents on file yet.</p>
   <?php endif; ?>
-  <p class="form-hint"><?= $hasResellerCertificate ? 'Uploading a new file replaces the current reseller certificate.' : 'Optional for approval; required for tax-exempt status.' ?></p>
+  <p class="form-hint"><?= $hasResellerCertificate ? 'Uploading a new file replaces the current reseller certificate.' : 'Optional. Tax-exempt status is not configured until a certificate is uploaded and validated.' ?></p>
   <?php
   $uploadFieldId = 'reseller_certificate';
   $uploadFieldName = 'reseller_certificate';

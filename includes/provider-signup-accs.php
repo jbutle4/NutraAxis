@@ -836,12 +836,18 @@ function provider_signup_accs_build_company_payload(array $application, int $gro
     $countryId = trim((string) ($application['CountryCode'] ?? 'US')) ?: 'US';
     $regionId = provider_signup_accs_region_id_for_state($state, $countryId);
 
+    $applicationId = (int) ($application['ApplicationID'] ?? 0);
+    $hasResellerCertificate = $applicationId > 0
+        && function_exists('provider_signup_has_reseller_certificate')
+        && provider_signup_has_reseller_certificate($applicationId);
     $commentParts = array_filter([
-        'NutraAxis provider signup application #' . (int) ($application['ApplicationID'] ?? 0),
+        'NutraAxis provider signup application #' . $applicationId,
         trim((string) ($application['ClinicType'] ?? '')) !== ''
             ? 'Clinic type: ' . (string) $application['ClinicType']
             : null,
-        'State reseller certificate on file in Operations portal.',
+        $hasResellerCertificate
+            ? 'State reseller certificate on file in Operations portal.'
+            : 'No reseller certificate on file. Tax-exempt status is not configured.',
     ]);
 
     $payload = [

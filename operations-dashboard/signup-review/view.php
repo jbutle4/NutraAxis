@@ -191,7 +191,8 @@ $reviewWarnings = provider_signup_ops_review_warnings(
     $applicationId,
     $canApprove || $canProvision
 );
-$showReviewOverride = $canUpdate && $reviewWarnings !== [] && ($canApprove || $canProvision);
+$blockingReviewWarnings = provider_signup_ops_blocking_review_warnings($reviewWarnings);
+$showReviewOverride = $canUpdate && $blockingReviewWarnings !== [] && ($canApprove || $canProvision);
 $targetAccsEnvironment = provider_signup_accs_normalize_environment((string) ($application['AccsEnvironment'] ?? ''));
 $serverAccsEnvironment = provider_signup_accs_target_environment();
 $provisionErrorMessage = provider_signup_accs_format_provision_error((string) ($application['LastProvisionError'] ?? ''));
@@ -327,7 +328,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php if ($reviewWarnings !== []): ?>
       <section class="detail-card detail-card--wide provider-signup-review-warnings">
         <h2>Review warnings</h2>
-        <p class="form-hint">These items should be resolved before approval or provisioning. You may proceed with an explicit override when appropriate (for example, internal test clinics).</p>
+        <p class="form-hint">Missing reseller certificate or ACH does not block approval. Tax-exempt status and the Clinic Store stay unconfigured until those items are received — you can still configure them from this page. Other warnings below require an override to approve or create the Clinic Store.</p>
         <ul class="provider-signup-review-warnings-list">
           <?php foreach ($reviewWarnings as $warning): ?>
           <li>
@@ -796,7 +797,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <input type="checkbox" name="review_override" value="1" />
             Acknowledge review warnings and proceed
           </label>
-          <p class="form-hint">Required to approve or create the Clinic Store while review warnings are present.</p>
+          <p class="form-hint">Required only when blocking warnings (such as NPI) are present. Missing reseller certificate or ACH does not need this override.</p>
         </div>
         <?php endif; ?>
         <div class="module-actions">

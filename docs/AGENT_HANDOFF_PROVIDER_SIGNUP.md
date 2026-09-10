@@ -60,7 +60,7 @@ flowchart TD
 
 - **No app row until email confirmed** — `start.php` only creates `ProviderSignupEmailChallenge`; application row is created in `confirm-email.php`.
 - **Policy gate** — `apply.php` redirects to `policy.php` until current policy version is acknowledged (`sql/119_provider_signup_policy_ack.sql`).
-- **Submit without cert/ACH** — Allowed with warnings; taxable / no-payout messaging shown. Provider can return via same token to complete documents.
+- **Submit without cert/ACH** — Allowed with warnings. No reseller certificate → tax-exempt is not configured. No ACH → Clinic Store is not auto-configured after provision (ops can still run Complete ACCS clinic configuration). Provider can return via same token to complete documents. Ops review still shows these warnings; they do not require an override.
 - **Provider cannot edit full form** after submit (except **Returned** / **Draft**). Certificate + ACH editable in **complete-documents** statuses.
 - **Ops must approve before provision** — Provider is **not** emailed “Clinic Store ready” until provisioning completes.
 
