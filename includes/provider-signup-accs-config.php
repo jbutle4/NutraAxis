@@ -8,6 +8,11 @@ const PROVIDER_SIGNUP_ACCS_CONFIG_SHARED_CATALOG_TAX_CLASS_ID = 3;
 const PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT = 'Clinic_Template';
 const PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE = 'patient_shared_catalog_id';
 
+/** SKUs on the master catalog that must not be copied into clinic shared catalogs. */
+const PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKUS = [
+    'NA_MKT_INFO_FOLDER',
+];
+
 function provider_signup_accs_config_api_request_for_environment(
     string $environment,
     string $method,
@@ -503,6 +508,107 @@ function provider_signup_accs_config_product_is_enabled(array $product): bool
     return (int) ($product['status'] ?? 0) === 1;
 }
 
+function provider_signup_accs_config_is_excluded_clinic_catalog_sku(string $sku): bool
+{
+    $sku = strtoupper(trim($sku));
+    if ($sku === '') {
+        return true;
+    }
+
+    foreach (PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKUS as $excluded) {
+        if ($sku === strtoupper(trim((string) $excluded))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @param list<string> $skus
+ * @return list<string>
+ */
+function provider_signup_accs_config_filter_excluded_clinic_catalog_skus(array $skus): array
+{
+    $kept = [];
+    foreach ($skus as $sku) {
+        $sku = trim((string) $sku);
+        if ($sku === '' || provider_signup_accs_config_is_excluded_clinic_catalog_sku($sku)) {
+            continue;
+        }
+        $kept[] = $sku;
+    }
+
+    return array_values(array_unique($kept));
+}
+
+/**
+ * Remove marketing / non-sellable SKUs that should never stay on a clinic catalog.
+ *
+ * @return array{ok: bool, error: ?string, unassigned: list<string>}
+ */
+function provider_signup_accs_config_unassign_excluded_clinic_catalog_skus(int $catalogId): array
+{
+    if ($catalogId <= 0) {
+        return ['ok' => false, 'error' => 'Shared catalog ID is required.', 'unassigned' => []];
+    }
+
+    $products = provider_signup_accs_config_api_request('GET', '/sharedCatalog/' . $catalogId . '/products');
+    if (!$products['ok']) {
+        return [
+            'ok'         => false,
+            'error'      => provider_signup_accs_format_api_error($products),
+            'unassigned' => [],
+        ];
+    }
+
+    $skus = [];
+    $productData = $products['data'] ?? null;
+    if (is_array($productData) && array_is_list($productData)) {
+        foreach ($productData as $sku) {
+            $sku = trim((string) $sku);
+            if ($sku !== '' && provider_signup_accs_config_is_excluded_clinic_catalog_sku($sku)) {
+                $skus[] = $sku;
+            }
+        }
+    } elseif (is_array($productData)) {
+        foreach ($productData['items'] ?? [] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $sku = trim((string) ($item['sku'] ?? ''));
+            if ($sku !== '' && provider_signup_accs_config_is_excluded_clinic_catalog_sku($sku)) {
+                $skus[] = $sku;
+            }
+        }
+    }
+
+    $skus = array_values(array_unique($skus));
+    if ($skus === []) {
+        return ['ok' => true, 'error' => null, 'unassigned' => []];
+    }
+
+    $payloads = [
+        ['products' => array_map(static fn (string $sku): array => ['sku' => $sku], $skus)],
+        ['products' => $skus],
+    ];
+    $lastError = 'Unable to unassign excluded SKUs from shared catalog.';
+    foreach ($payloads as $payload) {
+        $unassign = provider_signup_accs_config_api_request(
+            'POST',
+            '/sharedCatalog/' . $catalogId . '/unassignProducts',
+            null,
+            $payload
+        );
+        if ($unassign['ok']) {
+            return ['ok' => true, 'error' => null, 'unassigned' => $skus];
+        }
+        $lastError = provider_signup_accs_format_api_error($unassign);
+    }
+
+    return ['ok' => false, 'error' => $lastError, 'unassigned' => []];
+}
+
 /**
  * Keep only Enabled product SKUs (skip Disabled products for shared catalogs).
  *
@@ -611,10 +717,10 @@ function provider_signup_accs_config_set_catalog_prices_to_msrp(int $catalogId, 
         return ['ok' => false, 'error' => 'Shared catalog ID is required.', 'price_count' => 0];
     }
 
-    $skus = array_values(array_unique(array_filter(array_map(
+    $skus = provider_signup_accs_config_filter_excluded_clinic_catalog_skus(array_values(array_unique(array_filter(array_map(
         static fn ($sku): string => trim((string) $sku),
         $skus
-    ))));
+    )))));
     if ($skus === []) {
         return ['ok' => true, 'error' => null, 'price_count' => 0];
     }
@@ -658,6 +764,9 @@ function provider_signup_accs_config_set_catalog_prices_to_msrp(int $catalogId, 
 
     $prices = [];
     foreach ($skus as $sku) {
+        if (provider_signup_accs_config_is_excluded_clinic_catalog_sku($sku)) {
+            continue;
+        }
         $product = $loaded['products'][$sku] ?? null;
         if (!is_array($product)) {
             return [
@@ -784,6 +893,18 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
                 $skus[] = $sku;
             }
         }
+    }
+
+    $skus = provider_signup_accs_config_filter_excluded_clinic_catalog_skus($skus);
+
+    $unassignExcluded = provider_signup_accs_config_unassign_excluded_clinic_catalog_skus($catalogId);
+    if (!$unassignExcluded['ok']) {
+        return [
+            'ok'             => false,
+            'error'          => $unassignExcluded['error'] ?? 'Unable to remove excluded SKUs from the clinic shared catalog.',
+            'category_count' => count($categoryIds),
+            'product_count'  => 0,
+        ];
     }
 
     if ($skus !== []) {
@@ -1049,10 +1170,36 @@ function provider_signup_accs_config_verify_catalog_assignment(int $catalogId, i
     $products = provider_signup_accs_config_api_request('GET', '/sharedCatalog/' . $catalogId . '/products');
     if ($products['ok']) {
         $productData = $products['data'] ?? null;
+        $catalogSkus = [];
         if (is_array($productData) && array_is_list($productData)) {
-            $productCount = count($productData);
+            foreach ($productData as $sku) {
+                $sku = trim((string) $sku);
+                if ($sku !== '') {
+                    $catalogSkus[] = $sku;
+                }
+            }
         } elseif (is_array($productData)) {
-            $productCount = count($productData['items'] ?? []);
+            foreach ($productData['items'] ?? [] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $sku = trim((string) ($item['sku'] ?? ''));
+                if ($sku !== '') {
+                    $catalogSkus[] = $sku;
+                }
+            }
+        }
+        $productCount = count($catalogSkus);
+        foreach ($catalogSkus as $sku) {
+            if (provider_signup_accs_config_is_excluded_clinic_catalog_sku($sku)) {
+                return [
+                    'ok'                       => false,
+                    'error'                    => 'Shared catalog still includes excluded SKU "' . $sku . '".',
+                    'category_count'           => $categoryCount,
+                    'product_count'            => $productCount,
+                    'patient_catalog_assigned' => $patientCatalogAssigned,
+                ];
+            }
         }
     }
 
