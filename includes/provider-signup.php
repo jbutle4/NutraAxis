@@ -1117,6 +1117,67 @@ function provider_signup_acknowledge_policy(string $accessToken): array
 }
 
 /**
+ * Record the current Practitioner Reseller Policy on an application from Operations.
+ *
+ * @return array{ok: bool, error: ?string, already?: bool}
+ */
+function provider_signup_ops_acknowledge_policy(int $applicationId): array
+{
+    provider_signup_require_update();
+    $application = provider_signup_get($applicationId);
+    if ($application === null) {
+        return ['ok' => false, 'error' => 'Application not found.'];
+    }
+
+    if (!provider_signup_ops_can_edit($application)) {
+        return ['ok' => false, 'error' => 'This application can no longer be edited.'];
+    }
+
+    if (provider_signup_has_current_policy_ack($application)) {
+        return ['ok' => true, 'error' => null, 'already' => true];
+    }
+
+    $reviewer = auth_user();
+    $opsEmail = provider_signup_normalize_email((string) ($reviewer['Email'] ?? ''));
+    if ($opsEmail === '') {
+        $opsEmail = provider_signup_normalize_email((string) ($application['ProviderEmail'] ?? ''));
+    }
+    if ($opsEmail === '' || !filter_var($opsEmail, FILTER_VALIDATE_EMAIL)) {
+        return ['ok' => false, 'error' => 'A reviewer email is required to record policy acknowledgement.'];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET PolicyAcknowledgedAt = SYSUTCDATETIME(),
+                PolicyAcknowledgedByEmail = :email,
+                PolicyVersion = :version,
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'email'   => $opsEmail,
+            'version' => PROVIDER_SIGNUP_POLICY_VERSION,
+            'id'      => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_ops_acknowledge_policy: ' . $e->getMessage());
+
+        return ['ok' => false, 'error' => 'Unable to record policy acknowledgement.'];
+    }
+
+    $reviewerId = (int) ($reviewer['UserID'] ?? 0);
+    provider_signup_add_review_log(
+        $applicationId,
+        $reviewerId > 0 ? $reviewerId : null,
+        'PolicyAcknowledged',
+        'Policy ' . PROVIDER_SIGNUP_POLICY_VERSION . ' recorded by Operations (' . $opsEmail . ') on behalf of the clinic.'
+    );
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
  * @return array{complete: bool, missing: list<string>}
  */
 function provider_signup_submit_checklist(array $form, int $applicationId): array
@@ -1488,6 +1549,228 @@ function provider_signup_create_application(
     }
 
     return ['ok' => true, 'error' => null, 'application' => $application, 'resumed' => false];
+}
+
+/**
+ * Start a Draft from an existing ACCS customer and email them the continue link.
+ * Prefills admin name/phone/address when present. Does not invent company/NPI/tax data.
+ *
+ * @return array{ok: bool, error: ?string, application_id: ?int, continue_url: ?string, resumed: bool}
+ */
+function provider_signup_invite_existing_accs_customer(int $customerId, string $environment = 'production'): array
+{
+    $environment = provider_signup_accs_normalize_environment($environment) ?? 'production';
+
+    $customerResult = provider_signup_accs_with_environment(
+        $environment,
+        static fn (): array => provider_signup_accs_api_request('GET', '/customers/' . $customerId)
+    );
+    if (!($customerResult['ok'] ?? false) || !is_array($customerResult['data'] ?? null)) {
+        return [
+            'ok'             => false,
+            'error'          => provider_signup_accs_format_api_error($customerResult),
+            'application_id' => null,
+            'continue_url'   => null,
+            'resumed'        => false,
+        ];
+    }
+
+    $customer = $customerResult['data'];
+    $email = provider_signup_normalize_email((string) ($customer['email'] ?? ''));
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return [
+            'ok'             => false,
+            'error'          => 'ACCS customer #' . $customerId . ' has no valid email.',
+            'application_id' => null,
+            'continue_url'   => null,
+            'resumed'        => false,
+        ];
+    }
+
+    $created = provider_signup_create_application($email, false, false, $environment);
+    if (!($created['ok'] ?? false) || !is_array($created['application'] ?? null)) {
+        return [
+            'ok'             => false,
+            'error'          => $created['error'] ?? 'Unable to create draft application.',
+            'application_id' => null,
+            'continue_url'   => null,
+            'resumed'        => (bool) ($created['resumed'] ?? false),
+        ];
+    }
+
+    $application = $created['application'];
+    $applicationId = (int) ($application['ApplicationID'] ?? 0);
+    $resumed = (bool) ($created['resumed'] ?? false);
+
+    $phone = provider_signup_accs_customer_attribute_value($customer, 'phone_number');
+    $address = provider_signup_invite_primary_address($customer);
+    if ($phone === '' && $address['telephone'] !== '') {
+        $phone = $address['telephone'];
+    }
+
+    try {
+        $pdo = db();
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.ProviderSignupApplication
+            SET AdminFirstName = COALESCE(NULLIF(AdminFirstName, N''), :first_name),
+                AdminLastName = COALESCE(NULLIF(AdminLastName, N''), :last_name),
+                AdminEmail = :admin_email,
+                AdminPhone = COALESCE(NULLIF(AdminPhone, N''), :admin_phone),
+                CompanyEmail = COALESCE(NULLIF(CompanyEmail, N''), :company_email),
+                CompanyPhone = COALESCE(NULLIF(CompanyPhone, N''), :company_phone),
+                StreetAddress = COALESCE(NULLIF(StreetAddress, N''), :street),
+                City = COALESCE(NULLIF(City, N''), :city),
+                StateCode = COALESCE(NULLIF(StateCode, N''), :state_code),
+                PostalCode = COALESCE(NULLIF(PostalCode, N''), :postal_code),
+                CountryCode = COALESCE(NULLIF(CountryCode, N''), :country_code),
+                AccsCustomerId = COALESCE(AccsCustomerId, :customer_id),
+                AccsEnvironment = COALESCE(AccsEnvironment, :environment),
+                LastSavedAt = SYSUTCDATETIME()
+            WHERE ApplicationID = :id
+        SQL)->execute([
+            'first_name'    => provider_signup_nullable_string(trim((string) ($customer['firstname'] ?? ''))),
+            'last_name'     => provider_signup_nullable_string(trim((string) ($customer['lastname'] ?? ''))),
+            'admin_email'   => $email,
+            'admin_phone'   => provider_signup_nullable_string($phone),
+            'company_email' => $email,
+            'company_phone' => provider_signup_nullable_string($phone),
+            'street'        => provider_signup_nullable_string($address['street']),
+            'city'          => provider_signup_nullable_string($address['city']),
+            'state_code'    => provider_signup_nullable_string($address['state_code']),
+            'postal_code'   => provider_signup_nullable_string($address['postal_code']),
+            'country_code'  => $address['country_id'] !== '' ? $address['country_id'] : 'US',
+            'customer_id'   => $customerId,
+            'environment'   => $environment,
+            'id'            => $applicationId,
+        ]);
+    } catch (Throwable $e) {
+        error_log('provider_signup_invite_existing_accs_customer: ' . $e->getMessage());
+
+        return [
+            'ok'             => false,
+            'error'          => 'Draft created but admin details could not be saved.',
+            'application_id' => $applicationId,
+            'continue_url'   => null,
+            'resumed'        => $resumed,
+        ];
+    }
+
+    $application = provider_signup_get($applicationId) ?? $application;
+    $continueUrl = provider_signup_policy_url((string) ($application['AccessToken'] ?? ''));
+
+    try {
+        provider_signup_add_review_log(
+            $applicationId,
+            null,
+            'Comment',
+            ($resumed ? 'Resumed existing draft' : 'Draft started')
+            . ' from existing ACCS customer #' . $customerId
+            . ' (' . $environment . '). Continue link emailed to ' . $email . '.'
+        );
+        provider_signup_mail_application_started($application);
+    } catch (Throwable $e) {
+        error_log('provider_signup_invite_existing_accs_customer mail: ' . $e->getMessage());
+
+        return [
+            'ok'             => false,
+            'error'          => 'Draft saved but the continue email failed. Link: ' . $continueUrl,
+            'application_id' => $applicationId,
+            'continue_url'   => $continueUrl,
+            'resumed'        => $resumed,
+        ];
+    }
+
+    return [
+        'ok'             => true,
+        'error'          => null,
+        'application_id' => $applicationId,
+        'continue_url'   => $continueUrl,
+        'resumed'        => $resumed,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $customer
+ * @return array{street: string, city: string, state_code: string, postal_code: string, country_id: string, telephone: string}
+ */
+function provider_signup_invite_primary_address(array $customer): array
+{
+    $empty = [
+        'street'      => '',
+        'city'        => '',
+        'state_code'  => '',
+        'postal_code' => '',
+        'country_id'  => 'US',
+        'telephone'   => '',
+    ];
+    $addresses = $customer['addresses'] ?? [];
+    if (!is_array($addresses) || $addresses === []) {
+        return $empty;
+    }
+
+    $chosen = null;
+    foreach ($addresses as $address) {
+        if (is_array($address) && (!empty($address['default_billing']) || !empty($address['default_shipping']))) {
+            $chosen = $address;
+            break;
+        }
+    }
+    if ($chosen === null) {
+        $chosen = is_array($addresses[0] ?? null) ? $addresses[0] : null;
+    }
+    if (!is_array($chosen)) {
+        return $empty;
+    }
+
+    $street = $chosen['street'] ?? [];
+    if (is_array($street)) {
+        $street = trim(implode(', ', array_filter(array_map('strval', $street))));
+    } else {
+        $street = trim((string) $street);
+    }
+
+    $state = strtoupper(trim((string) ($chosen['region']['region_code'] ?? '')));
+    if ($state === '') {
+        $state = provider_signup_us_state_code_from_name((string) ($chosen['region']['region'] ?? $chosen['region'] ?? ''));
+    }
+
+    return [
+        'street'      => $street,
+        'city'        => trim((string) ($chosen['city'] ?? '')),
+        'state_code'  => $state,
+        'postal_code' => trim((string) ($chosen['postcode'] ?? '')),
+        'country_id'  => strtoupper(trim((string) ($chosen['country_id'] ?? 'US'))) ?: 'US',
+        'telephone'   => trim((string) ($chosen['telephone'] ?? '')),
+    ];
+}
+
+function provider_signup_us_state_code_from_name(string $name): string
+{
+    $name = strtolower(trim($name));
+    if ($name === '') {
+        return '';
+    }
+    if (preg_match('/^[a-z]{2}$/', $name) === 1) {
+        return strtoupper($name);
+    }
+
+    $map = [
+        'alabama' => 'AL', 'alaska' => 'AK', 'arizona' => 'AZ', 'arkansas' => 'AR',
+        'california' => 'CA', 'colorado' => 'CO', 'connecticut' => 'CT', 'delaware' => 'DE',
+        'district of columbia' => 'DC', 'florida' => 'FL', 'georgia' => 'GA', 'hawaii' => 'HI',
+        'idaho' => 'ID', 'illinois' => 'IL', 'indiana' => 'IN', 'iowa' => 'IA',
+        'kansas' => 'KS', 'kentucky' => 'KY', 'louisiana' => 'LA', 'maine' => 'ME',
+        'maryland' => 'MD', 'massachusetts' => 'MA', 'michigan' => 'MI', 'minnesota' => 'MN',
+        'mississippi' => 'MS', 'missouri' => 'MO', 'montana' => 'MT', 'nebraska' => 'NE',
+        'nevada' => 'NV', 'new hampshire' => 'NH', 'new jersey' => 'NJ', 'new mexico' => 'NM',
+        'new york' => 'NY', 'north carolina' => 'NC', 'north dakota' => 'ND', 'ohio' => 'OH',
+        'oklahoma' => 'OK', 'oregon' => 'OR', 'pennsylvania' => 'PA', 'rhode island' => 'RI',
+        'south carolina' => 'SC', 'south dakota' => 'SD', 'tennessee' => 'TN', 'texas' => 'TX',
+        'utah' => 'UT', 'vermont' => 'VT', 'virginia' => 'VA', 'washington' => 'WA',
+        'west virginia' => 'WV', 'wisconsin' => 'WI', 'wyoming' => 'WY',
+    ];
+
+    return $map[$name] ?? '';
 }
 
 function provider_signup_request_ip(): string
