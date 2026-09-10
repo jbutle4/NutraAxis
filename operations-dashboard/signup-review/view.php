@@ -72,6 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canUpdate) {
                 header('Location: ' . $redirect . '&error=' . rawurlencode($result['error'] ?? $result['summary'] ?? 'NPI validation failed.'), true, 302);
             }
             exit;
+        case 'acknowledge_policy':
+            if (empty($_POST['policy_acknowledged'])) {
+                header('Location: ' . $redirect . '&error=' . rawurlencode('Check the policy acknowledgement box to continue.'), true, 302);
+                exit;
+            }
+            $result = provider_signup_ops_acknowledge_policy($applicationId);
+            $suffix = $result['ok']
+                ? 'notice=policy_acknowledged'
+                : 'error=' . rawurlencode($result['error'] ?? 'Unable to record policy acknowledgement.');
+            header('Location: ' . $redirect . '&' . $suffix, true, 302);
+            exit;
         case 'approve':
             $result = provider_signup_ops_approve($applicationId, $comments, $_POST);
             if ($result['ok']) {
@@ -245,6 +256,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">ACCS environment updated for Clinic Store provisioning.</div>
       <?php elseif (($_GET['notice'] ?? '') === 'deprovisioned'): ?>
       <div class="admin-notice is-success" role="status">ACCS Clinic Store removed. The application is back to Approved so you can provision again or reject the test record.</div>
+      <?php elseif (($_GET['notice'] ?? '') === 'policy_acknowledged'): ?>
+      <div class="admin-notice is-success" role="status">Practitioner Reseller Policy acknowledgement recorded.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['warn'])): ?>
       <div class="admin-notice" role="status"><?= htmlspecialchars((string) $_GET['warn']) ?></div>
@@ -284,6 +297,31 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         Complete application data is required before approval: <?= htmlspecialchars(implode(', ', $approvalChecklist['missing'])) ?>.
         <a href="/operations-dashboard/signup-review/application-form.php?id=<?= $applicationId ?>">Edit application</a>
       </div>
+      <?php endif; ?>
+
+      <?php if ($canUpdate && $canEdit && !provider_signup_has_current_policy_ack($application)): ?>
+      <section class="detail-card detail-card--wide">
+        <h2>Practitioner Reseller Policy</h2>
+        <p class="form-hint">
+          Acknowledgement is required before approval. Review the policy, then record it on behalf of the clinic.
+          The provider can still acknowledge from their continue link.
+        </p>
+        <p>
+          <a class="btn-secondary" href="<?= htmlspecialchars(provider_signup_policy_pdf_url()) ?>" target="_blank" rel="noopener noreferrer">Open policy PDF</a>
+        </p>
+        <form class="admin-form" method="post" action="/operations-dashboard/signup-review/view.php?id=<?= $applicationId ?>">
+          <input type="hidden" name="action" value="acknowledge_policy" />
+          <div class="form-group form-group--stacked">
+            <label class="checkbox-label">
+              <input type="checkbox" name="policy_acknowledged" value="1" required />
+              <?= htmlspecialchars(PROVIDER_SIGNUP_POLICY_ACK_STATEMENT) ?>
+            </label>
+          </div>
+          <div class="module-actions">
+            <button class="btn-primary" type="submit">Record policy acknowledgement</button>
+          </div>
+        </form>
+      </section>
       <?php endif; ?>
 
       <?php if ($reviewWarnings !== []): ?>
