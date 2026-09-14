@@ -1324,13 +1324,6 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
             $detail = [
                 'ItemRef' => ['value' => $itemRef],
             ];
-            $accountRef = trim((string) ($line['AccountRefValue'] ?? ''));
-            if ($accountRef === '' && is_array($resolved['item'] ?? null)) {
-                $accountRef = trim((string) ($resolved['item']['QBO_ExpenseAccountRefValue'] ?? ''));
-            }
-            if ($accountRef !== '' && !supplier_invoice_is_stub_ref($accountRef)) {
-                $detail['AccountRef'] = ['value' => $accountRef];
-            }
             if ($line['Qty'] !== null) {
                 $detail['Qty'] = (float) $line['Qty'];
             }
@@ -1343,17 +1336,19 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
         $billLines[] = $billLine;
     }
 
+    $txnDate = supplier_invoice_normalize_form_date($invoice['TxnDate'] ?? null) ?: date('Y-m-d');
+    $dueDate = supplier_invoice_normalize_form_date($invoice['DueDate'] ?? null);
     $payload = [
         'VendorRef' => ['value' => (string) $invoice['VendorRefValue']],
-        'TxnDate'   => (string) $invoice['TxnDate'],
+        'TxnDate'   => $txnDate,
         'Line'      => $billLines,
     ];
 
     if (!empty($invoice['DocNumber'])) {
         $payload['DocNumber'] = (string) $invoice['DocNumber'];
     }
-    if (!empty($invoice['DueDate'])) {
-        $payload['DueDate'] = (string) $invoice['DueDate'];
+    if ($dueDate !== '') {
+        $payload['DueDate'] = $dueDate;
     }
     if (!empty($invoice['APAccountRefValue'])) {
         $payload['APAccountRef'] = ['value' => (string) $invoice['APAccountRefValue']];
