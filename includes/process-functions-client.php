@@ -35,6 +35,7 @@ function process_functions_prod_codes(): array
     return [
         'accs-sales-order-sync',
         'accs-employee-customer-create',
+        'supplier-invoice-ap-recon',
     ];
 }
 

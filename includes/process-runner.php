@@ -110,12 +110,22 @@ function process_registry(): array
             'uat_step'      => 10,
             'function_app'  => 'uat',
         ],
+        'supplier-invoice-ap-recon' => [
+            'code'          => 'supplier-invoice-ap-recon',
+            'name'          => 'Supplier Invoice AP Recon',
+            'description'   => 'Refresh QBO bill balances into Paid/Closed, rematch ASN receipts, and advance PO accounting status.',
+            'function_name' => 'supplier-invoice-ap-recon',
+            'schedule'      => 'Daily at 5:00 AM US Central',
+            'uat_e2e'       => true,
+            'uat_step'      => 12,
+            'function_app'  => 'profile',
+        ],
         'supplier-payment-pull' => [
             'code'          => 'supplier-payment-pull',
             'name'          => 'Supplier Bill Payment Pull',
-            'description'   => 'Pull QuickBooks Sandbox bill payment status into Operations after manual QBO payment.',
+            'description'   => 'Pull QuickBooks bill payment status into Operations (production or UAT ledger from Process Log profile).',
             'function_name' => null,
-            'schedule'      => 'Manual / on demand (UAT)',
+            'schedule'      => 'Manual / on demand',
             'uat_e2e'       => true,
             'uat_step'      => 11,
             'function_app'  => 'portal',
@@ -210,11 +220,12 @@ function process_execute_php(
 
     try {
         if ($code === 'supplier-payment-pull') {
-            require_once __DIR__ . '/qbo-reconcile.php';
+            require_once __DIR__ . '/supplier-invoice-ap.php';
             require_once __DIR__ . '/procurement-ledger.php';
 
-            procurement_bind_ledger_profile(PO_LEDGER_PROFILE_UAT);
-            $result = qbo_reconcile_bills(PO_LEDGER_PROFILE_UAT);
+            $profile = data_profile_is_uat() ? PO_LEDGER_PROFILE_UAT : PO_LEDGER_PROFILE_PRODUCTION;
+            procurement_bind_ledger_profile($profile);
+            $result = supplier_invoice_ap_reconcile($profile);
             $summary = is_array($result['summary'] ?? null) ? $result['summary'] : [];
             $errors = (int) ($summary['errors'] ?? 0);
             $payments = (int) ($summary['payments_synced'] ?? 0);

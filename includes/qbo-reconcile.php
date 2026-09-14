@@ -851,7 +851,7 @@ function qbo_reconcile_bills(?string $ledgerProfile = null): array
 
         if ($billId === '' && (string) ($invoice['SyncStatus'] ?? '') === 'Submitted for Approval') {
             $summary['awaiting_approval']++;
-            $rows[] = ['action' => 'awaiting_approval', 'name' => $doc, 'detail' => 'No QBO bill yet — remains in payment approval queue.'];
+            $rows[] = ['action' => 'awaiting_approval', 'name' => $doc, 'detail' => 'No QBO bill yet — remains in the QBO Insert queue.'];
         }
     }
 

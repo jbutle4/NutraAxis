@@ -11,6 +11,7 @@ por_require_create();
 $activeSlug = $activeSlug ?? 'po-receiving';
 $error = null;
 $preselectedPo = (int) ($_GET['po_id'] ?? 0);
+$linkInvoiceId = (int) ($_POST['invoice_id'] ?? $_GET['invoice_id'] ?? 0);
 
 if ($preselectedPo > 0 && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     $preselectedOrder = po_get_order($preselectedPo);
@@ -18,7 +19,10 @@ if ($preselectedPo > 0 && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         $poLedgerProfile = po_order_ledger_profile($preselectedOrder);
         if ($poLedgerProfile !== por_ledger_profile()) {
             header(
-                'Location: ' . por_href_for_profile('/po-receiving/new.php', $poLedgerProfile, ['po_id' => $preselectedPo]),
+                'Location: ' . por_href_for_profile('/po-receiving/new.php', $poLedgerProfile, array_filter([
+                    'po_id'      => $preselectedPo,
+                    'invoice_id' => $linkInvoiceId > 0 ? $linkInvoiceId : null,
+                ])),
                 true,
                 302
             );
@@ -32,6 +36,10 @@ $porAttachments = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = por_save($_POST);
     if ($result['ok']) {
+        if ($linkInvoiceId > 0) {
+            require_once dirname(__DIR__) . '/includes/supplier-invoice-ap.php';
+            supplier_invoice_match_asn($linkInvoiceId);
+        }
         $kind = trim((string) ($_POST['attachment_kind'] ?? 'PackingSlip'));
         por_finish_save_and_redirect((int) $result['id'], 'created', $_FILES['attachment'] ?? null, $kind);
     }

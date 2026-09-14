@@ -228,35 +228,11 @@ function po_order_total_due(array $order): float
  */
 function po_maybe_mark_paid_from_payments(int $poId): bool
 {
-    require_once __DIR__ . '/po-approval.php';
+    require_once __DIR__ . '/supplier-invoice-ap.php';
 
-    $order = po_get_order($poId);
-    if ($order === null) {
-        return false;
-    }
+    $result = po_sync_accounting_status_from_invoices($poId);
 
-    if ((string) ($order['POStatus'] ?? '') === PO_STATUS_PAID) {
-        return false;
-    }
-
-    $totalDue = po_order_total_due($order);
-    if ($totalDue <= 0) {
-        return false;
-    }
-
-    $paid = po_payment_total_applied_to_po($poId);
-    if ($paid + 0.009 < $totalDue) {
-        return false;
-    }
-
-    $result = po_advance_accounting_status($poId, PO_STATUS_PAID);
-    if (!$result['ok']) {
-        error_log('Unable to mark PO ' . $poId . ' paid after QBO payment sync: ' . ($result['error'] ?? 'unknown'));
-
-        return false;
-    }
-
-    return true;
+    return ($result['advanced'] ?? null) === PO_STATUS_PAID;
 }
 
 function qbo_bill_is_paid(array $bill): bool

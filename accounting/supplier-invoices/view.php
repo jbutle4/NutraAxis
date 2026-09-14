@@ -9,6 +9,7 @@ require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
 require dirname(__DIR__, 2) . '/includes/po-payment.php';
 require dirname(__DIR__, 2) . '/includes/qbo-insert-approval.php';
 require dirname(__DIR__, 2) . '/includes/payment-approval.php';
+require dirname(__DIR__, 2) . '/includes/supplier-invoice-ap.php';
 
 supplier_invoice_require_read();
 
@@ -41,16 +42,20 @@ usort($approvalLog, static function (array $a, array $b): int {
 
     return strcmp((string) $dateB, (string) $dateA);
 });
-$latestSendBack = supplier_invoice_latest_send_back($paymentLog);
-$isQboRecoveryPending = qbo_insert_is_recovery_pending($invoice);
-$canSubmitForApproval = supplier_invoice_can_update() && payment_approval_invoice_can_submit($invoice);
-$canResubmitApproval = supplier_invoice_can_update()
-    && $invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED
-    && !$isQboRecoveryPending;
+$latestSendBack = supplier_invoice_latest_send_back($qboLog);
+$isQboPending = qbo_insert_is_recovery_pending($invoice);
 $canSubmitForQbo = supplier_invoice_can_update() && qbo_insert_can_manual_submit($invoice)
     && $invoice['SyncStatus'] !== QBO_INSERT_STATUS_SUBMITTED;
-$canResubmitQbo = supplier_invoice_can_update() && $isQboRecoveryPending;
+$canResubmitQbo = supplier_invoice_can_update() && $isQboPending;
 $postedIsReopenable = supplier_invoice_posted_is_reopenable($invoice);
+$canConfirmPayment = supplier_invoice_can_confirm_payment($invoice);
+$asnHref = supplier_invoice_asn_create_href($invoice);
+$asnReceiptHref = supplier_invoice_asn_receipt_href($invoice);
+$asnStatus = supplier_invoice_asn_status($invoice);
+$canStartAsn = supplier_invoice_can_update()
+    && $asnHref !== null
+    && !supplier_invoice_asn_is_matched($invoice)
+    && !empty($invoice['POID']);
 $paidTotal = po_payment_total_for_invoice($invoiceId);
 $invoicePayments = po_payment_list(['supplier_invoice_id' => $invoiceId]);
 $notice = $_GET['notice'] ?? null;
@@ -68,29 +73,23 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php if (supplier_invoice_can_update() && $isEditable): ?>
           <a class="btn-primary" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/edit.php') . '?id=' . $invoiceId) ?>">Edit Invoice</a>
           <?php endif; ?>
-          <?php if (po_payment_can_create()): ?>
-          <a class="btn-secondary" href="/po-payments/new.php?supplier_invoice_id=<?= $invoiceId ?><?= !empty($invoice['POID']) ? '&po_id=' . (int) $invoice['POID'] : '' ?>">New Payment Request</a>
+          <?php if ($canConfirmPayment): ?>
+          <a class="btn-primary" href="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/confirm-payment.php') . '?id=' . $invoiceId) ?>">Confirm Bill Payment</a>
           <?php endif; ?>
-          <?php if ($canSubmitForApproval): ?>
-          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for payment approval again? Payment approvers will receive a new approval email.' : 'Submit this invoice for payment approval? Payment approvers will be notified by email.'), ENT_QUOTES) ?>);">
+          <?php if ($canStartAsn): ?>
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
-            <button type="submit" name="action" value="submit" class="btn-primary"><?= $postedIsReopenable ? 'Resubmit for Approval' : 'Submit for Approval' ?></button>
-          </form>
-          <?php endif; ?>
-          <?php if ($canResubmitApproval): ?>
-          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Resend the payment approval email to approvers?');">
-            <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
-            <button type="submit" name="action" value="resubmit" class="btn-secondary">Resubmit to Approvers</button>
+            <button type="submit" name="action" value="start_asn" class="btn-secondary">Start ASN / Receipt</button>
           </form>
           <?php endif; ?>
           <?php if ($canSubmitForQbo): ?>
-          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Submit this invoice for QBO Insert recovery? Accounting (QBO Insert approvers) will be notified to post the bill.');">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm(<?= htmlspecialchars(json_encode($postedIsReopenable ? 'Submit this invoice for QuickBooks bill insert again? QBO Insert approvers will receive a new email.' : 'Submit this invoice for QuickBooks bill insert? Accounting (QBO Insert approvers) will be notified by email.'), ENT_QUOTES) ?>);">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
-            <button type="submit" name="action" value="submit_qbo" class="btn-secondary">Submit for QBO Insert</button>
+            <button type="submit" name="action" value="submit_qbo" class="btn-primary"><?= $postedIsReopenable ? 'Resubmit for QBO Insert' : 'Submit for QBO Insert' ?></button>
           </form>
           <?php endif; ?>
           <?php if ($canResubmitQbo): ?>
-          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Resend the QBO Insert recovery email to accounting?');">
+          <form method="post" action="<?= htmlspecialchars(accounting_path('/accounting/supplier-invoices/status.php')) ?>" class="inline-form" onsubmit="return confirm('Resend the QBO Insert email to accounting?');">
             <input type="hidden" name="invoice_id" value="<?= $invoiceId ?>" />
             <button type="submit" name="action" value="resubmit_qbo" class="btn-secondary">Resubmit for QBO Insert</button>
           </form>
@@ -114,21 +113,19 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Invoice updated successfully.</div>
       <?php elseif ($notice === 'attachment'): ?>
       <div class="admin-notice is-success" role="status">Attachment uploaded successfully.</div>
-      <?php elseif ($notice === 'submitted'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for payment approval.')) ?></div>
-      <?php elseif ($notice === 'resubmitted'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Payment approval request resent to approvers.')) ?></div>
-      <?php elseif ($notice === 'submitted_qbo'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for QBO Insert recovery.')) ?></div>
-      <?php elseif ($notice === 'resubmitted_qbo'): ?>
-      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'QBO Insert recovery request resent to accounting.')) ?></div>
+      <?php elseif ($notice === 'submitted' || $notice === 'submitted_qbo'): ?>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'Invoice submitted for QuickBooks bill insert.')) ?></div>
+      <?php elseif ($notice === 'resubmitted' || $notice === 'resubmitted_qbo'): ?>
+      <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) ($_GET['mail_message'] ?? 'QBO Insert request resent to accounting.')) ?></div>
+      <?php elseif ($notice === 'payment_confirmed'): ?>
+      <div class="admin-notice is-success" role="status">Bill payment posted to QuickBooks.</div>
       <?php endif; ?>
       <?php if (!empty($_GET['mail_message']) && !in_array($notice, ['submitted', 'resubmitted', 'submitted_qbo', 'resubmitted_qbo'], true)): ?>
       <div class="admin-notice<?= !empty($_GET['mail_warning']) ? ' is-error is-detail' : ' is-success' ?>" role="status"><?= htmlspecialchars((string) $_GET['mail_message']) ?></div>
       <?php endif; ?>
 
-      <?php if (payment_approval_is_stub_mode()): ?>
-      <div class="admin-notice" role="status">Payment approval test mode is active — approving records the payment decision and marks the invoice Posted without creating a QuickBooks bill. Use <strong>Submit for QBO Insert</strong> for accounting posting recovery, or set <code>QBO_INSERT_STUB=0</code> to auto-post bills on approve.</div>
+      <?php if (qbo_insert_is_stub_mode()): ?>
+      <div class="admin-notice" role="status">QBO Insert test mode is active — approving records the insert decision without creating a QuickBooks bill. Set <code>QBO_INSERT_STUB=0</code> to post bills on approve.</div>
       <?php endif; ?>
 
       <?php if (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK && $latestSendBack !== null): ?>
@@ -137,29 +134,22 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         on <?= htmlspecialchars(admin_format_datetime($latestSendBack['LogDate'])) ?>:
         <p style="margin: 8px 0 0;"><?= nl2br(htmlspecialchars(supplier_invoice_format_log_comments($latestSendBack['ApproverComments'] ?? null))) ?></p>
       </div>
-      <div class="admin-notice" role="status">Update the invoice and submit for payment approval again when ready.</div>
+      <div class="admin-notice" role="status">Update the invoice and submit for QBO Insert again when ready.</div>
       <?php elseif (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SENT_BACK): ?>
-      <div class="admin-notice" role="status">This invoice was sent back for comment. Update the invoice and submit for payment approval again.</div>
-      <?php elseif ($isQboRecoveryPending): ?>
-      <div class="admin-notice" role="status">This invoice is awaiting QBO Insert recovery (accounting posting). <a href="/approvals/?type=QBOInsert&status=pending">View approvals</a></div>
-      <?php elseif ($invoice['SyncStatus'] === QBO_INSERT_STATUS_SUBMITTED): ?>
-      <div class="admin-notice" role="status">This invoice is awaiting payment approval. <a href="/approvals/?type=Payment&status=pending">View approvals</a></div>
-      <?php elseif (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_FAILED && payment_approval_invoice_has_approved($invoiceId)): ?>
+      <div class="admin-notice" role="status">This invoice was sent back for comment. Update the invoice and submit for QBO Insert again.</div>
+      <?php elseif ($isQboPending): ?>
+      <div class="admin-notice" role="status">This invoice is awaiting QuickBooks bill insert. <a href="/approvals/?type=QBOInsert&status=pending">View approvals</a></div>
+      <?php elseif (($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_FAILED): ?>
       <div class="admin-notice is-error is-detail" role="status">
-        Payment was approved, but QuickBooks bill creation failed<?= trim((string) ($invoice['LastSyncError'] ?? '')) !== '' ? ': ' . htmlspecialchars((string) $invoice['LastSyncError']) : '.' ?>
-        Use <strong>Submit for QBO Insert</strong> to send this to accounting for posting recovery.
+        QuickBooks bill creation failed<?= trim((string) ($invoice['LastSyncError'] ?? '')) !== '' ? ': ' . htmlspecialchars((string) $invoice['LastSyncError']) : '.' ?>
+        Use <strong>Submit for QBO Insert</strong> to send this to accounting again.
       </div>
       <?php elseif ($postedIsReopenable): ?>
       <div class="admin-notice" role="status">
-        <?php if (payment_approval_is_stub_mode()): ?>
-        This invoice was payment-approved in test mode and was not posted to QuickBooks.
-        <?php else: ?>
-        This invoice is marked Posted but has no QuickBooks bill ID.
-        <?php endif; ?>
-        Edit and resubmit for payment approval if needed, or use <strong>Submit for QBO Insert</strong> for accounting posting recovery.
+        This invoice is marked Posted but has no QuickBooks bill ID. Edit if needed, then submit for QBO Insert.
       </div>
-      <?php elseif ($canSubmitForApproval): ?>
-      <div class="admin-notice" role="status">Submit this invoice for payment approval. When approved, the bill is posted to QuickBooks automatically (or use Submit for QBO Insert if posting fails). Cash payment is requested separately via New Payment Request.</div>
+      <?php elseif ($canSubmitForQbo): ?>
+      <div class="admin-notice" role="status">Submit this invoice for QBO Insert. Accounting will approve and create the QuickBooks bill. After insert, match or start an ASN, then confirm payment from Operations when the bill is paid.</div>
       <?php endif; ?>
 
       <?php render_list_page_toolbar($listToolbar !== '' ? $listToolbar : null); ?>
@@ -171,9 +161,11 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <div><dt>Invoice date</dt><dd><?= htmlspecialchars(accounting_format_date($invoice['TxnDate'])) ?></dd></div>
           <div><dt>Due date</dt><dd><?= htmlspecialchars(accounting_format_date($invoice['DueDate'])) ?></dd></div>
           <div><dt>Total</dt><dd><?= htmlspecialchars(accounting_format_money($invoice['TotalAmt'])) ?></dd></div>
+          <div><dt>Balance</dt><dd><?= htmlspecialchars(accounting_format_money($invoice['Balance'] ?? $invoice['TotalAmt'])) ?></dd></div>
           <div><dt>Sync status</dt><dd><span class="status-badge <?= supplier_invoice_status_class((string) $invoice['SyncStatus']) ?>"><?= htmlspecialchars($invoice['SyncStatus']) ?></span></dd></div>
           <div><dt>QBO Bill ID</dt><dd><?= htmlspecialchars($invoice['QBO_BillId'] ?? '—') ?></dd></div>
           <div><dt>Linked PO</dt><dd><?php if (!empty($invoice['POID'])): ?><a class="btn-text" href="/po-management/view.php?id=<?= (int) $invoice['POID'] ?>"><?= htmlspecialchars($invoice['PONumber']) ?></a><?php else: ?>—<?php endif; ?></dd></div>
+          <div><dt>ASN status</dt><dd><?= htmlspecialchars($asnStatus) ?><?php if (!empty($invoice['JazzASN'])): ?> · <?= htmlspecialchars((string) $invoice['JazzASN']) ?><?php endif; ?><?php if ($asnReceiptHref !== null): ?> · <a class="btn-text" href="<?= htmlspecialchars($asnReceiptHref) ?>">View receipt</a><?php endif; ?></dd></div>
           <div><dt>Memo</dt><dd><?= htmlspecialchars($invoice['Memo'] ?? '—') ?></dd></div>
         </dl>
       </section>

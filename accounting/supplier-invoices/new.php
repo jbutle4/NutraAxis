@@ -80,7 +80,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           'category'   => 'Finance',
           'title'      => 'New Supplier Invoice',
           'lead'       => $preselectedPo > 0
-              ? 'Create a supplier invoice linked to this PO. Upload the invoice PDF and submit for payment approval when ready.'
+              ? 'Create a supplier invoice linked to this PO. Upload the invoice PDF and submit for QBO Insert when ready.'
               : 'Enter vendor invoice details and expense lines for QuickBooks Bill sync.',
       ]);
       ?>

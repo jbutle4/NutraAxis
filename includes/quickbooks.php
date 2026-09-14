@@ -1220,8 +1220,23 @@ function qbo_find_bill_by_doc_number(string $docNumber, ?string $vendorId = null
     return is_array($rows[0] ?? null) ? $rows[0] : null;
 }
 
+function qbo_payment_bank_account_id(): string
+{
+    $id = qbo_inv_account_setting('QBO_PAYMENT_BANK_ACCOUNT_ID');
+    if ($id !== '') {
+        return $id;
+    }
+
+    return qbo_environment() === QBO_ENV_PRODUCTION ? '1150040048' : '';
+}
+
 function qbo_apply_bill_link_to_invoice(int $invoiceId, array $bill): void
 {
+    require_once __DIR__ . '/supplier-invoice.php';
+    require_once __DIR__ . '/supplier-invoice-ap.php';
+
+    $invoice = supplier_invoice_get($invoiceId);
+    $syncStatus = supplier_invoice_sync_status_for_bill($invoice, $bill);
     $connection = qbo_get_connection();
     db()->prepare(<<<SQL
         UPDATE dbo.SupplierInvoice
@@ -1229,17 +1244,18 @@ function qbo_apply_bill_link_to_invoice(int $invoiceId, array $bill): void
             QBO_SyncToken = :sync_token,
             QBO_RealmId = :realm_id,
             Balance = :balance,
-            SyncStatus = N'Posted',
+            SyncStatus = :sync_status,
             LastSyncError = NULL,
             LastSyncAt = SYSUTCDATETIME(),
             ModifiedDate = SYSUTCDATETIME()
         WHERE SupplierInvoiceID = :id
     SQL)->execute([
-        'bill_id'    => (string) ($bill['Id'] ?? ''),
-        'sync_token' => (string) ($bill['SyncToken'] ?? ''),
-        'realm_id'   => (string) ($connection['RealmID'] ?? ''),
-        'balance'    => isset($bill['Balance']) ? (float) $bill['Balance'] : null,
-        'id'         => $invoiceId,
+        'bill_id'     => (string) ($bill['Id'] ?? ''),
+        'sync_token'  => (string) ($bill['SyncToken'] ?? ''),
+        'realm_id'    => (string) ($connection['RealmID'] ?? ''),
+        'balance'     => isset($bill['Balance']) ? (float) $bill['Balance'] : null,
+        'sync_status' => $syncStatus,
+        'id'          => $invoiceId,
     ]);
 }
 
@@ -1275,6 +1291,7 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
         return ['ok' => false, 'error' => 'Supplier invoice has no line items.'];
     }
 
+    $itemPicklist = supplier_invoice_item_picklist();
     $billLines = [];
     foreach ($lines as $line) {
         $billLine = [
@@ -1286,13 +1303,34 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
         }
 
         if ($line['DetailType'] === 'AccountBasedExpenseLineDetail') {
+            $accountRef = trim((string) ($line['AccountRefValue'] ?? ''));
+            if ($accountRef === '' || supplier_invoice_is_stub_ref($accountRef)) {
+                return ['ok' => false, 'error' => 'Expense lines require a QuickBooks account before posting.'];
+            }
             $billLine['AccountBasedExpenseLineDetail'] = [
-                'AccountRef' => ['value' => (string) $line['AccountRefValue']],
+                'AccountRef' => ['value' => $accountRef],
             ];
         } else {
+            $itemRef = trim((string) ($line['ItemRefValue'] ?? ''));
+            $resolved = supplier_invoice_resolve_item_ref(
+                $itemRef,
+                (string) ($line['ItemRefName'] ?? ''),
+                $itemPicklist
+            );
+            $itemRef = $resolved['id'];
+            if ($itemRef === '' || supplier_invoice_is_stub_ref($itemRef)) {
+                return ['ok' => false, 'error' => 'Inventory lines require a QuickBooks SKU before posting.'];
+            }
             $detail = [
-                'ItemRef' => ['value' => (string) $line['ItemRefValue']],
+                'ItemRef' => ['value' => $itemRef],
             ];
+            $accountRef = trim((string) ($line['AccountRefValue'] ?? ''));
+            if ($accountRef === '' && is_array($resolved['item'] ?? null)) {
+                $accountRef = trim((string) ($resolved['item']['QBO_ExpenseAccountRefValue'] ?? ''));
+            }
+            if ($accountRef !== '' && !supplier_invoice_is_stub_ref($accountRef)) {
+                $detail['AccountRef'] = ['value' => $accountRef];
+            }
             if ($line['Qty'] !== null) {
                 $detail['Qty'] = (float) $line['Qty'];
             }
@@ -1340,27 +1378,7 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
         return ['ok' => false, 'error' => 'QuickBooks did not return a bill record.'];
     }
 
-    $connection = qbo_get_connection();
-    $pdo = db();
-    $stmt = $pdo->prepare(<<<SQL
-        UPDATE dbo.SupplierInvoice
-        SET QBO_BillId = :bill_id,
-            QBO_SyncToken = :sync_token,
-            QBO_RealmId = :realm_id,
-            Balance = :balance,
-            SyncStatus = N'Posted',
-            LastSyncError = NULL,
-            LastSyncAt = SYSUTCDATETIME(),
-            ModifiedDate = SYSUTCDATETIME()
-        WHERE SupplierInvoiceID = :id
-    SQL);
-    $stmt->execute([
-        'bill_id'    => (string) ($bill['Id'] ?? ''),
-        'sync_token' => (string) ($bill['SyncToken'] ?? ''),
-        'realm_id'   => (string) ($connection['RealmID'] ?? ''),
-        'balance'    => isset($bill['Balance']) ? (float) $bill['Balance'] : (float) $invoice['TotalAmt'],
-        'id'         => $invoiceId,
-    ]);
+    qbo_apply_bill_link_to_invoice($invoiceId, $bill);
 
     return ['ok' => true, 'error' => null, 'bill_id' => (string) ($bill['Id'] ?? '')];
 }
@@ -1419,7 +1437,7 @@ function qbo_create_bill_payment_from_invoice_payment(int $paymentId): array
             'CCAccountRef' => ['value' => $ccAccountId],
         ];
     } else {
-        $bankAccountId = trim((string) env('QBO_PAYMENT_BANK_ACCOUNT_ID', ''));
+        $bankAccountId = qbo_payment_bank_account_id();
         if ($bankAccountId === '') {
             return ['ok' => false, 'error' => 'QBO_PAYMENT_BANK_ACCOUNT_ID is not configured for check/ACH payments.'];
         }

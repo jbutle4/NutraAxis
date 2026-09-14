@@ -216,6 +216,144 @@ function supplier_invoice_resolve_account_name(string $accountId, array $account
     return '';
 }
 
+function supplier_invoice_is_stub_ref(string $value): bool
+{
+    $value = strtoupper(trim($value));
+
+    return $value === 'STUB-ITEM' || $value === 'STUB-ACCT';
+}
+
+/**
+ * Active Product Master SKUs that have a QuickBooks item ID in the bound company.
+ *
+ * @return list<array<string, mixed>>
+ */
+function supplier_invoice_item_picklist(): array
+{
+    require_once __DIR__ . '/catalog.php';
+
+    $column = catalog_qbo_item_id_column();
+    if (!in_array($column, ['QBO_ItemID_Production', 'QBO_ItemID_Sandbox'], true)) {
+        return [];
+    }
+
+    $stmt = db()->query(<<<SQL
+        SELECT
+            SKUID,
+            SKUCode,
+            ProductName,
+            {$column} AS QBO_ItemID,
+            QBO_ExpenseAccountRefValue,
+            QBO_ExpenseAccountRefName
+        FROM dbo.SKUMaster
+        WHERE SKUStatus = N'Active'
+          AND NULLIF(LTRIM(RTRIM({$column})), N'') IS NOT NULL
+        ORDER BY SKUCode
+    SQL);
+
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return is_array($rows) ? $rows : [];
+}
+
+function supplier_invoice_item_option_label(array $item): string
+{
+    $sku = trim((string) ($item['SKUCode'] ?? ''));
+    $name = trim((string) ($item['ProductName'] ?? ''));
+
+    if ($sku !== '' && $name !== '') {
+        return $sku . ' · ' . $name;
+    }
+
+    return $sku !== '' ? $sku : ($name !== '' ? $name : 'SKU');
+}
+
+function supplier_invoice_item_matches(array $item, string $selectedValue): bool
+{
+    $selectedValue = trim($selectedValue);
+    if ($selectedValue === '' || supplier_invoice_is_stub_ref($selectedValue)) {
+        return false;
+    }
+
+    foreach (['QBO_ItemID', 'SKUCode', 'ProductName'] as $field) {
+        if (strcasecmp(trim((string) ($item[$field] ?? '')), $selectedValue) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @param list<array<string, mixed>> $items
+ * @return array{id:string,name:string,item:?array}
+ */
+function supplier_invoice_resolve_item_ref(string $value, string $name, array $items): array
+{
+    $value = trim($value);
+    $name = trim($name);
+
+    if ($value === '' || supplier_invoice_is_stub_ref($value)) {
+        return ['id' => '', 'name' => $name, 'item' => null];
+    }
+
+    foreach ($items as $item) {
+        if (!supplier_invoice_item_matches($item, $value) && !supplier_invoice_item_matches($item, $name)) {
+            continue;
+        }
+
+        $id = trim((string) ($item['QBO_ItemID'] ?? ''));
+        $productName = trim((string) ($item['ProductName'] ?? ''));
+
+        return [
+            'id'   => $id !== '' ? $id : $value,
+            'name' => $productName !== '' ? $productName : $name,
+            'item' => $item,
+        ];
+    }
+
+    return ['id' => $value, 'name' => $name, 'item' => null];
+}
+
+function supplier_invoice_item_select_options(array $items, ?string $selectedValue, string $blankLabel = 'Select SKU'): string
+{
+    $selectedValue = trim((string) $selectedValue);
+    if (supplier_invoice_is_stub_ref($selectedValue)) {
+        $selectedValue = '';
+    }
+
+    $html = '<option value="">' . htmlspecialchars($blankLabel) . '</option>';
+    $matched = false;
+    foreach ($items as $item) {
+        $id = trim((string) ($item['QBO_ItemID'] ?? ''));
+        if ($id === '') {
+            continue;
+        }
+
+        $name = trim((string) ($item['ProductName'] ?? ''));
+        $sku = trim((string) ($item['SKUCode'] ?? ''));
+        $selected = supplier_invoice_item_matches($item, $selectedValue);
+        if ($selected) {
+            $matched = true;
+        }
+
+        $html .= '<option value="' . htmlspecialchars($id, ENT_QUOTES) . '"'
+            . ' data-name="' . htmlspecialchars($name, ENT_QUOTES) . '"'
+            . ' data-sku="' . htmlspecialchars($sku, ENT_QUOTES) . '"'
+            . ($selected ? ' selected' : '') . '>'
+            . htmlspecialchars(supplier_invoice_item_option_label($item))
+            . '</option>';
+    }
+
+    if ($selectedValue !== '' && !$matched) {
+        $html .= '<option value="' . htmlspecialchars($selectedValue, ENT_QUOTES) . '" selected>'
+            . htmlspecialchars($selectedValue . ' (not in Product Master)')
+            . '</option>';
+    }
+
+    return $html;
+}
+
 function supplier_invoice_require_read(): void
 {
     accounting_require_read();
@@ -305,6 +443,8 @@ function supplier_invoice_status_class(string $status): string
         'Sent Back for Comment'  => 'status-sent-back',
         'Rejected'               => 'status-cancelled',
         'Posted'                 => 'status-approved',
+        'Paid'                   => 'status-approved',
+        'Closed'                 => 'status-approved',
         'Failed'                 => 'status-cancelled',
         'Voided'                 => 'status-cancelled',
         default                  => 'status-draft',
@@ -359,7 +499,7 @@ function supplier_invoice_is_locked(?array $invoice): bool
         return false;
     }
 
-    return in_array($status, ['Posted', 'Voided', 'Submitted for Approval'], true);
+    return in_array($status, ['Posted', 'Paid', 'Closed', 'Voided', 'Submitted for Approval'], true);
 }
 
 function supplier_invoice_list_suppliers(): array
@@ -625,6 +765,7 @@ function supplier_invoice_parse_lines(array $input): array
         return ['error' => 'Add at least one invoice line.'];
     }
 
+    $itemPicklist = supplier_invoice_item_picklist();
     $lineNumber = 1;
     foreach ($rows as $row) {
         if (!is_array($row)) {
@@ -651,6 +792,18 @@ function supplier_invoice_parse_lines(array $input): array
         $accountRefName = trim($row['account_ref_name'] ?? '');
         $itemRefValue = trim($row['item_ref_value'] ?? '');
         $itemRefName = trim($row['item_ref_name'] ?? '');
+        if (supplier_invoice_is_stub_ref($accountRefValue)) {
+            $accountRefValue = '';
+            if (supplier_invoice_is_stub_ref($accountRefName) || strcasecmp($accountRefName, 'Stub expense account') === 0) {
+                $accountRefName = '';
+            }
+        }
+        if (supplier_invoice_is_stub_ref($itemRefValue)) {
+            $itemRefValue = '';
+            if (supplier_invoice_is_stub_ref($itemRefName) || strcasecmp($itemRefName, 'Stub inventory item') === 0) {
+                $itemRefName = '';
+            }
+        }
 
         if ($detailType === 'AccountBasedExpenseLineDetail' && $accountRefValue === '') {
             if (!supplier_invoice_is_qbo_stub_mode()) {
@@ -658,6 +811,11 @@ function supplier_invoice_parse_lines(array $input): array
             }
             $accountRefValue = 'STUB-ACCT';
             $accountRefName = $accountRefName !== '' ? $accountRefName : 'Stub expense account';
+        }
+
+        if ($detailType === 'AccountBasedExpenseLineDetail') {
+            $itemRefValue = '';
+            $itemRefName = '';
         }
 
         if ($detailType === 'AccountBasedExpenseLineDetail' && $accountRefValue !== '' && $accountRefName === '') {
@@ -670,12 +828,24 @@ function supplier_invoice_parse_lines(array $input): array
             }
         }
 
-        if ($detailType === 'ItemBasedExpenseLineDetail' && $itemRefValue === '') {
-            if (!supplier_invoice_is_qbo_stub_mode()) {
-                return ['error' => 'Item-based lines require a QuickBooks item ID.'];
+        if ($detailType === 'ItemBasedExpenseLineDetail') {
+            $resolved = supplier_invoice_resolve_item_ref($itemRefValue, $itemRefName, $itemPicklist);
+            $itemRefValue = $resolved['id'];
+            $itemRefName = $resolved['name'];
+
+            if ($itemRefValue === '') {
+                if (!supplier_invoice_is_qbo_stub_mode()) {
+                    return ['error' => 'Inventory lines require a QuickBooks SKU.'];
+                }
+                $itemRefValue = 'STUB-ITEM';
+                $itemRefName = $itemRefName !== '' ? $itemRefName : 'Stub inventory item';
             }
-            $itemRefValue = 'STUB-ITEM';
-            $itemRefName = $itemRefName !== '' ? $itemRefName : 'Stub inventory item';
+
+            $sku = is_array($resolved['item'] ?? null) ? $resolved['item'] : null;
+            if ($sku !== null && $accountRefValue === '') {
+                $accountRefValue = trim((string) ($sku['QBO_ExpenseAccountRefValue'] ?? ''));
+                $accountRefName = trim((string) ($sku['QBO_ExpenseAccountRefName'] ?? ''));
+            }
         }
 
         $lines[] = [

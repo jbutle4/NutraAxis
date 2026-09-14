@@ -21,7 +21,7 @@ function po_is_legacy_accounting_po_status(string $status): bool
 
 function po_view_status_label(string $status): string
 {
-    return po_is_legacy_accounting_po_status($status) ? PO_STATUS_APPROVED : $status;
+    return $status;
 }
 
 function po_view_status_class(string $status): string
@@ -650,6 +650,14 @@ function po_advance_accounting_status(int $poId, string $targetStatus): array
             'modified_by' => $actorId,
             'id'          => $poId,
         ]);
+
+        $updated = po_get_order($poId) ?? $order;
+        po_notify_po_users_of_status_change(
+            $updated,
+            ['status' => $targetStatus, 'result' => $targetStatus, 'viewed_message' => false],
+            (string) (auth_user()['UserName'] ?? 'Operations'),
+            ''
+        );
 
         return ['ok' => true, 'error' => null];
     } catch (Throwable $e) {
