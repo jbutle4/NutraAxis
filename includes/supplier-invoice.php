@@ -121,7 +121,8 @@ function supplier_invoice_account_is_expense(array $account): bool
     $subtype = strtolower(trim((string) ($account['AccountSubType'] ?? '')));
 
     return in_array($type, ['expense', 'other expense', 'cost of goods sold'], true)
-        || str_contains($subtype, 'expense');
+        || str_contains($subtype, 'expense')
+        || ($type === 'other current asset' && $subtype === 'inventory');
 }
 
 /**
@@ -181,9 +182,27 @@ function supplier_invoice_account_picklists(): array
     ];
 }
 
+function supplier_invoice_account_matches(array $account, string $selectedValue): bool
+{
+    $selectedValue = trim($selectedValue);
+    if ($selectedValue === '' || supplier_invoice_is_stub_ref($selectedValue)) {
+        return false;
+    }
+
+    foreach (['Id', 'AcctNum'] as $field) {
+        if (strcasecmp(trim((string) ($account[$field] ?? '')), $selectedValue) === 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function supplier_invoice_account_select_options(array $accounts, ?string $selectedId, string $blankLabel = 'Select account'): string
 {
+    $selectedId = trim((string) $selectedId);
     $html = '<option value="">' . htmlspecialchars($blankLabel) . '</option>';
+    $matched = false;
     foreach ($accounts as $account) {
         $id = trim((string) ($account['Id'] ?? ''));
         if ($id === '') {
@@ -191,10 +210,19 @@ function supplier_invoice_account_select_options(array $accounts, ?string $selec
         }
 
         $name = (string) ($account['Name'] ?? '');
-        $selected = $selectedId === $id ? ' selected' : '';
-        $html .= '<option value="' . htmlspecialchars($id, ENT_QUOTES) . '" data-name="' . htmlspecialchars($name, ENT_QUOTES) . '"' . $selected . '>'
+        $number = (string) ($account['AcctNum'] ?? '');
+        $selected = supplier_invoice_account_matches($account, $selectedId);
+        if ($selected) {
+            $matched = true;
+        }
+        $html .= '<option value="' . htmlspecialchars($id, ENT_QUOTES) . '" data-name="' . htmlspecialchars($name, ENT_QUOTES) . '" data-acct-num="' . htmlspecialchars($number, ENT_QUOTES) . '"' . ($selected ? ' selected' : '') . '>'
             . htmlspecialchars(supplier_invoice_account_option_label($account))
             . '</option>';
+    }
+
+    if ($selectedId !== '' && !$matched && !supplier_invoice_is_stub_ref($selectedId)) {
+        $html .= '<option value="' . htmlspecialchars($selectedId, ENT_QUOTES) . '" data-name="" selected>'
+            . htmlspecialchars($selectedId) . ' (not in chart of accounts)</option>';
     }
 
     return $html;
@@ -208,7 +236,7 @@ function supplier_invoice_resolve_account_name(string $accountId, array $account
     }
 
     foreach ($accounts as $account) {
-        if (trim((string) ($account['Id'] ?? '')) === $accountId) {
+        if (supplier_invoice_account_matches($account, $accountId)) {
             return trim((string) ($account['Name'] ?? ''));
         }
     }
@@ -340,6 +368,8 @@ function supplier_invoice_item_select_options(array $items, ?string $selectedVal
         $html .= '<option value="' . htmlspecialchars($id, ENT_QUOTES) . '"'
             . ' data-name="' . htmlspecialchars($name, ENT_QUOTES) . '"'
             . ' data-sku="' . htmlspecialchars($sku, ENT_QUOTES) . '"'
+            . ' data-account-id="' . htmlspecialchars(trim((string) ($item['QBO_ExpenseAccountRefValue'] ?? '')), ENT_QUOTES) . '"'
+            . ' data-account-name="' . htmlspecialchars(trim((string) ($item['QBO_ExpenseAccountRefName'] ?? '')), ENT_QUOTES) . '"'
             . ($selected ? ' selected' : '') . '>'
             . htmlspecialchars(supplier_invoice_item_option_label($item))
             . '</option>';
@@ -818,7 +848,7 @@ function supplier_invoice_parse_lines(array $input): array
             $itemRefName = '';
         }
 
-        if ($detailType === 'AccountBasedExpenseLineDetail' && $accountRefValue !== '' && $accountRefName === '') {
+        if ($accountRefValue !== '' && $accountRefName === '') {
             $picklists = supplier_invoice_account_picklists();
             if ($picklists['ok']) {
                 $accountRefName = supplier_invoice_resolve_account_name(
