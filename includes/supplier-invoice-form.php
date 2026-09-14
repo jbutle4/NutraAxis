@@ -14,7 +14,9 @@ $lines = $form['lines'] ?? [supplier_invoice_default_line()];
 $poOptions = $poOptions ?? [];
 $apAccounts = $apAccounts ?? [];
 $expenseAccounts = $expenseAccounts ?? [];
+$qboItems = $qboItems ?? supplier_invoice_item_picklist();
 $useAccountPicklists = !supplier_invoice_is_qbo_stub_mode() && ($apAccounts !== [] || $expenseAccounts !== []);
+$useItemPicklists = $qboItems !== [];
 $formActions = '';
 if (!$isLocked) {
     $formActions = capture_form_actions(function () use ($isEdit) {
@@ -112,7 +114,7 @@ if (!$isLocked) {
       <input class="form-input supplier-invoice-account-name" type="text" id="ap_account_ref_name" name="ap_account_ref_name" value="<?= htmlspecialchars($form['ap_account_ref_name'] ?? '') ?>" <?= ($isLocked || ($useAccountPicklists && $apAccounts !== [])) ? 'readonly' : '' ?> />
     </div>
     <div class="form-group-inline form-group-inline--wide form-grid-full">
-      <p class="form-hint">Status changes through payment approval on the invoice view page. QBO Insert is available there only for accounting posting recovery after payment approval.</p>
+      <p class="form-hint">When the invoice is ready, submit it for QBO Insert from the invoice view page. Accounting approves and creates the QuickBooks bill.</p>
     </div>
     <div class="form-group-inline form-group-inline--wide form-grid-full">
       <label for="memo">Memo</label>
@@ -128,6 +130,9 @@ if (!$isLocked) {
   <?php if ($useAccountPicklists && $expenseAccounts === []): ?>
   <div class="admin-notice is-error is-detail" role="alert">No QuickBooks expense accounts are available for line items. Sync chart of accounts or connect QuickBooks before saving.</div>
   <?php endif; ?>
+  <?php if ($qboItems === []): ?>
+  <div class="admin-notice is-error is-detail" role="alert">No Product Master SKUs are linked to QuickBooks items in this company. Inventory lines need a mapped QBO SKU before the bill can post.</div>
+  <?php endif; ?>
   <div class="admin-table-wrap">
     <table class="admin-table" id="supplier-invoice-lines">
       <thead>
@@ -137,7 +142,7 @@ if (!$isLocked) {
           <th>Detail type</th>
           <th>Account ID</th>
           <th>Account name</th>
-          <th>Item ID</th>
+          <th>QBO SKU</th>
           <th>Item name</th>
           <th>Qty</th>
           <th>Unit price</th>
@@ -146,6 +151,7 @@ if (!$isLocked) {
       </thead>
       <tbody>
         <?php foreach ($lines as $index => $line): ?>
+        <?php $isItemLine = ($line['detail_type'] ?? '') === 'ItemBasedExpenseLineDetail'; ?>
         <tr class="supplier-invoice-line-row">
           <td><input class="form-input" type="text" name="lines[<?= $index ?>][description]" value="<?= htmlspecialchars($line['description'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> /></td>
           <td><input class="form-input" type="number" min="0" step="0.01" name="lines[<?= $index ?>][amount]" value="<?= htmlspecialchars($line['amount'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> required /></td>
@@ -159,8 +165,8 @@ if (!$isLocked) {
             <input type="hidden" name="lines[<?= $index ?>][detail_type]" value="<?= htmlspecialchars($line['detail_type'] ?? 'AccountBasedExpenseLineDetail') ?>" />
             <?php endif; ?>
           </td>
-          <td>
-            <?php if ($useAccountPicklists && $expenseAccounts !== [] && ($line['detail_type'] ?? 'AccountBasedExpenseLineDetail') === 'AccountBasedExpenseLineDetail'): ?>
+          <td class="supplier-invoice-line-account-id">
+            <?php if ($useAccountPicklists && $expenseAccounts !== [] && !$isItemLine): ?>
             <select class="form-input supplier-invoice-line-account-select" name="lines[<?= $index ?>][account_ref_value]" data-name-target="lines[<?= $index ?>][account_ref_name]" <?= $isLocked ? 'disabled' : '' ?> required>
               <?= supplier_invoice_account_select_options($expenseAccounts, (string) ($line['account_ref_value'] ?? '')) ?>
             </select>
@@ -169,8 +175,16 @@ if (!$isLocked) {
             <?php endif; ?>
           </td>
           <td><input class="form-input supplier-invoice-line-account-name" type="text" name="lines[<?= $index ?>][account_ref_name]" value="<?= htmlspecialchars($line['account_ref_name'] ?? '') ?>" <?= ($isLocked || ($useAccountPicklists && $expenseAccounts !== [])) ? 'readonly' : '' ?> /></td>
-          <td><input class="form-input" type="text" name="lines[<?= $index ?>][item_ref_value]" value="<?= htmlspecialchars($line['item_ref_value'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> /></td>
-          <td><input class="form-input" type="text" name="lines[<?= $index ?>][item_ref_name]" value="<?= htmlspecialchars($line['item_ref_name'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> /></td>
+          <td class="supplier-invoice-line-item-id">
+            <?php if ($useItemPicklists): ?>
+            <select class="form-input supplier-invoice-line-item-select" name="lines[<?= $index ?>][item_ref_value]" data-name-target="lines[<?= $index ?>][item_ref_name]" <?= $isLocked ? 'disabled' : '' ?> <?= $isItemLine ? 'required' : '' ?>>
+              <?= supplier_invoice_item_select_options($qboItems, (string) ($line['item_ref_value'] ?? '')) ?>
+            </select>
+            <?php else: ?>
+            <input class="form-input" type="text" name="lines[<?= $index ?>][item_ref_value]" value="<?= htmlspecialchars($line['item_ref_value'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> />
+            <?php endif; ?>
+          </td>
+          <td><input class="form-input supplier-invoice-line-item-name" type="text" name="lines[<?= $index ?>][item_ref_name]" value="<?= htmlspecialchars($line['item_ref_name'] ?? '') ?>" <?= ($isLocked || $useItemPicklists) ? 'readonly' : '' ?> /></td>
           <td><input class="form-input" type="number" min="0" step="0.0001" name="lines[<?= $index ?>][qty]" value="<?= htmlspecialchars($line['qty'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> /></td>
           <td><input class="form-input" type="number" min="0" step="0.0001" name="lines[<?= $index ?>][unit_price]" value="<?= htmlspecialchars($line['unit_price'] ?? '') ?>" <?= $isLocked ? 'readonly' : '' ?> /></td>
           <?php if (!$isLocked): ?>
@@ -201,7 +215,20 @@ if (!$isLocked) {
           'label' => supplier_invoice_account_option_label($account),
       ];
   }, $expenseAccounts), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  var itemOptions = <?= json_encode(array_map(static function (array $item): array {
+      return [
+          'id'    => (string) ($item['QBO_ItemID'] ?? ''),
+          'name'  => (string) ($item['ProductName'] ?? ''),
+          'sku'   => (string) ($item['SKUCode'] ?? ''),
+          'label' => supplier_invoice_item_option_label($item),
+      ];
+  }, $qboItems), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
   var useAccountPicklists = <?= $useAccountPicklists ? 'true' : 'false' ?>;
+  var useItemPicklists = <?= $useItemPicklists ? 'true' : 'false' ?>;
+
+  function escapeAttr(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
 
   function selectedOptionName(select) {
     if (!select || select.selectedIndex < 0) {
@@ -211,7 +238,7 @@ if (!$isLocked) {
     return option ? (option.getAttribute('data-name') || '') : '';
   }
 
-  function syncAccountName(select) {
+  function syncNamedSelect(select) {
     if (!select) {
       return;
     }
@@ -219,42 +246,133 @@ if (!$isLocked) {
     if (!targetName) {
       return;
     }
-    var target = document.getElementById(targetName) || document.querySelector('[name="' + targetName.replace(/"/g, '\\"') + '"]');
+    var target = document.querySelector('[name="' + targetName.replace(/"/g, '\\"') + '"]');
     if (!target) {
       return;
     }
     target.value = selectedOptionName(select);
   }
 
-  function bindAccountSelect(select) {
+  function bindNamedSelect(select) {
     if (!select) {
       return;
     }
     select.addEventListener('change', function () {
-      syncAccountName(select);
+      syncNamedSelect(select);
     });
-    syncAccountName(select);
+    syncNamedSelect(select);
   }
 
-  document.querySelectorAll('.supplier-invoice-account-select, .supplier-invoice-line-account-select').forEach(bindAccountSelect);
-
-  function accountSelectHtml(index, selectedId) {
-  if (!useAccountPicklists || expenseAccountOptions.length === 0) {
+  function accountSelectHtml(index, selectedId, required) {
+    if (!useAccountPicklists || expenseAccountOptions.length === 0) {
       return '<input class="form-input supplier-invoice-line-account-input" type="text" name="lines[' + index + '][account_ref_value]" />';
     }
 
-    var html = '<select class="form-input supplier-invoice-line-account-select" name="lines[' + index + '][account_ref_value]" data-name-target="lines[' + index + '][account_ref_name]" required>';
+    var html = '<select class="form-input supplier-invoice-line-account-select" name="lines[' + index + '][account_ref_value]" data-name-target="lines[' + index + '][account_ref_name]"' + (required ? ' required' : '') + '>';
     html += '<option value="">Select account</option>';
     expenseAccountOptions.forEach(function (account) {
       var selected = selectedId === account.id ? ' selected' : '';
-      html += '<option value="' + account.id + '" data-name="' + account.name.replace(/"/g, '&quot;') + '"' + selected + '>' + account.label + '</option>';
+      html += '<option value="' + escapeAttr(account.id) + '" data-name="' + escapeAttr(account.name) + '"' + selected + '>' + escapeAttr(account.label) + '</option>';
     });
     html += '</select>';
     return html;
   }
 
+  function itemSelectHtml(index, selectedId, required) {
+    if (!useItemPicklists || itemOptions.length === 0) {
+      return '<input class="form-input" type="text" name="lines[' + index + '][item_ref_value]" value="' + escapeAttr(selectedId || '') + '"' + (required ? ' required' : '') + ' />';
+    }
+
+    var html = '<select class="form-input supplier-invoice-line-item-select" name="lines[' + index + '][item_ref_value]" data-name-target="lines[' + index + '][item_ref_name]"' + (required ? ' required' : '') + '>';
+    html += '<option value="">Select SKU</option>';
+    var matched = false;
+    itemOptions.forEach(function (item) {
+      var selected = selectedId === item.id || selectedId === item.sku || selectedId === item.name;
+      if (selected) {
+        matched = true;
+      }
+      html += '<option value="' + escapeAttr(item.id) + '" data-name="' + escapeAttr(item.name) + '" data-sku="' + escapeAttr(item.sku) + '"' + (selected ? ' selected' : '') + '>' + escapeAttr(item.label) + '</option>';
+    });
+    if (selectedId && !matched) {
+      html += '<option value="' + escapeAttr(selectedId) + '" selected>' + escapeAttr(selectedId) + ' (not in Product Master)</option>';
+    }
+    html += '</select>';
+    return html;
+  }
+
+  function rowIndex(row) {
+    var named = row.querySelector('[name^="lines["]');
+    var match = named && named.name.match(/^lines\[(\d+)\]/);
+    return match ? match[1] : '0';
+  }
+
+  function currentValue(row, field) {
+    var el = row.querySelector('[name="lines[' + rowIndex(row) + '][' + field + ']"]');
+    return el ? el.value : '';
+  }
+
+  function refreshLineRow(row) {
+    var typeSelect = row.querySelector('.supplier-invoice-detail-type');
+    var itemMode = typeSelect && typeSelect.value === 'ItemBasedExpenseLineDetail';
+    var index = rowIndex(row);
+    var accountCell = row.querySelector('.supplier-invoice-line-account-id');
+    var itemCell = row.querySelector('.supplier-invoice-line-item-id');
+    var accountName = row.querySelector('.supplier-invoice-line-account-name');
+    var itemName = row.querySelector('.supplier-invoice-line-item-name');
+    var accountValue = currentValue(row, 'account_ref_value');
+    var itemValue = currentValue(row, 'item_ref_value');
+
+    if (accountCell) {
+      accountCell.innerHTML = itemMode
+        ? '<input class="form-input supplier-invoice-line-account-input" type="text" name="lines[' + index + '][account_ref_value]" value="' + escapeAttr(accountValue) + '" />'
+        : accountSelectHtml(index, accountValue, true);
+    }
+    if (itemCell) {
+      itemCell.innerHTML = itemSelectHtml(index, itemMode ? itemValue : '', !!itemMode);
+    }
+    if (accountName && useAccountPicklists) {
+      accountName.readOnly = true;
+      if (itemMode) {
+        accountName.value = accountName.value;
+      }
+    }
+    if (itemName && useItemPicklists) {
+      itemName.readOnly = true;
+      if (!itemMode) {
+        itemName.value = '';
+      }
+    }
+
+    row.querySelectorAll('.supplier-invoice-line-account-select, .supplier-invoice-line-item-select').forEach(bindNamedSelect);
+    if (!itemMode && accountName) {
+      var accountSelect = row.querySelector('.supplier-invoice-line-account-select');
+      if (accountSelect) {
+        syncNamedSelect(accountSelect);
+      }
+    }
+  }
+
+  function bindRow(row) {
+    bindRemove(row);
+    var typeSelect = row.querySelector('.supplier-invoice-detail-type');
+    if (typeSelect && !typeSelect.dataset.boundDetailType) {
+      typeSelect.dataset.boundDetailType = '1';
+      typeSelect.addEventListener('change', function () {
+        refreshLineRow(row);
+      });
+    }
+    row.querySelectorAll('.supplier-invoice-line-account-select, .supplier-invoice-line-item-select').forEach(bindNamedSelect);
+  }
+
   function nextIndex() {
-    return table.querySelectorAll('.supplier-invoice-line-row').length;
+    var max = -1;
+    table.querySelectorAll('.supplier-invoice-line-row [name^="lines["]').forEach(function (input) {
+      var match = input.name.match(/^lines\[(\d+)\]/);
+      if (match) {
+        max = Math.max(max, parseInt(match[1], 10));
+      }
+    });
+    return max + 1;
   }
 
   function bindRemove(row) {
@@ -267,8 +385,10 @@ if (!$isLocked) {
     });
   }
 
+  document.querySelectorAll('.supplier-invoice-account-select').forEach(bindNamedSelect);
+
   if (table) {
-    table.querySelectorAll('.supplier-invoice-line-row').forEach(bindRemove);
+    table.querySelectorAll('.supplier-invoice-line-row').forEach(bindRow);
   }
 
   if (!table || !addBtn) return;
@@ -277,26 +397,22 @@ if (!$isLocked) {
     var index = nextIndex();
     var row = document.createElement('tr');
     row.className = 'supplier-invoice-line-row';
-    row.innerHTML = `
-      <td><input class="form-input" type="text" name="lines[${index}][description]" /></td>
-      <td><input class="form-input" type="number" min="0" step="0.01" name="lines[${index}][amount]" required /></td>
-      <td>
-        <select class="form-input supplier-invoice-detail-type" name="lines[${index}][detail_type]">
-          <option value="AccountBasedExpenseLineDetail">Expense account</option>
-          <option value="ItemBasedExpenseLineDetail">Inventory item</option>
-        </select>
-      </td>
-      <td>${accountSelectHtml(index, '')}</td>
-      <td><input class="form-input supplier-invoice-line-account-name" type="text" name="lines[${index}][account_ref_name]" ${useAccountPicklists ? 'readonly' : ''} /></td>
-      <td><input class="form-input" type="text" name="lines[${index}][item_ref_value]" /></td>
-      <td><input class="form-input" type="text" name="lines[${index}][item_ref_name]" /></td>
-      <td><input class="form-input" type="number" min="0" step="0.0001" name="lines[${index}][qty]" /></td>
-      <td><input class="form-input" type="number" min="0" step="0.0001" name="lines[${index}][unit_price]" /></td>
-      <td><button type="button" class="btn-text supplier-invoice-remove-line">Remove</button></td>
-    `;
+    row.innerHTML =
+      '<td><input class="form-input" type="text" name="lines[' + index + '][description]" /></td>' +
+      '<td><input class="form-input" type="number" min="0" step="0.01" name="lines[' + index + '][amount]" required /></td>' +
+      '<td><select class="form-input supplier-invoice-detail-type" name="lines[' + index + '][detail_type]">' +
+      '<option value="AccountBasedExpenseLineDetail">Expense account</option>' +
+      '<option value="ItemBasedExpenseLineDetail">Inventory item</option>' +
+      '</select></td>' +
+      '<td class="supplier-invoice-line-account-id">' + accountSelectHtml(index, '', true) + '</td>' +
+      '<td><input class="form-input supplier-invoice-line-account-name" type="text" name="lines[' + index + '][account_ref_name]"' + (useAccountPicklists ? ' readonly' : '') + ' /></td>' +
+      '<td class="supplier-invoice-line-item-id">' + itemSelectHtml(index, '', false) + '</td>' +
+      '<td><input class="form-input supplier-invoice-line-item-name" type="text" name="lines[' + index + '][item_ref_name]"' + (useItemPicklists ? ' readonly' : '') + ' /></td>' +
+      '<td><input class="form-input" type="number" min="0" step="0.0001" name="lines[' + index + '][qty]" /></td>' +
+      '<td><input class="form-input" type="number" min="0" step="0.0001" name="lines[' + index + '][unit_price]" /></td>' +
+      '<td><button type="button" class="btn-text supplier-invoice-remove-line">Remove</button></td>';
     table.querySelector('tbody').appendChild(row);
-    bindRemove(row);
-    row.querySelectorAll('.supplier-invoice-line-account-select').forEach(bindAccountSelect);
+    bindRow(row);
   });
 })();
 </script>

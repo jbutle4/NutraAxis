@@ -44,7 +44,7 @@ if ($rawToken !== '') {
 }
 
 $isQboRecovery = $tokenKind === 'QBOInsert'
-    || ($tokenKind === null && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
+    || ($tokenKind !== 'Payment' && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
 
 if ($tokenContext !== null) {
     $result = $isQboRecovery

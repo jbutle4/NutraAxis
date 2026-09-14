@@ -24,7 +24,7 @@ const QBO_INSERT_EDITABLE_STATUSES = [
 
 const QBO_INSERT_APPROVAL_ACTIONS = [
     'approve'   => [
-        'label'            => 'Approve & Post to QBO',
+        'label'            => 'Approve & Insert QBO Bill',
         'result'           => 'Approved',
         'status'           => QBO_INSERT_STATUS_POSTED,
         'require_comments' => false,
@@ -116,16 +116,7 @@ function qbo_insert_require_action(): void
 
 function qbo_insert_recovery_pending_sql(): string
 {
-    return <<<SQL
-          AND EXISTS (
-              SELECT 1
-              FROM dbo.ApprovalLog al
-              WHERE al.ApprovalType = N'Payment'
-                AND al.EntityType = N'SupplierInvoice'
-                AND al.EntityID = si.SupplierInvoiceID
-                AND al.ApproverResult = N'Approved'
-          )
-    SQL;
+    return '';
 }
 
 function qbo_insert_count_pending(): int
@@ -181,17 +172,8 @@ function qbo_insert_list_approval_log(int $invoiceId): array
 
 function qbo_insert_is_recovery_pending(?array $invoice): bool
 {
-    if ($invoice === null) {
-        return false;
-    }
-
-    if ((string) ($invoice['SyncStatus'] ?? '') !== QBO_INSERT_STATUS_SUBMITTED) {
-        return false;
-    }
-
-    require_once __DIR__ . '/payment-approval.php';
-
-    return payment_approval_invoice_has_approved((int) $invoice['SupplierInvoiceID']);
+    return $invoice !== null
+        && (string) ($invoice['SyncStatus'] ?? '') === QBO_INSERT_STATUS_SUBMITTED;
 }
 
 function qbo_insert_can_submit(array $invoice): bool
@@ -204,23 +186,11 @@ function qbo_insert_can_submit(array $invoice): bool
 }
 
 /**
- * Manual QBO Insert escape hatch after payment approval (Failed insert, Posted without bill, or recovery resubmit).
+ * Submit or resubmit a supplier invoice for QuickBooks bill insert.
  */
 function qbo_insert_can_manual_submit(array $invoice): bool
 {
-    require_once __DIR__ . '/payment-approval.php';
-
-    $invoiceId = (int) ($invoice['SupplierInvoiceID'] ?? 0);
-    if ($invoiceId <= 0 || !payment_approval_invoice_has_approved($invoiceId)) {
-        return false;
-    }
-
-    $status = (string) ($invoice['SyncStatus'] ?? '');
-    if ($status === QBO_INSERT_STATUS_FAILED || $status === QBO_INSERT_STATUS_SUBMITTED) {
-        return true;
-    }
-
-    return supplier_invoice_posted_is_reopenable($invoice);
+    return qbo_insert_can_submit($invoice);
 }
 
 function qbo_insert_has_invoice_attachment(int $invoiceId): bool
@@ -242,7 +212,7 @@ function qbo_insert_submit_for_approval(int $invoiceId): array
     }
 
     if (!qbo_insert_can_manual_submit($invoice)) {
-        return ['ok' => false, 'error' => 'Submit this invoice for Payment Approval first. QBO Insert is only for posting recovery after payment approval.'];
+        return ['ok' => false, 'error' => 'This invoice cannot be submitted for QBO Insert in its current status.'];
     }
 
     if (!qbo_insert_has_invoice_attachment($invoiceId)) {
@@ -289,10 +259,6 @@ function qbo_insert_resubmit_for_approval(int $invoiceId): array
         return ['ok' => false, 'error' => 'Only invoices already submitted for approval can be resubmitted.'];
     }
 
-    if (!qbo_insert_is_recovery_pending($invoice)) {
-        return ['ok' => false, 'error' => 'This invoice is awaiting Payment Approval. Resubmit from the Payment Approval path.'];
-    }
-
     try {
         qbo_insert_approval_token_invalidate($invoiceId);
         $notify = qbo_insert_notify_approvers_of_submission($invoice, true);
@@ -325,10 +291,6 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         return ['ok' => false, 'error' => 'Only invoices submitted for approval can be actioned.'];
     }
 
-    if (!qbo_insert_is_recovery_pending($invoice)) {
-        return ['ok' => false, 'error' => 'This invoice is awaiting Payment Approval, not QBO insert recovery.'];
-    }
-
     $user = $actingUser ?? auth_user();
     if ($user === null || empty($user['UserID'])) {
         return ['ok' => false, 'error' => 'Unable to identify the approver for this action.'];
@@ -349,6 +311,8 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
             if (!$post['ok']) {
                 $newStatus = QBO_INSERT_STATUS_FAILED;
                 $qboError = (string) ($post['error'] ?? 'QuickBooks bill creation failed.');
+            } else {
+                $newStatus = null;
             }
         }
     }
@@ -393,6 +357,11 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         $pdo->commit();
 
         qbo_insert_approval_token_invalidate($invoiceId);
+
+        if ($action === 'approve' && $qboError === null && !qbo_insert_is_stub_mode()) {
+            require_once __DIR__ . '/supplier-invoice-ap.php';
+            supplier_invoice_after_bill_posted($invoiceId);
+        }
 
         $invoice = supplier_invoice_get($invoiceId) ?? $invoice;
         qbo_insert_notify_requestor_of_status_change($invoice, $config, $approverName, $comments, $stubNote ?? $qboError);
@@ -545,13 +514,13 @@ function qbo_insert_notify_approval_watchers(array $invoice, bool $isResubmit, s
 
     $reference = supplier_invoice_reference($invoice);
     $subject = $isResubmit
-        ? "Supplier invoice {$reference} resubmitted for QBO posting recovery"
-        : "Supplier invoice {$reference} submitted for QBO posting recovery";
+        ? "Supplier invoice {$reference} resubmitted for QuickBooks bill insert"
+        : "Supplier invoice {$reference} submitted for QuickBooks bill insert";
     $viewUrl = approval_site_url() . '/accounting/supplier-invoices/view.php?id=' . (int) $invoice['SupplierInvoiceID'];
     $body = implode("\n", [
         $isResubmit
-            ? 'A supplier invoice has been resubmitted for QBO Insert posting recovery (after payment approval).'
-            : 'A supplier invoice has been submitted for QBO Insert posting recovery (after payment approval).',
+            ? 'A supplier invoice has been resubmitted for QuickBooks bill insert.'
+            : 'A supplier invoice has been submitted for QuickBooks bill insert.',
         '',
         "Invoice #: {$reference}",
         'Supplier: ' . ($invoice['SupplierName'] ?? ''),
@@ -598,8 +567,8 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
     $invoiceId = (int) $invoice['SupplierInvoiceID'];
     $reference = supplier_invoice_reference($invoice);
     $subject = $isResubmit
-        ? "Supplier invoice {$reference} resubmitted for QBO posting recovery"
-        : "Supplier invoice {$reference} submitted for QBO posting recovery";
+        ? "Supplier invoice {$reference} resubmitted for QuickBooks bill insert"
+        : "Supplier invoice {$reference} submitted for QuickBooks bill insert";
 
     if ($approvers === []) {
         $result['skipped_reason'] = 'no_subscribers';
@@ -627,8 +596,8 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
             ];
 
             $intro = $isResubmit
-                ? 'A supplier invoice has been resubmitted for QBO Insert posting recovery (after payment approval).'
-                : 'A supplier invoice has been submitted for QBO Insert posting recovery (after payment approval).';
+                ? 'A supplier invoice has been resubmitted for QuickBooks bill insert.'
+                : 'A supplier invoice has been submitted for QuickBooks bill insert.';
             $htmlBody = approval_build_action_email_html(
                 $intro,
                 [

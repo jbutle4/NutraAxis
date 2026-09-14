@@ -9,6 +9,7 @@ const qboCoaSync = require('./jobs/qbo-coa-sync');
 const inventoryReceiptSync = require('./jobs/inventory-receipt-sync');
 const inventorySalesSync = require('./jobs/inventory-sales-sync');
 const inventoryMovementRecon = require('./jobs/inventory-movement-recon');
+const supplierInvoiceApRecon = require('./jobs/supplier-invoice-ap-recon');
 
 const REGISTRY = {
   'monthly-sales-summary': {
@@ -51,6 +52,10 @@ const REGISTRY = {
     code: 'inventory-movement-recon',
     name: 'Inventory Movement Completeness Recon',
   },
+  'supplier-invoice-ap-recon': {
+    code: 'supplier-invoice-ap-recon',
+    name: 'Supplier Invoice AP Recon',
+  },
 };
 
 function buildResultMessage(code, result) {
@@ -81,6 +86,10 @@ function buildResultMessage(code, result) {
         || `Lookback ${result.lookback_days ?? '—'}d — ${result.total ?? 0} exceptions `
           + `(receipts ${result.receipt ?? 0}, sales ${result.sale ?? 0}, `
           + `transfers ${result.transfer ?? 0}, adjustments ${result.adjustment ?? 0}).`;
+    case 'supplier-invoice-ap-recon':
+      return `Ledger ${result.ledger_profile ?? '—'} — ${result.refreshed ?? 0} bills refreshed, `
+        + `${result.paid ?? 0} paid, ${result.closed ?? 0} closed, `
+        + `${result.matched ?? 0} ASN matched, ${result.po_advanced ?? 0} POs advanced.`;
     default:
       return 'Process completed.';
   }
@@ -117,6 +126,8 @@ async function invoke(code, params = {}) {
         trigger_type: params.trigger_type ?? params.triggerType ?? null,
         triggered_by_user_id: params.triggered_by_user_id ?? params.triggeredByUserId ?? null,
       });
+    case 'supplier-invoice-ap-recon':
+      return supplierInvoiceApRecon.run();
     default:
       return {
         ok: false,

@@ -2518,6 +2518,10 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   min-width: 8rem;
 }
 
+.supplier-invoice-form .admin-table .supplier-invoice-line-item-select {
+  min-width: 16rem;
+}
+
 .production-status-card {
   margin-top: 20px;
 }

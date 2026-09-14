@@ -29,7 +29,7 @@ if ($rawToken !== '') {
 }
 $isTokenAccess = $tokenContext !== null;
 $isQboRecovery = $tokenKind === 'QBOInsert'
-    || ($tokenKind === null && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
+    || ($tokenKind !== 'Payment' && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
 
 if ($rawToken !== '' && $tokenContext === null) {
     http_response_code(403);
@@ -120,9 +120,9 @@ require dirname(__DIR__, 2) . '/includes/header.php';
         <h2>Approver actions</h2>
         <?php if ($isQboRecovery): ?>
           <?php if (qbo_insert_is_stub_mode()): ?>
-          <div class="admin-notice" role="status">Test mode is on: approving records the QBO Insert recovery decision and sends email only. QuickBooks is not updated. Set <code>QBO_INSERT_STUB=0</code> when ready to post bills.</div>
+          <div class="admin-notice" role="status">Test mode is on: approving records the QBO Insert decision and sends email only. QuickBooks is not updated. Set <code>QBO_INSERT_STUB=0</code> when ready to post bills.</div>
           <?php endif; ?>
-          <p class="account-card-lead">This is accounting posting recovery after payment approval. Approving will create a Bill in QuickBooks Online.</p>
+          <p class="account-card-lead">Approving creates a Bill in QuickBooks Online for this supplier invoice.</p>
         <?php else: ?>
           <?php if (payment_approval_is_stub_mode()): ?>
           <div class="admin-notice" role="status">Test mode is on: approving records the payment decision and marks the invoice Posted without creating a QuickBooks bill. Set <code>QBO_INSERT_STUB=0</code> to auto-post bills on approve.</div>

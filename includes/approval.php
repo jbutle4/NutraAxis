@@ -189,7 +189,7 @@ const APPROVAL_TYPES = [
         'label'            => 'QBO Insert Approval',
         'permission'       => 'QBOInsertApproval',
         'entity_type'      => 'SupplierInvoice',
-        'entity_label'     => 'Supplier invoice (QBO posting recovery)',
+        'entity_label'     => 'Supplier invoice',
     ],
     'Payment' => [
         'label'            => 'Payment Approval',
@@ -697,16 +697,16 @@ function approval_list_pending_entries(array $filters = []): array
     if ($includeType('Payment') && approval_can_read_type('Payment')) {
         require_once __DIR__ . '/payment-approval.php';
         require_once __DIR__ . '/procurement-ledger.php';
-        foreach (payment_approval_list_pending() as $row) {
+        foreach (payment_approval_list_pending_payments() as $row) {
             $entries[] = approval_pending_row(
                 'Payment',
-                'SupplierInvoice',
-                (int) $row['SupplierInvoiceID'],
-                $row['ModifiedDate'] ?? $row['TxnDate'] ?? null,
+                'POPayment',
+                (int) $row['PaymentID'],
+                $row['PaymentDate'] ?? null,
                 (string) ($row['CreatedByName'] ?? ''),
-                null,
-                null,
-                supplier_invoice_has_ledger_profile_column() ? procurement_row_ledger_profile($row) : null
+                'SupplierInvoice',
+                !empty($row['SupplierInvoiceID']) ? (int) $row['SupplierInvoiceID'] : null,
+                null
             );
         }
     }
@@ -968,7 +968,7 @@ function approval_queue_links_for_user(): array
     if (approval_can_read_type('QBOInsert')) {
         require_once __DIR__ . '/qbo-insert-approval.php';
         $links[] = [
-            'label'   => 'QBO Insert (recovery)',
+            'label'   => 'QBO Insert',
             'type'    => 'QBOInsert',
             'href'    => approval_index_url('QBOInsert', 'pending'),
             'pending' => qbo_insert_count_pending(),

@@ -5,7 +5,7 @@ require dirname(__DIR__, 2) . '/includes/accounting.php';
 accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/qbo-insert-approval.php';
-require dirname(__DIR__, 2) . '/includes/payment-approval.php';
+require dirname(__DIR__, 2) . '/includes/supplier-invoice-ap.php';
 
 accounting_require_update();
 
@@ -17,30 +17,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $invoiceId = (int) ($_POST['invoice_id'] ?? 0);
 $action = trim($_POST['action'] ?? '');
 
-$isQboAction = in_array($action, ['submit_qbo', 'resubmit_qbo'], true);
-
-if ($isQboAction) {
-    $result = match ($action) {
-        'submit_qbo'   => qbo_insert_submit_for_approval($invoiceId),
-        'resubmit_qbo' => qbo_insert_resubmit_for_approval($invoiceId),
-        default        => ['ok' => false, 'error' => 'Invalid status action.'],
-    };
-    $formatNotify = 'qbo_insert_format_notify_message';
-    $notice = $action === 'resubmit_qbo' ? 'resubmitted_qbo' : 'submitted_qbo';
-} else {
-    $result = match ($action) {
-        'submit'   => payment_approval_invoice_submit($invoiceId),
-        'resubmit' => payment_approval_invoice_resubmit($invoiceId),
-        default    => ['ok' => false, 'error' => 'Invalid status action.'],
-    };
-    $formatNotify = 'payment_approval_format_notify_message';
-    $notice = $action === 'resubmit' ? 'resubmitted' : 'submitted';
+if ($action === 'start_asn') {
+    $invoice = $invoiceId > 0 ? supplier_invoice_get($invoiceId) : null;
+    if ($invoice === null) {
+        header('Location: ' . accounting_path('/accounting/supplier-invoices/'), true, 302);
+        exit;
+    }
+    supplier_invoice_mark_asn_draft_started($invoiceId);
+    $href = supplier_invoice_asn_create_href($invoice);
+    header('Location: ' . ($href ?? accounting_path('/accounting/supplier-invoices/view.php') . '?id=' . $invoiceId), true, 302);
+    exit;
 }
+
+$result = match ($action) {
+    'submit', 'submit_qbo'     => qbo_insert_submit_for_approval($invoiceId),
+    'resubmit', 'resubmit_qbo' => qbo_insert_resubmit_for_approval($invoiceId),
+    default                    => ['ok' => false, 'error' => 'Invalid status action.'],
+};
+$notice = in_array($action, ['resubmit', 'resubmit_qbo'], true) ? 'resubmitted_qbo' : 'submitted_qbo';
 
 if ($result['ok']) {
     $params = ['id' => $invoiceId, 'notice' => $notice];
     if (!empty($result['notify']) && is_array($result['notify'])) {
-        $mailMessage = $formatNotify($result['notify']);
+        $mailMessage = qbo_insert_format_notify_message($result['notify']);
         if ($mailMessage !== '') {
             $params['mail_message'] = $mailMessage;
         }

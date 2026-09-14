@@ -239,10 +239,9 @@ function payment_approval_count_pending(): int
 {
     $pdo = db();
     $stmt = $pdo->prepare(
-        'SELECT COUNT(*) FROM dbo.SupplierInvoice si WHERE si.SyncStatus = :status'
-        . payment_approval_invoice_pending_sql_exclude_qbo_recovery()
+        'SELECT COUNT(*) FROM dbo.POPayment WHERE SupplierInvoiceID IS NOT NULL AND PaymentStatus = :status'
     );
-    $stmt->execute(['status' => QBO_INSERT_STATUS_SUBMITTED]);
+    $stmt->execute(['status' => PAYMENT_APPROVAL_STATUS_SUBMITTED]);
 
     return (int) $stmt->fetchColumn();
 }
@@ -480,6 +479,11 @@ function payment_approval_invoice_process_action(int $invoiceId, string $action,
         $pdo->commit();
 
         payment_approval_invoice_token_invalidate($invoiceId);
+
+        if ($action === 'approve' && $qboError === null && !payment_approval_is_stub_mode()) {
+            require_once __DIR__ . '/supplier-invoice-ap.php';
+            supplier_invoice_after_bill_posted($invoiceId);
+        }
 
         $invoice = supplier_invoice_get($invoiceId) ?? $invoice;
         payment_approval_invoice_notify_requestor($invoice, $config, $approverName, $comments, $stubNote ?? $qboError);
@@ -992,6 +996,11 @@ function payment_approval_process_action(int $paymentId, string $action, string 
         $pdo->commit();
 
         payment_approval_token_invalidate($paymentId);
+
+        if ($action === 'approve' && $qboError === null && !payment_approval_is_stub_mode()) {
+            require_once __DIR__ . '/supplier-invoice-ap.php';
+            supplier_invoice_after_bill_posted($supplierInvoiceId);
+        }
 
         $payment = po_payment_get($paymentId) ?? $payment;
         $notifyConfig = $config;

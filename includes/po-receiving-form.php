@@ -29,6 +29,9 @@ $excludePorId = $isEdit ? (int) ($form['por_id'] ?? 0) : null;
             <?php if ($isEdit): ?>
             <input type="hidden" name="po_id" value="<?= (int) ($form['po_id'] ?? 0) ?>" />
             <?php endif; ?>
+            <?php if (!empty($linkInvoiceId)): ?>
+            <input type="hidden" name="invoice_id" value="<?= (int) $linkInvoiceId ?>" />
+            <?php endif; ?>
           </div>
           <div class="form-group por-inline-field">
             <label for="por_status">Receipt status</label>
