@@ -1052,6 +1052,34 @@ function qbo_error_is_inventory_subscription_limit(string $message): bool
         || str_contains($message, 'inventory') && str_contains($message, 'subscription');
 }
 
+function qbo_bill_inventory_required_txn_date(array $billLines): ?string
+{
+    require_once __DIR__ . '/supplier-invoice.php';
+
+    $required = null;
+    $seen = [];
+    foreach ($billLines as $line) {
+        if (($line['DetailType'] ?? '') !== 'ItemBasedExpenseLineDetail') {
+            continue;
+        }
+        $itemId = trim((string) ($line['ItemBasedExpenseLineDetail']['ItemRef']['value'] ?? ''));
+        if ($itemId === '' || isset($seen[$itemId])) {
+            continue;
+        }
+        $seen[$itemId] = true;
+        $fetch = qbo_fetch_item($itemId);
+        $startDate = supplier_invoice_normalize_form_date($fetch['item']['InvStartDate'] ?? null);
+        if ($startDate === '') {
+            continue;
+        }
+        if ($required === null || $startDate > $required) {
+            $required = $startDate;
+        }
+    }
+
+    return $required;
+}
+
 function qbo_humanize_error(string $message): string
 {
     if (str_starts_with($message, 'QuickBooks rejected the update because')) {
@@ -1338,6 +1366,10 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
 
     $txnDate = supplier_invoice_normalize_form_date($invoice['TxnDate'] ?? null) ?: date('Y-m-d');
     $dueDate = supplier_invoice_normalize_form_date($invoice['DueDate'] ?? null);
+    $inventoryTxnDate = qbo_bill_inventory_required_txn_date($billLines);
+    if ($inventoryTxnDate !== null && $inventoryTxnDate > $txnDate) {
+        $txnDate = $inventoryTxnDate;
+    }
     $payload = [
         'VendorRef' => ['value' => (string) $invoice['VendorRefValue']],
         'TxnDate'   => $txnDate,
