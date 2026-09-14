@@ -2514,12 +2514,37 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   margin-top: 0;
 }
 
-.supplier-invoice-form .admin-table .form-input {
-  min-width: 8rem;
+.supplier-invoice-form.admin-form {
+  max-width: none;
 }
 
-.supplier-invoice-form .admin-table .supplier-invoice-line-item-select {
-  min-width: 16rem;
+.supplier-invoice-form .admin-table-wrap {
+  overflow-x: auto;
+}
+
+.page-inner--wide .supplier-invoice-form .admin-table {
+  min-width: 0;
+  width: 100%;
+}
+
+.supplier-invoice-form .admin-table .form-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.supplier-invoice-form .admin-table .supplier-invoice-line-item-select,
+.supplier-invoice-form .admin-table .supplier-invoice-line-account-select {
+  min-width: 11rem;
+}
+
+.supplier-invoice-form .admin-table .supplier-invoice-line-amount,
+.supplier-invoice-form .admin-table .supplier-invoice-line-qty,
+.supplier-invoice-form .admin-table .supplier-invoice-line-unit-price {
+  width: 6.5rem;
+}
+
+.supplier-invoice-form .admin-table .supplier-invoice-line-detail {
+  width: 10rem;
 }
 
 .production-status-card {
