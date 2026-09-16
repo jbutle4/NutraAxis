@@ -200,6 +200,21 @@ function provider_signup_accs_deprovision(array $application, array $options = [
         $actions[] = 'shared catalog ' . $catalogId . ' already absent';
     }
 
+    if ($customerGroupId > 0 && !provider_signup_accs_is_protected_customer_group_id($customerGroupId)) {
+        $ruleSync = provider_signup_accs_sync_free_shipping_rule_group($customerGroupId, 'remove');
+        if (!($ruleSync['ok'] ?? false)) {
+            return [
+                'ok'      => false,
+                'error'   => $ruleSync['error'] ?? 'Unable to remove the clinic group from the free-shipping cart price rule.',
+                'summary' => implode('; ', $actions),
+                'actions' => $actions,
+            ];
+        }
+        if (($ruleSync['action'] ?? '') === 'removed') {
+            $actions[] = 'removed customer group ' . $customerGroupId . ' from free-shipping rule ' . (int) ($ruleSync['rule_id'] ?? 0);
+        }
+    }
+
     if ($companyId > 0 && !empty($preview['company']['exists'])) {
         $deletedCompany = provider_signup_accs_api_request('DELETE', '/company/' . $companyId);
         if (!($deletedCompany['ok'] ?? false) && !provider_signup_accs_deprovision_is_missing($deletedCompany)) {
@@ -239,7 +254,7 @@ function provider_signup_accs_deprovision(array $application, array $options = [
         $actions[] = 'left ' . count($preview['users']) . ' ACCS customer account(s) in place';
     }
 
-    if ($customerGroupId > 4) {
+    if ($customerGroupId > 0 && !provider_signup_accs_is_protected_customer_group_id($customerGroupId)) {
         $deletedGroup = provider_signup_accs_api_request('DELETE', '/customerGroups/' . $customerGroupId);
         if ($deletedGroup['ok'] ?? false) {
             $actions[] = 'deleted customer group ' . $customerGroupId;

@@ -1354,6 +1354,23 @@ function provider_signup_accs_complete_clinic_configuration(array $application):
         $steps['shared_catalog'] = ['done' => true, 'action' => 'skipped'];
     }
 
+    if ($sharedCatalogId > 0) {
+        $freeShipping = provider_signup_accs_add_catalog_group_to_free_shipping_rule($sharedCatalogId);
+        if (!$freeShipping['ok']) {
+            return [
+                'ok'                     => false,
+                'error'                  => $freeShipping['error'] ?? 'Unable to add the clinic shared-catalog group to the free-shipping cart price rule.',
+                'company_id'             => $companyId,
+                'shared_catalog_id'      => $sharedCatalogId,
+                'category_count'         => null,
+                'product_count'          => null,
+                'roles_summary'          => null,
+                'configuration_complete' => false,
+                'steps'                  => $steps,
+            ];
+        }
+    }
+
     $categoryCount = (int) ($application['AccsCatalogCategoryCount'] ?? 0);
     $productCount = (int) ($application['AccsCatalogProductCount'] ?? 0);
     if (!provider_signup_accs_config_application_step_done($application, 'catalog_assign')) {

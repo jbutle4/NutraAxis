@@ -35,6 +35,23 @@ const PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_BY_ENVIRONMENT = [
     'dev'        => 7,
 ];
 
+/** $75 free-shipping cart price rule IDs. Per tenant. Dev has no rule unless env is set. */
+const PROVIDER_SIGNUP_ACCS_FREE_SHIPPING_RULE_ID_BY_ENVIRONMENT = [
+    'production' => 3,
+    'stage'      => 9,
+];
+
+/**
+ * Practitioner customer groups that must stay on the free-shipping rule.
+ *
+ * @var array<string, list<int>>
+ */
+const PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS_BY_ENVIRONMENT = [
+    'production' => [4, 10],
+    'stage'      => [4, 16],
+    'dev'        => [4],
+];
+
 function provider_signup_accs_allowed_environments(): array
 {
     return ['stage', 'dev', 'production'];
@@ -250,6 +267,240 @@ function provider_signup_accs_sales_representative_id(): int
 function provider_signup_accs_website_id(): int
 {
     return provider_signup_accs_setting_int('PROVIDER_SIGNUP_ACCS_WEBSITE_ID', 1);
+}
+
+function provider_signup_accs_free_shipping_rule_id(): int
+{
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    $fallback = (int) (PROVIDER_SIGNUP_ACCS_FREE_SHIPPING_RULE_ID_BY_ENVIRONMENT[$environment] ?? 0);
+
+    return provider_signup_accs_setting_int(
+        'PROVIDER_SIGNUP_ACCS_FREE_SHIPPING_RULE_ID',
+        $fallback,
+        false
+    );
+}
+
+/**
+ * @return list<int>
+ */
+function provider_signup_accs_practitioner_group_ids(): array
+{
+    $environment = provider_signup_accs_normalize_environment(provider_signup_accs_target_environment()) ?? 'stage';
+    $fallback = PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS_BY_ENVIRONMENT[$environment]
+        ?? [PROVIDER_SIGNUP_ACCS_CUSTOMER_GROUP_ID_DEFAULT];
+
+    $raw = trim((string) (provider_signup_accs_setting_value('PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS', false) ?? ''));
+    if ($raw === '') {
+        return array_values(array_unique(array_map('intval', $fallback)));
+    }
+
+    $ids = [];
+    foreach (preg_split('/\s*,\s*/', $raw) ?: [] as $part) {
+        $id = (int) $part;
+        if ($id > 0) {
+            $ids[] = $id;
+        }
+    }
+
+    return $ids !== [] ? array_values(array_unique($ids)) : array_values(array_unique(array_map('intval', $fallback)));
+}
+
+function provider_signup_accs_is_protected_customer_group_id(int $groupId): bool
+{
+    if ($groupId <= 1) {
+        return true;
+    }
+
+    return in_array($groupId, provider_signup_accs_practitioner_group_ids(), true);
+}
+
+/**
+ * @param array<string, mixed> $rule
+ * @return list<int>
+ */
+function provider_signup_accs_sales_rule_customer_group_ids(array $rule): array
+{
+    $raw = $rule['customer_group_ids'] ?? $rule['customer_groups'] ?? [];
+    if (is_string($raw)) {
+        $raw = preg_split('/\s*,\s*/', $raw) ?: [];
+    }
+    if (!is_array($raw)) {
+        return [];
+    }
+
+    $ids = [];
+    foreach ($raw as $value) {
+        if (is_array($value)) {
+            $value = $value['id'] ?? $value['customer_group_id'] ?? null;
+        }
+        $id = (int) $value;
+        if ($id >= 0) {
+            $ids[] = $id;
+        }
+    }
+
+    return array_values(array_unique($ids));
+}
+
+/**
+ * @param array<string, mixed> $payload
+ * @return array<string, mixed>
+ */
+function provider_signup_accs_sales_rule_from_response(array $payload): array
+{
+    if (isset($payload['rule']) && is_array($payload['rule'])) {
+        return $payload['rule'];
+    }
+
+    return $payload;
+}
+
+/**
+ * Add or remove a shared-catalog customer group on the $75 free-shipping cart price rule.
+ *
+ * @return array{ok: bool, error: ?string, action: string, rule_id: int, group_id: int}
+ */
+function provider_signup_accs_sync_free_shipping_rule_group(int $groupId, string $mode): array
+{
+    $mode = $mode === 'remove' ? 'remove' : 'add';
+    $ruleId = provider_signup_accs_free_shipping_rule_id();
+    $empty = [
+        'ok'       => true,
+        'error'    => null,
+        'action'   => 'skipped',
+        'rule_id'  => $ruleId,
+        'group_id' => $groupId,
+    ];
+
+    if ($groupId <= 0 || $ruleId <= 0) {
+        return $empty;
+    }
+
+    if (provider_signup_accs_is_protected_customer_group_id($groupId)) {
+        return $empty;
+    }
+
+    $current = provider_signup_accs_api_request('GET', '/salesRules/' . $ruleId, null, null, 120);
+    if (!$current['ok'] || !is_array($current['data'] ?? null)) {
+        return [
+            'ok'       => false,
+            'error'    => provider_signup_accs_format_api_error($current),
+            'action'   => 'failed',
+            'rule_id'  => $ruleId,
+            'group_id' => $groupId,
+        ];
+    }
+
+    $rule = provider_signup_accs_sales_rule_from_response($current['data']);
+    $existing = provider_signup_accs_sales_rule_customer_group_ids($rule);
+    $next = $existing;
+
+    if ($mode === 'add') {
+        $next[] = $groupId;
+        foreach (provider_signup_accs_practitioner_group_ids() as $practitionerGroupId) {
+            $next[] = $practitionerGroupId;
+        }
+    } else {
+        $next = array_values(array_filter(
+            $next,
+            static fn (int $id): bool => $id !== $groupId
+        ));
+        foreach (provider_signup_accs_practitioner_group_ids() as $practitionerGroupId) {
+            $next[] = $practitionerGroupId;
+        }
+    }
+
+    $next = array_values(array_unique($next));
+    $existingSorted = $existing;
+    $nextSorted = $next;
+    sort($existingSorted);
+    sort($nextSorted);
+    if ($existingSorted === $nextSorted) {
+        return [
+            'ok'       => true,
+            'error'    => null,
+            'action'   => 'existing',
+            'rule_id'  => $ruleId,
+            'group_id' => $groupId,
+        ];
+    }
+
+    $rule['customer_group_ids'] = $next;
+    $updated = provider_signup_accs_api_request('PUT', '/salesRules/' . $ruleId, null, [
+        'rule' => $rule,
+    ], 120);
+    if (!$updated['ok']) {
+        return [
+            'ok'       => false,
+            'error'    => provider_signup_accs_format_api_error($updated),
+            'action'   => 'failed',
+            'rule_id'  => $ruleId,
+            'group_id' => $groupId,
+        ];
+    }
+
+    return [
+        'ok'       => true,
+        'error'    => null,
+        'action'   => $mode === 'add' ? 'added' : 'removed',
+        'rule_id'  => $ruleId,
+        'group_id' => $groupId,
+    ];
+}
+
+/**
+ * @return array{ok: bool, error: ?string, action: string, rule_id: int, group_id: int}
+ */
+function provider_signup_accs_add_catalog_group_to_free_shipping_rule(int $catalogId): array
+{
+    if ($catalogId <= 0) {
+        return [
+            'ok'       => false,
+            'error'    => 'Shared catalog ID is required to update the free-shipping rule.',
+            'action'   => 'failed',
+            'rule_id'  => provider_signup_accs_free_shipping_rule_id(),
+            'group_id' => 0,
+        ];
+    }
+
+    $masterCatalogId = 1;
+    if (function_exists('provider_signup_accs_config_master_catalog_id')) {
+        $masterCatalogId = provider_signup_accs_config_master_catalog_id();
+    }
+    if ($catalogId === $masterCatalogId) {
+        return [
+            'ok'       => true,
+            'error'    => null,
+            'action'   => 'skipped',
+            'rule_id'  => provider_signup_accs_free_shipping_rule_id(),
+            'group_id' => 0,
+        ];
+    }
+
+    $catalog = provider_signup_accs_api_request('GET', '/sharedCatalog/' . $catalogId, null, null, 120);
+    if (!$catalog['ok'] || !is_array($catalog['data'] ?? null)) {
+        return [
+            'ok'       => false,
+            'error'    => provider_signup_accs_format_api_error($catalog),
+            'action'   => 'failed',
+            'rule_id'  => provider_signup_accs_free_shipping_rule_id(),
+            'group_id' => 0,
+        ];
+    }
+
+    $groupId = (int) ($catalog['data']['customer_group_id'] ?? 0);
+    if ($groupId <= 0) {
+        return [
+            'ok'       => false,
+            'error'    => 'Shared catalog ' . $catalogId . ' has no customer group for the free-shipping rule.',
+            'action'   => 'failed',
+            'rule_id'  => provider_signup_accs_free_shipping_rule_id(),
+            'group_id' => 0,
+        ];
+    }
+
+    return provider_signup_accs_sync_free_shipping_rule_group($groupId, 'add');
 }
 
 function provider_signup_accs_generate_password(): string
