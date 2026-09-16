@@ -1,7 +1,7 @@
 # Agent handoff — Provider Signup process & ACCS provisioning
 
 Continuation document for agents working on NutraAxis practitioner/provider onboarding.  
-**Last updated:** 2026-08-01  
+**Last updated:** 2026-09-16  
 **Repo:** `nutraaxis` on Azure App Service **`nutraaxisweb`**
 
 ---
@@ -63,6 +63,7 @@ flowchart TD
 - **Submit without cert/ACH** — Allowed with warnings. No reseller certificate → tax-exempt is not configured. No ACH → Clinic Store is not auto-configured after provision (ops can still run Complete ACCS clinic configuration). Provider can return via same token to complete documents. Ops review still shows these warnings; they do not require an override.
 - **Provider cannot edit full form** after submit (except **Returned** / **Draft**). Certificate + ACH editable in **complete-documents** statuses.
 - **Ops must approve before provision** — Provider is **not** emailed “Clinic Store ready” until provisioning completes.
+- **Welcome email is environment-specific** — Production clinics get a Production notice + `www.nutraaxislabs.com`. Stage/Dev clinics get a Stage (UAT — not live) notice + `https://main--nutrasync-eds-staging--capocommerce.aem.live/`. Already-sent emails are not rewritten.
 
 ---
 
@@ -266,14 +267,18 @@ All in `includes/provider-signup-mail.php`. Sent via Office 365 SMTP (`notificat
 | Ops comment | `provider_signup_mail_commented` | Provider | |
 | Ops return | `provider_signup_mail_returned` | Provider | Apply link |
 | Ops reopen | `provider_signup_mail_reopened` | Provider | |
-| After provision | `provider_signup_mail_provisioned` | Provider | **Branded HTML welcome**; `support@nutraaxislabs.com`; sign-in + Clinic ID + temp password |
+| After provision | `provider_signup_mail_provisioned` | Provider | **Two notices:** Production vs Stage (Dev uses Stage). `support@nutraaxislabs.com`; sign-in + Clinic ID + temp password |
 
-**Welcome email subject:** `Welcome to NutraAxis — your Clinic Store account is ready`  
+**Welcome email subjects:**
+- Production: `Welcome to NutraAxis — your Clinic Store account is ready (Production)`
+- Stage / Dev: `Welcome to NutraAxis — your Clinic Store account is ready (Stage)`
+
 **Logo:** `/assets/logos/nutraaxis-logo-email.png` (absolute URL via `SITE_URL`)  
-**Sign-in URL:** `PROVIDER_ACCS_LOGIN_URL` or `NUTRAAXIS_STORE_URL` (default `https://www.nutraaxislabs.com`)
+**Sign-in URL:** from application `AccsEnvironment` — Production `https://www.nutraaxislabs.com`, Stage/Dev `https://main--nutrasync-eds-staging--capocommerce.aem.live`. Optional overrides: `PROVIDER_ACCS_LOGIN_URL_PRODUCTION` / `_STAGE` / `_DEV`. Shared `PROVIDER_ACCS_LOGIN_URL` and `NUTRAAXIS_STORE_URL` apply to Production only.
 
 **Test/sample provisioned email (secured cron):**  
-`GET /cron/send-provisioned-mail-sample.php?to=…&application_id=20` with header `X-Cron-Secret: $CRON_SECRET`
+`GET /cron/send-provisioned-mail-sample.php?to=…&application_id=20` with header `X-Cron-Secret: $CRON_SECRET`  
+The sample uses that application's `AccsEnvironment` (Stage app → Stage notice and Stage storefront).
 
 **Mail pitfall:** Local CLI without `SMTP_PASS` uses PHP `mail()` and silently does not deliver. Always test via **production Azure SMTP** or the cron endpoint above.
 
@@ -361,7 +366,9 @@ All provider signup process work is on **`main`**. Feature branches below were m
 ```text
 # Provider signup
 PROVIDER_SIGNUP_OPS_EMAIL=          # Internal new-application alert
-PROVIDER_ACCS_LOGIN_URL=            # Sign-in link in welcome email
+PROVIDER_ACCS_LOGIN_URL_PRODUCTION=https://www.nutraaxislabs.com
+PROVIDER_ACCS_LOGIN_URL_STAGE=https://main--nutrasync-eds-staging--capocommerce.aem.live
+PROVIDER_ACCS_LOGIN_URL=            # Production-only fallback (do not use for Stage)
 PROVIDER_SIGNUP_ACCS_ENVIRONMENT=   # production | stage
 PROVIDER_SIGNUP_ACCS_USER_GROUP_ID=4
 PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_PRODUCTION=12

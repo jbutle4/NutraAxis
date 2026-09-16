@@ -52,6 +52,18 @@ const PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS_BY_ENVIRONMENT = [
     'dev'        => [4],
 ];
 
+/**
+ * Clinic Store sign-in URLs used in provisioned welcome emails.
+ * Dev uses the Stage storefront unless PROVIDER_ACCS_LOGIN_URL_DEV is set.
+ *
+ * @var array<string, string>
+ */
+const PROVIDER_SIGNUP_ACCS_STOREFRONT_URL_BY_ENVIRONMENT = [
+    'production' => 'https://www.nutraaxislabs.com',
+    'stage'      => 'https://main--nutrasync-eds-staging--capocommerce.aem.live',
+    'dev'        => 'https://main--nutrasync-eds-staging--capocommerce.aem.live',
+];
+
 function provider_signup_accs_allowed_environments(): array
 {
     return ['stage', 'dev', 'production'];
@@ -239,6 +251,42 @@ function provider_signup_accs_setting_int(string $baseKey, int $fallback, bool $
     $configured = (int) (provider_signup_accs_setting_value($baseKey, $allowShared) ?? 0);
 
     return $configured > 0 ? $configured : $fallback;
+}
+
+/**
+ * Storefront URL for a Clinic Store welcome email.
+ * Shared PROVIDER_ACCS_LOGIN_URL / NUTRAAXIS_STORE_URL apply to Production only
+ * so a production override cannot send Stage clinics to www.nutraaxislabs.com.
+ */
+function provider_signup_accs_storefront_url(?string $environment = null): string
+{
+    $environment = provider_signup_accs_normalize_environment($environment)
+        ?? provider_signup_accs_normalize_environment(provider_signup_accs_target_environment())
+        ?? 'production';
+
+    $keys = ['PROVIDER_ACCS_LOGIN_URL_' . provider_signup_accs_environment_setting_suffix($environment)];
+    if ($environment === 'production') {
+        $keys[] = 'PROVIDER_ACCS_LOGIN_URL';
+        $keys[] = 'NUTRAAXIS_STORE_URL';
+    }
+
+    foreach ($keys as $key) {
+        $runtime = env_runtime_value($key);
+        if ($runtime !== null && trim($runtime) !== '') {
+            return rtrim(trim($runtime), '/');
+        }
+
+        $configured = env($key, null);
+        if ($configured !== null && trim((string) $configured) !== '') {
+            return rtrim(trim((string) $configured), '/');
+        }
+    }
+
+    return rtrim(
+        PROVIDER_SIGNUP_ACCS_STOREFRONT_URL_BY_ENVIRONMENT[$environment]
+            ?? PROVIDER_SIGNUP_ACCS_STOREFRONT_URL_BY_ENVIRONMENT['production'],
+        '/'
+    );
 }
 
 function provider_signup_accs_customer_group_id(): int

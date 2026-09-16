@@ -31,14 +31,9 @@ function provider_signup_policy_url(string $accessToken): string
     return provider_signup_mail_base_url() . '/provider-signup/policy.php?token=' . rawurlencode($accessToken);
 }
 
-function provider_signup_accs_login_url(): string
+function provider_signup_accs_login_url(?string $environment = null): string
 {
-    $configured = rtrim(trim((string) env('PROVIDER_ACCS_LOGIN_URL', '')), '/');
-    if ($configured !== '') {
-        return $configured;
-    }
-
-    return rtrim(trim((string) env('NUTRAAXIS_STORE_URL', 'https://www.nutraaxislabs.com')), '/');
+    return provider_signup_accs_storefront_url($environment);
 }
 
 function provider_signup_support_mailto_url(string $subject = 'Provider application help'): string
@@ -379,25 +374,67 @@ function provider_signup_mail_reopened(array $application, string $comments): vo
 }
 
 /**
+ * Production vs Stage welcome notices. Dev uses the Stage notice and Stage storefront URL.
+ *
+ * @return array{is_production: bool, notice_label: string, subject: string, banner_plain: string, banner_html: string, cta_label: string}
+ */
+function provider_signup_mail_provisioned_notice(string $environment): array
+{
+    if ($environment === 'production') {
+        return [
+            'is_production' => true,
+            'notice_label'  => 'Production',
+            'subject'       => 'Welcome to NutraAxis — your Clinic Store account is ready (Production)',
+            'banner_plain'  => "This Clinic Store was set up in Production.\n",
+            'banner_html'   => '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">'
+                . '<tr><td style="background-color:#e8f5f4;border:1px solid #b7d9d6;border-radius:8px;padding:14px 16px;">'
+                . '<p style="margin:0;font-size:14px;line-height:1.5;color:#1a2e2d;"><strong>Environment: Production.</strong> '
+                . 'This Clinic Store was set up in Production. Sign in at www.nutraaxislabs.com.</p>'
+                . '</td></tr></table>',
+            'cta_label'     => 'Sign in to NutraAxis Labs (Production)',
+        ];
+    }
+
+    return [
+        'is_production' => false,
+        'notice_label'  => 'Stage',
+        'subject'       => 'Welcome to NutraAxis — your Clinic Store account is ready (Stage)',
+        'banner_plain'  => "This Clinic Store was set up in Stage (UAT), not Production.\n"
+            . "Sign in on the Stage storefront — do not use www.nutraaxislabs.com.\n",
+        'banner_html'   => '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">'
+            . '<tr><td style="background-color:#fff8e6;border:1px solid #e6c35c;border-radius:8px;padding:14px 16px;">'
+            . '<p style="margin:0;font-size:14px;line-height:1.5;color:#1a2e2d;"><strong>Environment: Stage (UAT) — not live.</strong> '
+            . 'This Clinic Store was set up in Stage. Sign in on the Stage storefront below — do not use www.nutraaxislabs.com.</p>'
+            . '</td></tr></table>',
+        'cta_label'     => 'Sign in to NutraAxis Labs (Stage)',
+    ];
+}
+
+/**
  * @param array<string, mixed> $application
  */
 function provider_signup_mail_provisioned(array $application, ?string $temporaryPassword = null): void
 {
-    $loginUrl = provider_signup_accs_login_url();
+    $environment = provider_signup_application_accs_environment($application);
+    $notice = provider_signup_mail_provisioned_notice($environment);
+    $loginUrl = provider_signup_accs_login_url($environment);
     $clinicId = trim((string) ($application['AccsClinicId'] ?? ''));
     $signInEmail = (string) ($application['AdminEmail'] ?? $application['ProviderEmail'] ?? '');
     $company = trim((string) ($application['CompanyName'] ?? ''));
     $label = $company !== '' ? $company : 'your practice';
-    $subject = 'Welcome to NutraAxis — your Clinic Store account is ready';
+    $subject = $notice['subject'];
     $temporaryPassword = trim((string) $temporaryPassword);
     $logoUrl = provider_signup_mail_logo_url();
     $supportEmail = PROVIDER_SIGNUP_PROVISIONED_SUPPORT_EMAIL;
     $supportMailto = provider_signup_provisioned_support_mailto_url();
+    $environmentLabel = provider_signup_accs_environment_label($environment);
 
     $plainLines = [
         'Welcome and congratulations!',
         '',
         'Your NutraAxis provider account has been created for ' . $label . '. We are excited to have you with us.',
+        '',
+        trim($notice['banner_plain']),
         '',
         'WHAT YOU CAN DO NOW',
         '- You can buy products today at wholesale pricing, with applicable state sales tax applied.',
@@ -412,6 +449,7 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         '- Commission transfers are sent monthly after reporting summaries are completed.',
         '',
         'SIGN IN TO GET STARTED',
+        'Environment: ' . $environmentLabel . ($notice['is_production'] ? '' : ' — not live'),
         'Sign in: ' . $loginUrl,
         'Sign in email: ' . $signInEmail,
     ];
@@ -453,9 +491,10 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . '</td></tr>'
         . '<tr><td style="background-color:#ffffff;padding:32px;border-left:1px solid #d6ecea;border-right:1px solid #d6ecea;">'
         . '<h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1a2e2d;">Welcome and congratulations!</h1>'
-        . '<p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#5a7170;">Your NutraAxis provider account has been created for <strong style="color:#1a2e2d;">'
+        . '<p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#5a7170;">Your NutraAxis provider account has been created for <strong style="color:#1a2e2d;">'
         . htmlspecialchars($label)
         . '</strong>. We\'re excited to have you with us.</p>'
+        . $notice['banner_html']
         . '<h2 style="margin:0 0 10px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;">What you can do now</h2>'
         . '<ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:15px;line-height:1.6;color:#1a2e2d;">'
         . '<li style="margin-bottom:8px;">You can buy products today at wholesale pricing, with applicable state sales tax applied.</li>'
@@ -471,11 +510,17 @@ function provider_signup_mail_provisioned(array $application, ?string $temporary
         . '<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#1a2e2d;">Commission transfers are sent monthly after reporting summaries are completed.</p>'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">'
         . '<tr><td align="center">'
-        . '<a href="' . htmlspecialchars($loginUrl) . '" style="display:inline-block;background-color:#3d8b85;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;line-height:1;padding:14px 28px;border-radius:8px;">Sign in to NutraAxis Labs</a>'
+        . '<a href="' . htmlspecialchars($loginUrl) . '" style="display:inline-block;background-color:#3d8b85;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;line-height:1;padding:14px 28px;border-radius:8px;">'
+        . htmlspecialchars($notice['cta_label']) . '</a>'
         . '</td></tr></table>'
         . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f5fafa;border:1px solid #d6ecea;border-radius:8px;">'
         . '<tr><td style="padding:20px 22px;">'
         . '<p style="margin:0 0 12px;font-size:13px;line-height:1.4;letter-spacing:0.08em;text-transform:uppercase;color:#2a6b65;font-weight:700;">Sign in to get started</p>'
+        . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Environment:</strong> '
+        . htmlspecialchars($environmentLabel) . '</p>'
+        . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Sign in:</strong> '
+        . '<a href="' . htmlspecialchars($loginUrl) . '" style="color:#3d8b85;text-decoration:none;word-break:break-all;">'
+        . htmlspecialchars($loginUrl) . '</a></p>'
         . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Sign in email:</strong> '
         . htmlspecialchars($signInEmail) . '</p>'
         . '<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1a2e2d;"><strong>Clinic ID:</strong> '
