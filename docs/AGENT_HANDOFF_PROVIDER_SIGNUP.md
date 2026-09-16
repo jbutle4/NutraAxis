@@ -194,10 +194,11 @@ Provisioned applications get **Remove Clinic Store** on the review page (`operat
 
 1. Removes Advanced Pricing / tier prices for the clinic shared catalog (the `SC-…` rows on the product)
 2. Deletes the custom shared catalog (never catalog 1 / public Default)
-3. Deletes the ACCS company (roles go with it)
-4. Optionally deletes company customer accounts (unchecked by default — leave off for reused admins)
-5. Best-effort deletes the leftover shared-catalog customer group
-6. Resets Ops ACCS IDs/steps and sets status back to **Approved** (no provider email)
+3. Removes that catalog group from the $75 free-shipping cart price rule (Prod rule **3** / Stage rule **9**)
+4. Deletes the ACCS company (roles go with it)
+5. Optionally deletes company customer accounts (unchecked by default — leave off for reused admins)
+6. Best-effort deletes the leftover shared-catalog customer group (never Practitioner groups 4/10/16)
+7. Resets Ops ACCS IDs/steps and sets status back to **Approved** (no provider email)
 
 Guards: type the exact practice name; Production requires an extra checkbox; blocked if the company/catalog is Clinic_Template, master/public catalog, or still linked to another Provisioned application in the same ACCS environment.
 
@@ -216,7 +217,7 @@ Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_depr
 
 **ACCS automation** (`includes/provider-signup-accs-config.php`):
 
-- `provider_signup_accs_complete_clinic_configuration($application)` — shared catalog, catalog assign, roles clone
+- `provider_signup_accs_complete_clinic_configuration($application)` — shared catalog, add catalog group to $75 free-shipping rule (Prod rule **3** / Stage rule **9**), catalog assign, roles clone
 - Runs automatically after successful **Create Clinic Store** (non-fatal if automation fails; review log comment)
 - Batch CLI: `php scripts/provider-signup-complete-accs-config.php` (`--id=`, `--limit=`)
 - Bootstrap template company + roles: `php scripts/provider-signup-bootstrap-clinic-template.php`
@@ -232,6 +233,8 @@ Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_depr
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID` | `5` | Dev Butler Health (full clinic roles; Stage Butler only has Default User) |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS_{STAGE\|PRODUCTION\|DEV}` | (none) | Optional per-tenant role IDs instead of company clone. Shared list is not used |
 | `PROVIDER_SIGNUP_ACCS_REQUIRED_ROLE_NAMES` | `Default User,Owner,Company_Admin,Provider,Affiliated Patients` | Post-clone verification |
+| `PROVIDER_SIGNUP_ACCS_FREE_SHIPPING_RULE_ID_{STAGE\|PRODUCTION}` | Stage **9**, Prod **3** | $75 free-shipping cart price rule. Clinic `SC-…` groups are added here. Dev is skipped unless set |
+| `PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS_{STAGE\|PRODUCTION\|DEV}` | Stage **4,16**, Prod **4,10**, Dev **4** | Practitioner groups that stay on that rule |
 
 ### Company payload highlights (`provider_signup_accs_build_company_payload`)
 

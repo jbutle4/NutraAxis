@@ -385,8 +385,11 @@ function process_log_list(array $filters = []): array
     $pdo = db();
     db_apply_sql_server_options($pdo);
 
+    // ODBC/SQL Server rejects bound TOP params (becomes TOP ('100')); interpolate a safe int.
+    $limit = max(1, min(500, (int) ($filters['limit'] ?? 100)));
+
     $sql = <<<SQL
-        SELECT TOP (:limit)
+        SELECT TOP ({$limit})
             {cols},
             u.UserName AS TriggeredByUserName
         FROM dbo.ProcessExecutionLog pel
@@ -395,9 +398,7 @@ function process_log_list(array $filters = []): array
     SQL;
     $sql = str_replace('{cols}', process_log_select_columns(), $sql);
 
-    $params = [
-        'limit' => max(1, min(500, (int) ($filters['limit'] ?? 100))),
-    ];
+    $params = [];
 
     $processCode = trim((string) ($filters['process_code'] ?? ''));
     if ($processCode !== '') {
