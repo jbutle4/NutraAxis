@@ -5,8 +5,12 @@ require dirname(__DIR__, 2) . '/includes/accounting.php';
 accounting_bind_qbo_environment();
 require dirname(__DIR__, 2) . '/includes/supplier-invoice.php';
 require dirname(__DIR__, 2) . '/includes/supplier-invoice-attachments.php';
+require dirname(__DIR__, 2) . '/includes/qbo-insert-approval.php';
+require dirname(__DIR__, 2) . '/includes/payment-approval.php';
 
-supplier_invoice_require_read();
+if (!supplier_invoice_can_read() && !qbo_insert_can_read_queue() && !payment_approval_can_read_queue()) {
+    supplier_invoice_require_read();
+}
 
 $id = (int) ($_GET['id'] ?? 0);
 $attachment = supplier_invoice_get_attachment($id);

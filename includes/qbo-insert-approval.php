@@ -547,6 +547,8 @@ function qbo_insert_notify_approval_watchers(array $invoice, bool $isResubmit, s
         ? "Supplier invoice {$reference} resubmitted for QuickBooks bill insert"
         : "Supplier invoice {$reference} submitted for QuickBooks bill insert";
     $viewUrl = approval_site_url() . '/accounting/supplier-invoices/view.php?id=' . (int) $invoice['SupplierInvoiceID'];
+    $attachments = qbo_insert_submission_attachments($invoice);
+    $attachmentNote = approval_plain_attachment_note($attachments);
     $body = implode("\n", [
         $isResubmit
             ? 'A supplier invoice has been resubmitted for QuickBooks bill insert.'
@@ -561,10 +563,10 @@ function qbo_insert_notify_approval_watchers(array $invoice, bool $isResubmit, s
         'This is a notification only. Only designated QBO insert approvers can approve or reject.',
         '',
         "View invoice: {$viewUrl}",
-    ]);
+    ]) . $attachmentNote;
 
     $result['recipients'] = array_keys($watchers);
-    $send = mail_send_multi_result($watchers, [], $subject, 'Hello,' . "\n\n" . $body);
+    $send = qbo_insert_send_approval_mail($watchers, [], $subject, 'Hello,' . "\n\n" . $body, null, $attachments);
     if ($send['ok']) {
         $result['sent'] = $result['recipients'];
     } else {
@@ -599,6 +601,8 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
     $subject = $isResubmit
         ? "Supplier invoice {$reference} resubmitted for QuickBooks bill insert"
         : "Supplier invoice {$reference} submitted for QuickBooks bill insert";
+    $attachments = qbo_insert_submission_attachments($invoice);
+    $attachmentNote = approval_plain_attachment_note($attachments);
 
     if ($approvers === []) {
         $result['skipped_reason'] = 'no_subscribers';
@@ -639,6 +643,9 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
                 $actionUrls,
                 'review the full supplier invoice'
             );
+            if ($attachments !== []) {
+                $htmlBody .= '<p>The supplier invoice is attached to this email.</p>';
+            }
             $plainBody = implode("\n", [
                 $intro,
                 '',
@@ -651,11 +658,18 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
                 'Reject: ' . $actionUrls['reject'],
                 'Return for comment: ' . $actionUrls['send_back'],
                 'Review invoice: ' . $actionUrls['review'],
-            ]);
+            ]) . $attachmentNote;
 
             $result['recipients'][] = $email;
             $greeting = 'Hello ' . ((string) ($approver['UserName'] ?? $email)) . ',';
-            $send = mail_send_multi_result([$email => (string) ($approver['UserName'] ?? $email)], [], $subject, $greeting . "\n\n" . $plainBody, $htmlBody);
+            $send = qbo_insert_send_approval_mail(
+                [$email => (string) ($approver['UserName'] ?? $email)],
+                [],
+                $subject,
+                $greeting . "\n\n" . $plainBody,
+                $htmlBody,
+                $attachments
+            );
             if ($send['ok']) {
                 $result['sent'][] = $email;
             } else {
@@ -670,6 +684,36 @@ function qbo_insert_notify_approvers_of_submission(array $invoice, bool $isResub
     }
 
     return qbo_insert_merge_approval_notify_results($result, qbo_insert_notify_approval_watchers($invoice, $isResubmit, $submitter));
+}
+
+function qbo_insert_submission_attachments(array $invoice): array
+{
+    $poId = !empty($invoice['POID']) ? (int) $invoice['POID'] : 0;
+    $invoiceId = (int) ($invoice['SupplierInvoiceID'] ?? 0);
+
+    return approval_collect_submission_attachments($poId, $invoiceId);
+}
+
+function qbo_insert_send_approval_mail(
+    array $toRecipients,
+    array $ccRecipients,
+    string $subject,
+    string $plainBody,
+    ?string $htmlBody,
+    array $attachments
+): array {
+    if ($attachments === []) {
+        return mail_send_multi_result($toRecipients, $ccRecipients, $subject, $plainBody, $htmlBody);
+    }
+
+    return mail_send_multi_attachments_result(
+        $toRecipients,
+        $ccRecipients,
+        $subject,
+        $plainBody,
+        $htmlBody,
+        $attachments
+    );
 }
 
 function qbo_insert_notify_requestor_of_status_change(array $invoice, array $config, string $approverName, string $comments, ?string $qboError = null): void

@@ -28,17 +28,25 @@ if ($rawToken !== '') {
     }
 }
 $isTokenAccess = $tokenContext !== null;
+$qboHistory = $invoiceId > 0 && qbo_insert_list_approval_log($invoiceId) !== [];
 $isQboRecovery = $tokenKind === 'QBOInsert'
-    || ($tokenKind !== 'Payment' && $invoice !== null && qbo_insert_is_recovery_pending($invoice));
+    || ($tokenKind !== 'Payment' && $invoice !== null && (
+        qbo_insert_is_recovery_pending($invoice) || $qboHistory
+    ));
 
 if ($rawToken !== '' && $tokenContext === null) {
-    http_response_code(403);
-    $pageTitle = 'Invalid Approval Link';
-    require dirname(__DIR__, 2) . '/includes/head.php';
-    require dirname(__DIR__, 2) . '/includes/header.php';
-    echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Approval link invalid or expired</h1><p class="page-lead">Sign in or open the approval queue.</p><div class="module-actions"><a class="btn-secondary" href="/login/">Sign in</a></div></div></div></main>';
-    require dirname(__DIR__, 2) . '/includes/footer.php';
-    exit;
+    if (auth_user() !== null) {
+        $rawToken = '';
+    } else {
+        http_response_code(403);
+        $pageTitle = 'Invalid Approval Link';
+        $next = accounting_path('/accounting/supplier-invoices/approve.php') . '?id=' . $invoiceId;
+        require dirname(__DIR__, 2) . '/includes/head.php';
+        require dirname(__DIR__, 2) . '/includes/header.php';
+        echo '<main class="page-main"><div class="container page-inner"><div class="page-hero"><h1>Approval link invalid or expired</h1><p class="page-lead">This link may have already been used or has expired. Sign in to review the invoice.</p><div class="module-actions"><a class="btn-secondary" href="' . htmlspecialchars(auth_login_url($next)) . '">Sign in</a></div></div></div></main>';
+        require dirname(__DIR__, 2) . '/includes/footer.php';
+        exit;
+    }
 }
 
 if (!$isTokenAccess) {
