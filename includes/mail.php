@@ -168,6 +168,18 @@ function mail_smtp_is_configured(): bool
     return $host !== '' && $user !== '' && $pass !== '';
 }
 
+function mail_smtp_close($socket): void
+{
+    if (!is_resource($socket)) {
+        return;
+    }
+
+    try {
+        fclose($socket);
+    } catch (Throwable) {
+    }
+}
+
 function mail_config_status(): array
 {
     return [
@@ -309,7 +321,7 @@ function mail_send_smtp_multi(array $toRecipients, array $ccRecipients, string $
 
         return ['ok' => false, 'error' => $error !== '' ? $error : 'SMTP send failed.'];
     } finally {
-        fclose($socket);
+        mail_smtp_close($socket);
     }
 }
 
@@ -412,7 +424,7 @@ function mail_smtp_diagnose(string $to): array
     } catch (Throwable $e) {
         $result['error'] = trim($e->getMessage());
     } finally {
-        fclose($socket);
+        mail_smtp_close($socket);
     }
 
     return $result;
@@ -744,7 +756,7 @@ function mail_send_smtp_multi_attachments(
     } catch (Throwable $e) {
         return ['ok' => false, 'error' => trim($e->getMessage()) !== '' ? trim($e->getMessage()) : 'SMTP send failed.'];
     } finally {
-        fclose($socket);
+        mail_smtp_close($socket);
     }
 }
 

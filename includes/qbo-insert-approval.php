@@ -287,13 +287,24 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         return ['ok' => false, 'error' => 'Supplier invoice not found.'];
     }
 
-    if ($invoice['SyncStatus'] !== QBO_INSERT_STATUS_SUBMITTED) {
+    $currentStatus = (string) ($invoice['SyncStatus'] ?? '');
+    $existingBillId = trim((string) ($invoice['QBO_BillId'] ?? ''));
+    $alreadyPosted = $existingBillId !== ''
+        && in_array($currentStatus, [QBO_INSERT_STATUS_POSTED, 'Paid', 'Closed'], true);
+
+    if ($currentStatus !== QBO_INSERT_STATUS_SUBMITTED && !$alreadyPosted) {
         return ['ok' => false, 'error' => 'Only invoices submitted for approval can be actioned.'];
     }
 
     $user = $actingUser ?? auth_user();
     if ($user === null || empty($user['UserID'])) {
         return ['ok' => false, 'error' => 'Unable to identify the approver for this action.'];
+    }
+
+    if ($alreadyPosted && $action === 'approve') {
+        qbo_insert_approval_token_invalidate($invoiceId);
+
+        return ['ok' => true, 'error' => null, 'status' => $currentStatus];
     }
 
     $approverName = (string) ($user['UserName'] ?? 'Unknown Approver');
@@ -307,7 +318,12 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
             $stubNote = 'QBO insert stub mode: approval recorded; QuickBooks bill was not created.';
         } else {
             require_once __DIR__ . '/quickbooks.php';
-            $post = qbo_create_bill_from_supplier_invoice($invoiceId);
+            try {
+                $post = qbo_create_bill_from_supplier_invoice($invoiceId);
+            } catch (Throwable $e) {
+                error_log('qbo_create_bill_from_supplier_invoice: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+                $post = ['ok' => false, 'error' => supplier_invoice_format_exception($e)];
+            }
             if (!$post['ok']) {
                 $newStatus = QBO_INSERT_STATUS_FAILED;
                 $qboError = (string) ($post['error'] ?? 'QuickBooks bill creation failed.');
@@ -343,6 +359,9 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         if ($stubNote !== null) {
             $logComments = trim(($logComments ?? '') . ($logComments !== null && $logComments !== '' ? "\n" : '') . $stubNote);
         }
+        if ($qboError !== null) {
+            $logComments = trim(($logComments ?? '') . ($logComments !== null && $logComments !== '' ? "\n" : '') . 'QuickBooks insert failed: ' . $qboError);
+        }
 
         require_once __DIR__ . '/approval.php';
         approval_append_log(
@@ -355,7 +374,15 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         );
 
         $pdo->commit();
+    } catch (Throwable $e) {
+        if (isset($pdo) && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
 
+        return ['ok' => false, 'error' => supplier_invoice_format_exception($e)];
+    }
+
+    try {
         qbo_insert_approval_token_invalidate($invoiceId);
 
         if ($action === 'approve' && $qboError === null && !qbo_insert_is_stub_mode()) {
@@ -369,24 +396,27 @@ function qbo_insert_process_approval_action(int $invoiceId, string $action, stri
         if ($action === 'approve' && qbo_insert_is_stub_mode()) {
             qbo_insert_notify_approvers_stub_approved($invoice, $approverName);
         }
-
-        if ($action === 'approve' && $newStatus === QBO_INSERT_STATUS_FAILED) {
-            return ['ok' => false, 'error' => $qboError ?? 'QuickBooks bill creation failed.', 'status' => $newStatus];
-        }
-
-        return ['ok' => true, 'error' => null, 'status' => $newStatus ?? $invoice['SyncStatus']];
     } catch (Throwable $e) {
-        if (isset($pdo) && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-
-        return ['ok' => false, 'error' => supplier_invoice_format_exception($e)];
+        error_log('qbo insert post-commit notice failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     }
+
+    if ($action === 'approve' && $newStatus === QBO_INSERT_STATUS_FAILED) {
+        return ['ok' => false, 'error' => $qboError ?? 'QuickBooks bill creation failed.', 'status' => $newStatus];
+    }
+
+    $invoice = supplier_invoice_get($invoiceId) ?? $invoice;
+
+    return ['ok' => true, 'error' => null, 'status' => $newStatus ?? $invoice['SyncStatus']];
 }
 
 function supplier_invoice_format_exception(Throwable $e): string
 {
-    error_log('supplier invoice approval error: ' . $e->getMessage());
+    $detail = trim($e->getMessage());
+    error_log('supplier invoice approval error: ' . $detail . ' @ ' . $e->getFile() . ':' . $e->getLine());
+
+    if ($detail !== '' && strlen($detail) <= 280 && !str_contains(strtolower($detail), 'sqlstate')) {
+        return $detail;
+    }
 
     return 'An unexpected error occurred. Please try again or contact support.';
 }

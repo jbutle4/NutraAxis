@@ -1332,7 +1332,10 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
 
         if ($line['DetailType'] === 'AccountBasedExpenseLineDetail') {
             $accountRef = trim((string) ($line['AccountRefValue'] ?? ''));
-            if ($accountRef === '' || supplier_invoice_is_stub_ref($accountRef)) {
+            if (supplier_invoice_is_stub_ref($accountRef)) {
+                return ['ok' => false, 'error' => 'This invoice still has a test-mode stub expense account. Edit the invoice, choose a QuickBooks expense account on each line, then submit for QBO Insert again.'];
+            }
+            if ($accountRef === '') {
                 return ['ok' => false, 'error' => 'Expense lines require a QuickBooks account before posting.'];
             }
             $billLine['AccountBasedExpenseLineDetail'] = [
@@ -1346,7 +1349,10 @@ function qbo_create_bill_from_supplier_invoice(int $invoiceId): array
                 $itemPicklist
             );
             $itemRef = $resolved['id'];
-            if ($itemRef === '' || supplier_invoice_is_stub_ref($itemRef)) {
+            if (supplier_invoice_is_stub_ref($itemRef)) {
+                return ['ok' => false, 'error' => 'This invoice still has a test-mode stub SKU. Edit the invoice, choose a QuickBooks SKU on each inventory line, then submit for QBO Insert again.'];
+            }
+            if ($itemRef === '') {
                 return ['ok' => false, 'error' => 'Inventory lines require a QuickBooks SKU before posting.'];
             }
             $detail = [
