@@ -36,6 +36,7 @@ function process_functions_prod_codes(): array
         'accs-sales-order-sync',
         'accs-employee-customer-create',
         'supplier-invoice-ap-recon',
+        'accs-jazz-tracking-sync',
     ];
 }
 
