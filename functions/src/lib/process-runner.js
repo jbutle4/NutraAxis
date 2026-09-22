@@ -10,6 +10,7 @@ const inventoryReceiptSync = require('./jobs/inventory-receipt-sync');
 const inventorySalesSync = require('./jobs/inventory-sales-sync');
 const inventoryMovementRecon = require('./jobs/inventory-movement-recon');
 const supplierInvoiceApRecon = require('./jobs/supplier-invoice-ap-recon');
+const accsJazzTrackingSync = require('./jobs/accs-jazz-tracking-sync');
 
 const REGISTRY = {
   'monthly-sales-summary': {
@@ -56,6 +57,10 @@ const REGISTRY = {
     code: 'supplier-invoice-ap-recon',
     name: 'Supplier Invoice AP Recon',
   },
+  'accs-jazz-tracking-sync': {
+    code: 'accs-jazz-tracking-sync',
+    name: 'ACCS Jazz Tracking Sync',
+  },
 };
 
 function buildResultMessage(code, result) {
@@ -90,6 +95,10 @@ function buildResultMessage(code, result) {
       return `Ledger ${result.ledger_profile ?? '—'} — ${result.refreshed ?? 0} bills refreshed, `
         + `${result.paid ?? 0} paid, ${result.closed ?? 0} closed, `
         + `${result.matched ?? 0} ASN matched, ${result.po_advanced ?? 0} POs advanced.`;
+    case 'accs-jazz-tracking-sync':
+      return `Scanned ${result.scanned ?? 0} — ${result.missing_candidates ?? 0} missing tracking, `
+        + `updated ${result.updated ?? 0}, skipped ${result.skipped ?? 0}, failed ${result.failed ?? 0}`
+        + (result.dry_run ? ' (dry-run).' : '.');
     default:
       return 'Process completed.';
   }
@@ -128,6 +137,13 @@ async function invoke(code, params = {}) {
       });
     case 'supplier-invoice-ap-recon':
       return supplierInvoiceApRecon.run();
+    case 'accs-jazz-tracking-sync':
+      return accsJazzTrackingSync.run({
+        environment: params.environment || params.env || null,
+        dryRun: Boolean(params.dry_run ?? params.dryRun),
+        incrementId: params.increment_id || params.incrementId || null,
+        delayMs: params.delay_ms ?? params.delayMs ?? null,
+      });
     default:
       return {
         ok: false,

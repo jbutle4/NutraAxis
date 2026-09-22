@@ -120,6 +120,15 @@ function process_registry(): array
             'uat_step'      => 12,
             'function_app'  => 'profile',
         ],
+        'accs-jazz-tracking-sync' => [
+            'code'          => 'accs-jazz-tracking-sync',
+            'name'          => 'ACCS Jazz Tracking Sync',
+            'description'   => 'Backfill missing ACCS shipment tracking numbers from Jazz Prod (including historical complete/closed orders) for customer-service proof of delivery.',
+            'function_name' => 'accs-jazz-tracking-sync',
+            'schedule'      => 'Every 4 hours (production Function App timer)',
+            'uat_e2e'       => false,
+            'function_app'  => 'prod',
+        ],
         'supplier-payment-pull' => [
             'code'          => 'supplier-payment-pull',
             'name'          => 'Supplier Bill Payment Pull',
