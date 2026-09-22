@@ -3,12 +3,24 @@
 require_once __DIR__ . '/process-log.php';
 require_once __DIR__ . '/process-functions-client.php';
 
+function process_registry_categories(): array
+{
+    return [
+        'sales_reporting' => ['label' => 'Sales & reporting', 'sort' => 10],
+        'inventory'       => ['label' => 'Inventory & Jazz WMS', 'sort' => 20],
+        'accs'            => ['label' => 'ACCS & commerce', 'sort' => 30],
+        'finance'         => ['label' => 'QuickBooks & AP', 'sort' => 40],
+        'platform'        => ['label' => 'Platform & staging', 'sort' => 50],
+    ];
+}
+
 function process_registry(): array
 {
     return [
         'daily-sales-summary' => [
             'code'          => 'daily-sales-summary',
             'name'          => 'Daily Sales Summary',
+            'category'      => 'sales_reporting',
             'description'   => 'Summarize previous day ACCS sales by SKU into DailySalesSummary.',
             'function_name' => 'daily-sales-summary',
             'schedule'      => 'Daily at 2:00 AM US Central',
@@ -18,6 +30,7 @@ function process_registry(): array
         'jazz-inventory-snapshot' => [
             'code'          => 'jazz-inventory-snapshot',
             'name'          => 'Jazz Inventory Snapshot',
+            'category'      => 'inventory',
             'description'   => 'Capture weekly Jazz OMS inventory levels by SKU and facility.',
             'function_name' => 'jazz-inventory-snapshot',
             'schedule'      => 'Every Sunday at 12:00 PM US Central',
@@ -27,6 +40,7 @@ function process_registry(): array
         'monthly-sales-summary' => [
             'code'          => 'monthly-sales-summary',
             'name'          => 'Monthly Sales Summary',
+            'category'      => 'sales_reporting',
             'description'   => 'Roll up DailySalesSummary into monthly SKU totals for forecasting.',
             'function_name' => 'weekly-chain',
             'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
@@ -36,6 +50,7 @@ function process_registry(): array
         'forecast-plan' => [
             'code'          => 'forecast-plan',
             'name'          => 'Inventory Forecast Plan',
+            'category'      => 'inventory',
             'description'   => 'Generate weighted moving average forecasts and inventory projections by SKU.',
             'function_name' => 'weekly-chain',
             'schedule'      => 'Every Sunday at 1:00 AM US Central (via weekly-chain)',
@@ -45,6 +60,7 @@ function process_registry(): array
         'staging-db-sync' => [
             'code'          => 'staging-db-sync',
             'name'          => 'Staging Database Sync',
+            'category'      => 'platform',
             'description'   => 'Incremental production to staging SQL database sync.',
             'function_name' => 'staging-db-sync',
             'schedule'      => 'Daily at 2:30 AM US Central',
@@ -54,6 +70,7 @@ function process_registry(): array
         'accs-sales-order-sync' => [
             'code'          => 'accs-sales-order-sync',
             'name'          => 'ACCS Sales Order Sync',
+            'category'      => 'accs',
             'description'   => 'Pull Adobe Commerce orders into AccsSalesOrder tables. UAT: ACCS Stage. Production: live ACCS.',
             'function_name' => 'accs-sales-order-sync',
             'schedule'      => 'Every 2 hours (production Function App timer)',
@@ -64,6 +81,7 @@ function process_registry(): array
         'accs-employee-customer-create' => [
             'code'          => 'accs-employee-customer-create',
             'name'          => 'ACCS Employee Customer Create',
+            'category'      => 'accs',
             'description'   => 'Create or correct ACCS employee customer accounts from portal users.',
             'function_name' => 'accs-employee-customer-create',
             'schedule'      => 'Manual / on demand',
@@ -73,6 +91,7 @@ function process_registry(): array
         'qbo-coa-sync' => [
             'code'          => 'qbo-coa-sync',
             'name'          => 'QuickBooks Chart of Accounts Sync',
+            'category'      => 'finance',
             'description'   => 'Sync QuickBooks Online general ledger accounts for Product Catalog account pickers. Not Certificate of Analysis.',
             'function_name' => 'qbo-coa-sync',
             'schedule'      => 'Friday at 6:00 PM US Central',
@@ -83,6 +102,7 @@ function process_registry(): array
         'inventory-receipt-sync' => [
             'code'          => 'inventory-receipt-sync',
             'name'          => 'Inventory Receipt Sync',
+            'category'      => 'inventory',
             'description'   => 'Post received PO receipts to IMS and QBO InventoryAdjustment (+qty).',
             'function_name' => 'inventory-receipt-sync',
             'schedule'      => 'Daily at 2:30 AM US Central',
@@ -93,6 +113,7 @@ function process_registry(): array
         'inventory-sales-sync' => [
             'code'          => 'inventory-sales-sync',
             'name'          => 'Inventory Sales Sync',
+            'category'      => 'inventory',
             'description'   => 'Post shipped ACCS sales to IMS and QBO InventoryAdjustment (−qty).',
             'function_name' => 'inventory-sales-sync',
             'schedule'      => 'Daily at 3:00 AM US Central',
@@ -103,6 +124,7 @@ function process_registry(): array
         'inventory-movement-recon' => [
             'code'          => 'inventory-movement-recon',
             'name'          => 'Inventory Movement Completeness Recon',
+            'category'      => 'inventory',
             'description'   => 'Scan receipts, sales, transfers, and adjustments for missing IMS/QBO posts.',
             'function_name' => 'inventory-movement-recon',
             'schedule'      => 'Daily at 4:00 AM US Central',
@@ -113,6 +135,7 @@ function process_registry(): array
         'supplier-invoice-ap-recon' => [
             'code'          => 'supplier-invoice-ap-recon',
             'name'          => 'Supplier Invoice AP Recon',
+            'category'      => 'finance',
             'description'   => 'Refresh QBO bill balances into Paid/Closed, rematch ASN receipts, and advance PO accounting status.',
             'function_name' => 'supplier-invoice-ap-recon',
             'schedule'      => 'Daily at 5:00 AM US Central',
@@ -123,6 +146,7 @@ function process_registry(): array
         'accs-jazz-tracking-sync' => [
             'code'          => 'accs-jazz-tracking-sync',
             'name'          => 'ACCS Jazz Tracking Sync',
+            'category'      => 'accs',
             'description'   => 'Backfill missing ACCS shipment tracking numbers from Jazz Prod (including historical complete/closed orders) for customer-service proof of delivery.',
             'function_name' => 'accs-jazz-tracking-sync',
             'schedule'      => 'Every 4 hours (production Function App timer)',
@@ -132,6 +156,7 @@ function process_registry(): array
         'supplier-payment-pull' => [
             'code'          => 'supplier-payment-pull',
             'name'          => 'Supplier Bill Payment Pull',
+            'category'      => 'finance',
             'description'   => 'Pull QuickBooks bill payment status into Operations (production or UAT ledger from Process Log profile).',
             'function_name' => null,
             'schedule'      => 'Manual / on demand',
@@ -141,6 +166,79 @@ function process_registry(): array
             'runner'        => 'php',
         ],
     ];
+}
+
+/** @return list<array<string, mixed>> */
+function process_registry_entries_sorted(): array
+{
+    $categories = process_registry_categories();
+    $entries = array_values(process_registry());
+
+    usort($entries, static function (array $a, array $b) use ($categories): int {
+        $catA = $categories[$a['category'] ?? '']['sort'] ?? 999;
+        $catB = $categories[$b['category'] ?? '']['sort'] ?? 999;
+        if ($catA !== $catB) {
+            return $catA <=> $catB;
+        }
+
+        return strcasecmp((string) $a['name'], (string) $b['name']);
+    });
+
+    return $entries;
+}
+
+/** @return list<array{label: string, entries: list<array<string, mixed>>}> */
+function process_registry_grouped_for_select(): array
+{
+    $categories = process_registry_categories();
+    $byCategory = [];
+
+    foreach (process_registry_entries_sorted() as $entry) {
+        $key = (string) ($entry['category'] ?? 'platform');
+        $byCategory[$key][] = $entry;
+    }
+
+    $groups = [];
+    foreach ($categories as $key => $meta) {
+        if (empty($byCategory[$key])) {
+            continue;
+        }
+        $groups[] = [
+            'label'   => (string) $meta['label'],
+            'entries' => $byCategory[$key],
+        ];
+    }
+
+    foreach ($byCategory as $key => $entries) {
+        if (isset($categories[$key])) {
+            continue;
+        }
+        $groups[] = [
+            'label'   => $key,
+            'entries' => $entries,
+        ];
+    }
+
+    return $groups;
+}
+
+function process_registry_echo_select_options(?string $selectedCode = null, bool $includeCodeSuffix = false): void
+{
+    foreach (process_registry_grouped_for_select() as $group) {
+        echo '<optgroup label="' . htmlspecialchars($group['label']) . '">';
+        foreach ($group['entries'] as $entry) {
+            $code = (string) $entry['code'];
+            $selected = ($selectedCode !== null && $selectedCode !== '' && $selectedCode === $code) ? ' selected' : '';
+            $label = (string) $entry['name'];
+            if ($includeCodeSuffix) {
+                $label .= ' (' . $code . ')';
+            }
+            echo '<option value="' . htmlspecialchars($code) . '"' . $selected . '>'
+                . htmlspecialchars($label)
+                . '</option>';
+        }
+        echo '</optgroup>';
+    }
 }
 
 function process_registry_uat_e2e(): array
