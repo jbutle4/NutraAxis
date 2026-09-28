@@ -1,8 +1,8 @@
 <?php
 require dirname(__DIR__) . '/includes/init.php';
-require dirname(__DIR__) . '/includes/app.php';
-require dirname(__DIR__) . '/includes/hub-cards.php';
-require dirname(__DIR__) . '/includes/list-page-header.php';
+require_once dirname(__DIR__) . '/includes/app.php';
+require_once dirname(__DIR__) . '/includes/hub-cards.php';
+require_once dirname(__DIR__) . '/includes/list-page-header.php';
 
 auth_require_module_read('marketing');
 
