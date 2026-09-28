@@ -84,6 +84,27 @@ const MODULE_PERMISSION_COLUMNS = [
     'delivery-scheduling-log-uat' => 'POManagement',
     'travel-expense'         => 'TEManagement',
     'signup-review'          => 'ProviderAccountReview',
+    'marketing'              => 'Marketing',
+    'marketing-keywords'     => 'Marketing',
+    'marketing-content'      => 'Marketing',
+    'marketing-social'       => 'Marketing',
+    'marketing-tasks'        => 'Marketing',
+    'marketing-pages'        => 'Marketing',
+    'marketing-performance'  => 'Marketing',
+    'marketing-issues'       => 'Marketing',
+    'marketing-ranks'        => 'Marketing',
+    'marketing-backlinks'    => 'Marketing',
+    'marketing-reports'      => 'Marketing',
+    'marketing-admin'        => 'Marketing',
+    'research-config'        => 'Marketing',
+    'research-harvester'     => 'Marketing',
+    'research-post-candidates' => 'Marketing',
+    'research-literature'    => 'Marketing',
+    'research-prompt-lab'    => 'Marketing',
+    'research-runs'          => 'Marketing',
+    'research-production'    => 'Marketing',
+    'research-claims'        => 'Marketing',
+    'research-output'        => 'Marketing',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -130,6 +151,7 @@ function auth_permissions_from_role_row(array $row): array
         'QBOInsertApproval'    => $row['QBOInsertApproval'] ?? null,
         'PaymentApproval'      => $row['PaymentApproval'] ?? null,
         'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
+        'Marketing'            => $row['Marketing'] ?? null,
     ];
 }
 
@@ -167,7 +189,8 @@ function auth_refresh_permissions(): void
                 TEProcessing,
                 QBOInsertApproval,
                 PaymentApproval,
-                ProviderAccountReview
+                ProviderAccountReview,
+                Marketing
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -598,7 +621,8 @@ function auth_attempt_login(string $login, string $password): array
             r.TEProcessing,
             r.QBOInsertApproval,
             r.PaymentApproval,
-            r.ProviderAccountReview
+            r.ProviderAccountReview,
+            r.Marketing
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

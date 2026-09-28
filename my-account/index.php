@@ -22,6 +22,7 @@ $permissionRows = [
     ['Links Index', auth_permission_value('LinksIndex')],
     ['Contacts List', auth_permission_value('ContactsList')],
     ['Education Resources', auth_permission_value('EducationResources')],
+    ['Marketing & Research', auth_permission_value('Marketing')],
     ['Support', auth_permission_value('Support')],
     ['Accounting', auth_permission_value('Accounting')],
     ['User Administration', auth_permission_value('UserAdmin')],
