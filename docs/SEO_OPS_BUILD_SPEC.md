@@ -409,6 +409,7 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 - Process-runner registration for `seo-noop` (writes `jobs` row).
 - Rename placeholder cards to the §6 target layout.
 - Acceptance: migrate clean; operator opens hub; noop job visible in jobs list; `audit-portal-nav.php` clean.
+- **As built (2026-09-28):** `sql/152_create_marketing_chassis.sql` adds `MktSetting`, `MktPrompt`, `MktApiUsage`. Job runs reuse `dbo.ProcessExecutionLog`; operator writes reuse `dbo.AuditChangeLog`; brand terms and competitors are line-list settings rather than separate tables. Jobs run in the existing Node Function App (`functions/src/lib/mkt/registry.js`, merged into the process runner); PHP registry in `includes/marketing-jobs.php`. Admin & Jobs (`/marketing/admin/`) requires full Marketing CRUD so editors never see spend or settings. Local runs: `node scripts/run-marketing-job.js <code>`.
 
 ### S1a — Intake: stages 1–2 (~2 weeks) — **priority**
 
