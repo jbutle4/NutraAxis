@@ -1,0 +1,16 @@
+---
+description: NutraAxis SEO Operations Platform — project rules (Track C portal extension)
+globs: ["**/seo-operations/**", "**/includes/seo-*.php", "**/functions/src/lib/jobs/seo-*.js", "**/docs/SEO_OPS_BUILD_SPEC.md", "**/docs/seo-ops/**"]
+alwaysApply: false
+---
+
+# SEO Operations (Track C)
+
+- Source of truth: `docs/SEO_OPS_BUILD_SPEC.md` (v2). One phase at a time; do not skip acceptance criteria. Spec wrong → say so in the PR; do not silently diverge.
+- **Portal extension only** — no Laravel greenfield, no separate seo-ops app. Follow `AGENTS.md` and `.cursor/rules/php-page-architecture.mdc`.
+- Phasing is **content + social first** (S1 Demand engine), then findability (S2), feedback (S3), harden (S4). Phase 2 stubs for ranks/backlinks/full reports/attribution.
+- **Jobs vs AI:** Function App / Python nightly jobs for GSC, GA4, Semrush REST, crawl, aggregates. AI only for briefs, drafts, social copy, claims pre-check, digests, fix specs.
+- **Never** write to Adobe CMS or ad platforms. Record `published_url` only; crawler verifies.
+- Every write → audit log; every external call → `api_usage`. No secrets in git. No PII to AI providers.
+- Register hub/leaves in `includes/app.php` + `MODULE_PERMISSION_COLUMNS`; run `php scripts/audit-portal-nav.php` before merge.
+- Branch naming: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …

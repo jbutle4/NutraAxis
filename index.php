@@ -6,7 +6,7 @@ require_once __DIR__ . '/includes/operations-dashboard.php';
 $pageTitle = 'NutraAxis Operations Dashboard';
 $pageDescription = 'NutraAxis Operations Dashboard — internal tools and resources for the NutraAxis team.';
 $visibleFunctions = array_values(array_filter(
-    auth_filter_modules(app_functions()),
+    auth_filter_modules(app_home_function_cards()),
     fn(array $module): bool => ($module['slug'] ?? '') !== 'operations-dashboard'
 ));
 $functionGroups = app_functions_grouped($visibleFunctions);

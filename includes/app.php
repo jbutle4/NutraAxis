@@ -20,6 +20,7 @@ function icon_svg(string $name, int $size = 24): string
         'calendar'  => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
         'support'   => '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
         'accounting'=> '<path d="M4 2h16a2 2 0 012 2v16a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z"/><path d="M8 6h8M8 10h8M8 14h5"/>',
+        'marketing' => '<path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.2-3"/>',
     ];
 
     $body = $icons[$name] ?? $icons['dashboard'];
@@ -669,7 +670,198 @@ $salesReportingSubModules = [
     ],
 ];
 
+$marketingSubModules = [
+    [
+        'slug'  => 'marketing-keywords',
+        'title' => 'Keyword Universe',
+        'desc'  => 'Target keywords, clusters, priority scoring, and page mapping. Placeholder — S1.',
+        'href'  => '/marketing/keywords/',
+        'icon'  => 'tag',
+        'tier'  => 'production',
+        'sort'  => 10,
+    ],
+    [
+        'slug'  => 'marketing-content',
+        'title' => 'Content Pipeline',
+        'desc'  => 'Briefs, drafts, medical review, and publish URL tracking. Placeholder — S1.',
+        'href'  => '/marketing/content/',
+        'icon'  => 'document',
+        'tier'  => 'production',
+        'sort'  => 20,
+    ],
+    [
+        'slug'  => 'marketing-social',
+        'title' => 'Social Queue',
+        'desc'  => 'Draft and dispatch social posts tied to approved content. Placeholder — S1.',
+        'href'  => '/marketing/social/',
+        'icon'  => 'marketing',
+        'tier'  => 'production',
+        'sort'  => 30,
+    ],
+    [
+        'slug'  => 'marketing-tasks',
+        'title' => 'Tasks',
+        'desc'  => 'Assign editor and coordinator work from the SEO/content queue. Placeholder — S1.',
+        'href'  => '/marketing/tasks/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+        'sort'  => 40,
+    ],
+    [
+        'slug'  => 'marketing-pages',
+        'title' => 'Page Inventory',
+        'desc'  => 'Live URLs, crawl metadata, and keyword-to-page map. Placeholder — S2.',
+        'href'  => '/marketing/pages/',
+        'icon'  => 'links',
+        'tier'  => 'production',
+        'sort'  => 50,
+    ],
+    [
+        'slug'  => 'marketing-performance',
+        'title' => 'Performance',
+        'desc'  => 'Search Console and GA4 signals that steer the next content cycle. Placeholder — S3.',
+        'href'  => '/marketing/performance/',
+        'icon'  => 'chart',
+        'tier'  => 'production',
+        'sort'  => 60,
+    ],
+    [
+        'slug'  => 'marketing-issues',
+        'title' => 'Audit & Issues',
+        'desc'  => 'Technical SEO findings, fix specs, and verification. Placeholder — S4.',
+        'href'  => '/marketing/issues/',
+        'icon'  => 'support',
+        'tier'  => 'production',
+        'sort'  => 70,
+    ],
+    [
+        'slug'  => 'marketing-ranks',
+        'title' => 'Rank Tracker',
+        'desc'  => 'Keyword positions and competitor SERP movement. Placeholder — Phase 2.',
+        'href'  => '/marketing/ranks/',
+        'icon'  => 'trend',
+        'tier'  => 'production',
+        'sort'  => 80,
+    ],
+    [
+        'slug'  => 'marketing-backlinks',
+        'title' => 'Backlinks & Outreach',
+        'desc'  => 'Link profile, prospects, and outreach tracking. Placeholder — Phase 2.',
+        'href'  => '/marketing/backlinks/',
+        'icon'  => 'links',
+        'tier'  => 'production',
+        'sort'  => 90,
+    ],
+    [
+        'slug'  => 'marketing-reports',
+        'title' => 'Reports',
+        'desc'  => 'Weekly digests and monthly SEO exports. Placeholder — Phase 2.',
+        'href'  => '/marketing/reports/',
+        'icon'  => 'document',
+        'tier'  => 'production',
+        'sort'  => 100,
+    ],
+    [
+        'slug'  => 'research-config',
+        'title' => 'Research Config',
+        'desc'  => 'Product lines, SKUs, therapeutic areas, audience, and shared taxonomy. Placeholder — Research Track A/B.',
+        'href'  => '/marketing/research-config/',
+        'icon'  => 'catalog',
+        'tier'  => 'production',
+        'sort'  => 200,
+    ],
+    [
+        'slug'  => 'research-harvester',
+        'title' => 'Content Harvester',
+        'desc'  => 'RSS/Atom, site crawl targets, newsletter ingest, scheduler, and dedup queue. Placeholder — Research Track A Phase C.',
+        'href'  => '/marketing/content-harvester/',
+        'icon'  => 'boxes',
+        'tier'  => 'production',
+        'sort'  => 205,
+    ],
+    [
+        'slug'  => 'research-post-candidates',
+        'title' => 'Post Candidates',
+        'desc'  => 'Turn harvested articles into potential social and blog post drafts for Content Pipeline / Social Queue. Placeholder — Research Track A.',
+        'href'  => '/marketing/post-candidates/',
+        'icon'  => 'marketing',
+        'tier'  => 'production',
+        'sort'  => 208,
+    ],
+    [
+        'slug'  => 'research-literature',
+        'title' => 'Literature & Intelligence',
+        'desc'  => 'Evidence library, harvesting, and intelligence for claims-backed content. Placeholder — Research Track A.',
+        'href'  => '/marketing/literature/',
+        'icon'  => 'document',
+        'tier'  => 'production',
+        'sort'  => 210,
+    ],
+    [
+        'slug'  => 'research-prompt-lab',
+        'title' => 'Prompt Lab',
+        'desc'  => 'Versioned prompts for research extraction, SEO briefs, and drafts. Placeholder — Research shared chassis.',
+        'href'  => '/marketing/prompt-lab/',
+        'icon'  => 'clipboard',
+        'tier'  => 'production',
+        'sort'  => 220,
+    ],
+    [
+        'slug'  => 'research-runs',
+        'title' => 'Research Runs',
+        'desc'  => 'AI extraction jobs with dual-provider runner, history, and reconciliation. Placeholder — Research Track A.',
+        'href'  => '/marketing/research-runs/',
+        'icon'  => 'dashboard',
+        'tier'  => 'production',
+        'sort'  => 230,
+    ],
+    [
+        'slug'  => 'research-production',
+        'title' => 'Original Research',
+        'desc'  => 'Produce and track original research assets and study workflows. Placeholder — Research Track B.',
+        'href'  => '/marketing/original-research/',
+        'icon'  => 'boxes',
+        'tier'  => 'production',
+        'sort'  => 240,
+    ],
+    [
+        'slug'  => 'research-claims',
+        'title' => 'Claims Matrix',
+        'desc'  => 'Approved claims, evidence tiers, and compliance gates for content. Placeholder — Research governance.',
+        'href'  => '/marketing/claims-matrix/',
+        'icon'  => 'accounting',
+        'tier'  => 'production',
+        'sort'  => 250,
+    ],
+    [
+        'slug'  => 'research-output',
+        'title' => 'Output Generator',
+        'desc'  => 'Export Word/PDF research summaries, SEO articles, and monthly reports. Placeholder — Research shared chassis.',
+        'href'  => '/marketing/output-generator/',
+        'icon'  => 'document',
+        'tier'  => 'production',
+        'sort'  => 260,
+    ],
+    [
+        'slug'  => 'marketing-admin',
+        'title' => 'Admin & Jobs',
+        'desc'  => 'Job monitor, API usage, and Marketing & Research settings. Placeholder — S0.',
+        'href'  => '/marketing/admin/',
+        'icon'  => 'dashboard',
+        'tier'  => 'production',
+        'sort'  => 300,
+    ],
+];
+
 $appFunctions = [
+    [
+        'slug'  => 'marketing',
+        'title' => 'Marketing & Research Hub',
+        'desc'  => 'SEO operations, content/social, and the Research Application (literature, prompts, claims, outputs) for nutraaxislabs.com.',
+        'href'  => '/marketing/',
+        'icon'  => 'marketing',
+        'group' => 'marketing',
+    ],
     [
         'slug'  => 'product-master',
         'title' => 'Product Master',
@@ -1127,6 +1319,17 @@ $modulePages = [
             ['title' => 'Azure Portal', 'desc' => 'Microsoft Azure cloud resources and services.'],
         ],
     ],
+    'marketing' => [
+        'label'       => 'Marketing & Research',
+        'headline'    => 'Marketing & Research Hub',
+        'lead'        => 'SEO operations and the Research Application for nutraaxislabs.com — keywords, content, social, literature, prompts, claims, and outputs. Cards below are placeholders until each build phase lands.',
+        'capabilities' => [
+            ['title' => 'SEO & Content', 'desc' => 'Keyword universe, content pipeline, social queue, and performance feedback.'],
+            ['title' => 'Research Engine', 'desc' => 'Content harvester, literature intelligence, research runs, and original research.'],
+            ['title' => 'Shared chassis', 'desc' => 'Research config, Prompt Lab, claims matrix, post candidates, and output generator.'],
+            ['title' => 'Technical SEO', 'desc' => 'Page inventory, audits, ranks, and backlinks.'],
+        ],
+    ],
     'legal-agreements' => [
         'label'       => 'Legal',
         'headline'    => 'Legal Agreements & Contracts',
@@ -1232,6 +1435,7 @@ $modulePages = [
 function app_hub_slugs(): array
 {
     return [
+        'marketing',
         'product-master',
         'inventory-management',
         'procurement',
@@ -1304,9 +1508,17 @@ function app_accounting_submodules(): array
     return $accountingSubModules;
 }
 
+function app_marketing_submodules(): array
+{
+    global $marketingSubModules;
+
+    return $marketingSubModules;
+}
+
 function app_hub_submodules(string $hubSlug): array
 {
     return match ($hubSlug) {
+        'marketing'             => app_marketing_submodules(),
         'product-master'        => app_product_master_submodules(),
         'inventory-management'  => app_inventory_management_submodules(),
         'procurement'           => app_procurement_submodules(),
@@ -1320,6 +1532,7 @@ function app_hub_submodules(string $hubSlug): array
 function app_all_leaf_module_definitions(): array
 {
     return array_merge(
+        app_marketing_submodules(),
         app_product_master_submodules(),
         app_inventory_management_submodules(),
         app_procurement_submodules(),
@@ -1378,9 +1591,45 @@ function app_functions(): array
     return $appFunctions;
 }
 
+/**
+ * Home-page cards. Marketing & Research expands to its leaf modules so
+ * placeholder functions appear on Ops home (nav still uses the hub card).
+ *
+ * @return list<array<string, mixed>>
+ */
+function app_home_function_cards(): array
+{
+    $cards = [];
+
+    foreach (app_functions() as $fn) {
+        $slug = (string) ($fn['slug'] ?? '');
+        if ($slug === 'marketing') {
+            $leaves = app_marketing_submodules();
+            usort(
+                $leaves,
+                static fn(array $a, array $b): int => ((int) ($a['sort'] ?? 0)) <=> ((int) ($b['sort'] ?? 0))
+            );
+            foreach ($leaves as $child) {
+                $cards[] = array_merge($child, [
+                    'group' => 'marketing',
+                ]);
+            }
+            continue;
+        }
+
+        $cards[] = $fn;
+    }
+
+    return $cards;
+}
+
 function app_function_groups(): array
 {
     return [
+        'marketing' => [
+            'title' => 'Marketing & Research',
+            'desc'  => 'SEO operations, content/social, and the Research Application for nutraaxislabs.com.',
+        ],
         'supply-chain' => [
             'title' => 'Supply Chain',
             'desc'  => 'Product master data through order fulfillment — inventory, procurement, receiving, sales reporting, and labeling.',
