@@ -208,6 +208,7 @@ async function execute(code, params = {}, triggerType = processLog.TRIGGER.SCHED
       ...params,
       trigger_type: triggerType,
       triggered_by_user_id: triggeredByUserId,
+      log_id: logId,
     });
     const ok = Boolean(result.ok);
     const error = String(result.error || '').trim();

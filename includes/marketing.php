@@ -131,6 +131,22 @@ function marketing_format_datetime(?string $value): string
     }
 }
 
+/**
+ * Publication dates are usually date-only (stored as UTC midnight); show the calendar date without shifting zones.
+ */
+function marketing_format_date(?string $value): string
+{
+    if ($value === null || trim($value) === '') {
+        return '—';
+    }
+
+    try {
+        return (new DateTimeImmutable($value, new DateTimeZone('UTC')))->format('M j, Y');
+    } catch (Throwable) {
+        return $value;
+    }
+}
+
 function marketing_format_usd(float $value, int $decimals = 2): string
 {
     return '$' . number_format($value, $decimals);
@@ -158,6 +174,22 @@ function marketing_render_notice(?string $success, ?string $error = null): void
     if ($error !== null && $error !== '') {
         echo '<div class="admin-notice is-error is-detail" role="alert">' . htmlspecialchars($error) . '</div>';
     }
+}
+
+function mkt_status_badge_class(string $status): string
+{
+    return match ($status) {
+        'active', 'success', 'new', 'scored', 'promoted' => 'status-approved',
+        'auto_paused', 'failed', 'rejected'              => 'status-cancelled',
+        'running', 'clustered'                           => 'status-submitted',
+        default                                          => 'status-draft',
+    };
+}
+
+function mkt_render_badge(string $status, array $labels = []): string
+{
+    return '<span class="status-badge ' . htmlspecialchars(mkt_status_badge_class($status)) . '">'
+        . htmlspecialchars($labels[$status] ?? ucwords(str_replace('_', ' ', $status))) . '</span>';
 }
 
 function marketing_redirect(string $path, array $query = []): never

@@ -11,6 +11,18 @@ function marketing_process_registry(): array
             'description' => 'Verifies the Marketing & Research tables and settings are reachable from the Function App.',
             'schedule'    => 'Manual / on demand',
         ],
+        'research-harvest-due' => [
+            'name'          => 'Content Harvester — Due Sources',
+            'description'   => 'Fetches every active source whose next run is due (RSS, news/PubMed/trials searches, site crawls), dedupes, and queues new items.',
+            'function_name' => 'marketing-harvest',
+            'schedule'      => 'Hourly at :15',
+        ],
+        'research-agent-discover' => [
+            'name'          => 'AI Research Agent — Weekly Discovery',
+            'description'   => 'For each agent-enabled interest, asks the AI (web search) for recent evidence, verifies every cited URL, and queues verified finds.',
+            'function_name' => 'marketing-research-agent',
+            'schedule'      => 'Weekly, Monday 06:00 CT',
+        ],
     ];
 
     $registry = [];
