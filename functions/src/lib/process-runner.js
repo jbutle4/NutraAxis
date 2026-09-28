@@ -11,8 +11,10 @@ const inventorySalesSync = require('./jobs/inventory-sales-sync');
 const inventoryMovementRecon = require('./jobs/inventory-movement-recon');
 const supplierInvoiceApRecon = require('./jobs/supplier-invoice-ap-recon');
 const accsJazzTrackingSync = require('./jobs/accs-jazz-tracking-sync');
+const marketingJobs = require('./mkt/registry');
 
 const REGISTRY = {
+  ...marketingJobs.REGISTRY,
   'monthly-sales-summary': {
     code: 'monthly-sales-summary',
     name: 'Monthly Sales Summary',
@@ -64,6 +66,9 @@ const REGISTRY = {
 };
 
 function buildResultMessage(code, result) {
+  if (marketingJobs.has(code)) {
+    return marketingJobs.buildResultMessage(code, result);
+  }
   switch (code) {
     case 'daily-sales-summary':
       return `Summary date ${result.summary_date ?? '—'} — ${result.orders ?? 0} orders, ${result.inserted ?? 0} SKU rows inserted.`;
@@ -105,6 +110,9 @@ function buildResultMessage(code, result) {
 }
 
 async function invoke(code, params = {}) {
+  if (marketingJobs.has(code)) {
+    return marketingJobs.invoke(code, params);
+  }
   switch (code) {
     case 'monthly-sales-summary':
       return monthlySalesSummary.run();

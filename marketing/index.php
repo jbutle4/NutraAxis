@@ -19,15 +19,15 @@ usort(
     static fn(array $a, array $b): int => ((int) ($a['sort'] ?? 0)) <=> ((int) ($b['sort'] ?? 0))
 );
 
-$seoCards = [];
-$researchCards = [];
+$sections = [
+    'engine'  => ['title' => 'Content Engine', 'items' => []],
+    'library' => ['title' => 'Supporting Libraries & Governance', 'items' => []],
+    'seo'     => ['title' => 'SEO & Site', 'items' => []],
+    'other'   => ['title' => 'Other', 'items' => []],
+];
 foreach ($areas as $item) {
-    $slug = (string) ($item['slug'] ?? '');
-    if (str_starts_with($slug, 'research-')) {
-        $researchCards[] = $item;
-    } else {
-        $seoCards[] = $item;
-    }
+    $key = (string) ($item['section'] ?? 'other');
+    $sections[isset($sections[$key]) ? $key : 'other']['items'][] = $item;
 }
 
 $activeSlug = 'marketing';
@@ -55,14 +55,12 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </div>
 <?php else: ?>
-<?php if ($seoCards !== []): ?>
-      <h2 class="hub-section-title">SEO &amp; Content</h2>
-      <?php hub_render_card_grid($seoCards, 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
+<?php foreach ($sections as $section): ?>
+<?php if ($section['items'] !== []): ?>
+      <h2 class="hub-section-title"><?= htmlspecialchars($section['title']) ?></h2>
+      <?php hub_render_card_grid($section['items'], 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
 <?php endif; ?>
-<?php if ($researchCards !== []): ?>
-      <h2 class="hub-section-title" style="margin-top: 1.75rem;">Research Engine</h2>
-      <?php hub_render_card_grid($researchCards, 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
-<?php endif; ?>
+<?php endforeach; ?>
 <?php endif; ?>
     </div>
   </main>
