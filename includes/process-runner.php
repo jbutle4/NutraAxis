@@ -2,10 +2,11 @@
 
 require_once __DIR__ . '/process-log.php';
 require_once __DIR__ . '/process-functions-client.php';
+require_once __DIR__ . '/marketing-jobs.php';
 
 function process_registry(): array
 {
-    return [
+    return marketing_process_registry() + [
         'daily-sales-summary' => [
             'code'          => 'daily-sales-summary',
             'name'          => 'Daily Sales Summary',

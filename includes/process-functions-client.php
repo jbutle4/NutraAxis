@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/marketing-jobs.php';
 
 function process_functions_prod_base_url(): string
 {
@@ -32,12 +33,12 @@ function process_functions_prod_is_configured(): bool
  */
 function process_functions_prod_codes(): array
 {
-    return [
+    return array_merge([
         'accs-sales-order-sync',
         'accs-employee-customer-create',
         'supplier-invoice-ap-recon',
         'accs-jazz-tracking-sync',
-    ];
+    ], marketing_job_codes());
 }
 
 function process_functions_uat_app_label(): string
