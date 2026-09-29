@@ -287,6 +287,29 @@ function extractJson(text) {
   return null;
 }
 
+/**
+ * Complete objects from the array under `"key": [` — salvages the finished entries of a reply that hit max_tokens.
+ */
+function extractArrayObjects(text, key) {
+  const source = String(text || '');
+  const keyAt = source.indexOf(`"${key}"`);
+  if (keyAt === -1) return [];
+  let pos = source.indexOf('[', keyAt);
+  if (pos === -1) return [];
+  const objects = [];
+  for (pos = source.indexOf('{', pos); pos !== -1; pos = source.indexOf('{', pos)) {
+    const end = matchingBracket(source, pos);
+    if (end === -1) break;
+    try {
+      objects.push(JSON.parse(source.slice(pos, end + 1)));
+    } catch {
+      break;
+    }
+    pos = end + 1;
+  }
+  return objects;
+}
+
 function matchingBracket(text, start) {
   const open = text[start];
   const close = open === '[' ? ']' : '}';
@@ -317,6 +340,7 @@ module.exports = {
   estimateCost,
   runPrompt,
   extractJson,
+  extractArrayObjects,
   submitAnthropicBatch,
   getAnthropicBatch,
   fetchAnthropicBatchResults,

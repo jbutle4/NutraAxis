@@ -40,6 +40,7 @@ const JOBS = {
     run: (params) => researchCluster.run(params),
     message: (r) => `${r.items ?? 0} items considered — ${r.topics_created ?? 0} new topics, ${r.topics_extended ?? 0} extended, `
       + `${r.items_assigned ?? 0} items grouped` + (r.emerging ? `, ${r.emerging} emerging-interest suggestions` : '')
+      + (r.truncated ? ' — reply hit the token limit; remaining items wait for the next run' : '')
       + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
   },
 };

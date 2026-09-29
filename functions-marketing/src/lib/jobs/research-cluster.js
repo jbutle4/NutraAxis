@@ -1,6 +1,6 @@
 const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const { loadSettings, settingNumber } = require('../mkt/settings');
-const { runPrompt, extractJson } = require('../mkt/ai');
+const { runPrompt, extractJson, extractArrayObjects } = require('../mkt/ai');
 const { loadTaxonomy, matchVocabulary, oneLine } = require('../mkt/taxonomy');
 
 const PROMPT_KEY = 'research.cluster_topics';
@@ -108,6 +108,12 @@ function itemLine(row) {
   return `#${row.ItemID} [${row.EvidenceType || 'unknown'}] [${interests}] ${oneLine(row.Title, 160)}${summary} (${row.Domain || 'unknown'}, ${date})`;
 }
 
+/** Models sometimes echo ids in the "#123" form used in the item lines. */
+function parseItemId(value) {
+  const digits = String(value ?? '').replace(/[^0-9]/g, '');
+  return digits ? Number(digits) : NaN;
+}
+
 async function attachItems(pool, topicId, itemIds) {
   const list = itemIds.map(Number).join(',');
   await pool.request().input('topic', sql.Int, topicId).query(`
@@ -153,7 +159,7 @@ async function run(params = {}) {
   const processLogId = Number(params.log_id || 0) || null;
   const force = params.force === true || params.force === 1 || params.force === '1';
   const pool = await connectPool(getProductionDatabase());
-  const totals = { items: 0, topics_created: 0, topics_extended: 0, items_assigned: 0, emerging: 0, cost_usd: 0 };
+  const totals = { items: 0, topics_returned: 0, topics_created: 0, topics_extended: 0, items_assigned: 0, emerging: 0, cost_usd: 0 };
 
   try {
     const settings = await loadSettings(pool);
@@ -191,12 +197,15 @@ async function run(params = {}) {
     totals.cost_usd = Math.round(response.costUsd * 10000) / 10000;
 
     const parsed = extractJson(response.text);
-    const list = Array.isArray(parsed) ? parsed : parsed?.topics;
-    if (!Array.isArray(list)) {
+    const list = parsed && !Array.isArray(parsed) && Array.isArray(parsed.topics)
+      ? parsed.topics
+      : extractArrayObjects(response.text, 'topics');
+    if (list.length === 0) {
       throw new Error(`Model did not return {"topics": [...]} (stop: ${response.stopReason}). `
         + `Reply began: "${String(response.text || '').replace(/\s+/g, ' ').slice(0, 160)}"`);
     }
-
+    totals.topics_returned = list.length;
+    totals.truncated = response.stopReason === 'max_tokens';
     const available = new Set(items.map((row) => Number(row.ItemID)));
     const openIds = new Set(topics.map((row) => row.TopicID));
     const touched = [];
@@ -204,9 +213,9 @@ async function run(params = {}) {
 
     for (const topic of list) {
       if (!topic || typeof topic !== 'object') continue;
-      const itemIds = [...new Set((Array.isArray(topic.item_ids) ? topic.item_ids : []).map(Number))]
+      const itemIds = [...new Set((Array.isArray(topic.item_ids) ? topic.item_ids : []).map(parseItemId))]
         .filter((id) => available.has(id));
-      const existingId = Number(topic.existing_topic_id || 0);
+      const existingId = parseItemId(topic.existing_topic_id) || 0;
       if (openIds.has(existingId)) {
         if (itemIds.length === 0) continue;
         await attachItems(pool, existingId, itemIds);

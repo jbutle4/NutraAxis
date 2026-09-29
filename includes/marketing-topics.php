@@ -164,6 +164,15 @@ function mkt_topic_save(int $id, array $input): array
         'AvoidNotes'      => $text('avoid_notes', 1000),
         'UpdatedBy'       => marketing_user_id(),
     ];
+    $inputKeys = [
+        'Title' => 'title', 'Summary' => 'summary', 'WhyItMatters' => 'why_it_matters', 'TherapeuticArea' => 'therapeutic_area',
+        'InterestID' => 'interest_id', 'Angle' => 'angle', 'Audience' => 'audience', 'AvoidNotes' => 'avoid_notes',
+    ];
+    foreach ($inputKeys as $col => $key) {
+        if (!array_key_exists($key, $input)) {
+            $data[$col] = $before[$col];
+        }
+    }
     if ($before['Status'] === 'accepted' && $data['Angle'] === null) {
         return ['ok' => false, 'error' => 'Accepted topics need an angle.'];
     }
