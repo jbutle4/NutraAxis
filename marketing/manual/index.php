@@ -59,7 +59,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       ]);
       ?>
 
-      <nav class="mkt-manual-toc" aria-label="Contents">
+      <nav id="contents" class="mkt-manual-toc" aria-label="Contents">
         <strong>Contents</strong>
         <ol>
           <?php foreach ($toc as $anchor => $label): ?>
@@ -72,11 +72,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php endif; ?></li>
           <?php endforeach; ?>
         </ol>
+        <p class="mkt-manual-toc-pages"><strong>Jump to a page:</strong>
+          <?php foreach ($pageIndex as $slug => $page): ?>
+          <?php if ($slug === $activeSlug) { continue; } ?>
+          <a href="#page-<?= htmlspecialchars($slug) ?>"><?= htmlspecialchars($page['title']) ?></a>
+          <?php endforeach; ?>
+        </p>
         <button type="button" class="btn-secondary mkt-manual-print" onclick="window.print()">Print / save as PDF</button>
       </nav>
 
       <section id="start" class="mkt-manual-section">
-        <h2 class="hub-section-title">Start here</h2>
+        <h2 class="hub-section-title">Start here <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <p>Marketing &amp; Research runs the content engine for nutraaxislabs.com: it watches topics, harvests and scores research, turns accepted topics into social posts, emails and web articles with compliance review, tracks what was posted, measures search and site performance, and audits the website for SEO problems. Scheduled jobs do the collecting and scoring; people make every decision and every post.</p>
         <h3>Golden rules</h3>
         <?= $list(mkt_manual_golden_rules()) ?>
@@ -96,7 +102,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="roles" class="mkt-manual-section">
-        <h2 class="hub-section-title">Roles and access</h2>
+        <h2 class="hub-section-title">Roles and access <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>Role</th><th>Access</th><th>What they do</th></tr></thead>
@@ -115,7 +121,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="rhythm" class="mkt-manual-section">
-        <h2 class="hub-section-title">Operating rhythm</h2>
+        <h2 class="hub-section-title">Operating rhythm <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <p>Times are Central. Expect about 8–10 hours a week for the operator once habits form.</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -135,7 +141,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="workflows" class="mkt-manual-section">
-        <h2 class="hub-section-title">Step-by-step workflows</h2>
+        <h2 class="hub-section-title">Step-by-step workflows <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <?php foreach ($workflows as $key => $wf): ?>
         <div id="wf-<?= htmlspecialchars($key) ?>" class="mkt-manual-workflow">
           <h3><?= htmlspecialchars($wf['title']) ?></h3>
@@ -161,7 +167,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="pages" class="mkt-manual-section">
-        <h2 class="hub-section-title">Page guide and how to analyze</h2>
+        <h2 class="hub-section-title">Page guide and how to analyze <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <?php foreach ($pageIndex as $slug => $page): ?>
         <?php if ($slug === $activeSlug) { continue; } ?>
         <?php $guide = $pageGuide[$slug] ?? null; ?>
@@ -186,7 +192,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="alerts" class="mkt-manual-section">
-        <h2 class="hub-section-title">Alerts</h2>
+        <h2 class="hub-section-title">Alerts <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <p>The alert check runs daily about 06:00 and on demand (Audit &amp; Issues → Alerts → Check now). New alerts are emailed once; alerts resolve on their own when the cause is gone. Acknowledge means “seen, working on it”.</p>
         <?php $enabled = marketing_setting_lines('alerts.rules'); ?>
         <div class="admin-table-wrap">
@@ -208,7 +214,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="schedules" class="mkt-manual-section">
-        <h2 class="hub-section-title">Job schedules and task deadlines</h2>
+        <h2 class="hub-section-title">Job schedules and task deadlines <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <p>Scheduled jobs run automatically. Times are Central daylight time; from November to March they run one hour earlier. Marketing admins can rerun any scheduled job from Admin &amp; Jobs.</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -251,7 +257,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="compliance" class="mkt-manual-section">
-        <h2 class="hub-section-title">Compliance rules</h2>
+        <h2 class="hub-section-title">Compliance rules <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <p>These rules are given to every AI generation, revision and claims check, and are what reviewers check against. A claims score of at least <?= htmlspecialchars(marketing_setting('claims.min_score', '7')) ?> out of 10 is needed to submit.</p>
         <?= $list(marketing_setting_lines('campaign.rules')) ?>
         <?php $disclaimer = trim((string) marketing_setting('claims.disclaimer', '')); ?>
@@ -262,7 +268,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="statuses" class="mkt-manual-section">
-        <h2 class="hub-section-title">Status glossary</h2>
+        <h2 class="hub-section-title">Status glossary <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <div class="mkt-manual-glossary">
           <?php foreach (mkt_manual_statuses() as $group => $statuses): ?>
           <div>
@@ -275,7 +281,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="other" class="mkt-manual-section">
-        <h2 class="hub-section-title">Other instructions</h2>
+        <h2 class="hub-section-title">Other instructions <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <dl class="detail-list detail-list-inline">
           <?php foreach (mkt_manual_other_instructions() as $title => $text): ?>
           <div><dt><?= htmlspecialchars($title) ?></dt><dd><?= mkt_manual_text($text) ?></dd></div>
@@ -284,7 +290,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       </section>
 
       <section id="help" class="mkt-manual-section">
-        <h2 class="hub-section-title">Troubleshooting and help</h2>
+        <h2 class="hub-section-title">Troubleshooting and help <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>If you see</th><th>Do this</th></tr></thead>
@@ -295,7 +301,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             </tbody>
           </table>
         </div>
-        <p><a href="#start">Back to top</a></p>
+        <p><a href="#contents">Back to contents</a></p>
       </section>
     </div>
   </main>
