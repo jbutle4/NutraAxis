@@ -11,6 +11,6 @@
     "OPENAI_API_KEY": "",
     "HARVEST_CONTACT_EMAIL": "marketing@nutraaxislabs.com",
     "MARKETING_HARVEST_SCHEDULE": "0 15 * * * *",
-    "MARKETING_RESEARCH_AGENT_SCHEDULE": "0 0 11 * * 1"
+    "MARKETING_RESEARCH_AGENT_SCHEDULE": "0 0 11 * * *"
   }
 }
