@@ -871,6 +871,16 @@ $marketingSubModules = [
         'section' => 'other',
         'sort'    => 320,
     ],
+    [
+        'slug'    => 'marketing-manual',
+        'title'   => 'User Manual',
+        'desc'    => 'Roles, step-by-step workflows with timing, a guide to every page and how to read it, alerts, and what to do when something goes wrong.',
+        'href'    => '/marketing/manual/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'other',
+        'sort'    => 330,
+    ],
 ];
 
 $appFunctions = [

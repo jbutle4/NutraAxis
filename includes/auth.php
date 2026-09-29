@@ -105,6 +105,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'marketing-reports'      => 'Marketing',
     'research-production'    => 'Marketing',
     'marketing-admin'        => 'Marketing',
+    'marketing-manual'       => 'Marketing',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
