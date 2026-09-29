@@ -214,6 +214,44 @@ async function runPrompt(pool, settings, {
   }
 }
 
+function anthropicHeaders() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured.');
+  return { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+}
+
+async function getText(url, headers) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { headers, signal: controller.signal });
+    const text = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
+    return text;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Submit a Message Batch. Each request is {custom_id, params} where params is a normal Messages API body.
+ * @returns {Promise<{id: string, processing_status: string}>}
+ */
+async function submitAnthropicBatch(requests) {
+  return postJson('https://api.anthropic.com/v1/messages/batches', anthropicHeaders(), { requests });
+}
+
+async function getAnthropicBatch(batchId) {
+  const text = await getText(`https://api.anthropic.com/v1/messages/batches/${encodeURIComponent(batchId)}`, anthropicHeaders());
+  return JSON.parse(text);
+}
+
+/** Download an ended batch's JSONL results. */
+async function fetchAnthropicBatchResults(resultsUrl) {
+  const text = await getText(resultsUrl, anthropicHeaders());
+  return text.split(/\r?\n/).filter((line) => line.trim() !== '').map((line) => JSON.parse(line));
+}
+
 /** Pull the first JSON array or object out of model text (tolerates ```json fences and prose). */
 function extractJson(text) {
   const source = String(text || '');
@@ -279,4 +317,7 @@ module.exports = {
   estimateCost,
   runPrompt,
   extractJson,
+  submitAnthropicBatch,
+  getAnthropicBatch,
+  fetchAnthropicBatchResults,
 };

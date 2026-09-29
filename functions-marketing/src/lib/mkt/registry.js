@@ -1,6 +1,8 @@
 const seoNoop = require('../jobs/seo-noop');
 const researchHarvest = require('../jobs/research-harvest');
 const researchAgent = require('../jobs/research-agent-discover');
+const researchScore = require('../jobs/research-score');
+const researchCluster = require('../jobs/research-cluster');
 
 const JOBS = {
   'seo-noop': {
@@ -22,6 +24,23 @@ const JOBS = {
       + (r.unverified ? `${r.unverified} unverified (site blocks checks), ` : '')
       + `${r.rejected ?? 0} rejected, ${r.duplicates ?? 0} already known`
       + (r.failed ? `, ${r.failed} failed` : '') + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
+  },
+  'research-score-batch': {
+    name: 'Topic Synthesis — Score Items (Batch)',
+    run: (params) => researchScore.run(params),
+    message: (r) => [
+      r.batches_collected ? `${r.batches_collected} batch collected: ${r.scored ?? 0} scored, ${r.discarded ?? 0} discarded`
+        + (r.errored ? `, ${r.errored} returned to queue` : '') + ` (~$${Number(r.cost_usd || 0).toFixed(2)})` : null,
+      r.submitted_items ? `${r.submitted_items} items submitted for scoring` : null,
+      `${r.waiting ?? 0} waiting`,
+    ].filter(Boolean).join('; ') + '.',
+  },
+  'research-cluster-topics': {
+    name: 'Topic Synthesis — Cluster Topics',
+    run: (params) => researchCluster.run(params),
+    message: (r) => `${r.items ?? 0} items considered — ${r.topics_created ?? 0} new topics, ${r.topics_extended ?? 0} extended, `
+      + `${r.items_assigned ?? 0} items grouped` + (r.emerging ? `, ${r.emerging} emerging-interest suggestions` : '')
+      + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
   },
 };
 

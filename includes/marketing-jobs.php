@@ -23,6 +23,18 @@ function marketing_process_registry(): array
             'function_name' => 'marketing-research-agent',
             'schedule'      => 'Daily 06:00 CT (each interest at most weekly)',
         ],
+        'research-score-batch' => [
+            'name'          => 'Topic Synthesis — Score Items (Batch)',
+            'description'   => 'Collects finished AI scoring batches (relevance per interest, tags, study facts) and submits waiting items as a new half-price batch.',
+            'function_name' => 'marketing-score',
+            'schedule'      => 'Hourly at :45 (submits at 25 waiting items or after 12h)',
+        ],
+        'research-cluster-topics' => [
+            'name'          => 'Topic Synthesis — Cluster Topics',
+            'description'   => 'Groups recent scored items into Topic Board candidates, extends open topics, and suggests emerging interests.',
+            'function_name' => 'marketing-cluster',
+            'schedule'      => 'Daily 07:30 CT (when 8+ items are newly scored)',
+        ],
     ];
 
     $registry = [];
