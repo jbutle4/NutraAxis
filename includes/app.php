@@ -794,7 +794,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-content',
         'title'   => 'Content Pipeline',
-        'desc'    => 'Long-form web articles: brief, draft, claims check, medical and editorial review, published URL.',
+        'desc'    => 'Long-form web articles: brief, draft, claims check, compliance and editorial review, published URL.',
         'href'    => '/marketing/content/',
         'icon'    => 'document',
         'tier'    => 'production',
