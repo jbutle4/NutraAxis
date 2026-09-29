@@ -3,7 +3,7 @@ const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const { loadSettings, settingLines, settingNumber } = require('../mkt/settings');
 const { sendMail } = require('../mkt/mail');
 
-const RULES = ['job_failed', 'traffic_drop', 'legacy_brand', 'site_error', 'escalation_overdue'];
+const RULES = ['job_failed', 'traffic_drop', 'legacy_brand', 'site_error', 'escalation_overdue', 'ai_budget'];
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
 const WEBHOOK_TIMEOUT_MS = 15000;
 
@@ -140,6 +140,54 @@ async function escalationOverdue(pool) {
   }));
 }
 
+/**
+ * AI spend against ai.monthly_budget_usd for the UTC month. Warns at alerts.budget_warn_pct of budget or when the
+ * forecast (month-to-date + trailing 7-day rate × days left) passes it; reaching the budget is a separate, high alert.
+ */
+async function aiBudget(pool, settings) {
+  const budget = settingNumber(settings, 'ai.monthly_budget_usd', 0);
+  if (!(budget > 0)) return [];
+  const warnPct = settingNumber(settings, 'alerts.budget_warn_pct', 80);
+  const row = (await pool.request().query(`
+    DECLARE @monthStart DATETIME2 = DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1);
+    SELECT CONVERT(varchar(7), @monthStart, 23) AS MonthKey,
+           DATEDIFF(SECOND, @monthStart, SYSUTCDATETIME()) / 86400.0 AS Elapsed,
+           DAY(EOMONTH(@monthStart)) AS DaysInMonth,
+           COALESCE(SUM(CASE WHEN CreatedAt >= @monthStart THEN CostUsd END), 0) AS MonthCost,
+           COALESCE(SUM(CASE WHEN CreatedAt >= DATEADD(DAY, -7, SYSUTCDATETIME()) THEN CostUsd END), 0) AS Last7Cost
+    FROM dbo.MktApiUsage
+    WHERE Provider IN (N'anthropic', N'openai') AND CreatedAt >= LEAST(@monthStart, DATEADD(DAY, -7, SYSUTCDATETIME()))
+  `)).recordset[0];
+  const spent = Number(row.MonthCost);
+  const forecast = spent + (Number(row.Last7Cost) / 7) * Math.max(0, Number(row.DaysInMonth) - Number(row.Elapsed));
+  const usd = (value) => `$${value.toFixed(2)}`;
+  const base = {
+    rule: 'ai_budget',
+    subject: `ai budget ${row.MonthKey}`,
+    href: '/marketing/admin/?tab=usage',
+  };
+  if (spent >= budget) {
+    return [{
+      ...base,
+      key: `${row.MonthKey}:reached`,
+      severity: 'high',
+      title: `AI budget reached for ${row.MonthKey}: ${usd(spent)} of ${usd(budget)}`,
+      detail: 'All AI calls (scheduled and on demand) are refused until the next UTC month. Raise ai.monthly_budget_usd in Admin & Jobs → Settings to resume.',
+    }];
+  }
+  const usedPct = (spent / budget) * 100;
+  if (usedPct >= warnPct || forecast >= budget) {
+    return [{
+      ...base,
+      key: `${row.MonthKey}:warn`,
+      severity: 'medium',
+      title: `AI spend at ${pct(usedPct)} of the ${row.MonthKey} budget`,
+      detail: `${usd(spent)} of ${usd(budget)} spent; month-end forecast ${usd(forecast)} at the last 7 days' pace (warns at ${warnPct}% or a forecast over budget).`,
+    }];
+  }
+  return [];
+}
+
 /** Insert new alerts, refresh ones still firing, resolve the rest (including rules switched off). */
 async function reconcile(pool, desired, processLogId) {
   const payload = desired.map((a) => ({
@@ -272,6 +320,7 @@ async function run(params = {}, jobs = {}) {
       if (rule === 'legacy_brand') desired.push(...await legacyBrand(pool));
       if (rule === 'site_error') desired.push(...await siteError(pool));
       if (rule === 'escalation_overdue') desired.push(...await escalationOverdue(pool));
+      if (rule === 'ai_budget') desired.push(...await aiBudget(pool, settings));
     }
     const counts = await reconcile(pool, desired, processLogId);
     const sent = params.notify === false || params.notify === 'false' ? null : await notify(pool, settings);

@@ -3926,6 +3926,27 @@ body.te-print-page {
 .mkt-kpi-value { display: block; font-size: 1.4rem; font-weight: 600; line-height: 1.3; }
 .mkt-kpi-prior { display: block; font-size: 0.78rem; color: var(--text-muted); }
 
+.mkt-bar-col { width: 30%; }
+.mkt-bar {
+  position: relative;
+  height: 0.6rem;
+  min-width: 6rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  overflow: hidden;
+}
+.mkt-bar-lg { height: 0.9rem; margin: 0.5rem 0; max-width: 32rem; }
+.mkt-bar-fill,
+.mkt-bar-forecast {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+}
+.mkt-bar-fill { background: var(--primary); }
+.mkt-bar-fill.is-warn { background: #d69e2e; }
+.mkt-bar-fill.is-over { background: var(--danger); }
+.mkt-bar-forecast { background: var(--primary); opacity: 0.25; }
+
 .mkt-delta { font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
 .mkt-delta.is-up { color: #2f855a; }
 .mkt-delta.is-down { color: var(--danger); }

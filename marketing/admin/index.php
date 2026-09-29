@@ -86,7 +86,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                   <button type="submit" class="btn-secondary">Run now</button>
                 </form>
                 <?php else: ?>
-                <span class="form-hint">Runs from Campaign Studio</span>
+                <span class="form-hint">Runs on demand from its module</span>
                 <?php endif; ?>
               </td>
             </tr>
@@ -123,18 +123,169 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
 <?php elseif ($tab === 'usage'): ?>
       <?php
-      $monthCost = marketing_ai_cost_month_to_date();
-      $budget = (float) marketing_setting('ai.monthly_budget_usd', '0');
+      $spend = marketing_spend_overview();
+      $budget = $spend['budget'];
       $summary = marketing_usage_month_summary();
+      $daily = marketing_spend_daily(30);
+      $monthly = marketing_spend_monthly(6);
+      $byJob = marketing_spend_by_job();
+      $byPrompt = marketing_spend_by_prompt();
+      $dailyMax = max(0.0001, ...array_map(static fn ($d) => $d['cost'], $daily));
+      $monthlyMax = max(0.0001, $budget, ...array_map(static fn ($m) => $m['cost'], $monthly));
+      $barClass = static function (?float $pct): string {
+          if ($pct === null) {
+              return '';
+          }
+          return $pct >= 100 ? ' is-over' : ($pct >= 80 ? ' is-warn' : '');
+      };
       ?>
       <div class="status-banner">
         <div>
-          <strong>AI spend this month: <?= htmlspecialchars(marketing_format_usd($monthCost)) ?><?= $budget > 0 ? ' of ' . htmlspecialchars(marketing_format_usd($budget)) . ' budget' : '' ?></strong>
-          <p>Scheduled jobs stop submitting AI work when month-to-date AI cost reaches the budget (Settings → <code>ai.monthly_budget_usd</code>). Costs are estimates from token counts and <code>ai.pricing</code>.</p>
+          <strong>AI spend this month: <?= htmlspecialchars(marketing_format_usd($spend['month_cost'])) ?><?= $budget > 0 ? ' of ' . htmlspecialchars(marketing_format_usd($budget)) . ' budget (' . number_format((float) $spend['pct_used'], 0) . '%)' : '' ?></strong>
+          <?php if ($budget > 0): ?>
+          <div class="mkt-bar mkt-bar-lg" title="Used <?= number_format((float) $spend['pct_used'], 1) ?>%, forecast <?= number_format((float) $spend['pct_forecast'], 1) ?>%">
+            <span class="mkt-bar-forecast" style="width: <?= min(100, (float) $spend['pct_forecast']) ?>%"></span>
+            <span class="mkt-bar-fill<?= $barClass($spend['pct_used']) ?>" style="width: <?= min(100, (float) $spend['pct_used']) ?>%"></span>
+          </div>
+          <?php endif; ?>
+          <p>Every AI call — scheduled or on demand — is refused once month-to-date AI cost reaches the budget (Settings → <code>ai.monthly_budget_usd</code>). Months are UTC. Costs are estimates from token counts and <code>ai.pricing</code>. The lighter bar is the month-end forecast.</p>
         </div>
       </div>
 
-      <h2 class="hub-section-title">Month to date by provider and operation</h2>
+      <div class="mkt-kpis">
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">Today (UTC)</span>
+          <span class="mkt-kpi-value"><?= htmlspecialchars(marketing_format_usd($spend['today_cost'])) ?></span>
+        </div>
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">Last 7 days</span>
+          <span class="mkt-kpi-value"><?= htmlspecialchars(marketing_format_usd($spend['last7_cost'])) ?></span>
+          <span class="mkt-kpi-prior"><?= htmlspecialchars(marketing_format_usd($spend['daily_rate'])) ?> / day</span>
+        </div>
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">Month-end forecast</span>
+          <span class="mkt-kpi-value<?= $spend['pct_forecast'] !== null && $spend['pct_forecast'] >= 100 ? ' mkt-task-overdue' : '' ?>"><?= htmlspecialchars(marketing_format_usd($spend['forecast'])) ?></span>
+          <span class="mkt-kpi-prior"><?= $spend['pct_forecast'] !== null ? number_format((float) $spend['pct_forecast'], 0) . '% of budget' : 'No budget set' ?></span>
+        </div>
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">Budget runway</span>
+          <span class="mkt-kpi-value"><?php
+            if ($budget <= 0) {
+                echo '—';
+            } elseif ($spend['month_cost'] >= $budget) {
+                echo 'Reached';
+            } elseif ($spend['days_to_budget'] === null || $spend['days_to_budget'] > $spend['days_in_month'] - $spend['elapsed_days']) {
+                echo 'Lasts the month';
+            } else {
+                echo htmlspecialchars(number_format((float) $spend['days_to_budget'], 1)) . ' days';
+            }
+          ?></span>
+          <span class="mkt-kpi-prior">at the 7-day rate</span>
+        </div>
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">Last month</span>
+          <span class="mkt-kpi-value"><?= htmlspecialchars(marketing_format_usd($spend['prior_month_cost'])) ?></span>
+        </div>
+        <div class="mkt-kpi">
+          <span class="mkt-kpi-label">AI calls this month</span>
+          <span class="mkt-kpi-value"><?= number_format($spend['month_calls']) ?></span>
+          <span class="mkt-kpi-prior"><?= number_format($spend['month_failures']) ?> failed</span>
+        </div>
+      </div>
+
+      <h2 class="hub-section-title">Daily AI spend (last 30 days, UTC)</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Date</th><th>Calls</th><th>Failures</th><th>Cost</th><th class="mkt-bar-col">Share of busiest day</th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($daily as $d): ?>
+            <tr>
+              <td><?= htmlspecialchars($d['date']) ?></td>
+              <td><?= number_format($d['calls']) ?></td>
+              <td><?= number_format($d['failures']) ?></td>
+              <td><?= htmlspecialchars(marketing_format_usd($d['cost'], 4)) ?></td>
+              <td><div class="mkt-bar"><span class="mkt-bar-fill" style="width: <?= round($d['cost'] / $dailyMax * 100, 1) ?>%"></span></div></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="hub-section-title">Monthly AI spend</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Month</th><th>Calls</th><th>Failures</th><th>Cost</th><th>% of budget</th><th class="mkt-bar-col">Spend</th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($monthly as $m): ?>
+            <?php $pct = $budget > 0 ? $m['cost'] / $budget * 100 : null; ?>
+            <tr>
+              <td><?= htmlspecialchars($m['label']) ?></td>
+              <td><?= number_format($m['calls']) ?></td>
+              <td><?= number_format($m['failures']) ?></td>
+              <td><?= htmlspecialchars(marketing_format_usd($m['cost'])) ?></td>
+              <td><?= $pct !== null ? number_format($pct, 0) . '%' : '—' ?></td>
+              <td><div class="mkt-bar"><span class="mkt-bar-fill<?= $barClass($pct) ?>" style="width: <?= round($m['cost'] / $monthlyMax * 100, 1) ?>%"></span></div></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="hub-section-title">Month to date by job</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Job</th><th>Runs</th><th>AI calls</th><th>Failures</th><th>Cost</th><th>Share</th></tr>
+          </thead>
+          <tbody>
+            <?php if ($byJob === []): ?>
+            <tr><td colspan="6">No AI calls this month.</td></tr>
+            <?php endif; ?>
+            <?php foreach ($byJob as $row): ?>
+            <tr>
+              <td><?= htmlspecialchars((string) $row['JobName']) ?></td>
+              <td><?= number_format((int) $row['Runs']) ?></td>
+              <td><?= number_format((int) $row['Calls']) ?></td>
+              <td><?= number_format((int) $row['Failures']) ?></td>
+              <td><?= htmlspecialchars(marketing_format_usd((float) $row['CostUsd'], 4)) ?></td>
+              <td><?= $spend['month_cost'] > 0 ? number_format((float) $row['CostUsd'] / $spend['month_cost'] * 100, 1) . '%' : '—' ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="hub-section-title">Month to date by prompt and model</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Prompt</th><th>Model</th><th>Calls</th><th>Failures</th><th>Input tokens</th><th>Output tokens</th><th>Avg / call</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            <?php if ($byPrompt === []): ?>
+            <tr><td colspan="8">No AI calls this month.</td></tr>
+            <?php endif; ?>
+            <?php foreach ($byPrompt as $row): ?>
+            <tr>
+              <td><?= htmlspecialchars((string) $row['PromptKey']) ?></td>
+              <td><?= htmlspecialchars((string) $row['Model']) ?: '—' ?> <span class="form-hint"><?= htmlspecialchars((string) $row['Provider']) ?></span></td>
+              <td><?= number_format((int) $row['Calls']) ?></td>
+              <td><?= number_format((int) $row['Failures']) ?></td>
+              <td><?= number_format((int) $row['InputTokens']) ?></td>
+              <td><?= number_format((int) $row['OutputTokens']) ?></td>
+              <td><?= htmlspecialchars(marketing_format_usd((int) $row['Calls'] > 0 ? (float) $row['CostUsd'] / (int) $row['Calls'] : 0, 4)) ?></td>
+              <td><?= htmlspecialchars(marketing_format_usd((float) $row['CostUsd'], 4)) ?></td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="hub-section-title">Month to date by provider and operation (all APIs)</h2>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>

@@ -489,7 +489,10 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 - Richer Task SLA / offshore MFA policies if not already in portal.
 - Adobe CMS integration — **explicitly out of scope** until Adobe AI/MCP exists.
 
-**Hardening after S4:** Key Vault for SEO keys, unit-burn dashboard, runbook `docs/seo-ops/RUNBOOK.md` (job failure alerts landed in S4).
+**Hardening after S4 — done:**
+- **Key Vault:** `nutraaxis-mkt-kv` holds the Function App secrets (`db-password`, `anthropic-api-key`, `openai-api-key`, `google-sa-json-b64`, `smtp-pass`); app settings are Key Vault references read by the system-assigned managed identity (access-policy model).
+- **Spend dashboard:** Admin & Jobs → AI & API Usage shows budget used plus forecast (month-to-date + trailing 7-day rate), runway, daily (30 d) and monthly (6 mo) spend, and cost by job and by prompt/model. New `ai_budget` alert rule (`alerts.budget_warn_pct`, default 80%; separate high alert when the budget is reached) — `sql/163_marketing_ai_budget_alert.sql`.
+- **Runbook:** [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md) — schedules (UTC/CT), alert responses, reruns, secret rotation, budget, deploys, troubleshooting. Job failure alerts landed in S4.
 
 ---
 
@@ -538,4 +541,4 @@ Console operator target remains ~8–10 h/week once habits form; early weeks may
 
 ## 14. Immediate next step after this spec
 
-S0–S4 are built (GHL ingest deferred — metrics and responses are manual until it lands). Next: the remaining hardening items (Key Vault for keys, unit-burn dashboard, runbook), the GHL ingest when API access is approved, then Phase 2.
+S0–S4 and the post-S4 hardening are built (GHL ingest deferred — metrics and responses are manual until it lands). Operations follow [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md). Next: the GHL ingest when API access is approved, then Phase 2.
