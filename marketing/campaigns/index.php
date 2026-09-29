@@ -83,9 +83,9 @@ if (!$canCreate) {
           <p class="form-hint">
             Compliance reviewers:
             <?php if ($reviewers === []): ?>
-            <strong>none named yet</strong> — add the compliance officer's login to <code>review.compliance_reviewers</code> on the <a href="/marketing/admin/?tab=settings">Admin settings</a> tab and give their role Marketing update access.
+            <strong>none yet</strong> — in <a href="/site-admin/users/">Site Admin → Users</a>, assign the compliance officer the <strong>Marketing Compliance Reviewer</strong> role (or grant Marketing Compliance Review update on their role in <a href="/site-admin/roles/">Roles</a>).
             <?php else: ?>
-            <?= htmlspecialchars(implode(', ', array_map(static fn(array $r): string => (string) $r['UserName'] . (str_contains((string) ($r['Marketing'] ?? ''), 'U') ? '' : ' (role lacks Marketing update)'), $reviewers))) ?>.
+            <?= htmlspecialchars(implode(', ', array_map(static fn(array $r): string => (string) $r['UserName'] . ' (' . $r['RoleName'] . ')' . (str_contains((string) ($r['Marketing'] ?? ''), 'U') ? '' : ' — role lacks Marketing update'), $reviewers))) ?>.
             <?php endif; ?>
           </p>
         </div>
@@ -125,7 +125,7 @@ if (!$canCreate) {
         <?php $queue = mkt_review_queue(); $me = marketing_user_id(); ?>
         <p class="form-hint">
           Compliance clears first, then editorial. You can't review an asset you last edited or submitted.
-          <?= $isCompliance ? 'You are a named compliance reviewer.' : '' ?>
+          <?= $isCompliance ? 'Your role grants compliance review.' : '' ?>
           <?= $isEditor ? 'You can give editorial approval.' : '' ?>
         </p>
         <div class="admin-table-wrap">

@@ -196,7 +196,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php foreach ($settings as $key => $row): ?>
           <?php
             $value = (string) ($row['SettingValue'] ?? '');
-            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, ['brand.competitors', 'brand.terms', 'brand.audiences', 'brand.voice', 'review.compliance_reviewers'], true);
+            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, ['brand.competitors', 'brand.terms', 'brand.audiences', 'brand.voice'], true);
             $fieldId = 'setting-' . preg_replace('/[^a-z0-9]+/i', '-', $key);
           ?>
           <div class="form-group form-grid-full">

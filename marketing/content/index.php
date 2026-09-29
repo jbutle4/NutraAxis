@@ -193,7 +193,7 @@ $flagged = static fn(array $row): bool => $row['Stage'] === 'draft' && ($row['Co
         ?>
         <p class="form-hint">
           Compliance clears first, then editorial. You can't review a version you wrote or submitted.
-          <?= $isCompliance ? 'You are a named compliance reviewer.' : '' ?>
+          <?= $isCompliance ? 'Your role grants compliance review.' : '' ?>
           <?= $isEditor ? 'You can give editorial approval.' : '' ?>
         </p>
         <div class="admin-table-wrap">
