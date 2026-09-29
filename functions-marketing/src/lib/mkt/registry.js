@@ -5,6 +5,8 @@ const researchScore = require('../jobs/research-score');
 const researchCluster = require('../jobs/research-cluster');
 const campaign = require('../jobs/campaign');
 const content = require('../jobs/content');
+const seoPages = require('../jobs/seo-pages');
+const seoAnalytics = require('../jobs/seo-analytics');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
@@ -94,6 +96,35 @@ const JOBS = {
     name: 'Content Pipeline — AI Revise',
     run: (params) => content.revise(params),
     message: (r) => `Revised into ${versionText(r)}` + costText(r),
+  },
+  'seo-crawl': {
+    name: 'Page Inventory — Crawl Site',
+    run: (params) => seoPages.crawl(params),
+    message: (r) => (r.mode === 'full'
+      ? `${r.in_sitemap ?? 0} sitemap URLs (${r.new_pages ?? 0} new, ${r.excluded ?? 0} excluded), ${r.content_pages ?? 0} published content pages; `
+        + (r.sitemap_errors?.length ? `${r.sitemap_errors.length} sitemap errors; ` : '')
+      : '')
+      + `${r.crawled ?? 0} pages crawled — ${r.healthy ?? 0} OK, ${r.errors ?? 0} errors, ${r.changed ?? 0} changed, ${r.with_issues ?? 0} with issues`
+      + (r.skipped_time ? `, ${r.skipped_time} left for the next run` : '') + '.',
+  },
+  'seo-verify-published': {
+    name: 'Page Inventory — Verify Published Content',
+    run: (params) => seoPages.verifyPublished(params),
+    message: (r) => `${r.checked ?? 0} published pieces checked — ${r.live ?? 0} live, ${r.problems ?? 0} failed`
+      + (r.off_site ? `, ${r.off_site} not on the site domain` : '') + '.',
+  },
+  'seo-gsc-ingest': {
+    name: 'Search Console — Nightly Ingest',
+    run: (params) => seoAnalytics.gscIngest(params),
+    message: (r) => `${r.start} to ${r.end}${r.backfill ? ' (backfill)' : ''}: ${r.days ?? 0} days, ${r.clicks ?? 0} clicks, `
+      + `${r.impressions ?? 0} impressions; ${r.page_rows ?? 0} page rows, ${r.query_rows ?? 0} query rows`
+      + (r.new_pages ? `, ${r.new_pages} new pages found in search` : '') + '.',
+  },
+  'seo-ga4-ingest': {
+    name: 'GA4 — Nightly Ingest',
+    run: (params) => seoAnalytics.ga4Ingest(params),
+    message: (r) => `${r.start} to ${r.end}${r.backfill ? ' (backfill)' : ''}: ${r.days ?? 0} days, ${r.sessions ?? 0} sessions; `
+      + `${r.landing_rows ?? 0} landing rows, ${r.utm_rows ?? 0} tagged rows — ${r.asset_sessions ?? 0} sessions on ${r.assets_with_sessions ?? 0} campaign assets.`,
   },
 };
 

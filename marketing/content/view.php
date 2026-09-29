@@ -63,9 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 default     => 'Changes requested — the piece went back to the writer.',
             });
         case 'publish':
-            $back(mkt_content_publish($id, (string) ($_POST['url'] ?? '')), 'Marked published.');
         case 'update_url':
-            $back(mkt_content_update_url($id, (string) ($_POST['url'] ?? '')), 'Live URL updated.');
+            $result = $action === 'publish'
+                ? mkt_content_publish($id, (string) ($_POST['url'] ?? ''))
+                : mkt_content_update_url($id, (string) ($_POST['url'] ?? ''));
+            if ($result['ok']) {
+                $verify = $job('seo-verify-published');
+                $back(['ok' => true], ($action === 'publish' ? 'Marked published. ' : 'Live URL updated. ')
+                    . (!empty($verify['ok']) ? 'Live check: ' . (string) ($verify['message'] ?? 'done') : 'Live check could not run: ' . (string) ($verify['error'] ?? 'unknown error')));
+            }
+            $back($result, '');
         case 'monitoring':
             $back(mkt_content_set_stage($id, 'monitoring'), 'Moved to monitoring.');
         case 'details':

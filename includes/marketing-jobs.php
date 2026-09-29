@@ -77,6 +77,30 @@ function marketing_process_registry(): array
             'schedule'    => 'On demand from the Content Pipeline',
             'on_demand'   => true,
         ],
+        'seo-crawl' => [
+            'name'          => 'Page Inventory — Crawl Site',
+            'description'   => 'Reads the site sitemaps and published content into the Page Inventory, then crawls every active page for status, title, meta, headings, canonical, robots and word count, flagging issues and changes.',
+            'function_name' => 'marketing-crawl',
+            'schedule'      => 'Weekly, Monday 05:00 CT (and on demand)',
+        ],
+        'seo-verify-published' => [
+            'name'          => 'Page Inventory — Verify Published Content',
+            'description'   => 'Checks each newly published Content Pipeline URL is live, links it to its page, and records the result on the piece.',
+            'function_name' => 'marketing-verify-published',
+            'schedule'      => 'Daily 05:20 CT (and on publish)',
+        ],
+        'seo-gsc-ingest' => [
+            'name'          => 'Search Console — Nightly Ingest',
+            'description'   => 'Loads Search Console clicks, impressions and position by day for the site, each page, and each page × query (nutraaxislabs.com only).',
+            'function_name' => 'marketing-gsc',
+            'schedule'      => 'Daily 04:30 CT',
+        ],
+        'seo-ga4-ingest' => [
+            'name'          => 'GA4 — Nightly Ingest',
+            'description'   => 'Loads GA4 sessions, users, engagement and key events by day per channel, landing page and UTM tag, and matches tagged visits to Campaign Studio assets.',
+            'function_name' => 'marketing-ga4',
+            'schedule'      => 'Daily 04:45 CT',
+        ],
     ];
 
     $registry = [];

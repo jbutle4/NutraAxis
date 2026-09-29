@@ -724,7 +724,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-performance',
         'title'   => 'Engagement & Performance',
-        'desc'    => 'Per-asset clicks, email stats, responses, and scores fed back into interests and topics. Placeholder — S2/S3.',
+        'desc'    => 'Search Console and GA4 results, sessions by channel, and the site traffic each campaign asset drove.',
         'href'    => '/marketing/performance/',
         'icon'    => 'chart',
         'tier'    => 'production',
@@ -804,7 +804,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-pages',
         'title'   => 'Page Inventory',
-        'desc'    => 'Live URLs, crawl metadata, and keyword-to-page map. Placeholder — S2.',
+        'desc'    => 'Every public page with crawl health, SEO issues, keyword-to-page map, and search and GA4 numbers.',
         'href'    => '/marketing/pages/',
         'icon'    => 'links',
         'tier'    => 'production',
