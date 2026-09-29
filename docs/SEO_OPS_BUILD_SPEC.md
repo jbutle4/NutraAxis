@@ -59,7 +59,7 @@ SEO (keywords, long-form articles, technical health) runs alongside and shares t
 |---|---|---|---|
 | Config & Taxonomy | Live (thin) | — | Competitors, brand terms, settings, therapeutic areas (local seed) |
 | Keyword Universe | **S1** | — | Seed, cluster, priority, map-to-page |
-| Content Pipeline | **S1** | — | Kanban + AI brief/draft/claims + medical gate + publish URL |
+| Content Pipeline | **S1** | — | Kanban + AI brief/draft/claims + compliance gate + publish URL |
 | Task Engine (thin) | **S1** | Full SLA / templates later | Assign editor + social; Friday roll-up light |
 | Social queue | **S1** | — | Content type `social`; calendar/status; Claude drafts; coordinator executes off-platform |
 | Page Inventory | **S2** | — | Grows as URLs publish; light crawl |
@@ -178,7 +178,7 @@ Every generated **asset** carries:
 Gates (same engine as Content Pipeline):
 
 - Claims check runs on every asset.
-- Medical review is required when claims flags exist or the asset references efficacy or a condition.
+- Compliance review (the compliance officer) is required when claims flags exist or the asset references efficacy or a condition.
 - Editorial approval before an asset reaches the calendar. Editors cannot approve their own work.
 - Brand voice and audience (practitioner vs consumer) come from Research Config.
 
@@ -202,7 +202,7 @@ Collected on schedule and joined to `asset_id`:
 | New leads by campaign | GHL contact attribution (UTM) — nightly job aggregates counts and discards PII |
 | Organic search | GSC for long-form pages |
 
-**Response Inbox:** DMs and email replies via the GHL Conversations API; public post comments where an API allows (GHL comment coverage to be confirmed before S3). AI triages each one (question / praise / complaint / claims-risk). Claims-risk responses escalate to the Medical Director within 24 hours. People write the replies.
+**Response Inbox:** DMs and email replies via the GHL Conversations API; public post comments where an API allows (GHL comment coverage to be confirmed before S3). AI triages each one (question / praise / complaint / claims-risk). Claims-risk responses escalate to the compliance officer within 24 hours. People write the replies.
 
 **Scoring and feedback:** asset score rolls up to campaign → topic → interest. The weekly digest recommends: double down on a topic, start a follow-up series, retire an interest, or add a source. Scores adjust interest priority (stage 1) and relevance weights (stage 3).
 
@@ -272,7 +272,7 @@ OpenRush MCP remains for **interactive** console/operator analysis in Cursor/Cla
 | `seo.brief` | Content brief from keyword + SERP + evidence hooks |
 | `seo.draft_article` / `seo.draft_pdp` | First draft |
 | `seo.social_post` | Platform-ready post from published/approved asset |
-| `seo.claims_check` | Score + flags; blocks medical_review if score &lt; 7 |
+| `seo.claims_check` | Score + flags; blocks compliance_review if score &lt; 7 |
 | `seo.meta_rewrite` | Title/meta suggestions → content_item `meta_rewrite` |
 | `seo.cluster_keywords` | Clustering assist (operator approves) |
 | `seo.weekly_digest` | Narrative + top 5 actions (S3+) |
@@ -298,14 +298,14 @@ Schema/tables as in Framework v2 §6 / prior BUILD_SPEC §5, delivered as `sql/N
 
 Content stages (enforced in PHP service layer):
 
-`idea → brief → draft → medical_review → editorial → approved → published → monitoring`
+`idea → brief → draft → compliance_review → editorial → approved → published → monitoring`
 
-- `draft → medical_review` requires `claims_score`.
-- `medical_review → editorial` requires medical `approved` review row.
+- `draft → compliance_review` requires `claims_score`.
+- `compliance_review → editorial` requires a compliance `approved` review row.
 - `approved → published` requires `published_url` (manual CMS publish).
 - Editors cannot approve their own versions.
 
-Social items are `content_items.type = 'social'` (or linked child tasks). They may skip medical review when copy is non-claims; claims-bearing social still goes through medical.
+Social items are `content_items.type = 'social'` (or linked child tasks). They may skip compliance review when copy is non-claims; claims-bearing social still goes through compliance.
 
 ---
 
@@ -371,7 +371,7 @@ Nothing auto-publishes or auto-posts. Distribution push to the scheduler / GoHig
 |---|---|
 | Admin | Full SEO module + Key Vault / budgets |
 | Console Operator | Run jobs, approve keywords/briefs, assign tasks, record publish, social approve |
-| Reviewer (medical / editorial) | Review content versions only |
+| Reviewer (compliance / editorial) | Review content versions only |
 | Editor (offshore) | Edit assigned drafts; record published URL; no self-approve; no api_usage |
 | Coordinator (social) | Social queue tasks only |
 | Developer | Issues fix/verify; crawl read |
@@ -424,12 +424,13 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 ### S1b — Produce: stages 3–4 (~3 weeks)
 
 - Topic Synthesis: batch scoring, tagging, and study-fact extraction; daily clustering; Topic Board (accept / reject / merge / angle / evidence links).
-- Campaign Studio: single post, series, and email generation from an accepted topic; claims check; medical + editorial gates; UTM + `asset_id` on every asset.
+- Campaign Studio: single post, series, and email generation from an accepted topic; claims check; compliance + editorial gates; UTM + `asset_id` on every asset.
 - Publishing Calendar: social + email schedule; coordinator records external post URL / ID.
 - Content Pipeline (long-form web) with the same gate engine; thin Task Engine.
 - **Claims Matrix as built (2026-09-28):** `sql/154_create_marketing_claims.sql` adds `MktProduct` (pillar, formula, suggested/intended use, flyer reference list, review notes) and `MktClaim` (type headline / benefit / mechanism / ingredient / general, evidence tier, flyer reference numbers, audience, DSHEA flag, draft → approved → retired) and settings `claims.flag_terms`, `claims.disclaimer`, `claims.min_score`. `/marketing/claims-matrix/` (claims, products, rules tabs) + `product.php`. Approval requires full Marketing CRUD and a different user than the last editor; editing the wording or evidence of an approved claim returns it to draft. `scripts/seed-marketing-claims.php` seeds 14 products / 118 claims from the 6.23.26 practitioner flyers (flyer defects recorded in product review notes). `mkt_claims_approved()` is the allowed-claims source for generation and the claims check.
 - **Topic Synthesis as built (2026-09-28):** `sql/155_create_marketing_topics.sql` adds scoring columns to `MktHarvestedItem` (RelevanceMax, PrimaryInterestID, TherapeuticArea, EvidenceType, AiSummary, TagsJson, StudyJson, ScoredAt, ScoreBatchID) plus `MktItemScore`, `MktAiBatch`, `MktTopic`, `MktTopicItem`, `MktTopicClaim`, prompts `research.score_item` v1 (Haiku) and `research.cluster_topics` v1 (default Sonnet), and `research.score_*` / `research.cluster_*` settings. Jobs: `research-score-batch` (timer `marketing-score`, hourly at :45) collects finished Anthropic Message Batches and submits waiting items once 25 are queued or the oldest has waited 12 hours — one combined call per item returns per-interest relevance, tags, evidence type, a one-line summary, and study facts; below `research.relevance_threshold` → `discarded`. `research-cluster-topics` (timer `marketing-cluster`, daily 12:30 UTC; runs only when 8+ items were scored since the last run) sends compact item lines plus open topics to one realtime call, creates `proposed` topics (2+ items), extends open topics instead of duplicating, and flags emerging themes with a suggested interest name and terms. Trend signals are computed in SQL (items 7d vs prior 7d, distinct domains, peer-reviewed/regulatory count). `/marketing/topics/` tabs: Board, Accepted, Emerging interests, Parked & rejected, Scored items, Scoring runs; `view.php` edits the brief, accepts (angle required), parks / rejects / reopens, merges, marks evidence items, removes items back to the pool, and links approved claims. Emerging topics prefill `/marketing/interests/edit.php?from_topic=ID`. Measured cost ≈ $0.002 per scored item (system prompt is under Haiku's 4,096-token cache minimum). Promotion of evidence items to Literature & Intelligence is deferred to that module.
-- Acceptance: harvested items → accepted topic → 5-part series + email drafted → claims-flagged asset blocked until medical approval → calendar shows scheduled assets with valid UTMs; editor cannot self-approve; AI costs in `api_usage`.
+- **Campaign Studio as built (2026-09-28):** "Medical review" is a **compliance review** by the compliance officer. `sql/156_create_marketing_campaigns.sql` adds `MktCampaign` (topic, format post / series / email, channels, audience, parts + cadence, CTA URL/text, brief, unique slug = `utm_campaign`), `MktAsset` (per channel × part: title / subject + variants / preview / body with a `[LINK]` token, hashtags, media notes, claim ids used, `ContentVersion`; claims score + check JSON + checked version; `ComplianceStatus` / `EditorialStatus` with by/at; submitted, scheduled, posted fields) and `MktAssetReview` (submit / compliance / editorial / system rows with version and score). Settings: `review.compliance_reviewers` (portal logins, one per line — reviewers also need Marketing update), `review.compliance_mode` (`claims` or `all`), `campaign.default_cta_url`, `campaign.channels` (`key|label|medium|max chars|guidance`), `campaign.rules`. Prompts `campaign.generate`, `campaign.claims_check`, `campaign.revise_asset` (v1, Sonnet). On-demand jobs (not timers) in `functions-marketing/src/lib/jobs/campaign.js`: `campaign-generate` (one call drafts every asset, then claims-checks each; regenerate only while all assets are drafts), `campaign-claims-check`, `campaign-revise-asset`. Claims score = AI score minus one per distinct `claims.flag_terms` hit; length and missing `[LINK]` are reported as issues; compliance is required for any flag term, claim-class statement, efficacy/condition reference or score under 10. Gate engine in `includes/marketing-campaigns.php`: submit needs a current check (checked version = content version) at or above `claims.min_score`; compliance clears first (named reviewers only), then editorial (full Marketing CRUD); nobody reviews an asset they last edited or submitted; changes requested needs a note; editing an asset in review or approved sends it back to draft and clears both gates. Pages: `/marketing/campaigns/` (campaigns, review queue, new campaign, archived), `campaign.php`, `asset.php` (copy-ready preview with the tracked link, claims panel, AI revise, review history). The tracked link is built at render time from the campaign CTA URL + UTM (`utm_content` = asset id). Measured cost: a 3-part × 3-channel series ≈ $0.17 and ~70 s; a 2-channel post ≈ $0.05.
+- Acceptance: harvested items → accepted topic → 5-part series + email drafted → claims-flagged asset blocked until compliance approval → calendar shows scheduled assets with valid UTMs; editor cannot self-approve; AI costs in `api_usage`.
 
 ### S2 — Findable + collect (~2 weeks)
 
@@ -444,7 +445,7 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 - Social metrics ingest by external post ID; Response Inbox with AI triage and 24-hour claims-risk escalation.
 - Asset → campaign → topic → interest scoring; scores adjust interest priority and relevance weights.
 - Monday digest (AI narrative) → ≤ 5 operator tasks, including "double down / follow-up series / retire interest".
-- Acceptance: a claims-risk comment creates a Medical Director task; digest recommendations trace to scored assets; dashboards show empty states (not errors) on sparse new-site data.
+- Acceptance: a claims-risk comment creates a compliance officer task; digest recommendations trace to scored assets; dashboards show empty states (not errors) on sparse new-site data.
 
 ### S4 — Harden (~2 weeks)
 

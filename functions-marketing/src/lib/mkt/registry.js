@@ -3,6 +3,7 @@ const researchHarvest = require('../jobs/research-harvest');
 const researchAgent = require('../jobs/research-agent-discover');
 const researchScore = require('../jobs/research-score');
 const researchCluster = require('../jobs/research-cluster');
+const campaign = require('../jobs/campaign');
 
 const JOBS = {
   'seo-noop': {
@@ -42,6 +43,26 @@ const JOBS = {
       + `${r.items_assigned ?? 0} items grouped` + (r.emerging ? `, ${r.emerging} emerging-interest suggestions` : '')
       + (r.truncated ? ' — reply hit the token limit; remaining items wait for the next run' : '')
       + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
+  },
+  'campaign-generate': {
+    name: 'Campaign Studio — Generate Campaign',
+    run: (params) => campaign.generate(params),
+    message: (r) => `${r.assets ?? 0} assets generated — ${r.passing ?? 0} pass the claims check, `
+      + `${r.needs_compliance ?? 0} need compliance review` + (r.check_failed ? `, ${r.check_failed} checks failed` : '')
+      + (r.truncated ? ' (reply hit the token limit; some assets may be missing)' : '')
+      + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
+  },
+  'campaign-claims-check': {
+    name: 'Campaign Studio — Claims Check',
+    run: (params) => campaign.check(params),
+    message: (r) => `${r.checked ?? 0} assets checked — ${r.passing ?? 0} pass, ${r.needs_compliance ?? 0} need compliance review`
+      + (r.check_failed ? `, ${r.check_failed} failed` : '') + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
+  },
+  'campaign-revise-asset': {
+    name: 'Campaign Studio — AI Revise Asset',
+    run: (params) => campaign.revise(params),
+    message: (r) => `Asset ${r.asset_id} revised — claims score ${r.score}`
+      + (r.needs_compliance ? ', needs compliance review' : '') + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
   },
 };
 
