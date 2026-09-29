@@ -1,6 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
-require dirname(__DIR__, 2) . '/includes/marketing-pages.php';
+require dirname(__DIR__, 2) . '/includes/marketing-issues.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
 
 auth_require_module_read('marketing-pages');
@@ -42,6 +42,7 @@ $keywords = mkt_page_keywords($id);
 $queries = mkt_page_search_queries($id);
 $metrics = mkt_page_metrics($id);
 $issues = mkt_page_issue_list($page['Issues']);
+$tracked = array_column(mkt_page_open_issues($id), null, 'Code');
 $gscWindow = mkt_analytics_window('MktGscDaily');
 $ga4Window = mkt_analytics_window('MktGa4Daily');
 
@@ -102,12 +103,20 @@ $changeLabels = ['StatusCode' => 'Status', 'Title' => 'Title', 'MetaDescription'
         <?php endif; ?>
       </div>
 
-      <?php if ($issues !== []): ?>
+      <?php if ($issues !== [] || $tracked !== []): ?>
       <h2 class="hub-section-title">What to fix</h2>
       <ul>
         <?php foreach ($issues as $code): ?>
         <?php $info = mkt_page_issue_info($code); ?>
-        <li><strong><?= htmlspecialchars($info['label']) ?>.</strong> <?= htmlspecialchars($info['advice']) ?></li>
+        <li>
+          <strong><?= htmlspecialchars($info['label']) ?>.</strong> <?= htmlspecialchars($info['advice']) ?>
+          <?php if ($code === 'legacy_brand' && $page['LegacyTerms']): ?><span class="form-hint">Found: <?= htmlspecialchars((string) $page['LegacyTerms']) ?>.</span><?php endif; ?>
+          <?php if ($code === 'missing_alt'): ?><span class="form-hint"><?= (int) $page['ImagesMissingAlt'] ?> image<?= (int) $page['ImagesMissingAlt'] === 1 ? '' : 's' ?>.</span><?php endif; ?>
+          <?php if (isset($tracked[$code])): ?><a href="/marketing/issues/view.php?id=<?= (int) $tracked[$code]['IssueID'] ?>">Issue: <?= htmlspecialchars(MKT_ISSUE_STATUSES[$tracked[$code]['Status']] ?? (string) $tracked[$code]['Status']) ?></a><?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+        <?php foreach (array_diff_key($tracked, array_flip($issues)) as $code => $row): ?>
+        <li><strong><?= htmlspecialchars((string) $row['Title']) ?>.</strong> <?= htmlspecialchars((string) ($row['Detail'] ?? '')) ?> <a href="/marketing/issues/view.php?id=<?= (int) $row['IssueID'] ?>">Issue: <?= htmlspecialchars(MKT_ISSUE_STATUSES[$row['Status']] ?? (string) $row['Status']) ?></a></li>
         <?php endforeach; ?>
       </ul>
       <?php endif; ?>

@@ -1,6 +1,7 @@
 const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const { loadSettings, settingNumber, settingLines, recordUsage } = require('../mkt/settings');
 const pages = require('../mkt/pages');
+const issues = require('../mkt/issues');
 
 const MAX_RUN_MS = 8 * 60 * 1000;
 
@@ -13,7 +14,10 @@ function context(settings) {
     typeRules: pages.compileTypeRules(settingLines(settings, 'pages.type_rules')),
     delayMs: settingNumber(settings, 'pages.crawl_delay_ms', 1000),
     limits: {
+      titleMin: settingNumber(settings, 'seo.title_min', 30),
       titleMax: settingNumber(settings, 'seo.title_max', 60),
+      legacy: pages.legacyMatcher(settingLines(settings, 'brand.legacy_terms')),
+      legacyAllow: pages.compilePatterns(settingLines(settings, 'brand.legacy_allow_paths')),
       metaMin: settingNumber(settings, 'seo.meta_min', 70),
       metaMax: settingNumber(settings, 'seo.meta_max', 160),
       thinWords: settingNumber(settings, 'seo.thin_words', 250),
@@ -111,19 +115,21 @@ async function discover(pool, ctx) {
   return counts;
 }
 
-/** Titles shared by two or more live pages get a duplicate_title issue. */
-async function flagDuplicateTitles(pool) {
-  await pool.request().query(`
-    UPDATE p SET Issues = CASE WHEN p.Issues IS NULL OR p.Issues = N'' THEN N'duplicate_title' ELSE p.Issues + N',duplicate_title' END
-    FROM dbo.MktPage p
-    WHERE p.Status = N'active' AND p.LastStatusCode = 200 AND p.Title IS NOT NULL
-      AND (p.Issues IS NULL OR p.Issues NOT LIKE N'%duplicate_title%')
-      AND EXISTS (SELECT 1 FROM dbo.MktPage o WHERE o.PageID <> p.PageID AND o.Status = N'active' AND o.LastStatusCode = 200 AND o.Title = p.Title);
-    UPDATE p SET Issues = NULLIF(REPLACE(REPLACE(REPLACE(p.Issues, N',duplicate_title', N''), N'duplicate_title,', N''), N'duplicate_title', N''), N'')
-    FROM dbo.MktPage p
-    WHERE p.Issues LIKE N'%duplicate_title%'
-      AND NOT EXISTS (SELECT 1 FROM dbo.MktPage o WHERE o.PageID <> p.PageID AND o.Status = N'active' AND o.LastStatusCode = 200 AND o.Title = p.Title);
-  `);
+/** Titles / meta descriptions shared by two or more live pages get a duplicate_title / duplicate_meta issue. */
+async function flagDuplicates(pool) {
+  for (const [column, code] of [['Title', 'duplicate_title'], ['MetaDescription', 'duplicate_meta']]) {
+    await pool.request().query(`
+      UPDATE p SET Issues = CASE WHEN p.Issues IS NULL OR p.Issues = N'' THEN N'${code}' ELSE p.Issues + N',${code}' END
+      FROM dbo.MktPage p
+      WHERE p.Status = N'active' AND p.LastStatusCode = 200 AND p.${column} IS NOT NULL
+        AND (p.Issues IS NULL OR p.Issues NOT LIKE N'%${code}%')
+        AND EXISTS (SELECT 1 FROM dbo.MktPage o WHERE o.PageID <> p.PageID AND o.Status = N'active' AND o.LastStatusCode = 200 AND o.${column} = p.${column});
+      UPDATE p SET Issues = NULLIF(REPLACE(REPLACE(REPLACE(p.Issues, N',${code}', N''), N'${code},', N''), N'${code}', N''), N'')
+      FROM dbo.MktPage p
+      WHERE p.Issues LIKE N'%${code}%'
+        AND NOT EXISTS (SELECT 1 FROM dbo.MktPage o WHERE o.PageID <> p.PageID AND o.Status = N'active' AND o.LastStatusCode = 200 AND o.${column} = p.${column});
+    `);
+  }
 }
 
 async function pagesToCrawl(pool, pageId) {
@@ -141,7 +147,7 @@ async function pagesToCrawl(pool, pageId) {
 }
 
 async function crawlAll(pool, ctx, list, processLogId, started) {
-  const totals = { crawled: 0, healthy: 0, errors: 0, changed: 0, with_issues: 0, skipped_time: 0 };
+  const totals = { crawled: 0, healthy: 0, errors: 0, changed: 0, with_issues: 0, skipped_time: 0, pageIds: [] };
   for (const [i, page] of list.entries()) {
     if (Date.now() - started > MAX_RUN_MS) {
       totals.skipped_time = list.length - i;
@@ -150,11 +156,12 @@ async function crawlAll(pool, ctx, list, processLogId, started) {
     if (i > 0 && ctx.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, ctx.delayMs));
     const result = await pages.crawlPage(pool, page, { siteHost: ctx.siteHost, limits: ctx.limits, processLogId });
     totals.crawled += 1;
+    totals.pageIds.push(page.PageID);
     if (result.status === 200) totals.healthy += 1; else totals.errors += 1;
     if (result.changes.length > 0) totals.changed += 1;
     if (result.issues.length > 0) totals.with_issues += 1;
   }
-  await flagDuplicateTitles(pool);
+  await flagDuplicates(pool);
   if (totals.crawled > 0) {
     await recordUsage(pool, { provider: 'http', operation: 'pages.crawl', mode: 'api', units: totals.crawled, processLogId });
   }
@@ -182,19 +189,23 @@ async function crawl(params = {}) {
       const path = pages.pathOf(url);
       const { pageId: newId, created } = await pages.upsertPage(pool, url, { source: 'manual', pageType: pages.typeFor(path, ctx.typeRules), userId });
       await pool.request().input('id', sql.Int, newId).query(`UPDATE dbo.MktPage SET Status = N'active' WHERE PageID = @id AND Status = N'excluded'`);
-      const totals = await crawlAll(pool, ctx, await pagesToCrawl(pool, newId), processLogId, started);
-      return { ok: true, mode: 'url', page_id: newId, created, ...totals };
+      const { pageIds, ...totals } = await crawlAll(pool, ctx, await pagesToCrawl(pool, newId), processLogId, started);
+      const audit = await issues.recordCrawlAudit(pool, { scope: 'page', pageIds, processLogId, userId });
+      return { ok: true, mode: 'url', page_id: newId, created, ...totals, audit };
     }
     if (pageId) {
       const list = await pagesToCrawl(pool, pageId);
       if (list.length === 0) return { ok: false, error: 'Page not found.' };
-      return { ok: true, mode: 'page', page_id: pageId, ...(await crawlAll(pool, ctx, list, processLogId, started)) };
+      const { pageIds, ...totals } = await crawlAll(pool, ctx, list, processLogId, started);
+      const audit = await issues.recordCrawlAudit(pool, { scope: 'page', pageIds, processLogId, userId });
+      return { ok: true, mode: 'page', page_id: pageId, ...totals, audit };
     }
 
     const found = await discover(pool, ctx);
     const content = await syncPublishedContent(pool, ctx);
-    const totals = await crawlAll(pool, ctx, await pagesToCrawl(pool, null), processLogId, started);
-    return { ok: true, mode: 'full', ...found, content_pages: content.length, ...totals };
+    const { pageIds, ...totals } = await crawlAll(pool, ctx, await pagesToCrawl(pool, null), processLogId, started);
+    const audit = await issues.recordCrawlAudit(pool, { scope: 'full', pageIds, processLogId, userId });
+    return { ok: true, mode: 'full', ...found, content_pages: content.length, ...totals, audit };
   } finally {
     await pool.close();
   }
@@ -263,4 +274,4 @@ async function verifyPublished(params = {}) {
   }
 }
 
-module.exports = { crawl, verifyPublished };
+module.exports = { crawl, verifyPublished, context, crawlAll, pagesToCrawl };

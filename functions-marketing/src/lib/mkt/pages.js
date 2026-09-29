@@ -151,6 +151,32 @@ function metaByName(html, name) {
   return null;
 }
 
+/** Visible text of the whole page (scripts, styles and templates removed), for brand-string checks. */
+function pageText(html) {
+  return tagText(String(html || '').replace(/<(script|style|noscript|template)\b[\s\S]*?<\/\1>/gi, ' '));
+}
+
+function imagesMissingAlt(html) {
+  return (html.match(/<img\b[^>]*>/gi) || []).filter((tag) => !(attr(tag, 'alt') || '').trim()).length;
+}
+
+/** Whole-word, any-case matcher for legacy brand names; null when there are none. */
+function legacyMatcher(terms) {
+  const clean = terms.map((t) => t.trim()).filter(Boolean);
+  if (clean.length === 0) return null;
+  const escaped = clean.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+}
+
+function legacyHits(text, matcher) {
+  if (!matcher) return [];
+  const found = new Map();
+  for (const match of String(text || '').matchAll(matcher)) {
+    found.set(match[1].toLowerCase(), match[1]);
+  }
+  return [...found.values()];
+}
+
 /** Title, meta, headings, canonical, robots, word and link counts from one HTML page. */
 function parsePage(html, finalUrl, siteHost) {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -172,6 +198,8 @@ function parsePage(html, finalUrl, siteHost) {
     InternalLinks: internal,
     ExternalLinks: links.length - internal,
     HasStructuredData: /<script[^>]+application\/ld\+json/i.test(html),
+    ImagesMissingAlt: imagesMissingAlt(html),
+    PageText: pageText(html),
     ContentHash: sha256(text.replace(/\s+/g, ' ').trim().toLowerCase()),
   };
 }
@@ -187,6 +215,7 @@ function issuesFor(page, snapshot, limits) {
   if (robots.includes('noindex')) issues.push('noindex');
   if (!snapshot.Title) issues.push('missing_title');
   else if (snapshot.Title.length > limits.titleMax) issues.push('long_title');
+  else if (snapshot.Title.length < (limits.titleMin || 0)) issues.push('short_title');
   if (!snapshot.MetaDescription) issues.push('missing_meta');
   else if (snapshot.MetaDescription.length < limits.metaMin) issues.push('short_meta');
   else if (snapshot.MetaDescription.length > limits.metaMax) issues.push('long_meta');
@@ -195,6 +224,9 @@ function issuesFor(page, snapshot, limits) {
   if (snapshot.Canonical && pageKey(new URL(snapshot.Canonical, page.Url).toString()) !== page.PageKey) issues.push('canonical_elsewhere');
   if (['content', 'category', 'page'].includes(page.PageType) && snapshot.WordCount < limits.thinWords) issues.push('thin');
   if (snapshot.FinalKey && snapshot.FinalKey !== page.PageKey) issues.push('redirects');
+  if (snapshot.HasStructuredData === false) issues.push('missing_schema');
+  if (snapshot.ImagesMissingAlt > 0) issues.push('missing_alt');
+  if (snapshot.LegacyTerms && snapshot.LegacyTerms.length > 0) issues.push('legacy_brand');
   return issues;
 }
 
@@ -216,6 +248,8 @@ async function crawlPage(pool, page, { siteHost, limits, processLogId }) {
     RobotsHeader: response.robotsHeader || '',
     ...parsed,
   };
+  const legacyAllowed = limits.legacyAllow && isExcluded(pathOf(page.Url), limits.legacyAllow);
+  snapshot.LegacyTerms = parsed.PageText && !legacyAllowed ? legacyHits(parsed.PageText, limits.legacy) : [];
   const issues = issuesFor(page, snapshot, limits);
   const previous = (await pool.request().input('id', sql.Int, page.PageID).query(`
     SELECT TOP 1 StatusCode, Title, MetaDescription, H1, Canonical, Robots, ContentHash
@@ -242,7 +276,9 @@ async function crawlPage(pool, page, { siteHost, limits, processLogId }) {
     .input('sd', sql.Bit, snapshot.HasStructuredData === undefined ? null : (snapshot.HasStructuredData ? 1 : 0))
     .input('hash', sql.Binary(32), snapshot.ContentHash ?? null)
     .input('issues', sql.NVarChar(1000), issues.join(',') || null)
-    .input('changes', sql.NVarChar(500), changes.join(',') || null);
+    .input('changes', sql.NVarChar(500), changes.join(',') || null)
+    .input('noalt', sql.Int, snapshot.ImagesMissingAlt ?? null)
+    .input('legacy', sql.NVarChar(400), snapshot.LegacyTerms.join(', ').slice(0, 400) || null);
 
   await bind(pool.request())
     .input('ms', sql.Int, response.ms)
@@ -272,6 +308,8 @@ async function crawlPage(pool, page, { siteHost, limits, processLogId }) {
           InternalLinks = CASE WHEN @code = 200 THEN @internal ELSE InternalLinks END,
           ExternalLinks = CASE WHEN @code = 200 THEN @external ELSE ExternalLinks END,
           HasStructuredData = CASE WHEN @code = 200 THEN @sd ELSE HasStructuredData END,
+          ImagesMissingAlt = CASE WHEN @code = 200 THEN @noalt ELSE ImagesMissingAlt END,
+          LegacyTerms = CASE WHEN @code = 200 THEN @legacy ELSE LegacyTerms END,
           ContentHash = CASE WHEN @code = 200 THEN @hash ELSE ContentHash END,
           Issues = @issues, Status = @status, ConsecutiveErrors = @errors,
           LastChangedAt = CASE WHEN @changed = 1 THEN SYSUTCDATETIME() ELSE LastChangedAt END,
@@ -332,6 +370,7 @@ module.exports = {
   isExcluded,
   compileTypeRules,
   typeFor,
+  legacyMatcher,
   sitemapUrls,
   crawlPage,
   upsertPage,

@@ -79,7 +79,7 @@ function marketing_process_registry(): array
         ],
         'seo-crawl' => [
             'name'          => 'Page Inventory — Crawl Site',
-            'description'   => 'Reads the site sitemaps and published content into the Page Inventory, then crawls every active page for status, title, meta, headings, canonical, robots and word count, flagging issues and changes.',
+            'description'   => 'Reads the site sitemaps and published content into the Page Inventory, then crawls every active page for status, title, meta, headings, canonical, robots, word count, image alt text, structured data and legacy brand names, and records the findings as an audit in Audit & Issues.',
             'function_name' => 'marketing-crawl',
             'schedule'      => 'Weekly, Monday 05:00 CT (and on demand)',
         ],
@@ -118,6 +118,30 @@ function marketing_process_registry(): array
             'description'   => 'Summarizes last week and opens up to 5 recommended tasks, each tied to scored assets or other facts.',
             'function_name' => 'marketing-digest',
             'schedule'      => 'Weekly, Monday 07:00 CT (and on demand)',
+        ],
+        'seo-alerts' => [
+            'name'          => 'Marketing Alerts — Daily Check',
+            'description'   => 'Checks the alert rules (failed scheduled jobs, traffic drops against a 4-week baseline, legacy brand names, high-severity site issues, overdue compliance reviews), resolves cleared alerts and emails new ones.',
+            'function_name' => 'marketing-alerts',
+            'schedule'      => 'Daily 06:00 CT (and on demand)',
+        ],
+        'seo-openrush-import' => [
+            'name'        => 'Site Issues — Import OpenRush Audit',
+            'description' => 'Records a pasted OpenRush audit_site result as an audit (nutraaxislabs.com only, active inventory pages only).',
+            'schedule'    => 'On demand from Audit & Issues',
+            'on_demand'   => true,
+        ],
+        'seo-issue-verify' => [
+            'name'        => 'Site Issues — Verify Fix',
+            'description' => 'Recrawls the open pages of one issue and marks it verified, or back to open if the problem is still there.',
+            'schedule'    => 'On demand when an issue is marked fixed',
+            'on_demand'   => true,
+        ],
+        'seo-fix-spec' => [
+            'name'        => 'Site Issues — AI Fix Spec',
+            'description' => 'Writes a developer-ready fix spec for one issue from its open pages and what the crawler saw.',
+            'schedule'    => 'On demand from an issue',
+            'on_demand'   => true,
         ],
     ];
 
