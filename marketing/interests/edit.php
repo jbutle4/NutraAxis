@@ -1,6 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
-require dirname(__DIR__, 2) . '/includes/marketing-intake.php';
+require dirname(__DIR__, 2) . '/includes/marketing-topics.php';
 
 auth_require_module_read('research-interests');
 
@@ -26,6 +26,14 @@ $form = [
 ];
 foreach (array_keys(MKT_TERM_TYPES) as $type) {
     $form['terms_' . $type] = implode("\n", $existing['terms'][$type] ?? []);
+}
+if ($existing === null && !empty($_GET['from_topic'])) {
+    $suggestion = mkt_topic_interest_suggestion((int) $_GET['from_topic']);
+    if ($suggestion !== null) {
+        $form['name'] = $suggestion['name'];
+        $form['description'] = $suggestion['description'];
+        $form['terms_include'] = implode("\n", $suggestion['include']);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
