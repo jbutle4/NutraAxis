@@ -69,7 +69,7 @@ function mkt_manual_my_access(): array
 function mkt_manual_golden_rules(): array
 {
     return [
-        '**Nothing posts or publishes automatically.** The portal writes drafts and tracks work; a person loads every post into GoHighLevel, publishes every web page, and writes every reply.',
+        '**Nothing posts or publishes automatically.** The portal writes drafts and tracks work; a person loads every post into GoHighLevel, publishes every web page (a blog post goes live only when a marketing admin clicks **Publish to blog**), and writes every reply.',
         '**No health claims.** Never say or imply a product or ingredient diagnoses, treats, cures, mitigates or prevents a disease. Anything that touches health, products, ingredients or conditions goes through the claims check and, when flagged, compliance review.',
         '**Nobody approves their own work.** Whoever last edited or submitted an asset or article cannot clear its compliance or editorial review.',
         '**Compliance first, then editorial.** Editorial approval is only possible after compliance clears (or the claims check finds nothing that needs it).',
@@ -168,7 +168,7 @@ function mkt_manual_workflows(): array
         ],
         'content' => [
             'title'   => 'Web article: brief to published page (Content Pipeline)',
-            'summary' => 'Long-form pages for nutraaxislabs.com. Each piece moves Idea → Brief → Draft → Compliance review → Editorial review → Approved → Published → Monitoring. Every edit is kept as a version.',
+            'summary' => 'Long-form pages and blog posts for nutraaxislabs.com. Each piece moves Idea → Brief → Draft → Compliance review → Editorial review → Approved → Published → Monitoring. Every edit is kept as a version. Choose the Blog post type for posts meant for nutraaxislabs.com/our-blog; any approved piece can be published there.',
             'cadence' => 'Typically 1–2 weeks per piece.',
             'steps'   => [
                 ['who' => 'Marketing admin', 'when' => 'When planning', 'what' => 'Content Pipeline → New piece: topic, target keyword, product, then **Create and write the brief** (AI, under a minute) or Create only.', 'link' => ['marketing-content', '?tab=new', 'New piece']],
@@ -177,7 +177,8 @@ function mkt_manual_workflows(): array
                 ['who' => 'Writer', 'when' => 'When ready', 'what' => 'Check the meta title (≤ 60 characters), meta description (≤ 155) and claims score, then **Submit version**.', 'link' => ['marketing-content', '?tab=board', 'Board']],
                 ['who' => 'Compliance reviewer', 'when' => 'Within 2 days', 'what' => 'Review queue: **Clear compliance** or **Request changes** (a note is required).', 'link' => ['marketing-content', '?tab=review', 'Review queue']],
                 ['who' => 'Marketing admin (editorial)', 'when' => 'Within 2 days', 'what' => 'Review queue: editorial approval. The piece becomes Approved.', 'link' => ['marketing-content', '?tab=review', 'Review queue']],
-                ['who' => 'Site author', 'when' => 'Within 3 days', 'what' => 'Put the approved version live on the website (the portal shows “Not approved — do not publish” on anything else). Then **Mark published** with the live URL. The page joins the Page Inventory automatically.', 'link' => ['marketing-content', '?tab=list', 'All content']],
+                ['who' => 'Marketing admin', 'when' => 'Within 3 days (blog posts)', 'what' => 'Check the **Blog preview** on the piece, then under Publish set the post address, history summary and byline and press **Publish to blog**. It is live on /our-blog within about a minute; the live URL is recorded for you.', 'link' => ['marketing-content', '?tab=list', 'All content']],
+                ['who' => 'Site author', 'when' => 'Within 3 days (other pages)', 'what' => 'Put the approved version live on the website (the portal shows “Not approved — do not publish” on anything else). Then **Mark published** with the live URL. The page joins the Page Inventory automatically.', 'link' => ['marketing-content', '?tab=list', 'All content']],
                 ['who' => 'Marketing admin', 'when' => 'Once indexed (1–4 weeks)', 'what' => '**Move to monitoring**. Watch its Search Console queries and GA4 sessions on the page’s Page Inventory detail.', 'link' => ['marketing-pages', '', null]],
             ],
         ],
@@ -306,7 +307,7 @@ function mkt_manual_pages(): array
             'purpose' => 'Long-form web articles from brief to live page, with every version kept.',
             'screens' => ['**Board** — pieces by stage.', '**All content**', '**Review queue**', '**New piece**', '**Archived**'],
             'analyze' => ['A piece sitting in one stage past its task deadline is blocked — check who owns the task.', 'After publishing, judge it on the page’s Search Console queries and GA4 sessions (Page Inventory detail), usually after 4–8 weeks.'],
-            'actions' => ['Write the brief with AI; Save brief; Approve brief; Reopen the brief', 'Write the draft with AI; Revise with AI; Save as new version and re-check', 'Submit version; Clear compliance; Approve (editorial); Request changes', 'Mark published; Update URL; Move to monitoring; Archive'],
+            'actions' => ['Write the brief with AI; Save brief; Approve brief; Reopen the brief', 'Write the draft with AI; Revise with AI; Save as new version and re-check', 'Submit version; Clear compliance; Approve (editorial); Request changes', 'Publish to blog; Update blog post; Unpublish from blog', 'Mark published; Update URL; Move to monitoring; Archive'],
         ],
         'marketing-pages' => [
             'who'     => 'Marketing admin',
@@ -391,7 +392,8 @@ function mkt_manual_other_instructions(): array
         'Importing an OpenRush audit' => 'In Cursor or Claude with OpenRush connected, ask it to run audit_site for nutraaxislabs.com. Copy the whole JSON reply, paste it into Audit & Issues → Import an OpenRush audit, and press Import audit. Only nutraaxislabs.com is accepted, and only pages already in the Page Inventory count.',
         'Asking for access' => 'Access comes from your role (Site Admin → Roles: the Marketing column, and Marketing Compliance Review for reviewers). Ask a portal admin to change your role.',
         'Alert emails' => 'Sent to the addresses in Settings → alerts.recipients (blank = everyone with full Marketing access). Acknowledging an alert marks it seen; it resolves on its own once the cause is gone.',
-        'Editing after approval' => 'Saving a change to an approved or published piece sends it back to draft and clears its reviews. For a live article, the URL is kept so the update can be re-published over it.',
+        'Editing after approval' => 'Saving a change to an approved or published piece sends it back to draft and clears its reviews. For a live article, the URL is kept so the update can be re-published over it. A live blog post keeps showing the approved version until the edit is approved and someone presses **Update blog post**.',
+        'The blog' => 'nutraaxislabs.com/our-blog shows the selected post (the newest by default) with the posting history newest to oldest; each post has its own link (?post=address). Publish, update and unpublish take effect within about a minute. Unpublishing returns the piece to Approved and is kept in its review history. Publishing needs full Marketing access; unpublishing needs update access. Page setup is in docs/seo-ops/BLOG.md.',
         'Budget stop' => 'When month-to-date AI spend reaches the budget, every AI action (generate, revise, claims check, fix spec, scoring) fails with “Monthly AI budget reached” until the 1st of the next month (UTC) or until an admin raises the budget.',
         'Placeholders' => 'Cards marked Placeholder are planned but not built. Don’t record work there.',
     ];
@@ -407,6 +409,7 @@ function mkt_manual_troubleshooting(): array
         ['AI action failed or timed out', 'Try again in a few minutes; if it keeps failing, a marketing admin checks Admin & Jobs → Recent runs and the Process Log.'],
         ['Search or GA4 numbers look stale', 'Search Console lags about 3 days and GA4 about 1. If older than that, an admin checks the nightly ingest jobs on Admin & Jobs.'],
         ['A post went out but still shows Scheduled', 'Mark posted on the Publishing Calendar (Coordinator to-do → Past due).'],
+        ['A blog post isn’t showing on /our-blog', 'Wait a minute (the page caches for 60 seconds), then check the piece shows Blog: Live. If no posts show at all, the page’s html-loader block needs the blog script — see docs/seo-ops/BLOG.md.'],
         ['A page is missing from Page Inventory', 'Page Inventory → Add a page (it is crawled right away). Published Content Pipeline pieces are added automatically.'],
         ['An issue keeps reopening', 'The fix didn’t reach every page, or content is only added by JavaScript (the crawler reads raw HTML). Read the fix spec’s “How it will be verified”.'],
         ['Anything else', 'Contact the Marketing & Research admin (Joe Butler). Technical operations are documented in docs/seo-ops/RUNBOOK.md.'],

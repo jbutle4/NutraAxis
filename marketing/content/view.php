@@ -2,6 +2,7 @@
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-tasks.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
+require dirname(__DIR__, 2) . '/includes/marketing-blog.php';
 
 auth_require_module_read('marketing-content');
 
@@ -62,8 +63,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'editorial' => 'Compliance cleared — waiting on editorial review.',
                 default     => 'Changes requested — the piece went back to the writer.',
             });
+        case 'blog_publish':
+            $result = mkt_blog_publish($id, $_POST);
+            $back($result, match ($result['decision'] ?? '') {
+                'blog_updated'     => 'Blog post updated with the approved version.',
+                'blog_republished' => 'Back on the blog.',
+                default            => 'Published to the blog.',
+            });
+        case 'blog_unpublish':
+            $back(mkt_blog_unpublish($id, (string) ($_POST['note'] ?? '')), 'Taken off the blog. The piece is back to Approved.');
         case 'publish':
         case 'update_url':
+            if (mkt_blog_is_live(mkt_blog_for_content($id))) {
+                $back(['ok' => false, 'error' => 'This piece is live on the blog. Use Update blog post or Unpublish instead.'], '');
+            }
             $result = $action === 'publish'
                 ? mkt_content_publish($id, (string) ($_POST['url'] ?? ''))
                 : mkt_content_update_url($id, (string) ($_POST['url'] ?? ''));
@@ -79,6 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = mkt_content_update($id, $_POST);
             $back($result, !empty($result['changed']) ? 'Details saved.' : 'No changes.');
         case 'archive':
+            if (mkt_blog_is_live(mkt_blog_for_content($id))) {
+                $back(['ok' => false, 'error' => 'This piece is still live on the blog. Unpublish it first.'], '');
+            }
             $result = mkt_content_set_stage($id, 'archived');
             if ($result['ok']) {
                 mkt_tasks_sync();
@@ -113,6 +129,9 @@ $by = static fn(string $col): string => isset($names[(int) ($content[$col] ?? 0)
 $siteUrl = rtrim((string) marketing_setting('brand.site_url', ''), '/');
 $html = $shown !== null ? mkt_markdown_html((string) $shown['Body']) : '';
 $minScore = (float) marketing_setting('claims.min_score', '7');
+$blog = mkt_blog_for_content($id);
+$blogLive = mkt_blog_is_live($blog);
+$canPublishBlog = mkt_blog_can_publish();
 
 $pageTitle = $content['Title'] . ' | Content Pipeline | NutraAxis Operations';
 $pageDescription = 'Brief, versions, claims check, compliance and editorial review for a long-form piece.';
@@ -156,6 +175,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
           <?php if ($content['BriefApprovedAt']): ?><dt>Brief</dt><dd>Approved <?= htmlspecialchars(marketing_format_datetime($content['BriefApprovedAt'])) ?><?= $by('BriefApprovedBy') ?></dd><?php endif; ?>
           <?php if ($content['ComplianceStatus']): ?><dt>Compliance</dt><dd><?= htmlspecialchars(MKT_GATE_STATUSES[(string) $content['ComplianceStatus']] ?? '') ?><?= $content['ComplianceAt'] ? ' — ' . htmlspecialchars(marketing_format_datetime($content['ComplianceAt'])) . $by('ComplianceBy') : '' ?></dd><?php endif; ?>
           <?php if ($content['EditorialStatus']): ?><dt>Editorial</dt><dd><?= htmlspecialchars(MKT_GATE_STATUSES[(string) $content['EditorialStatus']] ?? '') ?><?= $content['EditorialAt'] ? ' — ' . htmlspecialchars(marketing_format_datetime($content['EditorialAt'])) . $by('EditorialBy') : '' ?></dd><?php endif; ?>
+          <?php if ($blog !== null): ?><dt>Blog</dt><dd><?= $blogLive ? mkt_render_badge('active', ['active' => 'Live']) . ' version ' . (int) $blog['VersionNo'] . ' · since ' . htmlspecialchars(marketing_format_date((string) $blog['FirstPublishedAt'])) : mkt_render_badge('paused', ['paused' => 'Unpublished']) . ' ' . htmlspecialchars(marketing_format_datetime($blog['UnpublishedAt'] ?? null)) ?></dd><?php endif; ?>
           <?php if ($content['TargetUrl'] && !$content['PublishedUrl']): ?><dt class="is-wide">Planned URL</dt><dd><code><?= htmlspecialchars((string) $content['TargetUrl']) ?></code></dd><?php endif; ?>
           <?php if ($content['PublishedUrl']): ?><dt class="is-wide">Live URL</dt><dd><a href="<?= htmlspecialchars((string) $content['PublishedUrl']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string) $content['PublishedUrl']) ?></a> — published <?= htmlspecialchars(marketing_format_datetime($content['PublishedAt'])) ?><?= $by('PublishedBy') ?></dd><?php endif; ?>
           <?php if ($content['Notes']): ?><dt class="is-wide">Notes</dt><dd><?= nl2br(htmlspecialchars((string) $content['Notes'])) ?></dd><?php endif; ?>
@@ -263,13 +283,64 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       <?php /* ---------- Publish ---------- */ ?>
       <?php if ($stage === 'approved' && $canUpdate): ?>
       <h2 class="hub-section-title" id="publish">Publish</h2>
+      <?php if ($canPublishBlog): ?>
+      <h3><?= $blogLive ? 'Update the blog post' : ($blog !== null ? 'Put back on the blog' : 'Publish to the blog') ?></h3>
+      <p class="form-hint">
+        <?= $blogLive
+            ? 'The blog is showing version ' . (int) $blog['VersionNo'] . '. Publishing replaces it with approved version ' . (int) ($current['VersionNo'] ?? 0) . ' right away.'
+            : 'Puts approved version ' . (int) ($current['VersionNo'] ?? 0) . ' on <a href="' . htmlspecialchars(blog_page_url()) . '" target="_blank" rel="noopener">' . htmlspecialchars(preg_replace('#^https?://#', '', blog_page_url())) . '</a> as soon as you click. Check the blog preview below first.' ?>
+      </p>
+      <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
+        <?= $post('blog_publish', 'publish') ?>
+        <div class="form-grid">
+          <div class="form-group form-grid-full">
+            <label for="blog_slug">Post address</label>
+            <input class="form-input" id="blog_slug" name="slug" required maxlength="160" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="<?= htmlspecialchars((string) ($blog['Slug'] ?? mkt_blog_suggest_slug((string) ($current['Title'] ?? $content['Title']), $id))) ?>" />
+          </div>
+          <p class="form-hint form-grid-full">Live link: <code><?= htmlspecialchars(blog_page_url()) ?>?post=</code><em>address</em>. Lowercase letters, numbers and hyphens.<?= $blog !== null ? ' Changing it breaks links already shared.' : '' ?></p>
+          <div class="form-group form-grid-full"><label for="blog_excerpt">History summary</label><textarea class="form-input" id="blog_excerpt" name="excerpt" rows="2" maxlength="<?= MKT_BLOG_EXCERPT_MAX ?>"><?= htmlspecialchars((string) ($blog['Excerpt'] ?? ($current !== null ? mkt_blog_default_excerpt($current) : ''))) ?></textarea></div>
+          <div class="form-group"><label for="blog_author">Byline</label><input class="form-input" id="blog_author" name="author" maxlength="150" value="<?= htmlspecialchars((string) ($blog['AuthorName'] ?? marketing_setting('blog.author', 'NutraAxis Team'))) ?>" /></div>
+          <div class="form-group"><label for="blog_hero">Header image URL</label><input class="form-input" type="url" id="blog_hero" name="hero_image_url" maxlength="1000" value="<?= htmlspecialchars((string) ($blog['HeroImageUrl'] ?? '')) ?>" placeholder="Optional — https://…" /></div>
+          <div class="form-group form-grid-full"><label for="blog_hero_alt">Image description</label><input class="form-input" id="blog_hero_alt" name="hero_image_alt" maxlength="300" value="<?= htmlspecialchars((string) ($blog['HeroImageAlt'] ?? '')) ?>" placeholder="What the image shows, for screen readers (defaults to the title)" /></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" onclick="return confirm('<?= $blogLive ? 'Replace the live blog post with this approved version?' : 'Publish this approved version to the public blog now?' ?>');"><?= $blogLive ? 'Update blog post' : 'Publish to blog' ?></button>
+        </div>
+      </form>
+      <?php else: ?>
+      <p class="form-hint">Publishing to the blog needs full Marketing access (the same as editorial approval). Ask a Marketing admin.</p>
+      <?php endif; ?>
+      <?php if (!$blogLive): ?>
+      <h3>Or publish somewhere else</h3>
       <p class="form-hint">Put version <?= (int) ($current['VersionNo'] ?? 0) ?> live on the site yourself (copy the HTML or Markdown below), then record the live URL here.</p>
       <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form">
         <?= $post('publish') ?>
         <label for="url">Live URL</label>
         <input class="form-input" type="url" id="url" name="url" required maxlength="1000" style="min-width:24rem" value="<?= htmlspecialchars((string) ($content['PublishedUrl'] ?: $content['TargetUrl'] ?: '')) ?>" placeholder="<?= htmlspecialchars($siteUrl) ?>/…" />
-        <button type="submit" class="btn-primary">Mark published</button>
+        <button type="submit" class="btn-secondary">Mark published</button>
       </form>
+      <?php endif; ?>
+      <?php endif; ?>
+
+      <?php if ($blogLive && $canUpdate): ?>
+      <?php if ($stage !== 'approved'): ?><h2 class="hub-section-title" id="publish">Blog post</h2><?php else: ?><h3>Blog post</h3><?php endif; ?>
+      <div class="detail-card">
+        <dl class="detail-list detail-list-inline detail-list-4col">
+          <dt>Showing</dt><dd>Version <?= (int) $blog['VersionNo'] ?><?= $current !== null && (int) $current['VersionID'] !== (int) $blog['VersionID'] ? ' <span class="form-hint">— the current version ' . (int) $current['VersionNo'] . ' is not on the blog until it is approved and published</span>' : '' ?></dd>
+          <dt>Byline</dt><dd><?= htmlspecialchars((string) ($blog['AuthorName'] ?? '—')) ?></dd>
+          <dt>First published</dt><dd><?= htmlspecialchars(marketing_format_datetime((string) $blog['FirstPublishedAt'])) ?></dd>
+          <dt>Last published</dt><dd><?= htmlspecialchars(marketing_format_datetime((string) $blog['PublishedAt'])) ?></dd>
+          <dt class="is-wide">Live link</dt><dd><a href="<?= htmlspecialchars(blog_post_url((string) $blog['Slug'])) ?>" target="_blank" rel="noopener"><?= htmlspecialchars(blog_post_url((string) $blog['Slug'])) ?></a></dd>
+        </dl>
+      </div>
+      <form class="mkt-inline-form" method="post" action="<?= htmlspecialchars($selfHref) ?>" style="margin-bottom:0.5rem">
+        <?= $post('blog_unpublish', 'publish') ?>
+        <input class="form-input" name="note" maxlength="2000" style="min-width:20rem" placeholder="Reason (optional, kept in the review history)" aria-label="Reason for unpublishing" />
+        <button type="submit" class="btn-secondary" onclick="return confirm('Take this post off the public blog now?');">Unpublish from blog</button>
+      </form>
+      <?php if ($stage === 'published'): ?>
+      <form method="post" action="<?= htmlspecialchars($selfHref) ?>"><?= $post('monitoring') ?><button type="submit" class="btn-text">Move to monitoring</button> <span class="form-hint">— the blog page's traffic shows under Site Pages as /our-blog.</span></form>
+      <?php endif; ?>
       <?php elseif (in_array($stage, ['published', 'monitoring'], true) && $canUpdate): ?>
       <h2 class="hub-section-title" id="publish">Live page</h2>
       <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.5rem">
@@ -331,6 +402,20 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       </p>
       <textarea id="copy-html" hidden><?= htmlspecialchars($html) ?></textarea>
       <textarea id="copy-md" hidden><?= htmlspecialchars((string) $shown['Body']) ?></textarea>
+
+      <details id="blog-preview" <?= $content['ContentType'] === 'blog' || $stage === 'approved' ? 'open' : '' ?>>
+        <summary class="hub-section-title" style="cursor:pointer">Blog preview — version <?= (int) $shown['VersionNo'] ?> as it would appear on the blog</summary>
+        <link rel="stylesheet" href="/blog/blog.css?v=<?= (int) @filemtime(dirname(__DIR__, 2) . '/blog/blog.css') ?>" />
+        <div class="na-blog-post" style="margin-top:0.75rem;max-width:760px">
+          <h2 class="na-blog-post-title"><?= htmlspecialchars((string) $shown['Title']) ?></h2>
+          <div class="na-blog-meta">
+            <span><?= htmlspecialchars($blog !== null ? blog_format_date((string) $blog['FirstPublishedAt']) : blog_format_date(gmdate('Y-m-d H:i:s'))) ?></span>
+            <span>By <?= htmlspecialchars((string) ($blog['AuthorName'] ?? marketing_setting('blog.author', 'NutraAxis Team'))) ?></span>
+            <span><?= max(1, (int) round((int) $shown['WordCount'] / BLOG_WORDS_PER_MINUTE)) ?> min read</span>
+          </div>
+          <div class="na-blog-article"><?= mkt_blog_html((string) $shown['Body']) ?></div>
+        </div>
+      </details>
 
       <h2 class="hub-section-title" id="claims">Claims check — version <?= (int) $shown['VersionNo'] ?></h2>
       <?php if ($check === null): ?>
