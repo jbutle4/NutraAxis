@@ -1,6 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
-require dirname(__DIR__, 2) . '/includes/marketing-campaigns.php';
+require dirname(__DIR__, 2) . '/includes/marketing-calendar.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
 
 auth_require_module_read('marketing-campaigns');
@@ -55,6 +55,7 @@ $canEdit = marketing_can_update() && $campaign['Status'] !== 'archived';
 $allEditable = $assets === [] || array_reduce($assets, static fn(bool $ok, array $a): bool => $ok && in_array($a['Status'], MKT_ASSET_EDITABLE, true), true);
 $staleCount = count(array_filter($assets, static fn(array $a): bool => in_array($a['Status'], MKT_ASSET_EDITABLE, true) && !mkt_asset_check_current($a)));
 $readyCount = count(array_filter($assets, static fn(array $a): bool => in_array($a['Status'], MKT_ASSET_EDITABLE, true) && mkt_asset_passes($a)));
+$approvedCount = count(array_filter($assets, static fn(array $a): bool => $a['Status'] === 'approved'));
 $claims = !empty($campaign['TopicID']) ? array_filter(mkt_topic_claims((int) $campaign['TopicID']), static fn(array $c): bool => $c['Status'] === 'approved') : [];
 $names = mkt_user_names([$campaign['CreatedBy'] ?? 0]);
 
@@ -122,6 +123,9 @@ $form = [
             <button type="submit" class="btn-secondary" name="action" value="submit_passing">Submit <?= $readyCount ?> for review</button>
           </form>
           <?php endif; ?>
+          <?php if ($approvedCount > 0): ?>
+          <a class="btn-primary" href="/marketing/calendar/?tab=ready&amp;campaign_id=<?= $id ?>">Schedule <?= $approvedCount ?> approved</a>
+          <?php endif; ?>
         </div>
       </div>
       <?php endif; ?>
@@ -129,10 +133,10 @@ $form = [
       <h2 class="hub-section-title">Assets</h2>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Part</th><th>Channel</th><th>Asset</th><th>Length</th><th>Claims score</th><th>Compliance</th><th>Editorial</th><th>Status</th></tr></thead>
+          <thead><tr><th>Part</th><th>Channel</th><th>Asset</th><th>Length</th><th>Claims score</th><th>Compliance</th><th>Editorial</th><th>Status</th><th>Scheduled (Central)</th></tr></thead>
           <tbody>
             <?php if ($assets === []): ?>
-            <tr><td colspan="8">No assets yet. <?= $canEdit ? 'Use Generate content to draft them from the topic.' : '' ?></td></tr>
+            <tr><td colspan="9">No assets yet. <?= $canEdit ? 'Use Generate content to draft them from the topic.' : '' ?></td></tr>
             <?php endif; ?>
             <?php foreach ($assets as $asset): ?>
             <?php
@@ -155,6 +159,7 @@ $form = [
               <td><?= htmlspecialchars(MKT_GATE_STATUSES[(string) ($asset['ComplianceStatus'] ?? '')] ?? '—') ?></td>
               <td><?= htmlspecialchars(MKT_GATE_STATUSES[(string) ($asset['EditorialStatus'] ?? '')] ?? '—') ?></td>
               <td><?= mkt_asset_badge($asset) ?></td>
+              <td><?= htmlspecialchars(mkt_cal_format($asset['PostedAt'] ?? $asset['ScheduledAt'])) ?><?= !empty($asset['ExternalPostID']) && $asset['Status'] === 'scheduled' ? '<div class="form-hint">In GoHighLevel</div>' : '' ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
