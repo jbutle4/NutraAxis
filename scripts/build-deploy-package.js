@@ -23,6 +23,7 @@ const IGNORE_DIRS = new Set([
   'sql',
   'docs',
   'functions',
+  'functions-marketing',
   'Archive Sites',
   'nutraaxis_test',
   '.tmp',

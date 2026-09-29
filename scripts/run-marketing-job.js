@@ -41,9 +41,9 @@ for (const pair of pairs) {
   if (idx > 0) params[pair.slice(0, idx)] = pair.slice(idx + 1);
 }
 
-const processRunner = require('../functions/src/lib/process-runner');
+const runner = require('../functions-marketing/src/lib/runner');
 
-processRunner.execute(code, params, 'Manual')
+runner.execute(code, params, 'Manual')
   .then((result) => {
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.ok ? 0 : 1);
