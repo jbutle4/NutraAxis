@@ -248,7 +248,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       </form>
       <?php elseif ($gate !== null): ?>
       <p class="form-hint" id="review">
-        Waiting on <?= $gate === 'compliance' ? 'compliance review by a named compliance reviewer' : 'editorial review by a Marketing admin' ?>.
+        Waiting on <?= $gate === 'compliance' ? 'compliance review by a Marketing Compliance Reviewer' : 'editorial review by a Marketing admin' ?>.
         <?= $ownWork ? 'You wrote or submitted this version, so someone else must review it.' : '' ?>
       </p>
       <?php endif; ?>

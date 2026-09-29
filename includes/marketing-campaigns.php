@@ -46,19 +46,15 @@ function mkt_channels(): array
     return $channels;
 }
 
-function mkt_compliance_reviewer_logins(): array
-{
-    return array_map('strtolower', marketing_setting_lines('review.compliance_reviewers'));
-}
+const MKT_COMPLIANCE_PERMISSION_COLUMN = 'MarketingCompliance';
 
 /**
- * Compliance reviewers are named in review.compliance_reviewers and need Marketing update access.
+ * Compliance review is a role permission (Site Admin → Roles → Marketing Compliance Review, Update). Review
+ * decisions are posted through Marketing update handlers, so Marketing update is needed too.
  */
 function mkt_can_compliance_review(): bool
 {
-    $login = strtolower(trim((string) (auth_user()['UserLogin'] ?? '')));
-
-    return $login !== '' && marketing_can_update() && in_array($login, mkt_compliance_reviewer_logins(), true);
+    return auth_can_update(MKT_COMPLIANCE_PERMISSION_COLUMN) && marketing_can_update();
 }
 
 function mkt_can_editorial_review(): bool
@@ -66,22 +62,16 @@ function mkt_can_editorial_review(): bool
     return marketing_can_admin();
 }
 
+/** Users whose role grants compliance review, with their role name and Marketing access. */
 function mkt_compliance_reviewers(): array
 {
-    $logins = mkt_compliance_reviewer_logins();
-    if ($logins === []) {
-        return [];
-    }
-    $params = [];
-    $in = [];
-    foreach ($logins as $i => $login) {
-        $in[] = ':l' . $i;
-        $params['l' . $i] = $login;
-    }
-    $stmt = db()->prepare('SELECT u.UserID, u.UserName, u.UserLogin, r.Marketing FROM dbo.[User] u LEFT JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole WHERE LOWER(u.UserLogin) IN (' . implode(', ', $in) . ') ORDER BY u.UserName');
-    $stmt->execute($params);
-
-    return $stmt->fetchAll();
+    return db()->query(<<<SQL
+        SELECT u.UserID, u.UserName, u.UserLogin, r.RoleName, r.Marketing
+        FROM dbo.[User] u
+        INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
+        WHERE r.MarketingCompliance LIKE N'%U%'
+        ORDER BY u.UserName
+    SQL)->fetchAll();
 }
 
 function mkt_slugify(string $text, int $max = 60): string
@@ -472,7 +462,7 @@ function mkt_asset_review(int $id, string $gate, string $decision, ?string $note
     }
     if ($gate === 'compliance') {
         if (!mkt_can_compliance_review()) {
-            return ['ok' => false, 'error' => 'Only named compliance reviewers can clear compliance.'];
+            return ['ok' => false, 'error' => 'Only users whose role grants Marketing Compliance Review can clear compliance.'];
         }
         if ($asset['ComplianceStatus'] !== 'pending') {
             return ['ok' => false, 'error' => 'Compliance review is not pending on this asset.'];
@@ -516,7 +506,7 @@ function mkt_asset_archive(int $id): array
 }
 
 /**
- * Review queue: compliance-pending assets for named reviewers; compliance-cleared, editorial-pending assets for editors.
+ * Review queue: compliance-pending assets for compliance reviewers; compliance-cleared, editorial-pending assets for editors.
  */
 function mkt_review_queue(): array
 {

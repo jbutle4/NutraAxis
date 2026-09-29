@@ -40,7 +40,7 @@ function mkt_task_local_date(string $utc): string
     return (new DateTimeImmutable($utc, new DateTimeZone('UTC')))->setTimezone(mkt_cal_tz())->format('Y-m-d');
 }
 
-/** The single named compliance reviewer, when there is exactly one, so compliance tasks land on a person. */
+/** The single user holding compliance review, when there is exactly one, so compliance tasks land on a person. */
 function mkt_task_compliance_user(): ?int
 {
     $reviewers = mkt_compliance_reviewers();

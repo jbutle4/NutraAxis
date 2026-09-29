@@ -152,6 +152,7 @@ function auth_permissions_from_role_row(array $row): array
         'PaymentApproval'      => $row['PaymentApproval'] ?? null,
         'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
         'Marketing'            => $row['Marketing'] ?? null,
+        'MarketingCompliance'  => $row['MarketingCompliance'] ?? null,
     ];
 }
 
@@ -190,7 +191,8 @@ function auth_refresh_permissions(): void
                 QBOInsertApproval,
                 PaymentApproval,
                 ProviderAccountReview,
-                Marketing
+                Marketing,
+                MarketingCompliance
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -622,7 +624,8 @@ function auth_attempt_login(string $login, string $password): array
             r.QBOInsertApproval,
             r.PaymentApproval,
             r.ProviderAccountReview,
-            r.Marketing
+            r.Marketing,
+            r.MarketingCompliance
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

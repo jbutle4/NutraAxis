@@ -232,7 +232,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
       </form>
       <?php elseif ($gate !== null): ?>
       <p class="form-hint" id="review">
-        Waiting on <?= $gate === 'compliance' ? 'compliance review by a named compliance reviewer' : 'editorial review by a Marketing admin' ?>.
+        Waiting on <?= $gate === 'compliance' ? 'compliance review by a Marketing Compliance Reviewer' : 'editorial review by a Marketing admin' ?>.
         <?= $ownWork ? 'You edited or submitted this asset, so someone else must review it.' : '' ?>
       </p>
       <?php endif; ?>

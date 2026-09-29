@@ -567,7 +567,7 @@ function mkt_content_review(int $id, string $gate, string $decision, ?string $no
         return ['ok' => false, 'error' => 'Say what needs to change.'];
     }
     if ($gate === 'compliance' && !mkt_can_compliance_review()) {
-        return ['ok' => false, 'error' => 'Only named compliance reviewers can clear compliance.'];
+        return ['ok' => false, 'error' => 'Only users whose role grants Marketing Compliance Review can clear compliance.'];
     }
     if ($gate === 'editorial' && !mkt_can_editorial_review()) {
         return ['ok' => false, 'error' => 'Editorial approval requires full Marketing access.'];

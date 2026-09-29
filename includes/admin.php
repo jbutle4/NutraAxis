@@ -25,6 +25,7 @@ const ROLE_PERMISSION_FIELDS = [
     'Accounting'           => 'Accounting',
     'ProviderAccountReview'=> 'Provider Account Review',
     'Marketing'            => 'Marketing & Research',
+    'MarketingCompliance'  => 'Marketing Compliance Review',
     'UserAdmin'            => 'User Administration',
     'RoleAdmin'            => 'Role Administration',
 ];
@@ -388,7 +389,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 QBOInsertApproval, PaymentApproval,
                 InventoryReporting, SalesReporting, InventoryForecasting,
                 LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, ContactsList, EducationResources, Support, Accounting,
-                ProviderAccountReview, Marketing,
+                ProviderAccountReview, Marketing, MarketingCompliance,
                 UserAdmin, RoleAdmin
             )
             OUTPUT INSERTED.RoleID AS inserted_id
@@ -398,7 +399,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 :qbo_insert_approval, :payment_approval,
                 :inv_rep, :sales_rep, :inv_forecast,
                 :labeling, :dashboard, :legal, :catalog, :links, :contacts, :education, :support, :accounting,
-                :provider_review, :marketing,
+                :provider_review, :marketing, :marketing_compliance,
                 :user_admin, :role_admin
             )
         SQL);
@@ -427,6 +428,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'accounting'          => $permissions['Accounting'],
             'provider_review'     => $permissions['ProviderAccountReview'],
             'marketing'           => $permissions['Marketing'],
+            'marketing_compliance' => $permissions['MarketingCompliance'],
             'user_admin'          => $permissions['UserAdmin'],
             'role_admin'          => $permissions['RoleAdmin'],
         ]);
@@ -473,6 +475,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
             Accounting = :accounting,
             ProviderAccountReview = :provider_review,
             Marketing = :marketing,
+            MarketingCompliance = :marketing_compliance,
             UserAdmin = :user_admin,
             RoleAdmin = :role_admin
         WHERE RoleID = :id
@@ -502,6 +505,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'accounting'          => $permissions['Accounting'],
         'provider_review'     => $permissions['ProviderAccountReview'],
         'marketing'           => $permissions['Marketing'],
+        'marketing_compliance' => $permissions['MarketingCompliance'],
         'user_admin'          => $permissions['UserAdmin'],
         'role_admin'          => $permissions['RoleAdmin'],
         'id'                  => $roleId,
