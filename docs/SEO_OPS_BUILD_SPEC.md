@@ -146,6 +146,7 @@ Claude is the primary provider and OpenAI the secondary (same dual-provider runn
 - Relevance score per interest; items below threshold are discarded (kept for audit, hidden by default).
 - Taxonomy tags and evidence type (peer-reviewed, regulatory, news, competitor, opinion).
 - Weekly clustering of relevant items into **candidate topics**, each with a summary, "why it matters", source list, and trend signal (item velocity, source diversity, keyword volume change).
+- **Emerging-interest suggestions:** clusters with rising velocity that match no existing interest well (e.g. themes surfacing from conference, association, and trade-press sources) are proposed as new interests with suggested include terms. The operator creates the interest; AI never creates one on its own.
 - Peer-reviewed and regulatory items are flagged for promotion to **Literature & Intelligence** (the durable evidence library).
 
 **3b Human — the Topic Board:**

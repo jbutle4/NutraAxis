@@ -14,10 +14,15 @@ function asArray(value) {
   return Array.isArray(value) ? value : [value];
 }
 
+// Some feeds entity-escape their CDATA wrappers, which would otherwise be stripped as one big tag.
+function unwrapCdata(value) {
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+}
+
 function text(value) {
   if (value === undefined || value === null) return '';
-  if (typeof value === 'string' || typeof value === 'number') return decodeEntities(String(value)).trim();
-  if (typeof value === 'object' && '#text' in value) return decodeEntities(String(value['#text'])).trim();
+  if (typeof value === 'string' || typeof value === 'number') return unwrapCdata(decodeEntities(String(value))).trim();
+  if (typeof value === 'object' && '#text' in value) return unwrapCdata(decodeEntities(String(value['#text']))).trim();
   return '';
 }
 

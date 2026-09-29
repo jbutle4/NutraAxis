@@ -21,7 +21,7 @@ function marketing_process_registry(): array
             'name'          => 'AI Research Agent — Weekly Discovery',
             'description'   => 'For each agent-enabled interest, asks the AI (web search) for recent evidence, verifies every cited URL, and queues verified finds.',
             'function_name' => 'marketing-research-agent',
-            'schedule'      => 'Weekly, Monday 06:00 CT',
+            'schedule'      => 'Daily 06:00 CT (each interest at most weekly)',
         ],
     ];
 
