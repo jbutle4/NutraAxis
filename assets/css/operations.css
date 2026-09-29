@@ -841,6 +841,21 @@ body.page-catalog-list {
   background: linear-gradient(180deg, #faf6f3 0%, var(--white) 140px);
 }
 
+.portal-function-group--marketing {
+  border-top: 4px solid #6b5ca5;
+  background: linear-gradient(180deg, #f3f1f9 0%, var(--white) 140px);
+}
+
+.portal-function-group--operations {
+  border-top: 4px solid #c9922e;
+  background: linear-gradient(180deg, #fbf6ec 0%, var(--white) 140px);
+}
+
+.portal-function-group--it-ecommerce-management-systems {
+  border-top: 4px solid #3b6ea5;
+  background: linear-gradient(180deg, #eef3f9 0%, var(--white) 140px);
+}
+
 .portal-function-group__header {
   margin-bottom: 24px;
   max-width: 720px;
