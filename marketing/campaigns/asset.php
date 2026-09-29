@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-calendar.php';
+require dirname(__DIR__, 2) . '/includes/marketing-performance.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
 
 auth_require_module_read('marketing-campaigns');
@@ -167,6 +168,23 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
           <?php if ($status === 'posted'): ?>
           <dt>Posted</dt><dd><?= htmlspecialchars(mkt_cal_format($asset['PostedAt'], 'D M j, Y g:i A T')) ?><?= $byName('PostedBy') ?></dd>
           <dt>Live post</dt><dd><?= !empty($asset['ExternalPostUrl']) ? '<a href="' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '</a>' : '—' ?></dd>
+          <?php
+          $traffic = mkt_perf_asset_daily((int) $asset['AssetID'], 365);
+          $trafficSessions = array_sum(array_column($traffic, 'Sessions'));
+          ?>
+          <dt>Site traffic</dt>
+          <dd>
+            <?php if ($traffic === []): ?>
+            No GA4 sessions from the tracked link yet <span class="form-hint">(GA4 loads nightly and lags about a day)</span>
+            <?php else: ?>
+            <?= number_format($trafficSessions) ?> sessions ·
+            <?= mkt_perf_rate((float) array_sum(array_column($traffic, 'EngagedSessions')), (float) $trafficSessions) ?> engaged ·
+            <?= number_format(array_sum(array_column($traffic, 'KeyEvents'))) ?> key events ·
+            <?= number_format(array_sum(array_column($traffic, 'Transactions'))) ?> purchases
+            <span class="form-hint">— last visit <?= htmlspecialchars(marketing_format_date($traffic[0]['MetricDate'])) ?></span>
+            <?php endif; ?>
+            <a class="btn-text" href="/marketing/performance/?tab=assets">All assets</a>
+          </dd>
           <?php endif; ?>
           <?php if ($warnings !== []): ?><dt>Warnings</dt><dd style="color:var(--danger)">⚠ <?= htmlspecialchars(implode(' ', $warnings)) ?></dd><?php endif; ?>
         </dl>

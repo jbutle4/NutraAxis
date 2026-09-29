@@ -155,12 +155,12 @@ function marketing_format_usd(float $value, int $decimals = 2): string
 /**
  * @param array<string, string> $tabs key => label
  */
-function marketing_render_tabs(string $baseHref, array $tabs, string $active): void
+function marketing_render_tabs(string $baseHref, array $tabs, string $active, array $query = []): void
 {
     $html = '';
     foreach ($tabs as $key => $label) {
         $class = $key === $active ? 'btn-primary' : 'btn-secondary';
-        $href = $baseHref . '?tab=' . rawurlencode($key);
+        $href = $baseHref . '?' . http_build_query(['tab' => (string) $key] + $query);
         $html .= '<a class="' . $class . '" href="' . htmlspecialchars($href) . '">' . htmlspecialchars($label) . '</a> ';
     }
     render_list_page_toolbar($html);
