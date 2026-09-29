@@ -139,7 +139,9 @@ async function discoverForInterest(pool, settings, interest, { processLogId, use
     const parsed = extractJson(response.text);
     const list = Array.isArray(parsed) ? parsed : parsed?.items;
     if (!Array.isArray(list)) {
-      throw new Error(`Model did not return a JSON array (stop: ${response.stopReason}).`);
+      const excerpt = String(response.text || '').replace(/\s+/g, ' ').trim();
+      throw new Error(`Model did not return a JSON array (stop: ${response.stopReason}). Reply began: `
+        + `"${excerpt.slice(0, 160)}" … ended: "${excerpt.slice(-120)}"`);
     }
     const candidates = list.filter(validCandidate).slice(0, maxResults);
     counts.fetched = candidates.length;
