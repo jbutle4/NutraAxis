@@ -3936,13 +3936,28 @@ body.te-print-page {
 .mkt-manual-toc ol { margin: 0.4rem 0 0.6rem 1.2rem; padding: 0; columns: 2 18rem; }
 .mkt-manual-toc ol ol { columns: 1; margin: 0.2rem 0 0.2rem 1rem; font-size: 0.9rem; }
 .mkt-manual-toc ol > li { break-inside: avoid; }
+.mkt-manual-toc a,
+.mkt-manual-toc-pages a,
+.mkt-manual-top { color: var(--teal-dark); text-decoration: underline; text-underline-offset: 2px; }
+.mkt-manual-toc a:hover,
+.mkt-manual-top:hover { color: var(--salmon); }
+.mkt-manual-toc-pages { margin: 0 0 0.75rem; font-size: 0.9rem; line-height: 1.9; }
+.mkt-manual-toc-pages a { margin-right: 0.75rem; white-space: nowrap; }
+.mkt-manual-top {
+  float: right;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.mkt-manual [id] { scroll-margin-top: calc(var(--site-top-chrome-height, 69px) + 1rem); }
 .mkt-manual td a,
 .mkt-manual-page h3 a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
-.mkt-manual-section { margin-bottom: 2rem; scroll-margin-top: 1rem; }
+.mkt-manual-section { margin-bottom: 2rem; }
 .mkt-manual-section > p,
 .mkt-manual-section > ul { max-width: 60rem; line-height: 1.55; }
 .mkt-manual-section > ul { padding-left: 1.25rem; }
-.mkt-manual-workflow { margin: 1.25rem 0 1.75rem; scroll-margin-top: 1rem; }
+.mkt-manual-workflow { margin: 1.25rem 0 1.75rem; }
 .mkt-manual-workflow h3,
 .mkt-manual-page h3 { font-size: 1.1rem; margin: 0 0 0.4rem; }
 .mkt-manual-page {
@@ -3951,7 +3966,6 @@ body.te-print-page {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #fff;
-  scroll-margin-top: 1rem;
 }
 .mkt-manual-page ul,
 .mkt-manual .detail-list ul { margin: 0; padding-left: 1.1rem; }
