@@ -4,6 +4,7 @@
  * Usage: node scripts/run-marketing-job.js <code> [key=value ...]
  *   node scripts/run-marketing-job.js seo-noop
  *   node scripts/run-marketing-job.js research-harvest-due source_id=12
+ *   node scripts/run-marketing-job.js campaign-generate campaign_id=1 triggered_by_user_id=1
  */
 const fs = require('fs');
 const path = require('path');
@@ -43,7 +44,10 @@ for (const pair of pairs) {
 
 const runner = require('../functions-marketing/src/lib/runner');
 
-runner.execute(code, params, 'Manual')
+const userId = Number(params.triggered_by_user_id) || null;
+delete params.triggered_by_user_id;
+
+runner.execute(code, params, 'Manual', userId)
   .then((result) => {
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.ok ? 0 : 1);

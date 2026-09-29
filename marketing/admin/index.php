@@ -79,11 +79,15 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               </td>
               <td><?= htmlspecialchars($last !== null ? process_log_result_text($last) : '') ?></td>
               <td>
+                <?php if (empty($job['on_demand'])): ?>
                 <form method="post" action="<?= htmlspecialchars($baseHref) ?>" class="table-action-form">
                   <input type="hidden" name="action" value="run" />
                   <input type="hidden" name="code" value="<?= htmlspecialchars($code) ?>" />
                   <button type="submit" class="btn-secondary">Run now</button>
                 </form>
+                <?php else: ?>
+                <span class="form-hint">Runs from Campaign Studio</span>
+                <?php endif; ?>
               </td>
             </tr>
             <?php endforeach; ?>
@@ -192,7 +196,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php foreach ($settings as $key => $row): ?>
           <?php
             $value = (string) ($row['SettingValue'] ?? '');
-            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, ['brand.competitors', 'brand.terms', 'brand.audiences', 'brand.voice'], true);
+            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, ['brand.competitors', 'brand.terms', 'brand.audiences', 'brand.voice', 'review.compliance_reviewers'], true);
             $fieldId = 'setting-' . preg_replace('/[^a-z0-9]+/i', '-', $key);
           ?>
           <div class="form-group form-grid-full">

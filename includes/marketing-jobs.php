@@ -35,6 +35,24 @@ function marketing_process_registry(): array
             'function_name' => 'marketing-cluster',
             'schedule'      => 'Daily 07:30 CT (when 8+ items are newly scored)',
         ],
+        'campaign-generate' => [
+            'name'        => 'Campaign Studio — Generate Campaign',
+            'description' => 'Writes every asset of a campaign from its accepted topic, angle, evidence and linked claims, then claims-checks each asset.',
+            'schedule'    => 'On demand from Campaign Studio',
+            'on_demand'   => true,
+        ],
+        'campaign-claims-check' => [
+            'name'        => 'Campaign Studio — Claims Check',
+            'description' => 'Checks assets against the approved Claims Matrix wording, flag terms and compliance rules; the score gates submission.',
+            'schedule'    => 'On demand from Campaign Studio',
+            'on_demand'   => true,
+        ],
+        'campaign-revise-asset' => [
+            'name'        => 'Campaign Studio — AI Revise Asset',
+            'description' => 'Revises one draft asset from reviewer notes and claims-check findings, then re-checks it.',
+            'schedule'    => 'On demand from Campaign Studio',
+            'on_demand'   => true,
+        ],
     ];
 
     $registry = [];
@@ -48,6 +66,7 @@ function marketing_process_registry(): array
             'schedule'      => $job['schedule'],
             'uat_e2e'       => false,
             'function_app'  => 'marketing',
+            'on_demand'     => !empty($job['on_demand']),
         ];
     }
 
