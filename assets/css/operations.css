@@ -3926,6 +3926,53 @@ body.te-print-page {
 .mkt-kpi-value { display: block; font-size: 1.4rem; font-weight: 600; line-height: 1.3; }
 .mkt-kpi-prior { display: block; font-size: 0.78rem; color: var(--text-muted); }
 
+.mkt-manual-toc {
+  margin: 1rem 0 1.5rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.mkt-manual-toc ol { margin: 0.4rem 0 0.6rem 1.2rem; padding: 0; columns: 2 18rem; }
+.mkt-manual-toc ol ol { columns: 1; margin: 0.2rem 0 0.2rem 1rem; font-size: 0.9rem; }
+.mkt-manual-toc ol > li { break-inside: avoid; }
+.mkt-manual td a,
+.mkt-manual-page h3 a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.mkt-manual-section { margin-bottom: 2rem; scroll-margin-top: 1rem; }
+.mkt-manual-section > p,
+.mkt-manual-section > ul { max-width: 60rem; line-height: 1.55; }
+.mkt-manual-section > ul { padding-left: 1.25rem; }
+.mkt-manual-workflow { margin: 1.25rem 0 1.75rem; scroll-margin-top: 1rem; }
+.mkt-manual-workflow h3,
+.mkt-manual-page h3 { font-size: 1.1rem; margin: 0 0 0.4rem; }
+.mkt-manual-page {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  scroll-margin-top: 1rem;
+}
+.mkt-manual-page ul,
+.mkt-manual .detail-list ul { margin: 0; padding-left: 1.1rem; }
+.mkt-manual .detail-list-inline dd { font-weight: 400; line-height: 1.5; }
+.mkt-manual-glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+.mkt-manual-glossary h3 { font-size: 0.95rem; margin: 0.4rem 0 0.2rem; }
+.mkt-manual-glossary p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+
+@media print {
+  .mkt-manual-print,
+  .site-header,
+  .site-footer,
+  .nav-panel { display: none !important; }
+  .mkt-manual-page,
+  .mkt-manual-workflow { break-inside: avoid; }
+}
+
 .mkt-bar-col { width: 30%; }
 .mkt-bar {
   position: relative;
