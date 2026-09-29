@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-manual.php';
+require dirname(__DIR__, 2) . '/includes/marketing-manual-flow.php';
 
 auth_require_module_read('marketing-manual');
 
@@ -28,6 +29,7 @@ $list = static function (array $items): string {
 
 $toc = [
     'start'       => 'Start here',
+    'process'     => 'Process map',
     'roles'       => 'Roles and access',
     'rhythm'      => 'Operating rhythm (who does what, when)',
     'workflows'   => 'Step-by-step workflows',
@@ -98,6 +100,57 @@ require dirname(__DIR__, 2) . '/includes/header.php';
               Compliance review: <?= $access['compliance'] ? 'yes' : 'no' ?>
             </p>
           </div>
+        </div>
+      </section>
+
+      <section id="process" class="mkt-manual-section">
+        <h2 class="hub-section-title">Process map <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
+        <p>How an idea becomes a published article or campaign, and how results feed back into research. The work is five connected flows, A to E. The first diagram shows how they hand off to each other; the diagrams after it show every step in each flow, who does it and when.</p>
+        <?php $flowPanels = mkt_manual_flow_panels(); ?>
+        <h3 id="flow-overview">How the flows connect</h3>
+        <figure class="mkt-flow mkt-flow--overview">
+          <div class="mkt-flow-canvas"><?= mkt_manual_flow_overview_svg($flowPanels) ?></div>
+          <p class="mkt-flow-note">Solid arrows are hand-offs that always happen; dashed arrows are optional. The green loop is what makes this a cycle: results from each week decide what research watches next. Click a box to jump to its diagram.</p>
+        </figure>
+        <h3>Which comes first</h3>
+        <ol class="mkt-flow-order">
+          <?php foreach (mkt_manual_flow_order() as $item): ?>
+          <li><?= mkt_manual_text($item) ?></li>
+          <?php endforeach; ?>
+        </ol>
+        <h3>Each flow, step by step</h3>
+        <p>Each row is a role; follow the arrows left to right. The blue text under each step is the page and tab where it is done — click the step to open that page in a new tab, so this manual stays open while you work. The full instructions for each step are in <a href="#workflows">Step-by-step workflows</a>.</p>
+        <ul class="mkt-flow-legend" aria-label="Legend">
+          <?php foreach (mkt_manual_flow_lanes() as $lane => $meta): ?>
+          <li><span class="mkt-flow-swatch" style="background: <?= htmlspecialchars($meta['band']) ?>; border-color: <?= htmlspecialchars($meta['stroke']) ?>;"></span><?= htmlspecialchars(implode(' ', $meta['label'])) ?></li>
+          <?php endforeach; ?>
+          <li><span class="mkt-flow-swatch mkt-flow-swatch--dashed"></span>Dashed = only when needed</li>
+        </ul>
+        <?php
+        $flowMaxWidth = max(array_map('mkt_manual_flow_width', $flowPanels));
+        $renderFlow = static function (string $key, array $panel, bool $inRow = false) use ($flowMaxWidth): string {
+            $width = mkt_manual_flow_width($panel);
+            $canvasStyle = $inRow ? '' : ' style="max-width: ' . round($width / $flowMaxWidth * 100, 2) . '%;"';
+            return '<figure class="mkt-flow" id="flow-' . htmlspecialchars($key) . '"' . ($inRow ? ' style="flex: ' . $width . ' 1 0;"' : '') . '>'
+                . '<figcaption class="mkt-flow-title"><span class="mkt-flow-letter">' . htmlspecialchars($panel['letter']) . '</span>' . htmlspecialchars($panel['title']) . '</figcaption>'
+                . '<div class="mkt-flow-canvas"' . $canvasStyle . '>' . mkt_manual_flow_svg($key, $panel) . '</div>'
+                . '<dl class="detail-list detail-list-inline mkt-flow-facts' . ($inRow ? '' : ' detail-list-4col') . '">'
+                . implode('', array_map(
+                    static fn (string $label, string $text): string => '<dt>' . htmlspecialchars($label) . '</dt><dd>' . mkt_manual_text($text) . '</dd>',
+                    array_keys($panel['facts']),
+                    $panel['facts']
+                ))
+                . '</dl>'
+                . '</figure>';
+        };
+        ?>
+        <?php foreach (['research', 'article', 'campaign'] as $key): ?>
+        <?= $renderFlow($key, $flowPanels[$key]) ?>
+        <?php endforeach; ?>
+        <div class="mkt-flow-row">
+          <?php foreach (['responses', 'review'] as $key): ?>
+          <?= $renderFlow($key, $flowPanels[$key], true) ?>
+          <?php endforeach; ?>
         </div>
       </section>
 
