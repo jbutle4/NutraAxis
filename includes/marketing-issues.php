@@ -29,6 +29,7 @@ const MKT_ALERT_RULES = [
     'legacy_brand'       => 'Legacy brand name',
     'site_error'         => 'High-severity site issue',
     'escalation_overdue' => 'Compliance review overdue',
+    'ai_budget'          => 'AI budget',
 ];
 const MKT_ALERT_STATUSES = ['open' => 'Open', 'acknowledged' => 'Acknowledged', 'resolved' => 'Resolved'];
 

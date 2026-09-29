@@ -259,3 +259,171 @@ function marketing_ai_cost_month_to_date(): float
 
     return (float) $value;
 }
+
+/**
+ * Budget position for the current UTC month (the same window the job budget guard uses).
+ * Forecast = month-to-date + trailing 7-day daily rate × days remaining.
+ */
+function marketing_spend_overview(): array
+{
+    $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $daysInMonth = (int) $now->format('t');
+    $elapsedDays = ((int) $now->format('j') - 1) + ((int) $now->format('G') * 3600 + (int) $now->format('i') * 60) / 86400;
+    $row = db()->query(<<<SQL
+        SELECT
+            COALESCE(SUM(CASE WHEN CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1) THEN CostUsd END), 0) AS MonthCost,
+            COALESCE(SUM(CASE WHEN CreatedAt < DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1) THEN CostUsd END), 0) AS PriorMonthCost,
+            COALESCE(SUM(CASE WHEN CreatedAt >= CAST(SYSUTCDATETIME() AS date) THEN CostUsd END), 0) AS TodayCost,
+            COALESCE(SUM(CASE WHEN CreatedAt >= DATEADD(day, -7, SYSUTCDATETIME()) THEN CostUsd END), 0) AS Last7Cost,
+            SUM(CASE WHEN CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1) THEN 1 ELSE 0 END) AS MonthCalls,
+            SUM(CASE WHEN CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1) AND Ok = 0 THEN 1 ELSE 0 END) AS MonthFailures
+        FROM dbo.MktApiUsage
+        WHERE Provider IN (N'anthropic', N'openai')
+          AND CreatedAt >= DATEADD(month, -1, DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1))
+    SQL)->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $monthCost = (float) ($row['MonthCost'] ?? 0);
+    $budget = (float) marketing_setting('ai.monthly_budget_usd', '0');
+    $dailyRate = (float) ($row['Last7Cost'] ?? 0) / 7;
+    $forecast = $monthCost + $dailyRate * max(0.0, $daysInMonth - $elapsedDays);
+
+    return [
+        'month_cost'       => $monthCost,
+        'prior_month_cost' => (float) ($row['PriorMonthCost'] ?? 0),
+        'today_cost'       => (float) ($row['TodayCost'] ?? 0),
+        'last7_cost'       => (float) ($row['Last7Cost'] ?? 0),
+        'month_calls'      => (int) ($row['MonthCalls'] ?? 0),
+        'month_failures'   => (int) ($row['MonthFailures'] ?? 0),
+        'budget'           => $budget,
+        'forecast'         => $forecast,
+        'daily_rate'       => $dailyRate,
+        'days_in_month'    => $daysInMonth,
+        'elapsed_days'     => $elapsedDays,
+        'pct_used'         => $budget > 0 ? $monthCost / $budget * 100 : null,
+        'pct_forecast'     => $budget > 0 ? $forecast / $budget * 100 : null,
+        'days_to_budget'   => ($budget > 0 && $dailyRate > 0 && $monthCost < $budget) ? ($budget - $monthCost) / $dailyRate : null,
+    ];
+}
+
+/**
+ * AI spend per UTC day for the last N days, including zero days.
+ */
+function marketing_spend_daily(int $days = 30): array
+{
+    $days = max(1, min(90, $days));
+    $stmt = db()->prepare(<<<SQL
+        SELECT CONVERT(char(10), CAST(CreatedAt AS date), 23) AS UsageDate,
+               COUNT(*) AS Calls,
+               SUM(CASE WHEN Ok = 0 THEN 1 ELSE 0 END) AS Failures,
+               COALESCE(SUM(CostUsd), 0) AS CostUsd
+        FROM dbo.MktApiUsage
+        WHERE Provider IN (N'anthropic', N'openai')
+          AND CreatedAt >= DATEADD(day, -(:days - 1), CAST(SYSUTCDATETIME() AS date))
+        GROUP BY CAST(CreatedAt AS date)
+    SQL);
+    $stmt->execute(['days' => $days]);
+    $byDate = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $byDate[(string) $row['UsageDate']] = $row;
+    }
+
+    $out = [];
+    $day = new DateTimeImmutable('today', new DateTimeZone('UTC'));
+    for ($i = 0; $i < $days; $i++) {
+        $key = $day->format('Y-m-d');
+        $row = $byDate[$key] ?? null;
+        $out[] = [
+            'date'     => $key,
+            'calls'    => (int) ($row['Calls'] ?? 0),
+            'failures' => (int) ($row['Failures'] ?? 0),
+            'cost'     => (float) ($row['CostUsd'] ?? 0),
+        ];
+        $day = $day->modify('-1 day');
+    }
+
+    return $out;
+}
+
+/**
+ * AI spend per UTC month for the last N months (newest first).
+ */
+function marketing_spend_monthly(int $months = 6): array
+{
+    $months = max(1, min(24, $months));
+    $stmt = db()->prepare(<<<SQL
+        SELECT YEAR(CreatedAt) AS Y, MONTH(CreatedAt) AS M,
+               COUNT(*) AS Calls,
+               SUM(CASE WHEN Ok = 0 THEN 1 ELSE 0 END) AS Failures,
+               COALESCE(SUM(CostUsd), 0) AS CostUsd
+        FROM dbo.MktApiUsage
+        WHERE Provider IN (N'anthropic', N'openai')
+          AND CreatedAt >= DATEADD(month, -(:months - 1), DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1))
+        GROUP BY YEAR(CreatedAt), MONTH(CreatedAt)
+    SQL);
+    $stmt->execute(['months' => $months]);
+    $byMonth = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $byMonth[sprintf('%04d-%02d', (int) $row['Y'], (int) $row['M'])] = $row;
+    }
+
+    $out = [];
+    $month = new DateTimeImmutable('first day of this month', new DateTimeZone('UTC'));
+    for ($i = 0; $i < $months; $i++) {
+        $key = $month->format('Y-m');
+        $row = $byMonth[$key] ?? null;
+        $out[] = [
+            'month'    => $key,
+            'label'    => $month->format('M Y'),
+            'calls'    => (int) ($row['Calls'] ?? 0),
+            'failures' => (int) ($row['Failures'] ?? 0),
+            'cost'     => (float) ($row['CostUsd'] ?? 0),
+        ];
+        $month = $month->modify('-1 month');
+    }
+
+    return $out;
+}
+
+/**
+ * Month-to-date AI spend grouped by the job that made the calls (portal actions have no job).
+ */
+function marketing_spend_by_job(): array
+{
+    $stmt = db()->query(<<<SQL
+        SELECT COALESCE(l.ProcessName, l.ProcessCode, N'Portal action') AS JobName,
+               COUNT(*) AS Calls,
+               SUM(CASE WHEN u.Ok = 0 THEN 1 ELSE 0 END) AS Failures,
+               COUNT(DISTINCT u.ProcessLogID) AS Runs,
+               COALESCE(SUM(u.CostUsd), 0) AS CostUsd
+        FROM dbo.MktApiUsage u
+        LEFT JOIN dbo.ProcessExecutionLog l ON l.ProcessExecutionLogID = u.ProcessLogID
+        WHERE u.Provider IN (N'anthropic', N'openai')
+          AND u.CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
+        GROUP BY COALESCE(l.ProcessName, l.ProcessCode, N'Portal action')
+        ORDER BY SUM(u.CostUsd) DESC, COUNT(*) DESC
+    SQL);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/**
+ * Month-to-date AI spend grouped by prompt and model.
+ */
+function marketing_spend_by_prompt(): array
+{
+    $stmt = db()->query(<<<SQL
+        SELECT COALESCE(PromptKey, N'(none)') AS PromptKey, COALESCE(Model, N'') AS Model, Provider,
+               COUNT(*) AS Calls,
+               SUM(CASE WHEN Ok = 0 THEN 1 ELSE 0 END) AS Failures,
+               COALESCE(SUM(InputTokens), 0) AS InputTokens,
+               COALESCE(SUM(OutputTokens), 0) AS OutputTokens,
+               COALESCE(SUM(CostUsd), 0) AS CostUsd
+        FROM dbo.MktApiUsage
+        WHERE Provider IN (N'anthropic', N'openai')
+          AND CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
+        GROUP BY COALESCE(PromptKey, N'(none)'), COALESCE(Model, N''), Provider
+        ORDER BY SUM(CostUsd) DESC, COUNT(*) DESC
+    SQL);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
