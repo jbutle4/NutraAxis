@@ -1773,6 +1773,27 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
   grid-template-columns: minmax(9.5rem, 11.5rem) minmax(0, 1fr);
 }
 
+/* Inline lists written as bare dt/dd pairs (no row wrapper): same label: value rows via a grid on the dl. */
+.detail-list-inline:has(> dt) {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 10.5rem) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: baseline;
+}
+
+.detail-list-inline:has(> dt) > dd { overflow-wrap: anywhere; }
+
+/* Header metadata: | Label: | Data | Label: | Data | on wide screens; dt.is-wide gives a long value its own row. */
+@media (min-width: 900px) {
+  .detail-list-inline.detail-list-4col:has(> dt) {
+    grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr) minmax(7rem, max-content) minmax(0, 1fr);
+    column-gap: 16px;
+  }
+
+  .detail-list-4col > dt.is-wide { grid-column: 1; }
+  .detail-list-4col > dt.is-wide + dd { grid-column: 2 / -1; }
+}
+
 .detail-card .detail-list-inline dd {
   font-weight: 500;
   overflow-wrap: anywhere;
