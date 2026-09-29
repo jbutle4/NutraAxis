@@ -80,6 +80,20 @@ async function postJson(url, headers, body) {
   }
 }
 
+/**
+ * Newer models reject sampling parameters such as temperature. Retry once without it so a
+ * prompt's saved temperature never breaks a model switch.
+ */
+async function postJsonTolerant(url, headers, body) {
+  try {
+    return await postJson(url, headers, body);
+  } catch (error) {
+    if (body.temperature === undefined || !/temperature/i.test(error.message)) throw error;
+    delete body.temperature;
+    return postJson(url, headers, body);
+  }
+}
+
 async function callAnthropic({ model, system, user, temperature, maxTokens, webSearch, maxSearches }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured.');
@@ -93,7 +107,7 @@ async function callAnthropic({ model, system, user, temperature, maxTokens, webS
   const totals = { inputTokens: 0, outputTokens: 0, searches: 0 };
   const texts = [];
   for (let turn = 0; turn <= MAX_CONTINUATIONS; turn += 1) {
-    const json = await postJson('https://api.anthropic.com/v1/messages', {
+    const json = await postJsonTolerant('https://api.anthropic.com/v1/messages', {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
     }, body);
@@ -106,11 +120,11 @@ async function callAnthropic({ model, system, user, temperature, maxTokens, webS
       if (block.type === 'text' && block.text) texts.push(block.text);
     }
     if (json.stop_reason !== 'pause_turn') {
-      return { text: texts.join('\n'), stopReason: json.stop_reason, model: json.model || model, ...totals };
+      return { text: texts.join(''), stopReason: json.stop_reason, model: json.model || model, ...totals };
     }
     messages.push({ role: 'assistant', content: json.content });
   }
-  return { text: texts.join('\n'), stopReason: 'pause_turn', model, ...totals };
+  return { text: texts.join(''), stopReason: 'pause_turn', model, ...totals };
 }
 
 function openAiSupportsTemperature(model) {
@@ -128,7 +142,7 @@ async function callOpenAi({ model, system, user, temperature, maxTokens, webSear
   }
   if (webSearch) body.tools = [{ type: 'web_search' }];
 
-  const json = await postJson('https://api.openai.com/v1/responses', { authorization: `Bearer ${apiKey}` }, body);
+  const json = await postJsonTolerant('https://api.openai.com/v1/responses', { authorization: `Bearer ${apiKey}` }, body);
   const texts = [];
   let searches = 0;
   for (const item of json.output || []) {
@@ -213,19 +227,48 @@ function extractJson(text) {
     } catch {
       // fall through to bracket scan
     }
-    for (const [open, close] of [['[', ']'], ['{', '}']]) {
-      const start = trimmed.indexOf(open);
-      const end = trimmed.lastIndexOf(close);
-      if (start !== -1 && end > start) {
+    // Prose around the JSON can contain brackets (e.g. "[1]"); prefer the first balanced array of objects.
+    let fallback = null;
+    for (const open of ['[', '{']) {
+      for (let start = trimmed.indexOf(open), tries = 0; start !== -1 && tries < 50;
+        start = trimmed.indexOf(open, start + 1), tries += 1) {
+        const end = matchingBracket(trimmed, start);
+        if (end === -1) continue;
         try {
-          return JSON.parse(trimmed.slice(start, end + 1));
+          const parsed = JSON.parse(trimmed.slice(start, end + 1));
+          if (Array.isArray(parsed) && parsed.some((entry) => entry && typeof entry === 'object')) return parsed;
+          if (!Array.isArray(parsed) && Array.isArray(parsed?.items)) return parsed;
+          fallback = fallback ?? parsed;
         } catch {
-          // try next shape
+          // not JSON at this position
         }
       }
     }
+    if (fallback !== null) return fallback;
   }
   return null;
+}
+
+function matchingBracket(text, start) {
+  const open = text[start];
+  const close = open === '[' ? ']' : '}';
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i += 1;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === open) {
+      depth += 1;
+    } else if (ch === close) {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
 }
 
 module.exports = {
