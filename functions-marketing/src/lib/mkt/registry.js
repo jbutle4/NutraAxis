@@ -4,6 +4,15 @@ const researchAgent = require('../jobs/research-agent-discover');
 const researchScore = require('../jobs/research-score');
 const researchCluster = require('../jobs/research-cluster');
 const campaign = require('../jobs/campaign');
+const content = require('../jobs/content');
+
+function costText(r) {
+  return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
+}
+
+function versionText(r) {
+  return `version ${r.version_no} — claims score ${r.score}` + (r.needs_compliance ? ', needs compliance review' : '');
+}
 
 const JOBS = {
   'seo-noop': {
@@ -63,6 +72,28 @@ const JOBS = {
     run: (params) => campaign.revise(params),
     message: (r) => `Asset ${r.asset_id} revised — claims score ${r.score}`
       + (r.needs_compliance ? ', needs compliance review' : '') + ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`,
+  },
+  'content-brief': {
+    name: 'Content Pipeline — AI Brief',
+    run: (params) => content.brief(params),
+    message: (r) => `Brief written for content ${r.content_id} — ${r.sections ?? 0} outline sections`
+      + (r.truncated ? ' (reply hit the token limit; review the brief closely)' : '') + costText(r),
+  },
+  'content-draft': {
+    name: 'Content Pipeline — AI Draft',
+    run: (params) => content.draft(params),
+    message: (r) => `Draft ${versionText(r)}, ${r.words ?? 0} words`
+      + (r.truncated ? ' (reply hit the token limit; the ending may be cut off)' : '') + costText(r),
+  },
+  'content-claims-check': {
+    name: 'Content Pipeline — Claims Check',
+    run: (params) => content.check(params),
+    message: (r) => `Checked ${versionText(r)}` + costText(r),
+  },
+  'content-revise': {
+    name: 'Content Pipeline — AI Revise',
+    run: (params) => content.revise(params),
+    message: (r) => `Revised into ${versionText(r)}` + costText(r),
   },
 };
 

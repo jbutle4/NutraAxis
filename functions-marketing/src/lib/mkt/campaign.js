@@ -57,17 +57,23 @@ async function loadCampaign(pool, campaignId) {
   return result.recordset[0] || null;
 }
 
-/** Approved claims linked to the topic — the only benefit wording generation and the check accept. */
-async function approvedClaims(pool, topicId) {
-  if (!topicId) return [];
-  const result = await pool.request().input('topic', sql.Int, topicId).query(`
-    SELECT c.ClaimID, c.ClaimText, c.RequiresDisclaimer, p.Name AS ProductName
-    FROM dbo.MktTopicClaim tc
-    INNER JOIN dbo.MktClaim c ON c.ClaimID = tc.ClaimID AND c.Status = N'approved'
-    LEFT JOIN dbo.MktProduct p ON p.ProductID = c.ProductID
-    WHERE tc.TopicID = @topic
-    ORDER BY p.Name, c.SortOrder, c.ClaimID
-  `);
+/**
+ * Approved claims linked to the topic, plus every approved claim of the product when one is given — the only
+ * benefit wording generation and the check accept.
+ */
+async function approvedClaims(pool, topicId, productId = null) {
+  if (!topicId && !productId) return [];
+  const result = await pool.request()
+    .input('topic', sql.Int, topicId || null)
+    .input('product', sql.Int, productId || null)
+    .query(`
+      SELECT c.ClaimID, c.ClaimText, c.RequiresDisclaimer, p.Name AS ProductName
+      FROM dbo.MktClaim c
+      LEFT JOIN dbo.MktProduct p ON p.ProductID = c.ProductID
+      WHERE c.Status = N'approved'
+        AND (c.ClaimID IN (SELECT ClaimID FROM dbo.MktTopicClaim WHERE TopicID = @topic) OR c.ProductID = @product)
+      ORDER BY p.Name, c.SortOrder, c.ClaimID
+    `);
   return result.recordset;
 }
 
@@ -117,10 +123,6 @@ function flagTermHits(settings, text) {
   return settingLines(settings, 'claims.flag_terms').filter((term) => new RegExp(`(^|[^a-z0-9])${escapeRegex(term)}(?=[^a-z0-9]|$)`, 'i').test(haystack));
 }
 
-function assetText(asset) {
-  return [asset.Title, asset.Subject, asset.PreviewText, asset.Body].filter(Boolean).join('\n');
-}
-
 function lengthCheck(asset, channel) {
   if (!channel || !channel.maxChars) return null;
   const hashtags = String(asset.Hashtags || '').trim();
@@ -130,33 +132,33 @@ function lengthCheck(asset, channel) {
 }
 
 /**
- * Claims-check one asset: deterministic flag terms + AI review against the topic's approved claims.
- * Each distinct flag term costs a point. Writes the score only if the asset has not been edited meanwhile.
+ * Claims review of any copy: deterministic flag terms + AI review against the approved claims. Each distinct flag
+ * term costs copy.flagPenalty points (default 1) and always requires compliance review. Returns the stored check
+ * result; callers add format issues and persist it.
  */
-async function checkAsset(pool, settings, asset, context, processLogId) {
-  const channel = context.channels.get(asset.Channel);
+async function reviewCopy(pool, settings, copy, context, processLogId) {
   const response = await runPrompt(pool, settings, {
     promptKey: CHECK_PROMPT_KEY,
     operation: CHECK_PROMPT_KEY,
     processLogId,
-    refType: 'asset',
-    refId: asset.AssetID,
+    refType: copy.refType,
+    refId: copy.refId,
     vars: {
       ...sharedVars(settings, context.audience),
       approved_claims: context.claimLines,
-      channel: channel ? channel.label : asset.Channel,
-      title: asset.Title || '',
-      subject: asset.Subject || '',
-      preview_text: asset.PreviewText || '',
-      body: asset.Body,
+      channel: copy.channel,
+      title: copy.title || '',
+      subject: copy.subject || '',
+      preview_text: copy.previewText || '',
+      body: copy.body,
     },
   });
   const parsed = extractJson(response.text);
   if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object' || !Number.isFinite(Number(parsed.score))) {
-    throw new Error(`Claims check for asset ${asset.AssetID} returned no score (stop: ${response.stopReason}).`);
+    throw new Error(`Claims check for ${copy.refType} ${copy.refId} returned no score (stop: ${response.stopReason}).`);
   }
 
-  const hits = flagTermHits(settings, assetText(asset));
+  const hits = flagTermHits(settings, [copy.title, copy.subject, copy.previewText, copy.body].filter(Boolean).join('\n'));
   const statements = (Array.isArray(parsed.statements) ? parsed.statements : [])
     .filter((row) => row && STATEMENT_CLASSES.has(row.class))
     .map((row) => ({
@@ -165,31 +167,52 @@ async function checkAsset(pool, settings, asset, context, processLogId) {
       claim_id: Number(row.claim_id) || null,
       note: oneLine(row.note || '', 300),
     }));
-  const issues = (Array.isArray(parsed.issues) ? parsed.issues : []).map((issue) => oneLine(issue, 300)).filter(Boolean);
-  const length = lengthCheck(asset, channel);
-  if (length && length.chars > length.max) issues.push(`Too long for ${channel.label}: ${length.chars} of ${length.max} characters.`);
-  if (!/\[LINK\]/.test(asset.Body)) issues.push('The [LINK] placeholder is missing, so the tracked call-to-action link has nowhere to go.');
-
   const aiScore = Math.min(10, Math.max(0, Number(parsed.score)));
-  const score = Math.max(0, Math.round((aiScore - hits.length) * 10) / 10);
+  const flagPenalty = copy.flagPenalty ?? 1;
+  const score = Math.max(0, Math.round((aiScore - hits.length * flagPenalty) * 10) / 10);
   const makesClaims = statements.some((row) => CLAIM_CLASSES.has(row.class));
   const needsCompliance = settings['review.compliance_mode'] === 'all'
     || hits.length > 0 || makesClaims || Boolean(parsed.references_efficacy) || Boolean(parsed.references_condition) || score < 10;
-  const result = {
+  return {
+    result: {
+      score,
+      ai_score: aiScore,
+      flag_terms: hits,
+      flag_penalty: flagPenalty,
+      statements,
+      issues: (Array.isArray(parsed.issues) ? parsed.issues : []).map((issue) => oneLine(issue, 300)).filter(Boolean),
+      length: null,
+      references_efficacy: Boolean(parsed.references_efficacy),
+      references_condition: Boolean(parsed.references_condition),
+      disclaimer_ok: parsed.disclaimer_ok !== false,
+      summary: oneLine(parsed.summary || '', 400),
+      min_score: settingNumber(settings, 'claims.min_score', 7),
+      model: response.model,
+      prompt_version: response.promptVersion,
+    },
     score,
-    ai_score: aiScore,
-    flag_terms: hits,
-    statements,
-    issues,
-    length,
-    references_efficacy: Boolean(parsed.references_efficacy),
-    references_condition: Boolean(parsed.references_condition),
-    disclaimer_ok: parsed.disclaimer_ok !== false,
-    summary: oneLine(parsed.summary || '', 400),
-    min_score: settingNumber(settings, 'claims.min_score', 7),
-    model: response.model,
-    prompt_version: response.promptVersion,
+    needsCompliance,
+    costUsd: response.costUsd,
   };
+}
+
+/** Claims-check one asset. Writes the score only if the asset has not been edited meanwhile. */
+async function checkAsset(pool, settings, asset, context, processLogId) {
+  const channel = context.channels.get(asset.Channel);
+  const review = await reviewCopy(pool, settings, {
+    refType: 'asset',
+    refId: asset.AssetID,
+    channel: channel ? channel.label : asset.Channel,
+    title: asset.Title,
+    subject: asset.Subject,
+    previewText: asset.PreviewText,
+    body: asset.Body,
+  }, context, processLogId);
+  const { result, score, needsCompliance } = review;
+  const length = lengthCheck(asset, channel);
+  result.length = length;
+  if (length && length.chars > length.max) result.issues.push(`Too long for ${channel.label}: ${length.chars} of ${length.max} characters.`);
+  if (!/\[LINK\]/.test(asset.Body)) result.issues.push('The [LINK] placeholder is missing, so the tracked call-to-action link has nowhere to go.');
 
   await pool.request()
     .input('id', sql.Int, asset.AssetID)
@@ -203,7 +226,7 @@ async function checkAsset(pool, settings, asset, context, processLogId) {
           ClaimsCheckedAt = SYSUTCDATETIME(), NeedsCompliance = @needs
       WHERE AssetID = @id AND ContentVersion = @version
     `);
-  return { score, needsCompliance, costUsd: response.costUsd };
+  return { score, needsCompliance, costUsd: review.costUsd };
 }
 
 async function checkContext(pool, settings, campaign) {
@@ -238,6 +261,7 @@ module.exports = {
   approvedClaims,
   claimLines,
   evidenceLines,
+  reviewCopy,
   checkAsset,
   checkContext,
   mapLimit,

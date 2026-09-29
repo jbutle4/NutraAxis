@@ -53,6 +53,30 @@ function marketing_process_registry(): array
             'schedule'    => 'On demand from Campaign Studio',
             'on_demand'   => true,
         ],
+        'content-brief' => [
+            'name'        => 'Content Pipeline — AI Brief',
+            'description' => 'Writes a content brief (intent, outline, evidence to cite, approved claims, meta) from the topic, keyword, product and evidence.',
+            'schedule'    => 'On demand from the Content Pipeline',
+            'on_demand'   => true,
+        ],
+        'content-draft' => [
+            'name'        => 'Content Pipeline — AI Draft',
+            'description' => 'Drafts the long-form piece from its approved brief as a new version, then claims-checks it.',
+            'schedule'    => 'On demand from the Content Pipeline',
+            'on_demand'   => true,
+        ],
+        'content-claims-check' => [
+            'name'        => 'Content Pipeline — Claims Check',
+            'description' => 'Checks the current version against the approved Claims Matrix wording, flag terms, compliance rules and meta limits.',
+            'schedule'    => 'On demand from the Content Pipeline',
+            'on_demand'   => true,
+        ],
+        'content-revise' => [
+            'name'        => 'Content Pipeline — AI Revise',
+            'description' => 'Revises the current version from an instruction, reviewer notes and claims-check findings as a new version, then re-checks it.',
+            'schedule'    => 'On demand from the Content Pipeline',
+            'on_demand'   => true,
+        ],
     ];
 
     $registry = [];

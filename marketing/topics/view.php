@@ -135,6 +135,12 @@ $status = (string) $topic['Status'];
         </dl>
       </div>
 
+      <?php if ($status === 'accepted' && marketing_can_create()): ?>
+      <div class="form-actions">
+        <a class="btn-secondary" href="/marketing/campaigns/?tab=new&amp;topic_id=<?= $id ?>">Start a campaign</a>
+        <a class="btn-secondary" href="/marketing/content/?tab=new&amp;topic_id=<?= $id ?>">Start a long-form piece</a>      </div>
+      <?php endif; ?>
+
       <?php if (!empty($topic['IsEmerging'])): ?>
       <div class="status-banner">
         <div>
