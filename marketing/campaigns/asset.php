@@ -141,7 +141,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
       ?>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Status</dt><dd><?= mkt_asset_badge($asset) ?></dd>
           <dt>Claims score</dt><dd><?= mkt_score_badge($asset) ?> <span class="form-hint">minimum <?= htmlspecialchars((string) marketing_setting('claims.min_score', '7')) ?> to submit</span></dd>
           <dt>Compliance</dt><dd><?= htmlspecialchars(MKT_GATE_STATUSES[(string) ($asset['ComplianceStatus'] ?? '')] ?? '—') ?><?= !empty($asset['ComplianceBy']) ? ' — ' . htmlspecialchars((string) ($names[(int) $asset['ComplianceBy']] ?? '')) . ', ' . htmlspecialchars(marketing_format_datetime($asset['ComplianceAt'])) : '' ?></dd>
@@ -150,15 +150,15 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
           <?php if (!empty($asset['SubmittedAt'])): ?>
           <dt>Submitted</dt><dd><?= htmlspecialchars(marketing_format_datetime($asset['SubmittedAt'])) ?><?= isset($names[(int) $asset['SubmittedBy']]) ? ' by ' . htmlspecialchars((string) $names[(int) $asset['SubmittedBy']]) : '' ?></dd>
           <?php endif; ?>
-          <dt>Tracked link</dt><dd><code style="word-break:break-all"><?= htmlspecialchars($trackedUrl) ?></code></dd>
-          <?php if (!empty($asset['MediaNotes'])): ?><dt>Media</dt><dd><?= htmlspecialchars((string) $asset['MediaNotes']) ?></dd><?php endif; ?>
+          <dt class="is-wide">Tracked link</dt><dd><code style="word-break:break-all"><?= htmlspecialchars($trackedUrl) ?></code></dd>
+          <?php if (!empty($asset['MediaNotes'])): ?><dt class="is-wide">Media</dt><dd><?= htmlspecialchars((string) $asset['MediaNotes']) ?></dd><?php endif; ?>
         </dl>
       </div>
 
       <?php if (in_array($status, ['approved', 'scheduled', 'posted'], true)): ?>
       <h2 class="hub-section-title" id="publishing">Publishing</h2>
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <?php if ($status === 'approved'): ?>
           <dt>Calendar</dt><dd>Approved, not scheduled yet.</dd>
           <?php else: ?>
@@ -167,12 +167,12 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
           <?php endif; ?>
           <?php if ($status === 'posted'): ?>
           <dt>Posted</dt><dd><?= htmlspecialchars(mkt_cal_format($asset['PostedAt'], 'D M j, Y g:i A T')) ?><?= $byName('PostedBy') ?></dd>
-          <dt>Live post</dt><dd><?= !empty($asset['ExternalPostUrl']) ? '<a href="' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '</a>' : '—' ?></dd>
+          <dt class="is-wide">Live post</dt><dd><?= !empty($asset['ExternalPostUrl']) ? '<a href="' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '</a>' : '—' ?></dd>
           <?php
           $traffic = mkt_perf_asset_daily((int) $asset['AssetID'], 365);
           $trafficSessions = array_sum(array_column($traffic, 'Sessions'));
           ?>
-          <dt>Site traffic</dt>
+          <dt class="is-wide">Site traffic</dt>
           <dd>
             <?php if ($traffic === []): ?>
             No GA4 sessions from the tracked link yet <span class="form-hint">(GA4 loads nightly and lags about a day)</span>
@@ -198,7 +198,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
               }
           }
           ?>
-          <dt>Post metrics</dt>
+          <dt class="is-wide">Post metrics</dt>
           <dd>
             <?= $latestMetric === null ? 'None entered yet' : htmlspecialchars(implode(' · ', array_slice($metricSummary, 0, 6))) . ' <span class="form-hint">— as of ' . htmlspecialchars(marketing_format_date($latestMetric['AsOf'])) . '</span>' ?>
             <a class="btn-text" href="/marketing/performance/metrics.php?asset_id=<?= (int) $asset['AssetID'] ?>"><?= $canUpdate ? 'Record metrics' : 'History' ?></a>
@@ -213,7 +213,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
             <?php endif; ?>
           </dd>
           <?php endif; ?>
-          <?php if ($warnings !== []): ?><dt>Warnings</dt><dd style="color:var(--danger)">⚠ <?= htmlspecialchars(implode(' ', $warnings)) ?></dd><?php endif; ?>
+          <?php if ($warnings !== []): ?><dt class="is-wide">Warnings</dt><dd style="color:var(--danger)">⚠ <?= htmlspecialchars(implode(' ', $warnings)) ?></dd><?php endif; ?>
         </dl>
       </div>
       <?php if ($canUpdate): ?>

@@ -146,7 +146,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       </p>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Stage</dt><dd><?= mkt_content_badge($stage) ?><?= $stage === 'draft' && ($content['ComplianceStatus'] === 'changes_requested' || $content['EditorialStatus'] === 'changes_requested') ? ' <strong>Changes requested</strong> — see the review history.' : '' ?></dd>
           <?php if (!empty($content['TopicID'])): ?><dt>Topic</dt><dd><a href="/marketing/topics/view.php?id=<?= (int) $content['TopicID'] ?>"><?= htmlspecialchars((string) $content['TopicTitle']) ?></a><?= $content['TopicStatus'] !== 'accepted' ? ' <span class="form-hint">(' . htmlspecialchars((string) $content['TopicStatus']) . ')</span>' : '' ?></dd><?php endif; ?>
           <?php if (!empty($content['ProductID'])): ?><dt>Product</dt><dd><?= htmlspecialchars((string) $content['ProductName']) ?></dd><?php endif; ?>
@@ -156,9 +156,9 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
           <?php if ($content['BriefApprovedAt']): ?><dt>Brief</dt><dd>Approved <?= htmlspecialchars(marketing_format_datetime($content['BriefApprovedAt'])) ?><?= $by('BriefApprovedBy') ?></dd><?php endif; ?>
           <?php if ($content['ComplianceStatus']): ?><dt>Compliance</dt><dd><?= htmlspecialchars(MKT_GATE_STATUSES[(string) $content['ComplianceStatus']] ?? '') ?><?= $content['ComplianceAt'] ? ' — ' . htmlspecialchars(marketing_format_datetime($content['ComplianceAt'])) . $by('ComplianceBy') : '' ?></dd><?php endif; ?>
           <?php if ($content['EditorialStatus']): ?><dt>Editorial</dt><dd><?= htmlspecialchars(MKT_GATE_STATUSES[(string) $content['EditorialStatus']] ?? '') ?><?= $content['EditorialAt'] ? ' — ' . htmlspecialchars(marketing_format_datetime($content['EditorialAt'])) . $by('EditorialBy') : '' ?></dd><?php endif; ?>
-          <?php if ($content['TargetUrl'] && !$content['PublishedUrl']): ?><dt>Planned URL</dt><dd><code><?= htmlspecialchars((string) $content['TargetUrl']) ?></code></dd><?php endif; ?>
-          <?php if ($content['PublishedUrl']): ?><dt>Live URL</dt><dd><a href="<?= htmlspecialchars((string) $content['PublishedUrl']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string) $content['PublishedUrl']) ?></a> — published <?= htmlspecialchars(marketing_format_datetime($content['PublishedAt'])) ?><?= $by('PublishedBy') ?></dd><?php endif; ?>
-          <?php if ($content['Notes']): ?><dt>Notes</dt><dd><?= nl2br(htmlspecialchars((string) $content['Notes'])) ?></dd><?php endif; ?>
+          <?php if ($content['TargetUrl'] && !$content['PublishedUrl']): ?><dt class="is-wide">Planned URL</dt><dd><code><?= htmlspecialchars((string) $content['TargetUrl']) ?></code></dd><?php endif; ?>
+          <?php if ($content['PublishedUrl']): ?><dt class="is-wide">Live URL</dt><dd><a href="<?= htmlspecialchars((string) $content['PublishedUrl']) ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string) $content['PublishedUrl']) ?></a> — published <?= htmlspecialchars(marketing_format_datetime($content['PublishedAt'])) ?><?= $by('PublishedBy') ?></dd><?php endif; ?>
+          <?php if ($content['Notes']): ?><dt class="is-wide">Notes</dt><dd><?= nl2br(htmlspecialchars((string) $content['Notes'])) ?></dd><?php endif; ?>
         </dl>
       </div>
 

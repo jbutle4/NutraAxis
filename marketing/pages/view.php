@@ -130,12 +130,12 @@ $changeLabels = ['StatusCode' => 'Status', 'Title' => 'Title', 'MetaDescription'
       </div>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Search clicks</dt><dd><?= number_format((int) $metrics['current']['Clicks']) ?><?= $delta($metrics['current']['Clicks'], $metrics['prior']['Clicks']) ?></dd>
           <dt>Impressions</dt><dd><?= number_format((int) $metrics['current']['Impressions']) ?><?= $delta($metrics['current']['Impressions'], $metrics['prior']['Impressions']) ?></dd>
           <dt>Avg position</dt><dd><?= $metrics['current']['Position'] !== null ? htmlspecialchars((string) $metrics['current']['Position']) : '—' ?></dd>
           <dt>Sessions landing here</dt><dd><?= number_format((int) $metrics['current']['Sessions']) ?><?= $delta($metrics['current']['Sessions'], $metrics['prior']['Sessions']) ?> · <?= number_format((int) $metrics['current']['EngagedSessions']) ?> engaged · <?= number_format((float) $metrics['current']['KeyEvents'], 0) ?> key events</dd>
-          <dt>Window</dt><dd class="form-hint">Last 28 days of data — Search Console <?= $gscWindow ? htmlspecialchars(marketing_format_date($gscWindow[0]) . ' – ' . marketing_format_date($gscWindow[1])) : 'no data yet' ?>, GA4 <?= $ga4Window ? htmlspecialchars(marketing_format_date($ga4Window[0]) . ' – ' . marketing_format_date($ga4Window[1])) : 'no data yet' ?>.</dd>
+          <dt class="is-wide">Window</dt><dd class="form-hint">Last 28 days of data — Search Console <?= $gscWindow ? htmlspecialchars(marketing_format_date($gscWindow[0]) . ' – ' . marketing_format_date($gscWindow[1])) : 'no data yet' ?>, GA4 <?= $ga4Window ? htmlspecialchars(marketing_format_date($ga4Window[0]) . ' – ' . marketing_format_date($ga4Window[1])) : 'no data yet' ?>.</dd>
         </dl>
       </div>
 

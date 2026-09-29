@@ -87,15 +87,15 @@ $form = [
       ?>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Status</dt><dd><?= mkt_render_badge((string) $campaign['Status'], MKT_CAMPAIGN_STATUSES) ?></dd>
           <dt>Topic</dt><dd><?php if (!empty($campaign['TopicID'])): ?><a href="/marketing/topics/view.php?id=<?= (int) $campaign['TopicID'] ?>"><?= htmlspecialchars((string) $campaign['TopicTitle']) ?></a><?= $campaign['TopicStatus'] !== 'accepted' ? ' <span class="status-badge status-cancelled">No longer accepted</span>' : '' ?><?php else: ?>—<?php endif; ?></dd>
           <dt>Format</dt><dd><?= htmlspecialchars(MKT_CAMPAIGN_FORMATS[(string) $campaign['Format']] ?? '') ?><?= (int) $campaign['PartCount'] > 1 ? ' — ' . (int) $campaign['PartCount'] . ' parts, ' . (int) $campaign['CadenceDays'] . ' day(s) apart' : '' ?></dd>
           <dt>Channels</dt><dd><?= htmlspecialchars(implode(', ', array_map(static fn(string $k): string => $channels[$k]['label'] ?? $k, explode(',', (string) $campaign['Channels'])))) ?></dd>
           <dt>Audience</dt><dd><?= htmlspecialchars(MKT_CLAIM_AUDIENCES[(string) $campaign['Audience']] ?? '') ?></dd>
           <dt>UTM campaign</dt><dd><code><?= htmlspecialchars((string) $campaign['Slug']) ?></code></dd>
-          <dt>Avoid</dt><dd><?= htmlspecialchars((string) ($campaign['TopicAvoid'] ?? '—')) ?></dd>
-          <dt>Approved claims</dt><dd><?= $claims === [] ? 'None linked to the topic — content may not make product or ingredient benefit claims.' : count($claims) . ' linked on the topic' ?></dd>
+          <dt class="is-wide">Avoid</dt><dd><?= htmlspecialchars((string) ($campaign['TopicAvoid'] ?? '—')) ?></dd>
+          <dt class="is-wide">Approved claims</dt><dd><?= $claims === [] ? 'None linked to the topic — content may not make product or ingredient benefit claims.' : count($claims) . ' linked on the topic' ?></dd>
           <dt>Generated</dt><dd><?= !empty($campaign['GeneratedAt']) ? htmlspecialchars(marketing_format_datetime($campaign['GeneratedAt'])) . ' (prompt v' . (int) $campaign['PromptVersion'] . ')' : 'Not yet' ?></dd>
           <dt>Created</dt><dd><?= htmlspecialchars(marketing_format_datetime($campaign['CreatedAt'] ?? null)) ?><?= isset($names[(int) $campaign['CreatedBy']]) ? ' by ' . htmlspecialchars((string) $names[(int) $campaign['CreatedBy']]) : '' ?></dd>
         </dl>

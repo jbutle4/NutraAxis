@@ -121,16 +121,16 @@ $status = (string) $topic['Status'];
       ?>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Status</dt><dd><?= mkt_render_badge($status === 'accepted' ? 'active' : $status, ['active' => 'Accepted'] + MKT_TOPIC_STATUSES) ?><?= !empty($topic['IsEmerging']) ? ' <span class="status-badge status-submitted">Emerging</span>' : '' ?></dd>
           <?php if ($status === 'merged' && !empty($topic['MergedIntoTopicID'])): ?>
           <dt>Merged into</dt><dd><a href="/marketing/topics/view.php?id=<?= (int) $topic['MergedIntoTopicID'] ?>"><?= htmlspecialchars((string) $topic['MergedIntoTitle']) ?></a></dd>
           <?php endif; ?>
-          <dt>Trend</dt><dd><?= htmlspecialchars(number_format((float) $topic['TrendScore'], 1)) ?> — <?= (int) $topic['ItemCount'] ?> items (<?= (int) $topic['Items7d'] ?> in the last 7 days, <?= (int) $topic['ItemsPrior7d'] ?> the week before), <?= (int) $topic['SourceDiversity'] ?> sources, <?= (int) $topic['EvidenceCount'] ?> peer-reviewed / regulatory</dd>
           <dt>Items span</dt><dd><?= htmlspecialchars(marketing_format_date($topic['FirstItemAt'] ?? null)) ?> – <?= htmlspecialchars(marketing_format_date($topic['LastItemAt'] ?? null)) ?></dd>
           <dt>Proposed</dt><dd><?= htmlspecialchars(marketing_format_datetime($topic['CreatedAt'] ?? null)) ?><?= !empty($topic['ClusterLogID']) ? ' (clustering run #' . (int) $topic['ClusterLogID'] . ')' : '' ?></dd>
+          <dt class="is-wide">Trend</dt><dd><?= htmlspecialchars(number_format((float) $topic['TrendScore'], 1)) ?> — <?= (int) $topic['ItemCount'] ?> items (<?= (int) $topic['Items7d'] ?> in the last 7 days, <?= (int) $topic['ItemsPrior7d'] ?> the week before), <?= (int) $topic['SourceDiversity'] ?> sources, <?= (int) $topic['EvidenceCount'] ?> peer-reviewed / regulatory</dd>
           <?php if (!empty($topic['DecidedAt'])): ?>
-          <dt>Decided</dt><dd><?= htmlspecialchars(marketing_format_datetime($topic['DecidedAt'])) ?><?= !empty($topic['DecisionNote']) ? ' — ' . htmlspecialchars((string) $topic['DecisionNote']) : '' ?></dd>
+          <dt class="is-wide">Decided</dt><dd><?= htmlspecialchars(marketing_format_datetime($topic['DecidedAt'])) ?><?= !empty($topic['DecisionNote']) ? ' — ' . htmlspecialchars((string) $topic['DecisionNote']) : '' ?></dd>
           <?php endif; ?>
         </dl>
       </div>

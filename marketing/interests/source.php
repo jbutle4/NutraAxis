@@ -141,14 +141,14 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
       <?php if ($existing !== null): ?>
       <h2 class="hub-section-title">Health</h2>
-      <dl class="detail-list detail-list-inline">
+      <dl class="detail-list detail-list-inline detail-list-4col">
         <dt>Status</dt><dd><?= mkt_render_badge((string) $existing['Status'], MKT_SOURCE_STATUSES) ?></dd>
         <dt>Last run</dt><dd><?= htmlspecialchars(marketing_format_datetime($existing['LastRunAt'] ?? null)) ?></dd>
         <dt>Last success</dt><dd><?= htmlspecialchars(marketing_format_datetime($existing['LastSuccessAt'] ?? null)) ?></dd>
         <dt>Next run</dt><dd><?= htmlspecialchars($existing['NextRunAt'] ? marketing_format_datetime($existing['NextRunAt']) : 'Next hourly harvest') ?></dd>
         <dt>Consecutive failures</dt><dd><?= (int) $existing['ConsecutiveFailures'] ?></dd>
-        <dt>Last error</dt><dd><?= htmlspecialchars((string) ($existing['LastError'] ?? '—')) ?></dd>
         <dt>Items total</dt><dd><?= (int) $existing['ItemsTotal'] ?></dd>
+        <dt class="is-wide">Last error</dt><dd><?= htmlspecialchars((string) ($existing['LastError'] ?? '—')) ?></dd>
       </dl>
       <?php if ($runs !== []): ?>
       <div class="admin-table-wrap">

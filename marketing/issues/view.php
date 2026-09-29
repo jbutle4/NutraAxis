@@ -85,7 +85,7 @@ $by = static fn(?string $name, ?string $at): string => htmlspecialchars(trim(($n
       <?php endif; ?>
 
       <div class="detail-card">
-        <dl class="detail-list detail-list-inline">
+        <dl class="detail-list detail-list-inline detail-list-4col">
           <dt>Status</dt><dd><?= mkt_issue_badge($status) ?><?= (int) $issue['ReopenCount'] ? ' <span class="form-hint">reopened ' . (int) $issue['ReopenCount'] . '× — last ' . htmlspecialchars(marketing_format_datetime((string) $issue['ReopenedAt'])) . '</span>' : '' ?></dd>
           <dt>Severity</dt><dd><?= mkt_severity_badge((string) $issue['Severity']) ?></dd>
           <dt>Owner</dt><dd><?= htmlspecialchars(MKT_ISSUE_OWNERS[$issue['Owner']] ?? (string) $issue['Owner']) ?> <span class="form-hint">(<?= $issue['Owner'] === 'developer' ? 'templates, code or site configuration' : 'page copy and metadata in document authoring' ?>)</span></dd>
@@ -94,9 +94,9 @@ $by = static fn(?string $name, ?string $at): string => htmlspecialchars(trim(($n
           <dt>Found by</dt><dd><?= htmlspecialchars(implode(', ', array_map(static fn(string $s): string => MKT_AUDIT_SOURCES[$s] ?? $s, array_filter(explode(',', (string) $issue['Sources']))))) ?></dd>
           <dt>First / last seen</dt><dd><?= htmlspecialchars(marketing_format_datetime((string) $issue['FirstSeenAt'])) ?> · <?= htmlspecialchars(marketing_format_datetime((string) $issue['LastSeenAt'])) ?></dd>
           <dt>Assignee</dt><dd><?= htmlspecialchars((string) ($issue['AssigneeName'] ?? 'Nobody')) ?></dd>
-          <?php if ($issue['FixedAt']): ?><dt>Marked fixed</dt><dd><?= $by($issue['FixedByName'], $issue['FixedAt']) ?><?= $issue['FixNote'] ? ' — ' . htmlspecialchars((string) $issue['FixNote']) : '' ?></dd><?php endif; ?>
-          <?php if ($issue['VerifiedAt']): ?><dt>Verified</dt><dd><?= htmlspecialchars(marketing_format_datetime((string) $issue['VerifiedAt'])) ?><?= $status === 'verified' && $issue['VerifyNote'] ? ' — ' . htmlspecialchars((string) $issue['VerifyNote']) : '' ?></dd><?php endif; ?>
-          <?php if ($status === 'ignored'): ?><dt>Ignored</dt><dd><?= $by($issue['IgnoredByName'], $issue['IgnoredAt']) ?> — <?= htmlspecialchars((string) $issue['IgnoreReason']) ?></dd><?php endif; ?>
+          <?php if ($issue['FixedAt']): ?><dt class="is-wide">Marked fixed</dt><dd><?= $by($issue['FixedByName'], $issue['FixedAt']) ?><?= $issue['FixNote'] ? ' — ' . htmlspecialchars((string) $issue['FixNote']) : '' ?></dd><?php endif; ?>
+          <?php if ($issue['VerifiedAt']): ?><dt class="is-wide">Verified</dt><dd><?= htmlspecialchars(marketing_format_datetime((string) $issue['VerifiedAt'])) ?><?= $status === 'verified' && $issue['VerifyNote'] ? ' — ' . htmlspecialchars((string) $issue['VerifyNote']) : '' ?></dd><?php endif; ?>
+          <?php if ($status === 'ignored'): ?><dt class="is-wide">Ignored</dt><dd><?= $by($issue['IgnoredByName'], $issue['IgnoredAt']) ?> — <?= htmlspecialchars((string) $issue['IgnoreReason']) ?></dd><?php endif; ?>
         </dl>
       </div>
 
