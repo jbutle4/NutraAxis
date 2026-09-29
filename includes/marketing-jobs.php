@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Marketing & Research scheduled jobs (Node, Nutra-forecast-tool-prod) — merged into process_registry().
+ * Marketing & Research scheduled jobs (Node, nutraaxis-marketing-func) — merged into process_registry().
  */
 function marketing_process_registry(): array
 {
@@ -35,7 +35,7 @@ function marketing_process_registry(): array
             'function_name' => $job['function_name'] ?? null,
             'schedule'      => $job['schedule'],
             'uat_e2e'       => false,
-            'function_app'  => 'prod',
+            'function_app'  => 'marketing',
         ];
     }
 

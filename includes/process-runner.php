@@ -172,6 +172,10 @@ function process_registry_function_app_label(array $entry): string
         return process_functions_prod_app_label();
     }
 
+    if ($mode === 'marketing') {
+        return process_functions_marketing_app_label();
+    }
+
     if ($mode === 'portal') {
         return 'Operations portal';
     }

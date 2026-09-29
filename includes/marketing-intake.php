@@ -568,7 +568,6 @@ function mkt_fetch_page_meta(string $url): array
         CURLOPT_USERAGENT      => (string) marketing_setting('harvest.user_agent', 'NutraAxisResearchBot/1.0'),
     ]);
     $html = curl_exec($ch);
-    curl_close($ch);
     if (!is_string($html) || $html === '') {
         return [];
     }
