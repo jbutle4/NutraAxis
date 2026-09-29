@@ -202,7 +202,7 @@ GO
 
 MERGE dbo.MktSetting AS target
 USING (VALUES
-    (N'taxonomy.therapeutic_areas', N'Metabolic health' + NCHAR(10) + N'Gut health' + NCHAR(10) + N'Cognitive health' + NCHAR(10) + N'Immune support' + NCHAR(10) + N'Healthy aging', N'Therapeutic areas for interests, one per line.'),
+    (N'taxonomy.therapeutic_areas', N'Metabolic and Weight Health' + NCHAR(10) + N'Hormone and Reproductive Health' + NCHAR(10) + N'Mood, Stress and Sleep' + NCHAR(10) + N'Healthy Aging and Longevity' + NCHAR(10) + N'Digestive and Gut Health' + NCHAR(10) + N'Pain, Immune Response and Physical Comfort' + NCHAR(10) + N'Cognitive Health' + NCHAR(10) + N'Cardiovascular Health', N'Therapeutic areas for interests, one per line.'),
     (N'taxonomy.product_lines',     N'', N'Product lines for interests, one per line.'),
     (N'harvest.crawl_delay_ms',     N'1500', N'Delay between page fetches on the same site during a crawl.'),
     (N'harvest.lookback_days',      N'30', N'Search-feed sources (PubMed, ClinicalTrials.gov) only fetch records newer than this.'),
