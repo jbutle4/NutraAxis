@@ -547,10 +547,10 @@ function mkt_asset_badge(array $asset): string
 {
     $status = (string) $asset['Status'];
     $class = match ($status) {
-        'approved', 'scheduled', 'posted' => 'active',
-        'changes_requested'               => 'failed',
-        'in_review'                       => 'running',
-        default                           => 'draft',
+        'approved', 'posted'     => 'active',
+        'changes_requested'      => 'failed',
+        'in_review', 'scheduled' => 'running',
+        default                  => 'draft',
     };
 
     return mkt_render_badge($class, [$class => MKT_ASSET_STATUSES[$status] ?? $status]);

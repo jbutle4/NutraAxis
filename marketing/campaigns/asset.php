@@ -1,6 +1,6 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
-require dirname(__DIR__, 2) . '/includes/marketing-campaigns.php';
+require dirname(__DIR__, 2) . '/includes/marketing-calendar.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
 
 auth_require_module_read('marketing-campaigns');
@@ -49,6 +49,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'changes_requested' => 'Changes requested — the asset went back to the author.',
             default             => 'Compliance cleared — waiting on editorial review.',
         });
+    } elseif ($action === 'schedule') {
+        $result = mkt_asset_schedule($id, (string) ($_POST['at'] ?? ''));
+        $back($result, 'Scheduled.' . (!empty($result['past']) ? ' That time has already passed — mark it posted once it is live.' : '')
+            . (!empty($result['reload_ghl']) ? ' It was already in GoHighLevel — move it there too.' : ''));
+    } elseif ($action === 'unschedule') {
+        $result = mkt_asset_unschedule($id);
+        $back($result, 'Taken off the calendar.' . (!empty($result['ghl_id']) ? ' Delete GoHighLevel item ' . $result['ghl_id'] . ' too.' : ''));
+    } elseif ($action === 'loaded') {
+        $back(mkt_asset_record_loaded($id, (string) ($_POST['ghl_id'] ?? '')), 'GoHighLevel ID recorded.');
+    } elseif ($action === 'posted') {
+        $back(mkt_asset_mark_posted($id, (string) ($_POST['posted_at'] ?? ''), (string) ($_POST['url'] ?? ''), (string) ($_POST['ghl_id'] ?? '')), 'Marked posted.');
+    } elseif ($action === 'update_posted') {
+        $back(mkt_asset_update_posted($id, (string) ($_POST['url'] ?? ''), (string) ($_POST['ghl_id'] ?? '')), 'Posting details updated.');
     } elseif ($action === 'archive') {
         $result = mkt_asset_archive($id);
         if ($result['ok']) {
@@ -68,7 +81,12 @@ $canEditContent = $canUpdate && in_array($status, ['draft', 'changes_requested',
 $check = mkt_asset_check($asset);
 $checkCurrent = mkt_asset_check_current($asset);
 $reviews = mkt_asset_reviews($id);
-$names = mkt_user_names([$asset['UpdatedBy'] ?? 0, $asset['SubmittedBy'] ?? 0, $asset['ComplianceBy'] ?? 0, $asset['EditorialBy'] ?? 0]);
+$names = mkt_user_names([
+    $asset['UpdatedBy'] ?? 0, $asset['SubmittedBy'] ?? 0, $asset['ComplianceBy'] ?? 0, $asset['EditorialBy'] ?? 0,
+    $asset['ScheduledBy'] ?? 0, $asset['LoadedBy'] ?? 0, $asset['PostedBy'] ?? 0,
+]);
+$byName = static fn(string $col): string => isset($names[(int) ($asset[$col] ?? 0)]) ? ' by ' . htmlspecialchars((string) $names[(int) $asset[$col]]) : '';
+$warnings = $status === 'scheduled' ? (mkt_cal_conflicts()[$id] ?? []) : [];
 $claimIds = json_decode((string) ($asset['ClaimIdsJson'] ?? ''), true);
 $usedClaims = [];
 if (is_array($claimIds) && $claimIds !== [] && !empty($campaign['TopicID'])) {
@@ -136,6 +154,66 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
         </dl>
       </div>
 
+      <?php if (in_array($status, ['approved', 'scheduled', 'posted'], true)): ?>
+      <h2 class="hub-section-title" id="publishing">Publishing</h2>
+      <div class="detail-card">
+        <dl class="detail-list detail-list-inline">
+          <?php if ($status === 'approved'): ?>
+          <dt>Calendar</dt><dd>Approved, not scheduled yet.</dd>
+          <?php else: ?>
+          <dt>Scheduled</dt><dd><?= htmlspecialchars(mkt_cal_format($asset['ScheduledAt'], 'D M j, Y g:i A T')) ?><?= $byName('ScheduledBy') ?></dd>
+          <dt>GoHighLevel</dt><dd><?= !empty($asset['ExternalPostID']) ? htmlspecialchars((string) $asset['ExternalPostID']) . (!empty($asset['LoadedAt']) ? ' — loaded ' . htmlspecialchars(marketing_format_datetime($asset['LoadedAt'])) . $byName('LoadedBy') : '') : 'Not loaded yet' ?></dd>
+          <?php endif; ?>
+          <?php if ($status === 'posted'): ?>
+          <dt>Posted</dt><dd><?= htmlspecialchars(mkt_cal_format($asset['PostedAt'], 'D M j, Y g:i A T')) ?><?= $byName('PostedBy') ?></dd>
+          <dt>Live post</dt><dd><?= !empty($asset['ExternalPostUrl']) ? '<a href="' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '" target="_blank" rel="noopener noreferrer">' . htmlspecialchars((string) $asset['ExternalPostUrl']) . '</a>' : '—' ?></dd>
+          <?php endif; ?>
+          <?php if ($warnings !== []): ?><dt>Warnings</dt><dd style="color:var(--danger)">⚠ <?= htmlspecialchars(implode(' ', $warnings)) ?></dd><?php endif; ?>
+        </dl>
+      </div>
+      <?php if ($canUpdate): ?>
+        <?php if ($status === 'approved' || $status === 'scheduled'): ?>
+        <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.75rem">
+          <input type="hidden" name="action" value="schedule" />
+          <label for="at"><?= $status === 'approved' ? 'Schedule for' : 'Move to' ?> (Central)</label>
+          <input class="form-input" type="datetime-local" id="at" name="at" required value="<?= htmlspecialchars(mkt_cal_input_value($asset['ScheduledAt']) ?: mkt_cal_now_local()->modify('+1 day')->format('Y-m-d') . 'T' . (mkt_cal_default_times()[(string) $asset['Channel']] ?? '09:00')) ?>" />
+          <button type="submit" class="btn-<?= $status === 'approved' ? 'primary' : 'secondary' ?>"><?= $status === 'approved' ? 'Schedule' : 'Reschedule' ?></button>
+          <?php if ($status === 'approved'): ?><a class="btn-text" href="/marketing/calendar/?tab=ready&amp;campaign_id=<?= (int) $asset['CampaignID'] ?>">Lay out the whole campaign</a><?php endif; ?>
+        </form>
+        <?php endif; ?>
+        <?php if ($status === 'scheduled'): ?>
+        <?php if (empty($asset['ExternalPostID'])): ?>
+        <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.75rem">
+          <input type="hidden" name="action" value="loaded" />
+          <label for="ghl_id">Loaded into GoHighLevel as</label>
+          <input class="form-input" id="ghl_id" name="ghl_id" required maxlength="200" placeholder="Post / campaign ID" />
+          <button type="submit" class="btn-secondary">Save ID</button>
+        </form>
+        <?php endif; ?>
+        <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.75rem">
+          <input type="hidden" name="action" value="posted" />
+          <label for="url">Live at</label>
+          <input class="form-input" type="url" id="url" name="url" maxlength="1000" placeholder="Public post URL (optional for email)" />
+          <label for="posted_at">Posted</label>
+          <input class="form-input" type="datetime-local" id="posted_at" name="posted_at" title="Leave blank to use the scheduled time" />
+          <button type="submit" class="btn-primary">Mark posted</button>
+        </form>
+        <form method="post" action="<?= htmlspecialchars($selfHref) ?>" onsubmit="return confirm('Take this asset off the calendar?<?= !empty($asset['ExternalPostID']) ? ' Delete it in GoHighLevel too.' : '' ?>');">
+          <input type="hidden" name="action" value="unschedule" />
+          <button type="submit" class="btn-text">Take off the calendar</button>
+          <span class="form-hint">— needed before the content can be edited.</span>
+        </form>
+        <?php elseif ($status === 'posted'): ?>
+        <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form">
+          <input type="hidden" name="action" value="update_posted" />
+          <input class="form-input" type="url" name="url" maxlength="1000" value="<?= htmlspecialchars((string) ($asset['ExternalPostUrl'] ?? '')) ?>" placeholder="Public post URL" aria-label="Public post URL" />
+          <input class="form-input" name="ghl_id" maxlength="200" value="<?= htmlspecialchars((string) ($asset['ExternalPostID'] ?? '')) ?>" placeholder="GoHighLevel ID" aria-label="GoHighLevel ID" />
+          <button type="submit" class="btn-secondary">Update</button>
+        </form>
+        <?php endif; ?>
+      <?php endif; ?>
+      <?php endif; ?>
+
       <?php if ($canReview): ?>
       <h2 class="hub-section-title" id="review"><?= $gate === 'compliance' ? 'Compliance review' : 'Editorial review' ?></h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
@@ -171,7 +249,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
         <pre id="copy-text" style="white-space:pre-wrap;font-family:inherit;margin:0"><?= htmlspecialchars($copyText) ?></pre>
         <p class="form-hint">
           <?= number_format(mb_strlen($copyText)) ?> characters<?= $channel['max'] > 0 ? ' of ' . number_format($channel['max']) : '' ?>.
-          <?= $status === 'approved' || $status === 'scheduled' ? '' : '<strong>Not approved — do not post.</strong>' ?>
+          <?= in_array($status, ['approved', 'scheduled', 'posted'], true) ? '' : '<strong>Not approved — do not post.</strong>' ?>
           <button type="button" class="btn-text" onclick="navigator.clipboard.writeText(document.getElementById('copy-text').innerText).then(() => { this.textContent = 'Copied'; });">Copy</button>
         </p>
       </div>
