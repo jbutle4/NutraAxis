@@ -814,7 +814,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-issues',
         'title'   => 'Audit & Issues',
-        'desc'    => 'Technical SEO findings, fix specs, and verification. Placeholder — S4.',
+        'desc'    => 'Site audit findings grouped by check, AI fix specs, fixed → recrawl verification, and alerts.',
         'href'    => '/marketing/issues/',
         'icon'    => 'support',
         'tier'    => 'production',

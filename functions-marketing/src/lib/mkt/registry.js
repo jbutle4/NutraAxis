@@ -8,9 +8,16 @@ const content = require('../jobs/content');
 const seoPages = require('../jobs/seo-pages');
 const seoAnalytics = require('../jobs/seo-analytics');
 const engagement = require('../jobs/engagement');
+const seoIssues = require('../jobs/seo-issues');
+const seoAlerts = require('../jobs/seo-alerts');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
+}
+
+function auditText(a) {
+  return `Issues: ${a.new_issues} new, ${a.new_urls} URLs newly affected, ${a.resolved_urls} URLs resolved, ${a.verified} verified, `
+    + `${a.reopened} reopened${a.still_open ? `, ${a.still_open} still present after a fix` : ''}.`;
 }
 
 function versionText(r) {
@@ -106,7 +113,8 @@ const JOBS = {
         + (r.sitemap_errors?.length ? `${r.sitemap_errors.length} sitemap errors; ` : '')
       : '')
       + `${r.crawled ?? 0} pages crawled — ${r.healthy ?? 0} OK, ${r.errors ?? 0} errors, ${r.changed ?? 0} changed, ${r.with_issues ?? 0} with issues`
-      + (r.skipped_time ? `, ${r.skipped_time} left for the next run` : '') + '.',
+      + (r.skipped_time ? `, ${r.skipped_time} left for the next run` : '') + '.'
+      + (r.audit ? ` ${auditText(r.audit)}` : ''),
   },
   'seo-verify-published': {
     name: 'Page Inventory — Verify Published Content',
@@ -149,6 +157,29 @@ const JOBS = {
       ? `Week ${r.period_start} – ${r.period_end}: not enough data yet; no tasks opened.`
       : `Week ${r.period_start} – ${r.period_end}: digest ready, ${r.tasks} tasks opened`
         + (r.dropped ? ` (${r.dropped} recommendations dropped — no traceable evidence)` : '') + costText(r)),
+  },
+  'seo-openrush-import': {
+    name: 'Site Issues — Import OpenRush Audit',
+    run: (params) => seoIssues.importOpenRush(params),
+    message: (r) => `OpenRush audit imported for ${r.pages} pages (${r.audit.skipped} skipped) — ${r.audit.findings} findings. ${auditText(r.audit)}`,
+  },
+  'seo-issue-verify': {
+    name: 'Site Issues — Verify Fix',
+    run: (params) => seoIssues.verify(params),
+    message: (r) => `Rechecked ${r.crawled} page${r.crawled === 1 ? '' : 's'} for “${r.title}” — now ${r.status}`
+      + (r.open_urls ? `, still on ${r.open_urls} URL${r.open_urls === 1 ? '' : 's'}` : '') + '.',
+  },
+  'seo-fix-spec': {
+    name: 'Site Issues — AI Fix Spec',
+    run: (params) => seoIssues.fixSpec(params),
+    message: (r) => `Fix spec written for “${r.title}” from ${r.urls} URL${r.urls === 1 ? '' : 's'}` + costText(r),
+  },
+  'seo-alerts': {
+    name: 'Marketing Alerts — Daily Check',
+    run: (params) => seoAlerts.run(params, Object.fromEntries(Object.entries(JOBS).map(([code, job]) => [code, job.name]))),
+    message: (r) => `${r.rules} rules checked — ${r.firing} firing: ${r.new} new, ${r.kept} continuing, ${r.resolved} resolved`
+      + (r.notify ? (r.notify.error ? `; notification failed: ${r.notify.error}` : r.notify.notified ? `; ${r.notify.notified} sent` : '') : '; notification skipped')
+      + '.',
   },
 };
 

@@ -29,3 +29,9 @@ app.timer('marketing-verify-published', {
   schedule: process.env.MARKETING_VERIFY_SCHEDULE || '0 20 10 * * *',
   handler: (timer, context) => runJob('seo-verify-published', context),
 });
+
+// After the nightly ingests, crawl and scores, so it judges today's data.
+app.timer('marketing-alerts', {
+  schedule: process.env.MARKETING_ALERTS_SCHEDULE || '0 0 11 * * *',
+  handler: (timer, context) => runJob('seo-alerts', context),
+});

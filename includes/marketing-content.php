@@ -714,8 +714,36 @@ function mkt_markdown_html(string $markdown): string
             $items = [];
         }
     };
+    $rows = [];
+    $flushTable = static function () use (&$rows, &$out): void {
+        if ($rows === []) {
+            return;
+        }
+        $split = static fn(string $row): array => array_map(
+            static fn(string $c): string => str_replace('\|', '|', trim($c)),
+            explode("\x1F", preg_replace('/(?<!\\\\)\|/', "\x1F", trim($row, '|')) ?? '')
+        );
+        $html = '<div class="admin-table-wrap"><table class="admin-table">';
+        $header = count($rows) > 1 && preg_match('/^\|?\s*:?-{3,}/', $rows[1]) === 1;
+        foreach ($rows as $i => $row) {
+            if ($header && $i === 1) {
+                continue;
+            }
+            $tag = $header && $i === 0 ? 'th' : 'td';
+            $html .= '<tr>' . implode('', array_map(static fn(string $c): string => "<{$tag}>" . mkt_md_inline($c) . "</{$tag}>", $split($row))) . '</tr>';
+        }
+        $out[] = $html . '</table></div>';
+        $rows = [];
+    };
     foreach (preg_split('/\r?\n/', $markdown) as $line) {
         $trim = trim($line);
+        if (str_starts_with($trim, '|')) {
+            $flushPara();
+            $flushList();
+            $rows[] = $trim;
+            continue;
+        }
+        $flushTable();
         if ($trim === '') {
             $flushPara();
             $flushList();
@@ -761,6 +789,7 @@ function mkt_markdown_html(string $markdown): string
         $flushList();
         $para[] = $trim;
     }
+    $flushTable();
     $flushPara();
     $flushList();
 

@@ -470,6 +470,13 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 - OpenRush audit + crawler issue types; Issues UI; fix_spec AI; verify → recrawl.
 - Alert rules (job failed, traffic drop when baseline exists, legacy brand string).
 - Acceptance: duplicate audit does not duplicate fingerprints; recur → reopened; developer export works.
+- **S4 as built (2026-09-29) — Audit & Issues, fix specs, verify → recrawl, alerts.** OpenRush has no server key, so its `audit_site` result is **pasted in** (run interactively in Cursor / Claude); the crawler is the full-coverage audit.
+  - **Data:** `sql/162_create_marketing_issues_alerts.sql` adds `MktAudit` (one row per crawl / page recrawl / fix recheck / OpenRush import with counts and score), `MktIssue` (one per check, fingerprint = sha256 of the check code, unique; status new → open → fixed → verified, or ignored; reopen count; assignee; fix spec), `MktIssueUrl` (one per issue × page key, open / resolved), `MktAlert` (fingerprint unique while open / acknowledged), `MktPage.ImagesMissingAlt / LegacyTerms`, settings `brand.legacy_terms`, `brand.legacy_allow_paths`, `seo.title_min`, `issues.platform_notes`, `alerts.*`, and prompt `seo.fix_spec` (Sonnet).
+  - **Crawler checks added:** short title, duplicate meta description, no structured data, images without alt text, legacy brand names (whole-word, any case, in visible text; `/nutrasync-landing` allowed). Every crawl (weekly full, page recrawl) records an audit: findings merge into existing issues by fingerprint and URL key, URLs the audit no longer sees resolve, an issue with no open URLs is verified, and a verified issue found again is **reopened**. Each source only resolves its own checks (crawler: built-in codes; OpenRush: `or_*` codes such as `or_low_content`), and an OpenRush import only touches active inventory pages on nutraaxislabs.com.
+  - **Workflow:** "Mark fixed and recheck" recrawls the issue's open pages (`seo-issue-verify`) → verified, or back to open with "still present on N URLs". "Generate fix spec" (`seo-fix-spec`, ~$0.02) writes a developer spec (where to fix on Edge Delivery / Commerce, steps, affected-URL table, how it will be verified) from up to 25 open pages. Ignore needs a reason. New issues open one coordinator triage task.
+  - **Exports:** CSV (one row per URL) and a Markdown developer packet (each issue with its fix spec or advice and open URLs) from any issue tab and filter.
+  - **Alerts** (`seo-alerts`, daily 06:00 CT, or "Check now"): scheduled job whose latest run in 7 days failed; GA4 sessions / Search Console clicks down ≥ `alerts.traffic_drop_pct` for the last 7 days vs the 4 weeks before (needs all 35 days and the baseline minimums); each open legacy-brand URL; each open high-severity issue; each overdue compliance escalation. Alerts resolve themselves when the cause clears; new ones are emailed once (to `alerts.recipients`, else everyone with full Marketing access) and to `ALERTS_WEBHOOK_URL` if set. The marketing Function App now carries the portal's SMTP settings.
+  - **Pages:** `/marketing/issues/` (Open / Fixed / Verified / Ignored / Audits with crawl + OpenRush import / Alerts), `view.php` (status actions, assignee, fix spec, pages), `export.php`. Page Inventory detail links each check to its issue.
 
 ### Phase 2 (stubs only until scheduled)
 
@@ -482,7 +489,7 @@ One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
 - Richer Task SLA / offshore MFA policies if not already in portal.
 - Adobe CMS integration — **explicitly out of scope** until Adobe AI/MCP exists.
 
-**Hardening after S4:** Key Vault for SEO keys, job failure alerts, unit-burn dashboard, runbook `docs/seo-ops/RUNBOOK.md`.
+**Hardening after S4:** Key Vault for SEO keys, unit-burn dashboard, runbook `docs/seo-ops/RUNBOOK.md` (job failure alerts landed in S4).
 
 ---
 
@@ -531,4 +538,4 @@ Console operator target remains ~8–10 h/week once habits form; early weeks may
 
 ## 14. Immediate next step after this spec
 
-S0–S3 are built (GHL ingest deferred — metrics and responses are manual until it lands). Next: **S4** (harden), and the GHL ingest when API access is approved.
+S0–S4 are built (GHL ingest deferred — metrics and responses are manual until it lands). Next: the remaining hardening items (Key Vault for keys, unit-burn dashboard, runbook), the GHL ingest when API access is approved, then Phase 2.

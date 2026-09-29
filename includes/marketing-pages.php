@@ -42,6 +42,12 @@ const MKT_PAGE_ISSUES = [
     'canonical_elsewhere' => ['Canonical points elsewhere', 'warn', 'The canonical tag names a different URL, so Google may index that one instead.'],
     'thin'                => ['Thin content', 'warn', 'Few words on the page; add explanatory copy so it can rank.'],
     'redirects'           => ['Redirects', 'info', 'The URL redirects; link to and list the final URL instead.'],
+    'short_title'         => ['Title too short', 'info', 'Very short titles waste the space Google gives; aim for 50–60 characters with the main keyword.'],
+    'duplicate_meta'      => ['Duplicate meta description', 'info', 'Another live page has the same description; write one per page.'],
+    'missing_schema'      => ['No structured data', 'info', 'Add JSON-LD (Product, Organization, Article or BreadcrumbList as fits) so Google can show rich results.'],
+    'missing_alt'         => ['Images without alt text', 'info', 'Describe each meaningful image in its alt text; leave decorative images alt="" on purpose.'],
+    'legacy_brand'        => ['Legacy brand name', 'error', 'The page still shows an old or misspelled brand name; change it to the current brand.'],
+    'or_low_content'      => ['Low content (OpenRush)', 'warn', 'OpenRush judged the page low on content; add explanatory copy.'],
 ];
 
 function mkt_page_issue_info(string $code): array
@@ -55,6 +61,9 @@ function mkt_page_issue_info(string $code): array
     }
     if ($code === 'unreachable') {
         return ['code' => $code, 'label' => 'Unreachable', 'severity' => 'error', 'advice' => 'The crawler could not reach the page (timeout or connection error).'];
+    }
+    if (str_starts_with($code, 'or_')) {
+        return ['code' => $code, 'label' => ucfirst(str_replace('_', ' ', substr($code, 3))) . ' (OpenRush)', 'severity' => 'info', 'advice' => 'Reported by the OpenRush site audit.'];
     }
 
     return ['code' => $code, 'label' => $code, 'severity' => 'info', 'advice' => ''];
