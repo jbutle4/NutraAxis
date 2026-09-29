@@ -1,7 +1,7 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-calendar.php';
-require dirname(__DIR__, 2) . '/includes/marketing-performance.php';
+require dirname(__DIR__, 2) . '/includes/marketing-engagement.php';
 require dirname(__DIR__, 2) . '/includes/process-runner.php';
 
 auth_require_module_read('marketing-campaigns');
@@ -184,6 +184,33 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
             <span class="form-hint">— last visit <?= htmlspecialchars(marketing_format_date($traffic[0]['MetricDate'])) ?></span>
             <?php endif; ?>
             <a class="btn-text" href="/marketing/performance/?tab=assets">All assets</a>
+          </dd>
+          <?php
+          $metrics = mkt_asset_metrics((int) $asset['AssetID']);
+          $latestMetric = $metrics[0] ?? null;
+          $score = mkt_score_latest('asset', (int) $asset['AssetID']);
+          $metricSummary = [];
+          if ($latestMetric !== null) {
+              foreach (MKT_METRIC_FIELDS as $column => [$label]) {
+                  if ($latestMetric[$column] !== null) {
+                      $metricSummary[] = number_format((int) $latestMetric[$column]) . ' ' . strtolower($label);
+                  }
+              }
+          }
+          ?>
+          <dt>Post metrics</dt>
+          <dd>
+            <?= $latestMetric === null ? 'None entered yet' : htmlspecialchars(implode(' · ', array_slice($metricSummary, 0, 6))) . ' <span class="form-hint">— as of ' . htmlspecialchars(marketing_format_date($latestMetric['AsOf'])) . '</span>' ?>
+            <a class="btn-text" href="/marketing/performance/metrics.php?asset_id=<?= (int) $asset['AssetID'] ?>"><?= $canUpdate ? 'Record metrics' : 'History' ?></a>
+          </dd>
+          <dt>Engagement score</dt>
+          <dd>
+            <?php if ($score === null): ?>
+            Not scored yet <span class="form-hint">(scores run nightly)</span>
+            <?php else: ?>
+            <strong><?= number_format((float) $score['Score'], 0) ?></strong> / 100 · <?= htmlspecialchars(MKT_SCORE_CONFIDENCE[$score['Confidence']] ?? (string) $score['Confidence']) ?>
+            <span class="form-hint">— <?= htmlspecialchars(marketing_format_date($score['ScoreDay'])) ?></span>
+            <?php endif; ?>
           </dd>
           <?php endif; ?>
           <?php if ($warnings !== []): ?><dt>Warnings</dt><dd style="color:var(--danger)">⚠ <?= htmlspecialchars(implode(' ', $warnings)) ?></dd><?php endif; ?>

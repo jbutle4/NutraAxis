@@ -7,6 +7,7 @@ const campaign = require('../jobs/campaign');
 const content = require('../jobs/content');
 const seoPages = require('../jobs/seo-pages');
 const seoAnalytics = require('../jobs/seo-analytics');
+const engagement = require('../jobs/engagement');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
@@ -125,6 +126,29 @@ const JOBS = {
     run: (params) => seoAnalytics.ga4Ingest(params),
     message: (r) => `${r.start} to ${r.end}${r.backfill ? ' (backfill)' : ''}: ${r.days ?? 0} days, ${r.sessions ?? 0} sessions; `
       + `${r.landing_rows ?? 0} landing rows, ${r.utm_rows ?? 0} tagged rows — ${r.asset_sessions ?? 0} sessions on ${r.assets_with_sessions ?? 0} campaign assets.`,
+  },
+  'engagement-score': {
+    name: 'Engagement — Nightly Scores',
+    run: (params) => engagement.score(params),
+    message: (r) => (r.assets || r.content
+      ? `Scored ${r.assets} assets and ${r.content} content pieces → ${r.campaigns} campaigns, ${r.topics} topics, ${r.interests} interests`
+        + (r.weighted_interests ? `; ${r.weights_changed} interest weights moved.` : '; not enough scores yet to weight interests.')
+      : 'Nothing to score yet — no posted assets or published content.'),
+  },
+  'engagement-triage': {
+    name: 'Response Inbox — Triage',
+    run: (params) => engagement.triage(params),
+    message: (r) => `${r.triaged ?? 0} responses triaged`
+      + (r.escalated ? `, ${r.escalated} escalated to compliance` : '')
+      + (r.failed ? `, ${r.failed} failed (will retry)` : '') + costText(r),
+  },
+  'engagement-digest': {
+    name: 'Engagement — Monday Digest',
+    run: (params) => engagement.digest(params),
+    message: (r) => (r.sparse
+      ? `Week ${r.period_start} – ${r.period_end}: not enough data yet; no tasks opened.`
+      : `Week ${r.period_start} – ${r.period_end}: digest ready, ${r.tasks} tasks opened`
+        + (r.dropped ? ` (${r.dropped} recommendations dropped — no traceable evidence)` : '') + costText(r)),
   },
 };
 

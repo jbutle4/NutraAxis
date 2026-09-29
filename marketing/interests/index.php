@@ -59,11 +59,11 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
-            <tr><th>Interest</th><th>Area / audience</th><th>Priority</th><th>Include terms</th><th>Sources</th><th>Items (7 days)</th><th>AI agent</th><th>Status</th></tr>
+            <tr><th>Interest</th><th>Area / audience</th><th>Priority</th><th>Performance</th><th>Include terms</th><th>Sources</th><th>Items (7 days)</th><th>AI agent</th><th>Status</th></tr>
           </thead>
           <tbody>
             <?php if ($interests === []): ?>
-            <tr><td colspan="8">No interests yet. Create one to start harvesting — each interest needs include terms or search queries and at least one source.</td></tr>
+            <tr><td colspan="9">No interests yet. Create one to start harvesting — each interest needs include terms or search queries and at least one source.</td></tr>
             <?php endif; ?>
             <?php foreach ($interests as $row): ?>
             <tr>
@@ -72,7 +72,12 @@ require dirname(__DIR__, 2) . '/includes/header.php';
                 <?php if (!empty($row['Description'])): ?><br><span class="form-hint"><?= htmlspecialchars(mb_strimwidth((string) $row['Description'], 0, 120, '…')) ?></span><?php endif; ?>
               </td>
               <td><?= htmlspecialchars(implode(' · ', array_filter([(string) ($row['TherapeuticArea'] ?? ''), (string) ($row['Audience'] ?? '')]))) ?: '—' ?></td>
-              <td><?= (int) $row['Priority'] ?></td>
+              <td><?= (int) $row['Priority'] ?><?= $row['SuggestedPriority'] !== null && (int) $row['SuggestedPriority'] !== (int) $row['Priority'] ? ' <span class="form-hint">→ ' . (int) $row['SuggestedPriority'] . ' suggested</span>' : '' ?></td>
+              <td>
+                <?php if ($row['PerformanceScore'] === null): ?>—<?php else: ?>
+                <?= number_format((float) $row['PerformanceScore'], 0) ?><?= (float) $row['RelevanceWeight'] !== 1.0 ? ' <span class="form-hint">(weight ' . number_format((float) $row['RelevanceWeight'], 2) . '×)</span>' : '' ?>
+                <?php endif; ?>
+              </td>
               <td><?= (int) $row['IncludeCount'] ?></td>
               <td><?= (int) $row['SourceCount'] ?></td>
               <td><a href="/marketing/content-harvester/?interest_id=<?= (int) $row['InterestID'] ?>"><?= (int) $row['Items7d'] ?></a></td>

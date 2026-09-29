@@ -62,15 +62,16 @@ function clamp01(value) {
  * Validate one model reply against the taxonomy and write it: per-interest scores, tags, study facts,
  * and scored/discarded status. Items people already actioned (no longer "new") are left alone.
  */
-async function applyScore(pool, itemId, parsed, taxonomy, threshold) {
+async function applyScore(pool, itemId, parsed, taxonomy, threshold, weights) {
   const scores = [];
   for (const [key, value] of Object.entries(parsed.scores || {})) {
     const interestId = Number(key);
     const relevance = clamp01(value);
     if (taxonomy.interestIds.has(interestId) && relevance !== null && relevance > 0) scores.push([interestId, relevance]);
   }
-  scores.sort((a, b) => b[1] - a[1]);
-  const max = scores.length ? scores[0][1] : 0;
+  const weighted = (entry) => Math.min(1, entry[1] * (weights.get(entry[0]) ?? 1));
+  scores.sort((a, b) => weighted(b) - weighted(a));
+  const max = scores.length ? clamp01(weighted(scores[0])) : 0;
   const evidenceType = EVIDENCE_TYPES.has(parsed.evidence_type) ? parsed.evidence_type : null;
   const areas = matchVocabulary(parsed.therapeutic_areas, taxonomy.areas);
   const products = matchVocabulary(parsed.products, taxonomy.products.map((row) => row.Name));
@@ -127,6 +128,8 @@ async function collectBatch(pool, settings, batch, taxonomy, processLogId) {
   }
 
   const threshold = settingNumber(settings, 'research.relevance_threshold', 0.6);
+  const weights = new Map((await pool.request().query('SELECT InterestID, RelevanceWeight FROM dbo.MktInterest')).recordset
+    .map((row) => [row.InterestID, Number(row.RelevanceWeight) || 1]));
   const results = await fetchAnthropicBatchResults(status.results_url);
   const tokens = { input: 0, output: 0, billedInput: 0 };
   const retry = [];
@@ -156,7 +159,7 @@ async function collectBatch(pool, settings, batch, taxonomy, processLogId) {
       retry.push(itemId);
       continue;
     }
-    const outcome = await applyScore(pool, itemId, parsed, taxonomy, threshold);
+    const outcome = await applyScore(pool, itemId, parsed, taxonomy, threshold, weights);
     if (outcome === 'scored') counts.scored += 1;
     else if (outcome === 'discarded') counts.discarded += 1;
   }

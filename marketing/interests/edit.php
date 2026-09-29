@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-topics.php';
+require dirname(__DIR__, 2) . '/includes/marketing-engagement.php';
 
 auth_require_module_read('research-interests');
 
@@ -39,6 +40,12 @@ if ($existing === null && !empty($_GET['from_topic'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$canSave) {
         auth_render_access_denied('You do not have permission to save interests.');
+    }
+    if ($id !== null && (string) ($_POST['action'] ?? '') === 'apply_priority') {
+        $applied = mkt_interest_apply_priority($id);
+        marketing_redirect('/marketing/interests/edit.php', ['id' => $id] + ($applied['ok']
+            ? ['notice' => 'Priority set to ' . $applied['priority'] . '.']
+            : ['error' => $applied['error']]));
     }
     $form = array_merge($form, $_POST, ['source_ids' => array_map('intval', (array) ($_POST['source_ids'] ?? []))]);
     $result = mkt_interest_save($_POST, $id);
@@ -88,7 +95,34 @@ $select = static function (string $name, array $options, string $current, string
           'title'      => $title,
           'lead'       => 'Include terms are added to the Keyword Universe automatically. Exclude terms and queries steer relevance scoring and the weekly AI research agent.',
       ]); ?>
-      <?php marketing_render_notice(null, $error); ?>
+      <?php marketing_render_notice($_GET['notice'] ?? null, $error ?? ($_GET['error'] ?? null)); ?>
+
+      <?php if ($existing !== null && $existing['PerformanceScore'] !== null): ?>
+      <div class="detail-card" style="margin-bottom:1rem">
+        <dl class="detail-list detail-list-inline">
+          <dt>Engagement score</dt>
+          <dd>
+            <?= number_format((float) $existing['PerformanceScore'], 0) ?> / 100
+            <span class="form-hint">— average of its topics' campaign and content scores<?= !empty($existing['PerformanceAt']) ? ', ' . htmlspecialchars(marketing_format_datetime($existing['PerformanceAt'])) : '' ?></span>
+            <a class="btn-text" href="/marketing/performance/?tab=scores&amp;level=interest">All interest scores</a>
+          </dd>
+          <dt>Relevance weight</dt>
+          <dd><?= number_format((float) $existing['RelevanceWeight'], 2) ?>× <span class="form-hint">— multiplies harvested items' relevance for this interest when topics are scored</span></dd>
+          <?php if ($existing['SuggestedPriority'] !== null && (int) $existing['SuggestedPriority'] !== (int) $existing['Priority']): ?>
+          <dt>Suggested priority</dt>
+          <dd>
+            <?= (int) $existing['SuggestedPriority'] ?> <span class="form-hint">(now <?= (int) $existing['Priority'] ?>)</span>
+            <?php if ($canSave): ?>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="apply_priority" />
+              <button type="submit" class="btn-text">Apply suggested priority</button>
+            </form>
+            <?php endif; ?>
+          </dd>
+          <?php endif; ?>
+        </dl>
+      </div>
+      <?php endif; ?>
 
       <form class="admin-form" method="post">
         <div class="form-grid">

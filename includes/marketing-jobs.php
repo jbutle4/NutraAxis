@@ -101,6 +101,24 @@ function marketing_process_registry(): array
             'function_name' => 'marketing-ga4',
             'schedule'      => 'Daily 04:45 CT',
         ],
+        'engagement-score' => [
+            'name'          => 'Engagement — Nightly Scores',
+            'description'   => 'Scores each posted asset and published piece from GA4 visits, entered post and email metrics, and responses; rolls scores up to campaigns, topics and interests, then adjusts interest relevance weights and suggested priorities.',
+            'function_name' => 'marketing-engagement-score',
+            'schedule'      => 'Daily 05:40 CT (and on demand)',
+        ],
+        'engagement-triage' => [
+            'name'          => 'Response Inbox — Triage',
+            'description'   => 'Labels new responses with AI plus keyword rules (redacted text only). Claims-risk and possible adverse events open a 24-hour compliance task.',
+            'function_name' => 'marketing-engagement-triage',
+            'schedule'      => 'Every 6 hours (and when a response is added)',
+        ],
+        'engagement-digest' => [
+            'name'          => 'Engagement — Monday Digest',
+            'description'   => 'Summarizes last week and opens up to 5 recommended tasks, each tied to scored assets or other facts.',
+            'function_name' => 'marketing-digest',
+            'schedule'      => 'Weekly, Monday 07:00 CT (and on demand)',
+        ],
     ];
 
     $registry = [];
