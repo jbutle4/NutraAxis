@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/marketing-content.php';
+require_once __DIR__ . '/marketing-engagement.php';
 
 const MKT_TASK_ROLES = [
     'writer'      => 'Writer',
@@ -172,6 +173,8 @@ function mkt_tasks_desired(): array
                 'Detail' => 'The scheduled time has passed — check each post is live and mark it posted with its URL.']);
         }
     }
+
+    mkt_response_desired_tasks($add);
 
     return $tasks;
 }
