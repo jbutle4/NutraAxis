@@ -4,6 +4,9 @@ const pages = require('../mkt/pages');
 const issues = require('../mkt/issues');
 
 const MAX_RUN_MS = 8 * 60 * 1000;
+// Blog posts all live at one address (/our-blog?post=…) and are drawn by script, so the crawler can neither
+// tell them apart nor see their text; the blog page itself is crawled like any other site page.
+const NOT_ON_BLOG = `NOT EXISTS (SELECT 1 FROM dbo.MktBlogPost b WHERE b.ContentID = c.ContentID AND b.Status = N'published')`;
 
 function context(settings) {
   const siteUrl = settings['pages.site_url'] || 'https://www.nutraaxislabs.com';
@@ -32,7 +35,7 @@ function splitKeywords(text) {
 /** Published Content Pipeline pieces become content pages, and their keywords seed the page keyword map. */
 async function syncPublishedContent(pool, ctx, contentId = null) {
   const request = pool.request();
-  let where = `c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N''`;
+  let where = `c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N'' AND ${NOT_ON_BLOG}`;
   if (contentId) {
     request.input('cid', sql.Int, contentId);
     where += ' AND c.ContentID = @cid';
@@ -223,12 +226,12 @@ async function verifyPublished(params = {}) {
   try {
     const ctx = context(await loadSettings(pool));
     const request = pool.request();
-    let where = `c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N''
+    let where = `c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N'' AND ${NOT_ON_BLOG}
       AND NOT EXISTS (SELECT 1 FROM dbo.MktPage p WHERE p.ContentID = c.ContentID AND p.LastStatusCode = 200
                         AND p.LastCrawledAt >= c.PublishedAt)`;
     if (contentId) {
       request.input('cid', sql.Int, contentId);
-      where = `c.ContentID = @cid AND c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N''`;
+      where = `c.ContentID = @cid AND c.Stage IN (N'published', N'monitoring') AND c.PublishedUrl IS NOT NULL AND c.PublishedUrl <> N'' AND ${NOT_ON_BLOG}`;
     }
     const due = (await request.query(`SELECT c.ContentID, c.PublishedUrl, v.Title FROM dbo.MktContent c LEFT JOIN dbo.MktContentVersion v ON v.VersionID = c.CurrentVersionID WHERE ${where}`)).recordset;
     if (due.length === 0) {
