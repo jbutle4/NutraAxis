@@ -204,6 +204,10 @@ $keepFields = array_filter(['product' => $filters['product'], 'status_filter' =>
         <div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start">
           <?php if ($canUpdate): ?><a class="btn-text" href="<?= htmlspecialchars($baseHref) ?>?tab=add">Add a source</a><?php endif; ?>
           <a class="btn-text" href="<?= htmlspecialchars($baseHref) ?>?tab=library&amp;export=csv">Export citations</a>
+          <?php if (auth_can_read_module('research-output')): $bibQuery = http_build_query(array_filter(['type' => 'bibliography', 'product' => $filters['product'], 'area' => $filters['area'], 'level' => $filters['level']])); ?>
+          <a class="btn-text" href="/marketing/output-generator/document.php?<?= htmlspecialchars($bibQuery) ?>" target="_blank" rel="noopener">Bibliography (print / PDF)</a>
+          <a class="btn-text" href="/marketing/output-generator/document.php?<?= htmlspecialchars($bibQuery) ?>&amp;format=docx">Bibliography (Word)</a>
+          <?php endif; ?>
         </div>
       </div>
 

@@ -117,7 +117,9 @@ $e = static fn(string $key): string => htmlspecialchars($form[$key]);
 
       <?php if ($id !== null): ?>
       <h2 class="hub-section-title">Claims (<?= count($claims) ?>)</h2>
-      <?php render_list_page_toolbar('<a class="btn-secondary" href="/marketing/claims-matrix/?product_id=' . $id . '">Manage claims</a>'); ?>
+      <?php render_list_page_toolbar('<a class="btn-secondary" href="/marketing/claims-matrix/?product_id=' . $id . '">Manage claims</a>'
+          . (auth_can_read_module('research-output') ? ' <a class="btn-text" href="/marketing/output-generator/document.php?type=evidence-pack&amp;product_id=' . $id . '" target="_blank" rel="noopener">Evidence pack</a>'
+              . ' <a class="btn-text" href="/marketing/output-generator/document.php?type=evidence-pack&amp;product_id=' . $id . '&amp;format=docx">Evidence pack (Word)</a>' : '')); ?>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr><th>Type</th><th>Claim wording</th><th>Evidence</th><th>Refs</th><th>Status</th></tr></thead>

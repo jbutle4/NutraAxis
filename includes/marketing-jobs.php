@@ -119,6 +119,12 @@ function marketing_process_registry(): array
             'function_name' => 'marketing-digest',
             'schedule'      => 'Weekly, Monday 07:00 CT (and on demand)',
         ],
+        'report-highlights' => [
+            'name'          => 'Reports — Monthly Highlights',
+            'description'   => 'Writes the AI "Highlights" section for frozen monthly reports from the report\'s aggregate figures only. Skips when no frozen report needs highlights.',
+            'function_name' => 'marketing-report-highlights',
+            'schedule'      => 'Days 2–10 of each month, 09:15 CT (and on demand from Reports)',
+        ],
         'seo-alerts' => [
             'name'          => 'Marketing Alerts — Daily Check',
             'description'   => 'Checks the alert rules (failed scheduled jobs, traffic drops against a 4-week baseline, legacy brand names, high-severity site issues, overdue compliance reviews), resolves cleared alerts and emails new ones.',

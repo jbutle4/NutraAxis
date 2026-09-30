@@ -140,6 +140,9 @@ $status = (string) $topic['Status'];
         <a class="btn-secondary" href="/marketing/campaigns/?tab=new&amp;topic_id=<?= $id ?>">Start a campaign</a>
         <a class="btn-secondary" href="/marketing/content/?tab=new&amp;topic_id=<?= $id ?>">Start a long-form piece</a>      </div>
       <?php endif; ?>
+      <?php if (in_array($status, ['accepted', 'proposed', 'parked'], true) && auth_can_read_module('research-output')): ?>
+      <p class="form-hint">Topic research brief: <a href="/marketing/output-generator/document.php?type=topic&amp;topic_id=<?= $id ?>" target="_blank" rel="noopener">Open (print / PDF)</a> · <a href="/marketing/output-generator/document.php?type=topic&amp;topic_id=<?= $id ?>&amp;format=docx">Word</a></p>
+      <?php endif; ?>
 
       <?php if (!empty($topic['IsEmerging'])): ?>
       <div class="status-banner">

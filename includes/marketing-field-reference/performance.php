@@ -363,4 +363,21 @@ return [
             ],
         ],
     ],
+    'report-review' => [
+        'page'    => 'marketing-reports',
+        'form'    => 'Reports → month panel',
+        'open'    => ['marketing-reports', ''],
+        'who'     => 'Marketing admin or coordinator (Update access)',
+        'purpose' => 'Freezes a closed month’s report, has AI write its highlights, and records that someone has reviewed it.',
+        'note'    => 'A closed month freezes by itself from the 2nd of the next month, once Search Console and Analytics have data through its last day (by reports.freeze_after_days at the latest), and the highlights are written by the scheduled job that morning. **Freeze now** saves a closed month early. **Refresh snapshot** replaces the saved figures with current data and rewrites the highlights. **Rewrite highlights** runs the AI again on the saved figures (about $0.02). Only aggregate figures go to the AI – no contact details.',
+        'fields'  => [
+            [
+                'field' => 'Note',
+                'enter' => 'Optional: what you checked or acted on, up to 1,000 characters. Example: **Organic search up; asked the writer for two more GLP-1 pieces.**',
+                'now'   => '**Mark reviewed** records you, the time and the note on the month, and the “Review the … marketing report” task closes itself.',
+                'later' => 'Shown on the month panel and in the Reviewed column.',
+                'watch' => 'Read the highlights against the tables before sharing the report – they are AI-written from the figures and can misread small numbers.',
+            ],
+        ],
+    ],
 ];
