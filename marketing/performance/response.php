@@ -114,6 +114,7 @@ $by = static fn(?string $name, ?string $at): string => $at ? htmlspecialchars(mk
       <h2 class="hub-section-title">Compliance decision</h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="clear" />
+        <?php marketing_render_field_guide_link('response-compliance'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="decision">Decision</label>
@@ -138,6 +139,7 @@ $by = static fn(?string $name, ?string $at): string => $at ? htmlspecialchars(mk
       <?php if ($row['ComplianceNote']): ?><p><strong>Compliance guidance:</strong> <?= htmlspecialchars((string) $row['ComplianceNote']) ?></p><?php endif; ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="replied" />
+        <?php marketing_render_field_guide_link('response-reply'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="reply_note">What we replied</label>
@@ -151,6 +153,7 @@ $by = static fn(?string $name, ?string $at): string => $at ? htmlspecialchars(mk
       <?php if ($canUpdate): ?>
       <h2 class="hub-section-title">Other actions</h2>
       <?php if (in_array($status, ['new', 'open', 'escalated'], true)): ?>
+      <?php marketing_render_field_guide_link('response-actions'); ?>
       <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.75rem">
         <input type="hidden" name="action" value="label" />
         <label for="label">Label</label>

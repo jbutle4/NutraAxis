@@ -67,6 +67,7 @@ $e = static fn(string $key): string => htmlspecialchars($form[$key]);
 
       <?php if ($canEdit): ?>
       <form class="admin-form" method="post" action="/marketing/claims-matrix/product.php<?= $id !== null ? '?id=' . $id : '' ?>">
+        <?php marketing_render_field_guide_link('claim-product'); ?>
         <div class="form-grid">
           <div class="form-group"><label for="name">Name</label><input class="form-input" id="name" name="name" required maxlength="100" value="<?= $e('name') ?>" /></div>
           <div class="form-group">

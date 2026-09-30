@@ -132,6 +132,7 @@ $by = static fn(?string $name, ?string $at): string => htmlspecialchars(trim(($n
       <?php if (in_array($status, ['new', 'open'], true) && !$fromOpenRush): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="fixed" />
+        <?php marketing_render_field_guide_link('issue-fixed'); ?>
         <div class="form-group"><label for="fix_note">Fix note</label><input class="form-input" type="text" id="fix_note" name="note" maxlength="2000" placeholder="Optional — what was changed, by whom" /></div>
         <div class="form-actions"><button type="submit" class="btn-primary" title="Recrawls the open pages right away; verified if the problem is gone">Mark fixed and recheck</button></div>
       </form>
@@ -142,6 +143,7 @@ $by = static fn(?string $name, ?string $at): string => htmlspecialchars(trim(($n
       <div class="form-grid" style="gap:1rem">
         <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
           <input type="hidden" name="action" value="assign" />
+          <?php marketing_render_field_guide_link('issue-triage'); ?>
           <div class="form-group">
             <label for="assignee">Assignee</label>
             <select class="form-input" id="assignee" name="assignee">

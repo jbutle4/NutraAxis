@@ -114,6 +114,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <h2 class="hub-section-title"><?= $versions === [] ? 'Create prompt' : 'New version (based on the active version)' ?></h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>?key=<?= rawurlencode($key) ?>">
         <input type="hidden" name="action" value="create" />
+        <?php marketing_render_field_guide_link('prompt-version'); ?>
         <div class="form-grid">
           <div class="form-group">
             <label for="prompt_key">Prompt key</label>

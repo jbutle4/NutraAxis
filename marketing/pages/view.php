@@ -161,6 +161,7 @@ $changeLabels = ['StatusCode' => 'Status', 'Title' => 'Title', 'MetaDescription'
       </div>
       <?php endif; ?>
       <?php if ($canUpdate): ?>
+      <?php marketing_render_field_guide_link('page-keyword'); ?>
       <form class="mkt-inline-form" method="post" action="/marketing/pages/view.php">
         <?= $post('keyword_add') ?>
         <label for="keyword">Add keyword</label>

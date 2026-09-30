@@ -193,6 +193,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         </form>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
           <?= $post('brief_save', 'brief') ?>
+          <?php marketing_render_field_guide_link('content-brief'); ?>
           <div class="form-group form-grid-full form-group--stacked">
             <label for="brief_text">Brief (Markdown)</label>
             <textarea class="form-input" id="brief_text" name="brief" rows="18" placeholder="Write the brief yourself, or generate it with AI above."><?= htmlspecialchars((string) ($content['BriefText'] ?? '')) ?></textarea>
@@ -249,6 +250,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       <?php if ($current !== null): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <?= $post('revise', 'claims') ?>
+        <?php marketing_render_field_guide_link('content-revise'); ?>
         <div class="form-group form-grid-full"><label for="instruction">AI revise</label><textarea class="form-input" id="instruction" name="instruction" rows="2" maxlength="2000" placeholder="Optional — blank fixes every claims-check finding and the latest reviewer note. e.g. 'Tighten the intro, add a section on dosing evidence.'"></textarea></div>
         <div class="form-actions"><button type="submit" class="btn-secondary">Revise with AI</button><span class="form-hint">Saved as a new version and re-checked.</span></div>
       </form>
@@ -261,6 +263,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <?= $post('review') ?>
         <input type="hidden" name="gate" value="<?= $gate ?>" />
+        <?php marketing_render_field_guide_link('content-review'); ?>
         <p class="form-hint">
           <?= $gate === 'compliance'
               ? 'Check every statement against the approved claims: no disease claims, no guarantees, findings attributed to their source, and the disclaimer where a ‡ claim is used. The claims-check findings are below.'
@@ -292,6 +295,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       </p>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <?= $post('blog_publish', 'publish') ?>
+        <?php marketing_render_field_guide_link('content-blog-publish'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="blog_slug">Post address</label>
@@ -315,6 +319,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       <p class="form-hint">Put version <?= (int) ($current['VersionNo'] ?? 0) ?> live on the site yourself (copy the HTML or Markdown below), then record the live URL here.</p>
       <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form">
         <?= $post('publish') ?>
+        <?php marketing_render_field_guide_link('content-live-url'); ?>
         <label for="url">Live URL</label>
         <input class="form-input" type="url" id="url" name="url" required maxlength="1000" style="min-width:24rem" value="<?= htmlspecialchars((string) ($content['PublishedUrl'] ?: $content['TargetUrl'] ?: '')) ?>" placeholder="<?= htmlspecialchars($siteUrl) ?>/…" />
         <button type="submit" class="btn-secondary">Mark published</button>
@@ -335,6 +340,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       </div>
       <form class="mkt-inline-form" method="post" action="<?= htmlspecialchars($selfHref) ?>" style="margin-bottom:0.5rem">
         <?= $post('blog_unpublish', 'publish') ?>
+        <?php marketing_render_field_guide_link('content-blog-unpublish'); ?>
         <input class="form-input" name="note" maxlength="2000" style="min-width:20rem" placeholder="Reason (optional, kept in the review history)" aria-label="Reason for unpublishing" />
         <button type="submit" class="btn-secondary" onclick="return confirm('Take this post off the public blog now?');">Unpublish from blog</button>
       </form>
@@ -345,6 +351,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
       <h2 class="hub-section-title" id="publish">Live page</h2>
       <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.5rem">
         <?= $post('update_url') ?>
+        <?php marketing_render_field_guide_link('content-live-url'); ?>
         <input class="form-input" type="url" name="url" required maxlength="1000" style="min-width:24rem" value="<?= htmlspecialchars((string) $content['PublishedUrl']) ?>" aria-label="Live URL" />
         <button type="submit" class="btn-secondary">Update URL</button>
       </form>
@@ -467,6 +474,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         <?php endif; ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
           <?= $post('save_version', 'claims') ?>
+          <?php marketing_render_field_guide_link('content-version'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full"><label for="v_title">Page title</label><input class="form-input" id="v_title" name="title" required maxlength="300" value="<?= htmlspecialchars((string) $editFrom['Title']) ?>" /></div>
             <div class="form-group form-grid-full"><label for="v_meta_title">Meta title</label><input class="form-input" id="v_meta_title" name="meta_title" maxlength="200" value="<?= htmlspecialchars((string) ($editFrom['MetaTitle'] ?? '')) ?>" placeholder="Up to <?= MKT_CONTENT_META_TITLE_MAX ?> characters" /></div>
@@ -547,6 +555,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         <summary class="hub-section-title" style="cursor:pointer">Details</summary>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
           <?= $post('details', 'details') ?>
+          <?php marketing_render_field_guide_link('content-details'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full"><label for="d_title">Working title</label><input class="form-input" id="d_title" name="title" required maxlength="300" value="<?= htmlspecialchars((string) $content['Title']) ?>" /></div>
             <?php if (!$locked): ?>

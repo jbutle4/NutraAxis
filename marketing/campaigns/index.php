@@ -180,6 +180,7 @@ if (!$canCreate) {
         <?php else: ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>?tab=new">
           <input type="hidden" name="action" value="create" />
+          <?php marketing_render_field_guide_link('campaign-new'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full">
               <label for="topic_id">Topic</label>

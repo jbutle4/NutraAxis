@@ -169,6 +169,7 @@ $form = [
       <h2 class="hub-section-title">Campaign settings</h2>
       <?php if ($canEdit): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
+        <?php marketing_render_field_guide_link('campaign-settings'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full"><label for="name">Name</label><input class="form-input" id="name" name="name" required maxlength="200" value="<?= htmlspecialchars($form['name']) ?>" /></div>
           <div class="form-group form-grid-full"><label for="cta_url">Call-to-action URL</label><input class="form-input" type="url" id="cta_url" name="cta_url" required maxlength="1000" value="<?= htmlspecialchars($form['cta_url']) ?>" /></div>

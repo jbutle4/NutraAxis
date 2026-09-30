@@ -93,7 +93,7 @@ $select = static function (string $name, array $options, string $current, string
           'back_label' => 'Back to Interests & Sources',
           'category'   => 'Marketing & Research',
           'title'      => $title,
-          'lead'       => 'Include terms are added to the Keyword Universe automatically. Exclude terms and queries steer relevance scoring and the weekly AI research agent.',
+          'lead'       => 'Include terms are added to the Keyword Universe automatically and guide relevance scoring. Exclude terms and search queries steer the weekly AI research agent.',
       ]); ?>
       <?php marketing_render_notice($_GET['notice'] ?? null, $error ?? ($_GET['error'] ?? null)); ?>
 
@@ -125,6 +125,7 @@ $select = static function (string $name, array $options, string $current, string
       <?php endif; ?>
 
       <form class="admin-form" method="post">
+        <?php marketing_render_field_guide_link('interest'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="name">Name</label>

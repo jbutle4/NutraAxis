@@ -176,6 +176,13 @@ function marketing_render_notice(?string $success, ?string $error = null): void
     }
 }
 
+/** Link from a form to its entry in the User Manual's Field reference, opened in a new tab. */
+function marketing_render_field_guide_link(string $formKey): void
+{
+    echo '<p class="mkt-field-guide"><a href="/marketing/manual/#field-' . htmlspecialchars($formKey) . '" target="_blank" rel="noopener">'
+        . 'Field guide: what to enter and how it is used</a></p>';
+}
+
 function mkt_status_badge_class(string $status): string
 {
     return match ($status) {

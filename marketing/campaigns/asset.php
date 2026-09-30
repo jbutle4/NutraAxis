@@ -220,6 +220,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
         <?php if ($status === 'approved' || $status === 'scheduled'): ?>
         <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form" style="margin-bottom:0.75rem">
           <input type="hidden" name="action" value="schedule" />
+          <?php marketing_render_field_guide_link('asset-publishing'); ?>
           <label for="at"><?= $status === 'approved' ? 'Schedule for' : 'Move to' ?> (Central)</label>
           <input class="form-input" type="datetime-local" id="at" name="at" required value="<?= htmlspecialchars(mkt_cal_input_value($asset['ScheduledAt']) ?: mkt_cal_now_local()->modify('+1 day')->format('Y-m-d') . 'T' . (mkt_cal_default_times()[(string) $asset['Channel']] ?? '09:00')) ?>" />
           <button type="submit" class="btn-<?= $status === 'approved' ? 'primary' : 'secondary' ?>"><?= $status === 'approved' ? 'Schedule' : 'Reschedule' ?></button>
@@ -251,6 +252,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
         <?php elseif ($status === 'posted'): ?>
         <form method="post" action="<?= htmlspecialchars($selfHref) ?>" class="mkt-inline-form">
           <input type="hidden" name="action" value="update_posted" />
+          <?php marketing_render_field_guide_link('asset-publishing'); ?>
           <input class="form-input" type="url" name="url" maxlength="1000" value="<?= htmlspecialchars((string) ($asset['ExternalPostUrl'] ?? '')) ?>" placeholder="Public post URL" aria-label="Public post URL" />
           <input class="form-input" name="ghl_id" maxlength="200" value="<?= htmlspecialchars((string) ($asset['ExternalPostID'] ?? '')) ?>" placeholder="GoHighLevel ID" aria-label="GoHighLevel ID" />
           <button type="submit" class="btn-secondary">Update</button>
@@ -264,6 +266,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="review" />
         <input type="hidden" name="gate" value="<?= $gate ?>" />
+        <?php marketing_render_field_guide_link('asset-review'); ?>
         <p class="form-hint">
           <?= $gate === 'compliance'
               ? 'Check every statement against the approved claims and the rules below: no disease claims, no guarantees, findings attributed to their source, and the disclaimer where a ‡ claim is used.'
@@ -353,6 +356,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
       <h2 class="hub-section-title">AI revise</h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="revise" />
+        <?php marketing_render_field_guide_link('asset-revise'); ?>
         <div class="form-group form-grid-full"><label for="instruction">Instruction</label><textarea class="form-input" id="instruction" name="instruction" rows="2" maxlength="2000" placeholder="Optional — blank fixes every claims-check finding. e.g. 'Shorter, lead with the study finding, drop the children angle.'"></textarea></div>
         <p class="form-hint">Rewrites this asset (Sonnet, about a cent), saves it as a new version and re-runs the claims check.</p>
         <div class="form-actions"><button type="submit" class="btn-secondary">Revise with AI</button></div>
@@ -366,6 +370,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
       <?php endif; ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="save" />
+        <?php marketing_render_field_guide_link('asset-edit'); ?>
         <div class="form-grid">
           <?php if ($isEmail): ?>
           <div class="form-group form-grid-full"><label for="subject">Subject</label><input class="form-input" id="subject" name="subject" maxlength="300" value="<?= htmlspecialchars($form['subject']) ?>" /></div>

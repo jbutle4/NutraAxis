@@ -4061,6 +4061,54 @@ body.te-print-page {
 .mkt-flow-facts { margin: 0.6rem 0 0; font-size: 0.88rem; }
 .mkt-flow-facts dt { color: var(--text-muted); font-weight: 600; }
 .mkt-flow-facts dd { margin: 0; line-height: 1.45; }
+.mkt-field-index {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.6rem 1.5rem;
+  margin: 0.75rem 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border, #dde5e4);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.mkt-field-index > div { display: flex; flex-direction: column; gap: 0.15rem; }
+.mkt-field-page > h3 { font-size: 1.15rem; margin: 1.5rem 0 0.25rem; }
+.mkt-field-form { margin: 0.75rem 0 1.5rem; }
+.mkt-field-form h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 1rem; font-size: 1rem; margin: 0 0 0.3rem; }
+.mkt-field-open { font-size: 0.85rem; font-weight: 500; }
+.mkt-field-form > p { max-width: 60rem; line-height: 1.5; margin: 0 0 0.4rem; }
+.mkt-field-meta { font-size: 0.9rem; color: var(--text-muted); }
+.mkt-field-table { font-size: 0.86rem; }
+.mkt-field-table th, .mkt-field-table td { vertical-align: top; line-height: 1.45; }
+.mkt-field-table thead th:nth-child(1) { width: 12%; }
+.mkt-field-table thead th:nth-child(2) { width: 22%; }
+.mkt-field-table thead th:nth-child(3) { width: 24%; }
+.mkt-field-table thead th:nth-child(4) { width: 21%; }
+.mkt-field-table tbody th {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text, #1a2e2d);
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  background: #fbfdfd;
+}
+.mkt-field-req {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #8f4225;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mkt-field-note { font-size: 0.88rem; color: var(--text-muted); }
+.mkt-field-guide { margin: 0 0 0.75rem; font-size: 0.88rem; text-align: right; }
+.mkt-field-guide a { color: var(--link-blue); text-decoration: underline; text-underline-offset: 2px; }
+.mkt-inline-form > .mkt-field-guide { flex-basis: 100%; margin: 0 0 0.15rem; }
+.mkt-field-guide a::before { content: "ⓘ "; text-decoration: none; display: inline-block; margin-right: 0.2rem; }
+.mkt-field-guide a:hover { color: var(--link-blue-hover); }
 
 @media print {
   .mkt-manual-print,

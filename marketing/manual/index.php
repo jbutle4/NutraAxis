@@ -2,6 +2,7 @@
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/marketing-manual.php';
 require dirname(__DIR__, 2) . '/includes/marketing-manual-flow.php';
+require dirname(__DIR__, 2) . '/includes/marketing-field-reference.php';
 
 auth_require_module_read('marketing-manual');
 
@@ -11,6 +12,7 @@ $access = mkt_manual_my_access();
 $workflows = mkt_manual_workflows();
 $pageIndex = mkt_manual_page_index();
 $pageGuide = mkt_manual_pages();
+$fieldPages = mkt_field_reference_by_page();
 $jobs = marketing_process_registry();
 
 $linkHtml = static function (?array $link): string {
@@ -34,6 +36,7 @@ $toc = [
     'rhythm'      => 'Operating rhythm (who does what, when)',
     'workflows'   => 'Step-by-step workflows',
     'pages'       => 'Page guide and how to analyze',
+    'fields'      => 'Field reference (what to enter on each form)',
     'alerts'      => 'Alerts',
     'schedules'   => 'Job schedules and task deadlines',
     'compliance'  => 'Compliance rules',
@@ -238,9 +241,35 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>How to analyze</dt><dd><?= $list($guide['analyze']) ?></dd></div>
             <?php endif; ?>
             <div><dt>Actions</dt><dd><?= $list($guide['actions']) ?></dd></div>
+            <?php if (isset($fieldPages[$slug])): ?>
+            <div><dt>Field reference</dt><dd><?= implode(' · ', array_map(static fn (string $key, array $form): string => '<a href="#field-' . htmlspecialchars($key) . '">' . htmlspecialchars($form['form']) . '</a>', array_keys($fieldPages[$slug]), $fieldPages[$slug])) ?></dd></div>
+            <?php endif; ?>
           </dl>
           <?php endif; ?>
         </article>
+        <?php endforeach; ?>
+      </section>
+
+      <section id="fields" class="mkt-manual-section">
+        <h2 class="hub-section-title">Field reference <a class="mkt-manual-top" href="#contents">Back to contents</a></h2>
+        <p>What to enter in every field on every form, what the system does with it as soon as you save, and what depends on it later. Each form in the portal has a <strong>Field guide</strong> link that opens its entry here in a new tab; <strong>Open this form</strong> goes the other way.</p>
+        <nav class="mkt-field-index" aria-label="Forms">
+          <?php foreach ($fieldPages as $slug => $forms): ?>
+          <div>
+            <strong><?= htmlspecialchars($pageIndex[$slug]['title'] ?? $slug) ?></strong>
+            <?php foreach ($forms as $key => $form): ?>
+            <a href="#field-<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($form['form']) ?></a>
+            <?php endforeach; ?>
+          </div>
+          <?php endforeach; ?>
+        </nav>
+        <?php foreach ($fieldPages as $slug => $forms): ?>
+        <div class="mkt-field-page" id="fields-<?= htmlspecialchars($slug) ?>">
+          <h3><?= htmlspecialchars($pageIndex[$slug]['title'] ?? $slug) ?></h3>
+          <?php foreach ($forms as $key => $form): ?>
+          <?= mkt_field_reference_render_form($key, $form) ?>
+          <?php endforeach; ?>
+        </div>
         <?php endforeach; ?>
       </section>
 

@@ -171,6 +171,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 <?php else: ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
         <input type="hidden" name="action" value="save_taxonomy" />
+        <?php marketing_render_field_guide_link('taxonomy'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="therapeutic_areas">Therapeutic areas</label>

@@ -189,6 +189,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php else: ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>?tab=add">
         <input type="hidden" name="action" value="add_item" />
+        <?php marketing_render_field_guide_link('item-add'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="url">URL</label>
