@@ -149,6 +149,18 @@ function marketing_process_registry(): array
             'schedule'    => 'On demand from a prospect',
             'on_demand'   => true,
         ],
+        'literature-add-source' => [
+            'name'        => 'Literature & Intelligence — Add Source',
+            'description' => 'Fetches a paper from PubMed (by PMID or DOI) or a trial from ClinicalTrials.gov, scores it like a research-feed item so its study facts and product tags are filled in, and adds it to the library — matched to a flyer reference when one is given.',
+            'schedule'    => 'On demand from Literature & Intelligence',
+            'on_demand'   => true,
+        ],
+        'literature-flyer-match' => [
+            'name'        => 'Literature & Intelligence — Match Flyer References',
+            'description' => 'Looks up unchecked product-flyer references in PubMed by first author, journal and year and saves up to five candidate papers for each. A person confirms the right one; nothing is matched automatically. No AI.',
+            'schedule'    => 'On demand from Literature & Intelligence',
+            'on_demand'   => true,
+        ],
     ];
 
     $registry = [];

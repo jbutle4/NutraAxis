@@ -744,7 +744,7 @@ $marketingSubModules = [
     [
         'slug'    => 'research-literature',
         'title'   => 'Literature & Intelligence',
-        'desc'    => 'Evidence library promoted from harvested peer-reviewed and regulatory items. Placeholder — S1b+.',
+        'desc'    => 'Evidence library behind claims and content, product-flyer references matched to their papers, claim coverage, and the regulatory watch.',
         'href'    => '/marketing/literature/',
         'icon'    => 'document',
         'tier'    => 'production',
