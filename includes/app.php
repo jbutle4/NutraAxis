@@ -754,7 +754,7 @@ $marketingSubModules = [
     [
         'slug'    => 'research-claims',
         'title'   => 'Claims Matrix',
-        'desc'    => 'Approved claims, evidence tiers, and compliance rules used by the claims check. Placeholder — S1b+.',
+        'desc'    => 'Approved claims, evidence tiers, and compliance rules used by the claims check.',
         'href'    => '/marketing/claims-matrix/',
         'icon'    => 'accounting',
         'tier'    => 'production',
@@ -824,7 +824,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-ranks',
         'title'   => 'Rank Tracker',
-        'desc'    => 'Keyword positions and competitor SERP movement. Placeholder — Phase 2.',
+        'desc'    => 'Keyword positions from Search Console and imported results, movers, and competitors on page 1.',
         'href'    => '/marketing/ranks/',
         'icon'    => 'trend',
         'tier'    => 'production',
@@ -834,7 +834,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-backlinks',
         'title'   => 'Backlinks & Outreach',
-        'desc'    => 'Link profile, prospects, and outreach tracking. Placeholder — Phase 2.',
+        'desc'    => 'Link profile, competitor link gap, disavow list, and outreach tracking with AI-drafted pitches.',
         'href'    => '/marketing/backlinks/',
         'icon'    => 'links',
         'tier'    => 'production',

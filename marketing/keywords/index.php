@@ -96,6 +96,13 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
               <?php endforeach; ?>
             </select>
           </div>
+          <div class="form-group">
+            <label for="track_rank">Track rank</label>
+            <div>
+              <input type="hidden" name="track_rank_present" value="1" />
+              <label><input type="checkbox" id="track_rank" name="track_rank" value="1" <?= (int) ($editing['TrackRank'] ?? 1) === 1 ? 'checked' : '' ?> /> Show in the Rank Tracker</label>
+            </div>
+          </div>
           <div class="form-group form-grid-full"><label for="notes">Notes</label><input class="form-input" id="notes" name="notes" maxlength="1000" value="<?= $field('Notes') ?>" /></div>
         </div>
         <div class="form-actions">
@@ -114,7 +121,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
             <label for="csv">Import CSV</label>
             <div>
               <input class="form-input" type="file" id="csv" name="csv" accept=".csv,text/csv" />
-              <p class="form-hint">Header row required. Columns: keyword, purpose (seo/interest/both), priority, cluster, intent, volume, difficulty, notes (status optional). Existing keywords are overwritten: a missing or blank column resets that field (priority 3, purpose seo, status active; the rest cleared), so include every column.</p>
+              <p class="form-hint">Header row required. Columns: keyword, purpose (seo/interest/both), priority, cluster, intent, volume, difficulty, notes (status and track optional). Existing keywords are overwritten: a missing or blank column resets that field (priority 3, purpose seo, status active; the rest cleared), so include every column. The exception is track (yes/no, for the Rank Tracker): if it is missing or blank, existing keywords keep their setting and new SEO/Both keywords are tracked.</p>
             </div>
           </div>
         </div>
@@ -155,10 +162,10 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
 
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Keyword</th><th>Purpose</th><th>Priority</th><th>Cluster</th><th>Intent</th><th>Volume</th><th>Difficulty</th><th>Interests</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Keyword</th><th>Purpose</th><th>Priority</th><th>Cluster</th><th>Intent</th><th>Volume</th><th>Difficulty</th><th>Interests</th><th>Rank tracked</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             <?php if ($keywords === []): ?>
-            <tr><td colspan="10">No keywords yet.</td></tr>
+            <tr><td colspan="11">No keywords yet.</td></tr>
             <?php endif; ?>
             <?php foreach ($keywords as $row): ?>
             <tr>
@@ -170,6 +177,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
               <td><?= $row['Volume'] !== null ? number_format((int) $row['Volume']) : '—' ?></td>
               <td><?= $row['Difficulty'] !== null ? (int) $row['Difficulty'] : '—' ?></td>
               <td><?= (int) $row['InterestLinks'] ?></td>
+              <td><?= (int) ($row['TrackRank'] ?? 0) === 1 ? 'Yes' : '—' ?></td>
               <td><?= mkt_render_badge((string) $row['Status'], MKT_RECORD_STATUSES) ?></td>
               <td><?php if (marketing_can_update()): ?><a href="<?= htmlspecialchars($baseHref) ?>?edit=<?= (int) $row['KeywordID'] ?>">Edit</a><?php endif; ?></td>
             </tr>
