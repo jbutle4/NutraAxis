@@ -375,7 +375,7 @@ $hidden = static fn(string $tabKey, int $assetId = 0): string => '<input type="h
 
       <?php else: ?>
         <?php $posted = mkt_cal_posted(); ?>
-        <p class="form-hint">The 100 most recent posts. Clicks and conversions join to these by <code>utm_content</code> = asset number once Engagement &amp; Performance is built.</p>
+        <p class="form-hint">The 100 most recent posts. Site visits and key events from GA4 are matched to each asset by its tracked link (<code>utm_content</code> = asset number) and reported on Engagement &amp; Performance.</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>Posted (Central)</th><th>Channel</th><th>Asset</th><th>Live post</th><th>GoHighLevel ID</th></tr></thead>

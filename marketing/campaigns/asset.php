@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $back(process_execute('campaign-revise-asset', ['asset_id' => $id, 'instruction' => (string) ($_POST['instruction'] ?? '')], PROCESS_LOG_TRIGGER_MANUAL, marketing_user_id()), 'AI revision saved and re-checked.');
     } elseif ($action === 'submit') {
         $result = mkt_asset_submit($id);
-        $back($result, !empty($result['compliance']) ? 'Submitted — waiting on compliance review.' : 'Submitted — no claims found, so it goes straight to editorial review.');
+        $back($result, !empty($result['compliance']) ? 'Submitted — waiting on compliance review.' : 'Submitted — the claims check found nothing that needs compliance (a perfect score, no claims, flag terms or health references), so it goes straight to editorial review.');
     } elseif ($action === 'review') {
         $result = mkt_asset_review($id, (string) ($_POST['gate'] ?? ''), (string) ($_POST['decision'] ?? ''), (string) ($_POST['note'] ?? ''));
         $back($result, match ($result['status'] ?? '') {
@@ -270,7 +270,7 @@ $gateLabels = ['submit' => 'Submitted', 'compliance' => 'Compliance', 'editorial
         <p class="form-hint">
           <?= $gate === 'compliance'
               ? 'Check every statement against the approved claims and the rules below: no disease claims, no guarantees, findings attributed to their source, and the disclaimer where a ‡ claim is used.'
-              : 'Voice, accuracy, channel fit and the call to action. Compliance has ' . ($asset['ComplianceStatus'] === 'not_required' ? 'not been required (the check found no claims).' : 'cleared this asset.') ?>
+              : 'Voice, accuracy, channel fit and the call to action. Compliance has ' . ($asset['ComplianceStatus'] === 'not_required' ? 'not been required (the claims check found no claims, flag terms or health references).' : 'cleared this asset.') ?>
         </p>
         <div class="form-group form-grid-full"><label for="note">Note</label><textarea class="form-input" id="note" name="note" rows="3" maxlength="2000" placeholder="Required when requesting changes"></textarea></div>
         <div class="form-actions">

@@ -61,7 +61,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
           'back_label' => $back['label'],
           'category'   => 'Marketing & Research',
           'title'      => 'Keyword Universe',
-          'lead'       => 'One keyword list for SEO targets and interest terms. Include terms added on an interest appear here with purpose "Interest".',
+          'lead'       => 'One keyword list for SEO targets and interest terms. Include terms added on an interest appear here automatically, with purpose "Interest" (or "Both" if the keyword was already an SEO target).',
           'permission' => auth_module_permission_label($activeSlug),
       ]);
       marketing_render_notice($_GET['notice'] ?? null, $error);
@@ -114,7 +114,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
             <label for="csv">Import CSV</label>
             <div>
               <input class="form-input" type="file" id="csv" name="csv" accept=".csv,text/csv" />
-              <p class="form-hint">Header row required. Columns: keyword, purpose (seo/interest/both), priority, cluster, intent, volume, difficulty, notes. Existing keywords are updated.</p>
+              <p class="form-hint">Header row required. Columns: keyword, purpose (seo/interest/both), priority, cluster, intent, volume, difficulty, notes (status optional). Existing keywords are overwritten: a missing or blank column resets that field (priority 3, purpose seo, status active; the rest cleared), so include every column.</p>
             </div>
           </div>
         </div>

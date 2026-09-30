@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notice = 'Evidence updated.';
     } elseif ($action === 'remove_item') {
         mkt_topic_remove_item($id, (int) ($_POST['item_id'] ?? 0));
-        $notice = 'Item removed from topic; it returns to the pool for the next clustering run.';
+        $notice = 'Item removed from topic; the next clustering run can group it again if it is recent enough.';
     } elseif ($action === 'link_claim') {
         $result = mkt_topic_link_claim($id, (int) ($_POST['claim_id'] ?? 0));
         $notice = 'Claim linked.';
@@ -220,7 +220,7 @@ $status = (string) $topic['Status'];
       <?php endif; ?>
 
       <h2 class="hub-section-title">Items (<?= count($items) ?>)</h2>
-      <p class="form-hint">Mark the items content should cite as evidence. Removing an item returns it to the pool for the next clustering run.</p>
+      <p class="form-hint">Mark the items content should cite as evidence. Removing an item returns it to the pool: the next clustering run can group it again (possibly back into this topic) if it was fetched in the last <?= (int) marketing_setting('research.cluster_lookback_days', '21') ?> days; older items drop out of topics.</p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr><th>Item</th><th>Evidence type</th><th>Relevance</th><th>Published</th><th>Evidence</th><?php if ($canEdit): ?><th>Actions</th><?php endif; ?></tr></thead>

@@ -60,6 +60,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 <?php if ($tab === 'jobs'): ?>
       <?php $lastRuns = marketing_jobs_last_runs(); ?>
       <h2 class="hub-section-title">Jobs</h2>
+      <p class="form-hint">Scheduled times are Central daylight time. The jobs run on UTC, so from November to mid-March each one runs an hour earlier by the clock (the Monday crawl at 04:00 CT, for example).</p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead>
@@ -348,7 +349,12 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php foreach ($settings as $key => $row): ?>
           <?php
             $value = (string) ($row['SettingValue'] ?? '');
-            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, ['brand.competitors', 'brand.terms', 'brand.audiences', 'brand.voice', 'pages.exclude_patterns', 'pages.type_rules', 'engagement.weights', 'engagement.adverse_terms', 'brand.legacy_terms', 'brand.legacy_allow_paths', 'alerts.rules', 'alerts.recipients'], true);
+            $multiline = str_contains($value, "\n") || strlen($value) > 90 || in_array($key, [
+                'alerts.recipients', 'alerts.rules', 'brand.audiences', 'brand.competitors', 'brand.legacy_allow_paths', 'brand.legacy_terms',
+                'brand.terms', 'brand.voice', 'calendar.default_times', 'campaign.channels', 'campaign.rules', 'claims.flag_terms',
+                'content.types', 'engagement.adverse_terms', 'engagement.weights', 'pages.exclude_patterns', 'pages.type_rules',
+                'tasks.sla_days', 'taxonomy.product_lines', 'taxonomy.therapeutic_areas',
+            ], true);
             $fieldId = 'setting-' . preg_replace('/[^a-z0-9]+/i', '-', $key);
           ?>
           <div class="form-group form-grid-full">

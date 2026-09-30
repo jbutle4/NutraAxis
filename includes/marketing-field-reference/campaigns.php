@@ -44,7 +44,7 @@ return [
                 'enter' => 'A number, default 3. **Series**: 2–10. **Email**: 1–6. **Single post**: always 1.',
                 'now'   => 'How many posts in the series or emails in the sequence the AI writes.',
                 'later' => 'Each part gets its own review and its own calendar slot.',
-                'watch' => 'Out-of-range numbers are changed without a warning: a series of 1 becomes 2, and an email sequence above 6 becomes 6. Ignored for a single post.',
+                'watch' => 'Numbers outside the range are refused with “Series campaigns need 2–10 parts.” or “Email campaigns need 1–6 parts.” Ignored for a single post.',
             ],
             [
                 'field' => 'Days between parts',

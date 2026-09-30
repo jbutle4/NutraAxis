@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $back($job('content-revise', ['instruction' => (string) ($_POST['instruction'] ?? '')]), 'AI revision saved and re-checked.');
         case 'submit':
             $result = mkt_content_submit($id);
-            $back($result, !empty($result['compliance']) ? 'Submitted — waiting on compliance review.' : 'Submitted — no claims found, so it goes straight to editorial review.');
+            $back($result, !empty($result['compliance']) ? 'Submitted — waiting on compliance review.' : 'Submitted — the claims check found nothing that needs compliance (a perfect score, no claims, flag terms or health references), so it goes straight to editorial review.');
         case 'review':
             $result = mkt_content_review($id, (string) ($_POST['gate'] ?? ''), (string) ($_POST['decision'] ?? ''), (string) ($_POST['note'] ?? ''));
             $back($result, match ($result['stage'] ?? '') {
@@ -267,7 +267,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         <p class="form-hint">
           <?= $gate === 'compliance'
               ? 'Check every statement against the approved claims: no disease claims, no guarantees, findings attributed to their source, and the disclaimer where a ‡ claim is used. The claims-check findings are below.'
-              : 'Accuracy, voice, structure, search intent and the call to action. Compliance ' . ($content['ComplianceStatus'] === 'not_required' ? 'was not required (the check found no claims).' : 'has cleared this version.') ?>
+              : 'Accuracy, voice, structure, search intent and the call to action. Compliance ' . ($content['ComplianceStatus'] === 'not_required' ? 'was not required (the claims check found no claims, flag terms or health references).' : 'has cleared this version.') ?>
           You are reviewing version <?= (int) ($current['VersionNo'] ?? 0) ?>.
         </p>
         <div class="form-group form-grid-full"><label for="note">Note</label><textarea class="form-input" id="note" name="note" rows="3" maxlength="2000" placeholder="Required when requesting changes"></textarea></div>
@@ -301,7 +301,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
             <label for="blog_slug">Post address</label>
             <input class="form-input" id="blog_slug" name="slug" required maxlength="160" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="<?= htmlspecialchars((string) ($blog['Slug'] ?? mkt_blog_suggest_slug((string) ($current['Title'] ?? $content['Title']), $id))) ?>" />
           </div>
-          <p class="form-hint form-grid-full">Live link: <code><?= htmlspecialchars(blog_page_url()) ?>?post=</code><em>address</em>. Lowercase letters, numbers and hyphens.<?= $blog !== null ? ' Changing it breaks links already shared.' : '' ?></p>
+          <p class="form-hint form-grid-full">Live link: <code><?= htmlspecialchars(blog_page_url()) ?>?post=</code><em>address</em>. 3–160 characters: lowercase letters, numbers and single hyphens, not starting or ending with a hyphen. Must not be used by another post.<?= $blog !== null ? ' Changing it breaks links already shared.' : '' ?></p>
           <div class="form-group form-grid-full"><label for="blog_excerpt">History summary</label><textarea class="form-input" id="blog_excerpt" name="excerpt" rows="2" maxlength="<?= MKT_BLOG_EXCERPT_MAX ?>"><?= htmlspecialchars((string) ($blog['Excerpt'] ?? ($current !== null ? mkt_blog_default_excerpt($current) : ''))) ?></textarea></div>
           <div class="form-group"><label for="blog_author">Byline</label><input class="form-input" id="blog_author" name="author" maxlength="150" value="<?= htmlspecialchars((string) ($blog['AuthorName'] ?? marketing_setting('blog.author', 'NutraAxis Team'))) ?>" /></div>
           <div class="form-group"><label for="blog_hero">Header image URL</label><input class="form-input" type="url" id="blog_hero" name="hero_image_url" maxlength="1000" value="<?= htmlspecialchars((string) ($blog['HeroImageUrl'] ?? '')) ?>" placeholder="Optional — https://…" /></div>
@@ -345,7 +345,7 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         <button type="submit" class="btn-secondary" onclick="return confirm('Take this post off the public blog now?');">Unpublish from blog</button>
       </form>
       <?php if ($stage === 'published'): ?>
-      <form method="post" action="<?= htmlspecialchars($selfHref) ?>"><?= $post('monitoring') ?><button type="submit" class="btn-text">Move to monitoring</button> <span class="form-hint">— the blog page's traffic shows under Site Pages as /our-blog.</span></form>
+      <form method="post" action="<?= htmlspecialchars($selfHref) ?>"><?= $post('monitoring') ?><button type="submit" class="btn-text">Move to monitoring</button> <span class="form-hint">— Page Inventory cannot track single blog posts; add /our-blog there to follow the whole blog's traffic as one page.</span></form>
       <?php endif; ?>
       <?php elseif (in_array($stage, ['published', 'monitoring'], true) && $canUpdate): ?>
       <h2 class="hub-section-title" id="publish">Live page</h2>
