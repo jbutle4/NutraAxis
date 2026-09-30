@@ -519,7 +519,7 @@ function mkt_content_submit(int $id): array
         'id'         => $id,
     ]);
     mkt_content_log($id, (int) $version['VersionID'], 'submit', 'submitted',
-        $needsCompliance ? 'Compliance review required.' : 'No claims found — compliance review not required.');
+        $needsCompliance ? 'Compliance review required.' : 'Claims check found nothing needing compliance — review not required.');
 
     return ['ok' => true, 'compliance' => $needsCompliance];
 }

@@ -114,7 +114,7 @@ function mkt_tasks_desired(): array
             case 'approved':
                 $add("content:$id:publish", $base + ['Title' => "Publish and record the URL: $title", 'TaskType' => 'content_publish',
                     'AssigneeRole' => 'coordinator', 'AssigneeUserID' => $owner, 'DueDate' => $pieceDue ?? mkt_task_due((string) $row['EditorialAt'], 'publish'),
-                    'Detail' => 'Put the approved version live on the site (nothing publishes automatically), then record the live URL.']);
+                    'Detail' => 'Nothing publishes automatically. A Marketing admin can press Publish to blog on the piece, which records the live URL itself; or put the approved version live on the site by hand, then record the live URL.']);
                 break;
         }
     }

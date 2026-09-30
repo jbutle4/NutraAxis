@@ -107,7 +107,7 @@ $select = static function (string $name, array $options, string $current, string
             <a class="btn-text" href="/marketing/performance/?tab=scores&amp;level=interest">All interest scores</a>
           </dd>
           <dt>Relevance weight</dt>
-          <dd><?= number_format((float) $existing['RelevanceWeight'], 2) ?>× <span class="form-hint">— multiplies harvested items' relevance for this interest when topics are scored</span></dd>
+          <dd><?= number_format((float) $existing['RelevanceWeight'], 2) ?>× <span class="form-hint">— multiplies each harvested item's relevance to this interest when items are scored; set from engagement scores</span></dd>
           <?php if ($existing['SuggestedPriority'] !== null && (int) $existing['SuggestedPriority'] !== (int) $existing['Priority']): ?>
           <dt>Suggested priority</dt>
           <dd>

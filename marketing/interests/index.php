@@ -63,7 +63,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($interests === []): ?>
-            <tr><td colspan="9">No interests yet. Create one to start harvesting — each interest needs include terms or search queries and at least one source.</td></tr>
+            <tr><td colspan="9">No interests yet. Create one to start harvesting — each interest needs include terms or search queries. Linking sources is optional; every harvested item is scored against every active interest.</td></tr>
             <?php endif; ?>
             <?php foreach ($interests as $row): ?>
             <tr>

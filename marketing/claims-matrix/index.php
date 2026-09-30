@@ -83,7 +83,7 @@ $select = static function (string $name, array $options, string $current, string
           'back_label' => $back['label'],
           'category'   => 'Marketing & Research',
           'title'      => 'Claims Matrix',
-          'lead'       => 'The only claim wording generated content may use. Seeded from the practitioner flyers; drafts need approval by a full Marketing admin who did not edit them.',
+          'lead'       => 'The only claim wording generated content may use. Seeded from the practitioner flyers; drafts need approval by a full Marketing admin other than the person who last edited them.',
           'permission' => auth_module_permission_label($activeSlug),
       ]);
       marketing_render_notice($_GET['notice'] ?? null, $error);
@@ -223,7 +223,7 @@ $select = static function (string $name, array $options, string $current, string
         <?php $flagTerms = mkt_claims_flag_terms(); ?>
         <div class="detail-card">
           <h2 class="hub-section-title">How the claims check uses this matrix</h2>
-          <p>Every Campaign Studio and Content Pipeline asset is checked against the <strong>approved</strong> claims for the products it mentions. Wording outside the matrix, or any flag term below, lowers the score and routes the asset to medical review. Assets scoring below <strong><?= htmlspecialchars((string) marketing_setting('claims.min_score', '7')) ?></strong> cannot leave draft.</p>
+          <p>Every Campaign Studio and Content Pipeline asset is checked against the <strong>approved</strong> claims for the products it mentions. Wording outside the matrix or any flag term below lowers the score. Anything short of a perfect score, and any claim, flag term or health-condition reference, sends the asset to compliance review before editorial review. Assets scoring below <strong><?= htmlspecialchars((string) marketing_setting('claims.min_score', '7')) ?></strong> cannot be submitted for review.</p>
           <dl class="detail-list detail-list-inline">
             <dt>DSHEA disclaimer</dt><dd><?= htmlspecialchars((string) marketing_setting('claims.disclaimer', '')) ?></dd>
             <dt>Flag terms (<?= count($flagTerms) ?>)</dt><dd><?= htmlspecialchars(implode(', ', $flagTerms)) ?></dd>

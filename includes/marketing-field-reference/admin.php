@@ -492,7 +492,7 @@ return [
                 'enter' => 'Product lines, one per line. Blank as shipped.',
                 'now'   => 'Fills the **Product line** list on interests. The chosen line is added to the interest’s description for the research agent.',
                 'later' => '—',
-                'watch' => 'While this setting is blank or one short line, it shows as a one-line box and you can’t add a second line here – ask IT to enter the list.',
+                'watch' => 'Renaming or removing a line does not update interests that already use it.',
             ],
             [
                 'field' => 'taxonomy.therapeutic_areas',

@@ -173,11 +173,15 @@ function mkt_campaign_create(array $input): array
     if ($channels === []) {
         return ['ok' => false, 'error' => $format === 'email' ? 'The email channel is missing from campaign.channels.' : 'Choose at least one social channel.'];
     }
-    $parts = match ($format) {
-        'series' => max(2, min(MKT_SERIES_MAX_PARTS, (int) ($input['part_count'] ?? 5))),
-        'email'  => max(1, min(MKT_EMAIL_MAX_PARTS, (int) ($input['part_count'] ?? 1))),
-        default  => 1,
-    };
+    $parts = 1;
+    if ($format !== 'post') {
+        [$minParts, $maxParts, $defaultParts] = $format === 'series' ? [2, MKT_SERIES_MAX_PARTS, 5] : [1, MKT_EMAIL_MAX_PARTS, 1];
+        $rawParts = trim((string) ($input['part_count'] ?? ''));
+        $parts = $rawParts === '' ? $defaultParts : (int) $rawParts;
+        if ($parts < $minParts || $parts > $maxParts) {
+            return ['ok' => false, 'error' => sprintf('%s campaigns need %d–%d parts.', $format === 'series' ? 'Series' : 'Email', $minParts, $maxParts)];
+        }
+    }
     $ctaUrl = trim((string) ($input['cta_url'] ?? '')) ?: (string) marketing_setting('campaign.default_cta_url', (string) marketing_setting('brand.site_url', ''));
     if (!preg_match('#^https?://#i', $ctaUrl) || filter_var($ctaUrl, FILTER_VALIDATE_URL) === false) {
         return ['ok' => false, 'error' => 'Enter a valid http(s) call-to-action URL.'];
@@ -432,7 +436,7 @@ function mkt_asset_submit(int $id): array
             SubmittedBy = :u, SubmittedAt = SYSUTCDATETIME()
         WHERE AssetID = :id
     SQL)->execute(['compliance' => $needsCompliance ? 'pending' : 'not_required', 'u' => marketing_user_id(), 'id' => $id]);
-    mkt_asset_log($id, 'submit', 'submitted', $needsCompliance ? 'Compliance review required.' : 'No claims found — compliance review not required.', $asset);
+    mkt_asset_log($id, 'submit', 'submitted', $needsCompliance ? 'Compliance review required.' : 'Claims check found nothing needing compliance — review not required.', $asset);
 
     return ['ok' => true, 'compliance' => $needsCompliance];
 }

@@ -89,7 +89,7 @@ if (!$canUpdate) {
             <?= $counts['overdue'] > 0 ? '<span class="mkt-task-overdue">' . $counts['overdue'] . ' overdue</span>' : '0 overdue' ?>
             <?= $sync['opened'] + $sync['closed'] > 0 ? ' · just now: ' . $sync['opened'] . ' opened, ' . $sync['closed'] . ' closed automatically' : '' ?>
           </p>
-          <p class="form-hint">"My tasks" shows tasks assigned to you plus unassigned tasks for the roles you hold (<?= htmlspecialchars(implode(', ', array_map(static fn(string $r): string => MKT_TASK_ROLES[$r], mkt_task_my_roles())) ?: 'none') ?>). Due dates use the SLA days in <code>tasks.sla_days</code>.</p>
+          <p class="form-hint">"My tasks" shows tasks assigned to you plus unassigned tasks for the roles you hold (<?= htmlspecialchars(implode(', ', array_map(static fn(string $r): string => MKT_TASK_ROLES[$r], mkt_task_my_roles())) ?: 'none') ?>). Automatic tasks are due a set number of calendar days after they open (<code>tasks.sla_days</code>); a publish task uses the piece's due date if it has one, and a loading task the post's scheduled date. Tasks you create only have the due date you give them.</p>
         </div>
       </div>
 

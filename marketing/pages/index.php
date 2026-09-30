@@ -172,7 +172,7 @@ $tabLabels['issues'] .= ' (' . $counts['with_issues'] . ')';
           <input type="hidden" name="action" value="add_url" />
           <?php marketing_render_field_guide_link('page-add'); ?>
           <div class="form-group"><label for="url">Page URL</label><input class="form-input" type="url" id="url" name="url" required placeholder="https://www.nutraaxislabs.com/…" /></div>
-          <p class="form-hint">For a live page missing from the sitemaps. It is added and crawled right away; published Content Pipeline pieces are added automatically.</p>
+          <p class="form-hint">For a live page missing from the sitemaps. It is added and crawled right away. Published Content Pipeline pieces are added automatically, except posts on our blog: they all share one address (/our-blog), so add that page to track the blog as a whole.</p>
           <div class="form-actions"><button type="submit" class="btn-primary">Add and crawl</button></div>
         </form>
         <?php endif; ?>
@@ -231,7 +231,7 @@ $tabLabels['issues'] .= ' (' . $counts['with_issues'] . ')';
 
       <?php else: ?>
         <?php $map = mkt_page_keyword_map(); ?>
-        <p class="form-hint">Which page targets which keyword. Published Content Pipeline pieces add their keywords automatically; add others on a page's detail screen (including from the Search Console queries it already ranks for). A keyword that is primary on two pages makes them compete with each other.</p>
+        <p class="form-hint">Which page targets which keyword. Published Content Pipeline pieces add their keywords automatically (not blog posts, which share the /our-blog page); add others on a page's detail screen (including from the Search Console queries it already ranks for). A keyword that is primary on two pages makes them compete with each other.</p>
         <?php if ($map === []): ?>
         <p class="form-hint">No keywords mapped yet.</p>
         <?php else: ?>

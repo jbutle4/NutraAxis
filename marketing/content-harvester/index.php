@@ -223,10 +223,10 @@ require dirname(__DIR__, 2) . '/includes/header.php';
 
 <?php else: ?>
       <?php $suggested = mkt_suggested_source_domains(); ?>
-      <p class="form-hint">Domains the weekly AI research agent cited at least twice that are not yet registered sources.</p>
+      <p class="form-hint">Domains the weekly AI research agent cited at least twice (not counting citations it rejected as unreachable or not matching) that do not appear in any source's URL. Paused sources count as registered, so their domains are not suggested.</p>
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Domain</th><th>Verified items</th><th>Last seen</th><th>Sample</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Domain</th><th>Cited items</th><th>Last seen</th><th>Sample</th><th>Actions</th></tr></thead>
           <tbody>
             <?php if ($suggested === []): ?>
             <tr><td colspan="5">No suggestions yet — they appear after the research agent has run.</td></tr>

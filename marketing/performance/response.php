@@ -110,7 +110,7 @@ $by = static fn(?string $name, ?string $at): string => $at ? htmlspecialchars(mk
         </dl>
       </div>
 
-      <?php if ($status === 'escalated' && $canCompliance): ?>
+      <?php if ($status === 'escalated' && $canCompliance && $canUpdate): ?>
       <h2 class="hub-section-title">Compliance decision</h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="clear" />
@@ -131,7 +131,7 @@ $by = static fn(?string $name, ?string $at): string => $at ? htmlspecialchars(mk
         <div class="form-actions"><button type="submit" class="btn-primary">Record decision</button></div>
       </form>
       <?php elseif ($status === 'escalated'): ?>
-      <p class="form-hint">Only a user whose role has Marketing Compliance Review can clear this. Do not reply until they do.</p>
+      <p class="form-hint">Only a user whose role has Marketing Compliance Review and Marketing Update access can clear this. Do not reply until they do.</p>
       <?php endif; ?>
 
       <?php if ($canUpdate && $status === 'open'): ?>

@@ -340,7 +340,7 @@ $pageLink = static function (?int $pageId, ?string $path, string $fallback): str
         <div class="status-banner">
           <div>
             <strong><?= $scoreDate ? 'Scores as of ' . htmlspecialchars(marketing_format_date($scoreDate)) : 'Not scored yet' ?></strong>
-            <p>Each posted asset earns points from site visits (GA4, by UTM), post and email metrics, and responses; the score is 0–100 and levels off as points grow. Campaigns, topics and interests average their children. Scores run nightly.</p>
+            <p>Each posted asset earns points from site visits (GA4, by UTM), post and email metrics, and praise or question responses (complaints and other responses earn nothing); the score is 0–100 and levels off as points grow. Campaigns, topics and interests average their children. Scores run nightly.</p>
             <p class="form-hint">"Early read" means under <?= (int) marketing_setting('engagement.mature_days', '7') ?> days old or no data yet — those don't move interest weights. Interest weights nudge research relevance by at most ±<?= (int) round(100 * (float) marketing_setting('engagement.weight_range', '0.2')) ?>% and need at least two interests with enough scored assets.</p>
           </div>
           <?php if ($canUpdate): ?>
@@ -432,6 +432,7 @@ $pageLink = static function (?int $pageId, ?string $path, string $fallback): str
             <form method="post" action="<?= htmlspecialchars($baseHref . '?tab=digests') ?>">
               <input type="hidden" name="action" value="digest" />
               <button type="submit" class="btn-secondary">Generate last week's digest</button>
+              <label class="form-hint" style="display:block;margin-top:0.35rem"><input type="checkbox" name="force" value="1" /> Replace it if it already exists (its open tasks are cancelled)</label>
             </form>
           </div>
           <?php endif; ?>
