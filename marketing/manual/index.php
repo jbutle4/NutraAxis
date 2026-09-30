@@ -51,6 +51,7 @@ $pageDescription = 'How to use Marketing & Research: roles, workflows, page guid
 require dirname(__DIR__, 2) . '/includes/head.php';
 require dirname(__DIR__, 2) . '/includes/header.php';
 ?>
+  <link rel="stylesheet" href="/assets/css/marketing-manual.css?v=<?= (int) @filemtime(dirname(__DIR__, 2) . '/assets/css/marketing-manual.css') ?>" />
   <main class="page-main">
     <div class="container page-inner mkt-manual">
       <?php

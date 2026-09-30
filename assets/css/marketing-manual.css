@@ -1,0 +1,20 @@
+/* Marketing Manual: wider page so the five-column field reference tables have room. */
+.container.mkt-manual {
+  width: min(1480px, calc(100% - 48px));
+  max-width: 1480px;
+}
+
+/* Fixed columns that wrap, so every column stays visible instead of scrolling out of view. */
+.mkt-field-table {
+  table-layout: fixed;
+  min-width: 640px;
+}
+.mkt-field-table th,
+.mkt-field-table td {
+  overflow-wrap: break-word;
+}
+.mkt-field-table thead th:nth-child(1) { width: 17%; }
+.mkt-field-table thead th:nth-child(2) { width: 21%; }
+.mkt-field-table thead th:nth-child(3) { width: 21%; }
+.mkt-field-table thead th:nth-child(4) { width: 19%; }
+.mkt-field-table thead th:nth-child(5) { width: 22%; }

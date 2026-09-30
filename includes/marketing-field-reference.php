@@ -53,7 +53,7 @@ function mkt_field_reference_render_form(string $key, array $form): string
         $req = $field['req'] ?? false;
         $badge = $req === false ? '' : '<span class="mkt-field-req">' . ($req === true ? 'Required' : $e($req)) . '</span>';
         $rows .= '<tr>'
-            . '<th scope="row">' . $e($field['field']) . $badge . '</th>'
+            . '<th scope="row">' . preg_replace('/([._])/', '$1<wbr>', $e($field['field'])) . $badge . '</th>'
             . '<td>' . $cell($field['enter']) . '</td>'
             . '<td>' . $cell($field['now']) . '</td>'
             . '<td>' . $cell($field['later'] ?? null) . '</td>'
