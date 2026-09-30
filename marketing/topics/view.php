@@ -157,6 +157,7 @@ $status = (string) $topic['Status'];
       <h2 class="hub-section-title">Brief</h2>
       <?php if ($canEdit): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
+        <?php marketing_render_field_guide_link('topic-brief'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full"><label for="title">Title</label><input class="form-input" id="title" name="title" required maxlength="300" value="<?= $e('title') ?>" /></div>
           <div class="form-group form-grid-full"><label for="summary">Summary</label><textarea class="form-input" id="summary" name="summary" rows="3" maxlength="2000"><?= $e('summary') ?></textarea></div>
@@ -310,6 +311,7 @@ $status = (string) $topic['Status'];
       <?php if ($canEdit && ($claimOptions['suggested'] !== [] || $claimOptions['other'] !== [])): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>">
         <input type="hidden" name="action" value="link_claim" />
+        <?php marketing_render_field_guide_link('topic-claim-link'); ?>
         <div class="form-group">
           <label for="claim_id">Link claim</label>
           <select class="form-input" id="claim_id" name="claim_id" required>
@@ -333,6 +335,7 @@ $status = (string) $topic['Status'];
       <h2 class="hub-section-title">Merge</h2>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($selfHref) ?>" onsubmit="return confirm('Merge this topic into the selected topic? Its items and claim links move there.');">
         <input type="hidden" name="action" value="merge" />
+        <?php marketing_render_field_guide_link('topic-merge'); ?>
         <div class="form-group">
           <label for="target_id">Merge this topic into</label>
           <select class="form-input" id="target_id" name="target_id" required>

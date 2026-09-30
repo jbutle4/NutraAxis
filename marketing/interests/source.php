@@ -60,6 +60,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php marketing_render_notice(null, $error); ?>
 
       <form class="admin-form" method="post">
+        <?php marketing_render_field_guide_link('source'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="name">Name</label>

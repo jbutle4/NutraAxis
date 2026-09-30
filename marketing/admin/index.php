@@ -343,6 +343,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <?php $settings = marketing_settings_all(); ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
         <input type="hidden" name="action" value="save_settings" />
+        <?php marketing_render_field_guide_link('admin-settings'); ?>
         <div class="form-grid">
           <?php foreach ($settings as $key => $row): ?>
           <?php

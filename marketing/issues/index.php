@@ -234,6 +234,7 @@ $exportQuery = array_filter(['tab' => $tab, 'status' => $filters['status'], 'sev
         <h2 class="hub-section-title">Import an OpenRush audit</h2>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
           <input type="hidden" name="action" value="openrush" />
+          <?php marketing_render_field_guide_link('issue-openrush-import'); ?>
           <div class="form-group form-group--stacked">
             <label for="audit_json">OpenRush audit_site result (JSON)</label>
             <textarea class="form-input" id="audit_json" name="audit_json" rows="8" required placeholder='{"schema_version":"ofe/1.0","domain":"site_audit","data":{"domain":"nutraaxislabs.com","pages":[…]}}'></textarea>

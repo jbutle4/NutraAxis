@@ -72,6 +72,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
         <input type="hidden" name="action" value="save" />
         <?php if ($editing !== null): ?><input type="hidden" name="keyword_id" value="<?= (int) $editing['KeywordID'] ?>" /><?php endif; ?>
+        <?php marketing_render_field_guide_link('keyword'); ?>
         <div class="form-grid">
           <div class="form-group"><label for="keyword">Keyword</label><input class="form-input" id="keyword" name="keyword" required maxlength="200" value="<?= $field('Keyword') ?>" /></div>
           <div class="form-group">
@@ -107,6 +108,7 @@ $field = static fn(string $key, $default = '') => htmlspecialchars((string) ($ed
       <?php if (marketing_can_create()): ?>
       <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>" enctype="multipart/form-data">
         <input type="hidden" name="action" value="import" />
+        <?php marketing_render_field_guide_link('keyword-import'); ?>
         <div class="form-grid">
           <div class="form-group form-grid-full">
             <label for="csv">Import CSV</label>

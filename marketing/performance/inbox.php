@@ -85,7 +85,7 @@ $tabLabels['escalated'] .= ' (' . $counts['Escalated'] . ')';
             <?= number_format($counts['Escalated']) ?> with compliance<?= $counts['Overdue'] ? ' (<strong style="color:var(--danger)">' . $counts['Overdue'] . ' overdue</strong>)' : '' ?> ·
             <?= number_format($counts['Untriaged']) ?> waiting for triage.
           </p>
-          <p class="form-hint">GoHighLevel is not connected yet, so responses are added by hand. Store the text only — names, @handles, emails and phone numbers are stripped before saving and before any AI call; the link goes back to the original.</p>
+          <p class="form-hint">GoHighLevel is not connected yet, so responses are added by hand. Store the text only — @handles, emails and phone numbers are stripped before saving and before any AI call, but names are not, so leave them out; the link goes back to the original.</p>
         </div>
       </div>
 
@@ -96,6 +96,7 @@ $tabLabels['escalated'] .= ' (' . $counts['Escalated'] . ')';
         <?php $assets = mkt_engagement_assets(); ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref . '?tab=add') ?>">
           <input type="hidden" name="action" value="add" />
+          <?php marketing_render_field_guide_link('response-add'); ?>
           <div class="form-grid">
           <div class="form-group">
             <label for="asset_id">In response to</label>

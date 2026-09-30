@@ -202,6 +202,7 @@ $hidden = static fn(string $tabKey, int $assetId = 0): string => '<input type="h
         );
         ?>
         <p class="form-hint">Scheduled assets for the next <?= $days ?> days (<a href="?tab=upcoming&amp;days=7">7</a> · <a href="?tab=upcoming&amp;days=30">30</a> · <a href="?tab=upcoming&amp;days=90">90</a>). Open an asset to reschedule or take it off the calendar.</p>
+        <?php if ($canUpdate) { marketing_render_field_guide_link('calendar-todo'); } ?>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>When (Central)</th><th>Channel</th><th>Asset</th><th>GoHighLevel</th><th>Copy</th></tr></thead>
@@ -254,6 +255,7 @@ $hidden = static fn(string $tabKey, int $assetId = 0): string => '<input type="h
         <?php if ($groups === []): ?>
         <p>No approved assets waiting. Assets appear here once compliance (when required) and editorial approve them in <a href="/marketing/campaigns/?tab=review">Campaign Studio</a>.</p>
         <?php endif; ?>
+        <?php if ($groups !== [] && $canUpdate) { marketing_render_field_guide_link('calendar-schedule'); } ?>
         <?php foreach ($groups as $campaignId => $assets): ?>
           <?php $first = $assets[0]; ?>
           <h2 class="hub-section-title"><a href="/marketing/campaigns/campaign.php?id=<?= $campaignId ?>"><?= htmlspecialchars((string) $first['CampaignName']) ?></a></h2>
@@ -304,6 +306,7 @@ $hidden = static fn(string $tabKey, int $assetId = 0): string => '<input type="h
         <?php $loading = mkt_cal_needs_loading(); $pastDue = mkt_cal_past_due(); ?>
         <h2 class="hub-section-title">Load into GoHighLevel (<?= count($loading) ?>)</h2>
         <p class="form-hint">Create each post in GoHighLevel Social Planner (or the email campaign) at the scheduled time using the copy-ready text — it already contains the tracked link. Then record the GoHighLevel ID here. Keep Social Planner RSS auto-post off.</p>
+        <?php if ($canUpdate) { marketing_render_field_guide_link('calendar-todo'); } ?>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>When (Central)</th><th>Channel</th><th>Asset</th><th>Copy</th><?php if ($canUpdate): ?><th>GoHighLevel ID</th><?php endif; ?></tr></thead>

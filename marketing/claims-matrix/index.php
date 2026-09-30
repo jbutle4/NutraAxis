@@ -97,6 +97,7 @@ $select = static function (string $name, array $options, string $current, string
           <input type="hidden" name="action" value="save" />
           <input type="hidden" name="return_product" value="<?= htmlspecialchars($filters['product_id']) ?>" />
           <?php if (!empty($editing['ClaimID'])): ?><input type="hidden" name="claim_id" value="<?= (int) $editing['ClaimID'] ?>" /><?php endif; ?>
+          <?php marketing_render_field_guide_link('claim'); ?>
           <div class="form-grid">
             <div class="form-group">
               <label for="product_id">Product</label>

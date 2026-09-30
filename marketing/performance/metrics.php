@@ -96,6 +96,7 @@ $fieldInput = static function (string $column, $value): void {
           <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref . '?asset_id=' . $assetId) ?>">
             <input type="hidden" name="action" value="save" />
             <input type="hidden" name="asset_id" value="<?= $assetId ?>" />
+            <?php marketing_render_field_guide_link('metrics-enter'); ?>
             <div class="form-grid">
               <div class="form-group">
                 <label for="as_of">As of</label>
@@ -166,6 +167,7 @@ $fieldInput = static function (string $column, $value): void {
         <?php endif; ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref . '?tab=import') ?>">
           <input type="hidden" name="action" value="import" />
+          <?php marketing_render_field_guide_link('metrics-import'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full form-group--stacked">
               <label for="csv">CSV</label>

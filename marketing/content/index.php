@@ -248,6 +248,7 @@ $flagged = static fn(array $row): bool => $row['Stage'] === 'draft' && ($row['Co
         ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>?tab=new">
           <input type="hidden" name="action" value="create" />
+          <?php marketing_render_field_guide_link('content-new'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full"><label for="title">Working title</label><input class="form-input" id="title" name="title" maxlength="300" value="<?= htmlspecialchars($form['title']) ?>" placeholder="Defaults to the topic title" /></div>
             <div class="form-group">

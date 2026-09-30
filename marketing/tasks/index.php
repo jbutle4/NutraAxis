@@ -96,6 +96,7 @@ if (!$canUpdate) {
       <?php if ($tab === 'new' && $canUpdate): ?>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
           <input type="hidden" name="action" value="create" />
+          <?php marketing_render_field_guide_link('task-new'); ?>
           <div class="form-grid">
             <div class="form-group form-grid-full"><label for="title">Task</label><input class="form-input" id="title" name="title" required maxlength="300" value="<?= htmlspecialchars((string) ($_POST['title'] ?? '')) ?>" /></div>
             <div class="form-group">
@@ -157,6 +158,7 @@ if (!$canUpdate) {
           </select>
           <button type="submit" class="btn-secondary">Filter</button>
         </form>
+        <?php if ($canUpdate) { marketing_render_field_guide_link('task-close'); } ?>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr><th>Task</th><th>Role</th><th>Assignee</th><th>Due</th><th><?= $tab === 'done' ? 'Closed' : 'Priority' ?></th><th>Source</th><th>Actions</th></tr></thead>

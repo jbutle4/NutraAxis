@@ -170,6 +170,7 @@ $tabLabels['issues'] .= ' (' . $counts['with_issues'] . ')';
         <h2 class="hub-section-title">Add a page</h2>
         <form class="admin-form" method="post" action="<?= htmlspecialchars($baseHref) ?>">
           <input type="hidden" name="action" value="add_url" />
+          <?php marketing_render_field_guide_link('page-add'); ?>
           <div class="form-group"><label for="url">Page URL</label><input class="form-input" type="url" id="url" name="url" required placeholder="https://www.nutraaxislabs.com/…" /></div>
           <p class="form-hint">For a live page missing from the sitemaps. It is added and crawled right away; published Content Pipeline pieces are added automatically.</p>
           <div class="form-actions"><button type="submit" class="btn-primary">Add and crawl</button></div>
