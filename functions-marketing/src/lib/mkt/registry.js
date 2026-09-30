@@ -12,6 +12,7 @@ const seoIssues = require('../jobs/seo-issues');
 const seoAlerts = require('../jobs/seo-alerts');
 const outreach = require('../jobs/outreach');
 const literature = require('../jobs/literature');
+const report = require('../jobs/report');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
@@ -201,6 +202,12 @@ const JOBS = {
     message: (r) => `Checked ${r.checked} flyer reference${r.checked === 1 ? '' : 's'} — ${r.with_candidates} with PubMed candidates, `
       + `${r.no_match} with no match` + (r.errors ? `, ${r.errors} error${r.errors === 1 ? '' : 's'}` : '')
       + (r.remaining ? `; ${r.remaining} still to check — run again` : '') + '.',
+  },
+  'report-highlights': {
+    name: 'Reports — Monthly Highlights',
+    run: (params) => report.highlights(params),
+    message: (r) => `Highlights written for ${r.written} report${r.written === 1 ? '' : 's'} (${r.months.join(', ')})`
+      + (r.failed ? `, ${r.failed} failed` : '') + costText(r),
   },
   'seo-alerts': {
     name: 'Marketing Alerts — Daily Check',

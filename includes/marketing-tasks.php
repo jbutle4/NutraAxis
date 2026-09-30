@@ -5,6 +5,7 @@ require_once __DIR__ . '/marketing-engagement.php';
 require_once __DIR__ . '/marketing-issues.php';
 require_once __DIR__ . '/marketing-backlinks.php';
 require_once __DIR__ . '/marketing-literature.php';
+require_once __DIR__ . '/marketing-reports.php';
 
 const MKT_TASK_ROLES = [
     'writer'      => 'Writer',
@@ -181,6 +182,7 @@ function mkt_tasks_desired(): array
     mkt_issue_desired_tasks($add);
     mkt_prospect_desired_tasks($add);
     mkt_lit_desired_tasks($add);
+    mkt_report_desired_tasks($add);
 
     return $tasks;
 }

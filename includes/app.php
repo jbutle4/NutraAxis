@@ -784,7 +784,7 @@ $marketingSubModules = [
     [
         'slug'    => 'research-output',
         'title'   => 'Output Generator',
-        'desc'    => 'Export Word/PDF research summaries and reports. Placeholder — Phase 2.',
+        'desc'    => 'Word and PDF evidence packs, claim summaries, topic briefs, bibliographies and articles for the site author.',
         'href'    => '/marketing/output-generator/',
         'icon'    => 'document',
         'tier'    => 'production',
@@ -844,7 +844,7 @@ $marketingSubModules = [
     [
         'slug'    => 'marketing-reports',
         'title'   => 'Reports',
-        'desc'    => 'Weekly digests and monthly SEO exports. Placeholder — Phase 2.',
+        'desc'    => 'Monthly marketing report for Word and PDF, with AI highlights and review, plus the weekly digests.',
         'href'    => '/marketing/reports/',
         'icon'    => 'document',
         'tier'    => 'production',

@@ -406,6 +406,10 @@ $flow = ['idea', 'brief', 'draft', 'compliance_review', 'editorial', 'approved',
         <?= in_array($stage, ['approved', 'published', 'monitoring'], true) && $isCurrentShown ? '' : '<strong>Not approved — do not publish.</strong>' ?>
         <button type="button" class="btn-text" data-copy-from="copy-html">Copy HTML</button>
         <button type="button" class="btn-text" data-copy-from="copy-md">Copy Markdown</button>
+        <?php if ($isCurrentShown && auth_can_read_module('research-output')): ?>
+        <a class="btn-text" href="/marketing/output-generator/document.php?type=article&amp;content_id=<?= $id ?>&amp;format=docx">Word for the site author</a>
+        <a class="btn-text" href="/marketing/output-generator/document.php?type=article&amp;content_id=<?= $id ?>" target="_blank" rel="noopener">Print / PDF</a>
+        <?php endif; ?>
       </p>
       <textarea id="copy-html" hidden><?= htmlspecialchars($html) ?></textarea>
       <textarea id="copy-md" hidden><?= htmlspecialchars((string) $shown['Body']) ?></textarea>
