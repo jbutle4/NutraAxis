@@ -143,6 +143,12 @@ function marketing_process_registry(): array
             'schedule'    => 'On demand from an issue',
             'on_demand'   => true,
         ],
+        'outreach-draft-pitch' => [
+            'name'        => 'Backlinks & Outreach — AI Pitch Draft',
+            'description' => 'Drafts a short outreach email for one prospect from its opportunity, angle and our target page, then claims-checks it. Contact details are never sent; the email uses [Name], [Your name] and [LINK] placeholders.',
+            'schedule'    => 'On demand from a prospect',
+            'on_demand'   => true,
+        ],
     ];
 
     $registry = [];

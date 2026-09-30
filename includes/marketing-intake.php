@@ -110,7 +110,21 @@ function mkt_keyword_normalize(array $input): array
         'Difficulty' => $int($input['difficulty'] ?? null),
         'Notes'      => trim((string) ($input['notes'] ?? '')) ?: null,
         'Status'     => array_key_exists((string) ($input['status'] ?? ''), MKT_RECORD_STATUSES) ? (string) $input['status'] : 'active',
+        'TrackRank'  => mkt_keyword_track_input($input),
     ];
+}
+
+/** Form sends track_rank_present + optional track_rank; CSV may send a "track" column. Null = not supplied. */
+function mkt_keyword_track_input(array $input): ?int
+{
+    if (!empty($input['track_rank_present'])) {
+        return !empty($input['track_rank']) ? 1 : 0;
+    }
+    if (!array_key_exists('track', $input) || trim((string) $input['track']) === '') {
+        return null;
+    }
+
+    return in_array(strtolower(trim((string) $input['track'])), ['1', 'y', 'yes', 'true', 'on'], true) ? 1 : 0;
 }
 
 function mkt_keyword_save(array $input, ?int $id = null): array
@@ -127,6 +141,13 @@ function mkt_keyword_save(array $input, ?int $id = null): array
     }
 
     $data['UpdatedBy'] = marketing_user_id();
+    if ($data['TrackRank'] === null) {
+        if ($id === null) {
+            $data['TrackRank'] = $data['Purpose'] === 'interest' ? 0 : 1;
+        } else {
+            unset($data['TrackRank']);
+        }
+    }
     if ($id === null) {
         $cols = array_keys($data);
         $stmt = $pdo->prepare('INSERT INTO dbo.MktKeyword (' . implode(', ', $cols) . ') OUTPUT INSERTED.KeywordID AS inserted_id VALUES (:' . implode(', :', $cols) . ')');
@@ -146,7 +167,7 @@ function mkt_keyword_save(array $input, ?int $id = null): array
 }
 
 /**
- * CSV columns (header row required): keyword, purpose, priority, cluster, intent, volume, difficulty, notes.
+ * CSV columns (header row required): keyword, purpose, priority, cluster, intent, volume, difficulty, notes, track.
  */
 function mkt_keywords_import_csv(string $path): array
 {

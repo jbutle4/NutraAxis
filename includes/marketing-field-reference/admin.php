@@ -62,7 +62,7 @@ return [
             ],
             [
                 'field' => 'alerts.rules',
-                'enter' => 'The alert rules that are on, one per line: **job_failed**, **traffic_drop**, **legacy_brand**, **site_error**, **escalation_overdue**, **ai_budget**.',
+                'enter' => 'The alert rules that are on, one per line: **job_failed**, **traffic_drop**, **legacy_brand**, **site_error**, **escalation_overdue**, **ai_budget**, **rank_drop**.',
                 'now'   => 'The daily alerts check (about 06:00 Central) tests only the rules listed. Removing a rule resolves its open alerts on the next run.',
                 'later' => 'Shown on Audit & Issues → Alerts; new alerts are emailed to alerts.recipients.',
                 'watch' => 'Spell the names exactly – unknown lines are ignored without warning.',
@@ -94,6 +94,13 @@ return [
                 'now'   => 'The nightly Search Console and GA4 loads refuse to run if the connected property is not on this domain. Also the fallback site address when pages.site_url is blank.',
                 'later' => '—',
                 'watch' => 'A safety lock against loading another site’s data – change it only if the site really moves domain.',
+            ],
+            [
+                'field' => 'backlinks.spam_threshold',
+                'enter' => 'A spam score from 0 to 100, seeded **30**.',
+                'now'   => 'Backlinks & Outreach flags links from domains scoring this or more (score from the OpenRush import) as likely spam, counts them in the banner, and offers them on the Disavow tab.',
+                'later' => '—',
+                'watch' => 'Semrush backlink exports carry no spam score, so their links are never flagged.',
             ],
             [
                 'field' => 'blog.author',
@@ -355,6 +362,13 @@ return [
                 'watch' => 'Update it when the website platform changes, or specs will send developers to the wrong place.',
             ],
             [
+                'field' => 'outreach.follow_up_days',
+                'enter' => 'Days, seeded **7** (1–60).',
+                'now'   => 'Logging a pitch as sent on an outreach prospect sets its next follow-up this many days ahead.',
+                'later' => 'When the date arrives, a follow-up task opens for the prospect’s owner in the Task queue.',
+                'watch' => '—',
+            ],
+            [
                 'field' => 'pages.crawl_delay_ms',
                 'enter' => 'Milliseconds, seeded **1000**.',
                 'now'   => 'The pause between page fetches during the site crawl for the Page Inventory.',
@@ -381,6 +395,13 @@ return [
                 'now'   => 'Sets each page’s type in the Page Inventory when it is crawled or found in Search Console. Published Content Pipeline pages are always **content**.',
                 'later' => 'The thin-content check only applies to **content**, **category** and **page** types.',
                 'watch' => 'Patterns are regular expressions – a rule with a broken pattern is skipped.',
+            ],
+            [
+                'field' => 'rank.drop_places',
+                'enter' => 'Places, seeded **5**.',
+                'now'   => 'The daily alerts check opens a rank_drop alert when a tracked keyword’s 7-day average position is this many places worse than the 7 days four weeks earlier. Leaving page 1 (10 or better to worse than 10) always alerts.',
+                'later' => 'Also quoted on the Rank Tracker Movers tab.',
+                'watch' => 'Only works while **rank_drop** is listed in alerts.rules.',
             ],
             [
                 'field' => 'research.agent_max_results',
@@ -437,6 +458,13 @@ return [
                 'now'   => 'On submit, **claims** sends an asset or piece to compliance review only when its claims check found a health, product, ingredient, efficacy or condition statement or a flag term, or scored below 10. **all** sends everything.',
                 'later' => 'Compliance tasks and the review queue follow from this.',
                 'watch' => 'Anything other than **all** behaves as **claims**.',
+            ],
+            [
+                'field' => 'seo.competitor_domains',
+                'enter' => 'One competitor per line as **domain|name**, e.g. **thorne.com|Thorne**. Seeded with the seven brands in brand.competitors.',
+                'now'   => 'Rank Tracker imports keep positions only for our domain and these domains (subdomains included), labelled with the name. Backlinks & Outreach reads Semrush Backlink Gap columns for these domains and refuses them as outreach prospects.',
+                'later' => 'The Rank Tracker Competitors tab lists one row per name.',
+                'watch' => 'A competitor missing here is ignored in imports. Only names, domains and positions are stored – never their pages or content. Keep it in step with brand.competitors, which the AI prompts use.',
             ],
             [
                 'field' => 'semrush.monthly_unit_budget',

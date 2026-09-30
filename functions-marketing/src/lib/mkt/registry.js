@@ -10,6 +10,7 @@ const seoAnalytics = require('../jobs/seo-analytics');
 const engagement = require('../jobs/engagement');
 const seoIssues = require('../jobs/seo-issues');
 const seoAlerts = require('../jobs/seo-alerts');
+const outreach = require('../jobs/outreach');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
@@ -173,6 +174,12 @@ const JOBS = {
     name: 'Site Issues — AI Fix Spec',
     run: (params) => seoIssues.fixSpec(params),
     message: (r) => `Fix spec written for “${r.title}” from ${r.urls} URL${r.urls === 1 ? '' : 's'}` + costText(r),
+  },
+  'outreach-draft-pitch': {
+    name: 'Backlinks & Outreach — AI Pitch Draft',
+    run: (params) => outreach.draftPitch(params),
+    message: (r) => `Pitch drafted for ${r.domain} — claims score ${r.score}`
+      + (r.needs_compliance ? ', flagged for compliance review' : '') + costText(r),
   },
   'seo-alerts': {
     name: 'Marketing Alerts — Daily Check',

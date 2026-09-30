@@ -3,7 +3,7 @@ const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const { loadSettings, settingLines, settingNumber } = require('../mkt/settings');
 const { sendMail } = require('../mkt/mail');
 
-const RULES = ['job_failed', 'traffic_drop', 'legacy_brand', 'site_error', 'escalation_overdue', 'ai_budget'];
+const RULES = ['job_failed', 'traffic_drop', 'legacy_brand', 'site_error', 'escalation_overdue', 'ai_budget', 'rank_drop'];
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
 const WEBHOOK_TIMEOUT_MS = 15000;
 
@@ -188,6 +188,43 @@ async function aiBudget(pool, settings) {
   return [];
 }
 
+/**
+ * Tracked keywords whose average position over the 7 days to the newest observation is rank.drop_places worse than
+ * the same 7 days four weeks earlier, or that left page 1. Both windows need a position.
+ */
+async function rankDrop(pool, settings) {
+  const places = settingNumber(settings, 'rank.drop_places', 5);
+  const rows = (await pool.request().input('places', sql.Decimal(6, 2), places).query(`
+    DECLARE @a DATE = (SELECT MAX(ObsDate) FROM dbo.MktRankObservation WHERE Position IS NOT NULL);
+    WITH w AS (
+      SELECT KeywordID,
+             AVG(CASE WHEN ObsDate BETWEEN DATEADD(DAY, -6, @a) AND @a THEN Position END) AS Cur,
+             AVG(CASE WHEN ObsDate BETWEEN DATEADD(DAY, -34, @a) AND DATEADD(DAY, -28, @a) THEN Position END) AS Prev
+      FROM dbo.MktRankObservation
+      WHERE Position IS NOT NULL AND ObsDate BETWEEN DATEADD(DAY, -34, @a) AND @a
+      GROUP BY KeywordID
+    )
+    SELECT k.KeywordID, k.Keyword, w.Cur, w.Prev
+    FROM w JOIN dbo.MktKeyword k ON k.KeywordID = w.KeywordID
+    WHERE k.TrackRank = 1 AND k.Status = N'active' AND w.Cur IS NOT NULL AND w.Prev IS NOT NULL
+      AND ((w.Prev <= 10 AND w.Cur > 10) OR w.Cur - w.Prev >= @places)
+  `)).recordset;
+  return rows.map((row) => {
+    const cur = Number(row.Cur);
+    const prev = Number(row.Prev);
+    const leftPageOne = prev <= 10 && cur > 10;
+    return {
+      rule: 'rank_drop',
+      key: String(row.KeywordID),
+      subject: clip(row.Keyword, 300),
+      severity: leftPageOne ? 'high' : 'medium',
+      title: `Rank drop: ${row.Keyword}`,
+      detail: `Position ${cur.toFixed(1)}, was ${prev.toFixed(1)} four weeks earlier` + (leftPageOne ? ' — left page 1.' : '.'),
+      href: '/marketing/ranks/?tab=movers',
+    };
+  });
+}
+
 /** Insert new alerts, refresh ones still firing, resolve the rest (including rules switched off). */
 async function reconcile(pool, desired, processLogId) {
   const payload = desired.map((a) => ({
@@ -321,6 +358,7 @@ async function run(params = {}, jobs = {}) {
       if (rule === 'site_error') desired.push(...await siteError(pool));
       if (rule === 'escalation_overdue') desired.push(...await escalationOverdue(pool));
       if (rule === 'ai_budget') desired.push(...await aiBudget(pool, settings));
+      if (rule === 'rank_drop') desired.push(...await rankDrop(pool, settings));
     }
     const counts = await reconcile(pool, desired, processLogId);
     const sent = params.notify === false || params.notify === 'false' ? null : await notify(pool, settings);
