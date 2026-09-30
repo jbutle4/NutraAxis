@@ -52,6 +52,38 @@ function itemText(row, maxChars) {
   return text.slice(0, maxChars) || '(no text — score from the title)';
 }
 
+/** System-template vars for research.score_item: the brand and the vocabulary replies must use. */
+function scoreSystemVars(settings, taxonomy) {
+  return {
+    brand_name: settings['brand.name'] || 'NutraAxis',
+    interests: taxonomy.interestLines,
+    therapeutic_areas: taxonomy.areas.join('\n'),
+    products: taxonomy.productLines,
+    competitors: settingLines(settings, 'brand.competitors').join(', ') || '(none listed)',
+  };
+}
+
+/** User-template vars for research.score_item from an item row (Title, Url, Summary, BodyText, SourceType, PublishedAt, SourceName). */
+function scoreUserVars(row, maxChars) {
+  return {
+    source: row.SourceName || 'unknown',
+    source_type: row.SourceType,
+    published: row.PublishedAt ? new Date(row.PublishedAt).toISOString().slice(0, 10) : 'unknown',
+    title: row.Title,
+    url: row.Url,
+    text: itemText(row, maxChars),
+  };
+}
+
+function relevanceThreshold(settings) {
+  return settingNumber(settings, 'research.relevance_threshold', 0.6);
+}
+
+async function interestWeights(pool) {
+  return new Map((await pool.request().query('SELECT InterestID, RelevanceWeight FROM dbo.MktInterest')).recordset
+    .map((row) => [row.InterestID, Number(row.RelevanceWeight) || 1]));
+}
+
 function clamp01(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
@@ -127,9 +159,8 @@ async function collectBatch(pool, settings, batch, taxonomy, processLogId) {
     return { ...counts, ended: false, costUsd: 0 };
   }
 
-  const threshold = settingNumber(settings, 'research.relevance_threshold', 0.6);
-  const weights = new Map((await pool.request().query('SELECT InterestID, RelevanceWeight FROM dbo.MktInterest')).recordset
-    .map((row) => [row.InterestID, Number(row.RelevanceWeight) || 1]));
+  const threshold = relevanceThreshold(settings);
+  const weights = await interestWeights(pool);
   const results = await fetchAnthropicBatchResults(status.results_url);
   const tokens = { input: 0, output: 0, billedInput: 0 };
   const retry = [];
@@ -228,29 +259,13 @@ async function submitBatch(pool, settings, taxonomy, processLogId, maxItemsOverr
   `)).recordset;
   if (items.length === 0) return null;
 
-  const system = render(prompt.SystemPrompt, {
-    brand_name: settings['brand.name'] || 'NutraAxis',
-    interests: taxonomy.interestLines,
-    therapeutic_areas: taxonomy.areas.join('\n'),
-    products: taxonomy.productLines,
-    competitors: settingLines(settings, 'brand.competitors').join(', ') || '(none listed)',
-  });
+  const system = render(prompt.SystemPrompt, scoreSystemVars(settings, taxonomy));
   const requests = items.map((row) => {
     const params = {
       model,
       max_tokens: Number(prompt.MaxTokens || 700),
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-      messages: [{
-        role: 'user',
-        content: render(prompt.UserTemplate, {
-          source: row.SourceName || 'unknown',
-          source_type: row.SourceType,
-          published: row.PublishedAt ? new Date(row.PublishedAt).toISOString().slice(0, 10) : 'unknown',
-          title: row.Title,
-          url: row.Url,
-          text: itemText(row, maxChars),
-        }),
-      }],
+      messages: [{ role: 'user', content: render(prompt.UserTemplate, scoreUserVars(row, maxChars)) }],
     };
     if (prompt.Temperature !== null && prompt.Temperature !== undefined) params.temperature = Number(prompt.Temperature);
     return { custom_id: customId(row.ItemID), params };
@@ -371,4 +386,13 @@ async function run(params = {}) {
   }
 }
 
-module.exports = { run, applyScore, itemText };
+module.exports = {
+  run,
+  applyScore,
+  itemText,
+  scoreSystemVars,
+  scoreUserVars,
+  relevanceThreshold,
+  interestWeights,
+  PROMPT_KEY,
+};

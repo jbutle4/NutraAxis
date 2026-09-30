@@ -11,9 +11,15 @@ const engagement = require('../jobs/engagement');
 const seoIssues = require('../jobs/seo-issues');
 const seoAlerts = require('../jobs/seo-alerts');
 const outreach = require('../jobs/outreach');
+const literature = require('../jobs/literature');
 
 function costText(r) {
   return ` (~$${Number(r.cost_usd || 0).toFixed(2)}).`;
+}
+
+function clip(text, max) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
 function auditText(a) {
@@ -180,6 +186,21 @@ const JOBS = {
     run: (params) => outreach.draftPitch(params),
     message: (r) => `Pitch drafted for ${r.domain} — claims score ${r.score}`
       + (r.needs_compliance ? ', flagged for compliance review' : '') + costText(r),
+  },
+  'literature-add-source': {
+    name: 'Literature & Intelligence — Add Source',
+    run: (params) => literature.addSource(params),
+    message: (r) => (r.created ? `Added “${clip(r.title, 90)}” to the library` : `Already in the library: “${clip(r.title, 90)}”`)
+      + (r.flyer ? ' and matched it to the flyer reference' : '')
+      + (r.score_attempted && !r.scored ? ' — AI scoring did not finish, so the next scoring batch will fill in its study facts' : '')
+      + (r.cost_usd > 0 ? costText(r) : '.'),
+  },
+  'literature-flyer-match': {
+    name: 'Literature & Intelligence — Match Flyer References',
+    run: (params) => literature.matchFlyerRefs(params),
+    message: (r) => `Checked ${r.checked} flyer reference${r.checked === 1 ? '' : 's'} — ${r.with_candidates} with PubMed candidates, `
+      + `${r.no_match} with no match` + (r.errors ? `, ${r.errors} error${r.errors === 1 ? '' : 's'}` : '')
+      + (r.remaining ? `; ${r.remaining} still to check — run again` : '') + '.',
   },
   'seo-alerts': {
     name: 'Marketing Alerts — Daily Check',

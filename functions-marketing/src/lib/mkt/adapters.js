@@ -2,6 +2,8 @@ const { fetchText, fetchJson, sleep } = require('./http');
 const { parseFeed, asArray, text, parser } = require('./feeds');
 const { extractArticle, extractLinks, stripTags, parseDate } = require('./html');
 
+const EUTILS_BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
+
 function config(source) {
   try {
     const decoded = JSON.parse(source.ConfigJson || '{}');
@@ -45,25 +47,23 @@ async function googleNews(source, ctx) {
   };
 }
 
-async function pubmed(source, ctx) {
-  const query = String(source.Query || '').trim();
-  if (!query) throw new Error('PubMed search term is required.');
-  const base = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils';
-  const common = `tool=nutraaxis-harvester&email=${encodeURIComponent(ctx.contactEmail)}`;
-  const search = await fetchJson(
-    `${base}/esearch.fcgi?db=pubmed&retmode=json&sort=pub+date&datetype=edat&reldate=${ctx.lookbackDays}&retmax=${ctx.maxItems}&term=${encodeURIComponent(query)}&${common}`,
-    { userAgent: ctx.userAgent }
-  );
-  if (!search.ok) throw new Error(`PubMed search failed (HTTP ${search.status})`);
-  const ids = search.json?.esearchresult?.idlist || [];
-  if (ids.length === 0) return { items: [] };
+/** Who we are to NCBI and other public APIs: the harvester user agent and a contact email. */
+function requestIdentity(settings) {
+  return {
+    userAgent: settings['harvest.user_agent'] || 'NutraAxisResearchBot/1.0',
+    contactEmail: process.env.HARVEST_CONTACT_EMAIL || process.env.MAIL_REPLY_TO || 'marketing@nutraaxislabs.com',
+  };
+}
 
-  await sleep(400);
-  const fetched = await fetchText(`${base}/efetch.fcgi?db=pubmed&retmode=xml&id=${ids.join(',')}&${common}`, { userAgent: ctx.userAgent });
-  if (!fetched.ok) throw new Error(`PubMed fetch failed (HTTP ${fetched.status})`);
-  const doc = parser.parse(fetched.text);
+/** The tool/email query string NCBI E-utilities asks every caller to send. */
+function pubmedCommon(ctx) {
+  return `tool=nutraaxis-harvester&email=${encodeURIComponent(ctx.contactEmail)}`;
+}
 
-  const items = asArray(doc.PubmedArticleSet?.PubmedArticle).map((entry) => {
+/** Map an efetch PubmedArticleSet XML document to harvest items (records without a title are dropped). */
+function mapPubmedXml(xmlText) {
+  const doc = parser.parse(xmlText);
+  return asArray(doc.PubmedArticleSet?.PubmedArticle).map((entry) => {
     const citation = entry.MedlineCitation || {};
     const article = citation.Article || {};
     const pmid = text(citation.PMID);
@@ -95,8 +95,46 @@ async function pubmed(source, ctx) {
       },
     };
   }).filter((item) => item.title);
+}
 
-  return { items };
+/** Map one ClinicalTrials.gov v2 study to a harvest item. */
+function mapTrialStudy(study) {
+  const p = study.protocolSection || {};
+  const id = p.identificationModule?.nctId;
+  const summary = p.descriptionModule?.briefSummary || '';
+  return {
+    url: `https://clinicaltrials.gov/study/${id}`,
+    title: p.identificationModule?.briefTitle || p.identificationModule?.officialTitle || id,
+    summary: summary.slice(0, 4000),
+    body: [summary, p.descriptionModule?.detailedDescription || ''].join('\n\n').trim(),
+    author: p.sponsorCollaboratorsModule?.leadSponsor?.name || null,
+    publishedAt: parseDate(p.statusModule?.lastUpdatePostDateStruct?.date || p.statusModule?.studyFirstPostDateStruct?.date),
+    metadata: {
+      nct_id: id,
+      status: p.statusModule?.overallStatus || null,
+      phase: asArray(p.designModule?.phases).join(', ') || null,
+      conditions: asArray(p.conditionsModule?.conditions),
+      interventions: asArray(p.armsInterventionsModule?.interventions).map((i) => i.name).filter(Boolean),
+    },
+  };
+}
+
+async function pubmed(source, ctx) {
+  const query = String(source.Query || '').trim();
+  if (!query) throw new Error('PubMed search term is required.');
+  const common = pubmedCommon(ctx);
+  const search = await fetchJson(
+    `${EUTILS_BASE}/esearch.fcgi?db=pubmed&retmode=json&sort=pub+date&datetype=edat&reldate=${ctx.lookbackDays}&retmax=${ctx.maxItems}&term=${encodeURIComponent(query)}&${common}`,
+    { userAgent: ctx.userAgent }
+  );
+  if (!search.ok) throw new Error(`PubMed search failed (HTTP ${search.status})`);
+  const ids = search.json?.esearchresult?.idlist || [];
+  if (ids.length === 0) return { items: [] };
+
+  await sleep(400);
+  const fetched = await fetchText(`${EUTILS_BASE}/efetch.fcgi?db=pubmed&retmode=xml&id=${ids.join(',')}&${common}`, { userAgent: ctx.userAgent });
+  if (!fetched.ok) throw new Error(`PubMed fetch failed (HTTP ${fetched.status})`);
+  return { items: mapPubmedXml(fetched.text) };
 }
 
 async function clinicalTrials(source, ctx) {
@@ -110,27 +148,7 @@ async function clinicalTrials(source, ctx) {
   const response = await fetchJson(url, { userAgent: ctx.userAgent });
   if (!response.ok) throw new Error(`ClinicalTrials.gov request failed (HTTP ${response.status})`);
 
-  const items = asArray(response.json?.studies).map((study) => {
-    const p = study.protocolSection || {};
-    const id = p.identificationModule?.nctId;
-    const summary = p.descriptionModule?.briefSummary || '';
-    return {
-      url: `https://clinicaltrials.gov/study/${id}`,
-      title: p.identificationModule?.briefTitle || p.identificationModule?.officialTitle || id,
-      summary: summary.slice(0, 4000),
-      body: [summary, p.descriptionModule?.detailedDescription || ''].join('\n\n').trim(),
-      author: p.sponsorCollaboratorsModule?.leadSponsor?.name || null,
-      publishedAt: parseDate(p.statusModule?.lastUpdatePostDateStruct?.date || p.statusModule?.studyFirstPostDateStruct?.date),
-      metadata: {
-        nct_id: id,
-        status: p.statusModule?.overallStatus || null,
-        phase: asArray(p.designModule?.phases).join(', ') || null,
-        conditions: asArray(p.conditionsModule?.conditions),
-        interventions: asArray(p.armsInterventionsModule?.interventions).map((i) => i.name).filter(Boolean),
-      },
-    };
-  }).filter((item) => item.url && item.title);
-
+  const items = asArray(response.json?.studies).map(mapTrialStudy).filter((item) => item.url && item.title);
   return { items };
 }
 
@@ -249,4 +267,12 @@ async function harvest(source, ctx) {
   return adapter(source, ctx);
 }
 
-module.exports = { harvest, robotsAllows };
+module.exports = {
+  harvest,
+  robotsAllows,
+  requestIdentity,
+  pubmedCommon,
+  mapPubmedXml,
+  mapTrialStudy,
+  EUTILS_BASE,
+};

@@ -1,6 +1,6 @@
 const { sql, connectPool, getProductionDatabase } = require('../db-config');
 const { loadSettings, settingNumber, recordUsage } = require('../mkt/settings');
-const { harvest } = require('../mkt/adapters');
+const { harvest, requestIdentity } = require('../mkt/adapters');
 const store = require('../mkt/store');
 
 const SCHEDULE_HOURS = { hourly: 1, daily: 24, weekly: 168 };
@@ -65,8 +65,7 @@ async function run(params = {}) {
   try {
     const settings = await loadSettings(pool);
     const ctx = {
-      userAgent: settings['harvest.user_agent'] || 'NutraAxisResearchBot/1.0',
-      contactEmail: process.env.HARVEST_CONTACT_EMAIL || process.env.MAIL_REPLY_TO || 'marketing@nutraaxislabs.com',
+      ...requestIdentity(settings),
       maxItems: settingNumber(settings, 'harvest.max_items_per_run', 50),
       lookbackDays: settingNumber(settings, 'harvest.lookback_days', 30),
       crawlDelayMs: settingNumber(settings, 'harvest.crawl_delay_ms', 1500),
