@@ -115,6 +115,7 @@ Internal shortcuts on `/` come from **`includes/operations-dashboard.php`** only
 ## Active handoffs
 
 - Dual QBO + Accounting UAT: see **`docs/AGENT_HANDOFF_DUAL_QBO.md`** before touching QBO/Accounting. Prefer **Local** agent for the remaining SQL migration.
+- Marketing & Research: see **`docs/AGENT_HANDOFF_MARKETING.md`** for what is shipped and what remains.
 
 ## Out of scope / leave alone unless asked
 
