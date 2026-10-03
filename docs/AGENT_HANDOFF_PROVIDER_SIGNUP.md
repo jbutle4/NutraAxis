@@ -1,7 +1,7 @@
 # Agent handoff — Provider Signup process & ACCS provisioning
 
 Continuation document for agents working on NutraAxis practitioner/provider onboarding.  
-**Last updated:** 2026-09-16  
+**Last updated:** 2026-10-02  
 **Repo:** `nutraaxis` on Azure App Service **`nutraaxisweb`**
 
 ---
@@ -64,6 +64,7 @@ flowchart TD
 - **Provider cannot edit full form** after submit (except **Returned** / **Draft**). Certificate + ACH editable in **complete-documents** statuses.
 - **Ops must approve before provision** — Provider is **not** emailed “Clinic Store ready” until provisioning completes.
 - **Welcome email is environment-specific** — Production clinics get a Production notice + `www.nutraaxislabs.com`. Stage/Dev clinics get a Stage (UAT — not live) notice + `https://main--nutrasync-eds-staging--capocommerce.aem.live/`. Already-sent emails are not rewritten.
+- **Clinic catalog clone source is Clinic Master** — Production catalog **14**, Stage catalog **12**. Azure `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_PRODUCTION` / `_STAGE`. Clone skips `NA_MKT_*` and Marketing categories. Default (General) is Retail only.
 
 ---
 
@@ -182,7 +183,7 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 | Clinic (company) | Yes | Sets `AccsStepClinicDone` + `AccsCompanyId` |
 | Clinic admin | Yes | Sets `AccsStepAdminDone` + `AccsCustomerId` |
 | Shared catalog | Yes (automation) or manual | Creates/reuses `SC-{CompanyName}`; ops can still mark manually |
-| Categories & products | Yes (automation) or manual | Clones from master shared catalog; skips `NA_MKT_INFO_FOLDER`; sets admin `patient_shared_catalog_id` (does not call `assignCompanies`) |
+| Categories & products | Yes (automation) or manual | Clones from Clinic Master; skips `NA_MKT_*` SKUs and Marketing categories; sets admin `patient_shared_catalog_id` (does not call `assignCompanies`) |
 | Company roles | Yes (automation) or manual | Clones template roles; verifies required role names |
 
 **Ops UI:** Application view → **Clinic configuration** card with checklist, **Complete ACCS clinic configuration** button (Provisioned + incomplete), and per-step **Mark complete** forms (Approved or Provisioned only).
@@ -227,7 +228,7 @@ Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_depr
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Source catalog (`Default (General)` on Stage/Prod/Dev). Optional `_*_STAGE` / `_*_PRODUCTION` |
+| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Code fallback only. Live clone source is Clinic Master: `_PRODUCTION=14`, `_STAGE=12`. Do not clone Default (General). |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME` | `Clinic_Template` | Looked up **in the current tenant** for role cloning |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_{STAGE\|PRODUCTION\|DEV}` | Stage **9**, Prod **3**, Dev **7** | Clinic_Template with full roles. Shared `TEMPLATE_COMPANY_ID` is ignored across tenants |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT` | `dev` | Bootstrap script copies role permissions from this ACCS tenant |
@@ -376,7 +377,9 @@ PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_STAGE=18
 PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEV=1
 PROVIDER_SIGNUP_ACCS_WEBSITE_ID=1
 PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD=
-PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_PRODUCTION=14
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_STAGE=12
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1          # Fallback only; do not use for clinic clone
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME=Clinic_Template
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_PRODUCTION=3
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_STAGE=9

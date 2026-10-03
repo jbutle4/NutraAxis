@@ -51,6 +51,7 @@ foreach ($result['role_actions'] as $action) {
 echo "\nSet on App Service (optional if company name resolves automatically):\n";
 echo '  PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME=' . provider_signup_accs_config_template_company_name() . "\n";
 echo '  PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID=' . (int) $result['company_id'] . "\n";
-echo '  PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1' . "\n";
+echo '  PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_PRODUCTION=14' . "\n";
+echo '  PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_STAGE=12' . "\n";
 
 exit(0);

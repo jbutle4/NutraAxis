@@ -8,9 +8,13 @@ const PROVIDER_SIGNUP_ACCS_CONFIG_SHARED_CATALOG_TAX_CLASS_ID = 3;
 const PROVIDER_SIGNUP_ACCS_CONFIG_TEMPLATE_COMPANY_NAME_DEFAULT = 'Clinic_Template';
 const PROVIDER_SIGNUP_ACCS_PATIENT_SHARED_CATALOG_ATTRIBUTE = 'patient_shared_catalog_id';
 
-/** SKUs on the master catalog that must not be copied into clinic shared catalogs. */
+/** SKU prefixes that must not be copied into clinic shared catalogs. */
+const PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKU_PREFIXES = [
+    'NA_MKT_',
+];
+
+/** Extra exact SKUs to keep off clinic catalogs (in addition to prefixes). */
 const PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKUS = [
-    'NA_MKT_INFO_FOLDER',
 ];
 
 function provider_signup_accs_config_api_request_for_environment(
@@ -515,6 +519,13 @@ function provider_signup_accs_config_is_excluded_clinic_catalog_sku(string $sku)
         return true;
     }
 
+    foreach (PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKU_PREFIXES as $prefix) {
+        $prefix = strtoupper(trim((string) $prefix));
+        if ($prefix !== '' && str_starts_with($sku, $prefix)) {
+            return true;
+        }
+    }
+
     foreach (PROVIDER_SIGNUP_ACCS_CLINIC_CATALOG_EXCLUDED_SKUS as $excluded) {
         if ($sku === strtoupper(trim((string) $excluded))) {
             return true;
@@ -522,6 +533,22 @@ function provider_signup_accs_config_is_excluded_clinic_catalog_sku(string $sku)
     }
 
     return false;
+}
+
+function provider_signup_accs_config_is_excluded_clinic_catalog_category(int $categoryId): bool
+{
+    if ($categoryId <= 0) {
+        return true;
+    }
+
+    $category = provider_signup_accs_config_api_request('GET', '/categories/' . $categoryId);
+    if (!$category['ok'] || !is_array($category['data'] ?? null)) {
+        return false;
+    }
+
+    $name = strtolower(trim((string) ($category['data']['name'] ?? '')));
+
+    return $name !== '' && str_contains($name, 'marketing');
 }
 
 /**
@@ -837,7 +864,7 @@ function provider_signup_accs_config_assign_catalog_contents(int $catalogId, int
     $categoryIds = [];
     foreach ($categories['data'] ?? [] as $categoryId) {
         $id = (int) $categoryId;
-        if ($id > 0) {
+        if ($id > 0 && !provider_signup_accs_config_is_excluded_clinic_catalog_category($id)) {
             $categoryIds[] = $id;
         }
     }
