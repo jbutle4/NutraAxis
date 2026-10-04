@@ -394,7 +394,7 @@ Offshore must not see API keys, cost burn, or store attribution detail.
 | Store DB | Phase 2 | |
 | Zapier / Teams | Webhooks for digest/alerts | |
 | RSS / search feeds | `feedparser`, Google News RSS, PubMed E-utilities, ClinicalTrials.gov | Content Harvester — S1a |
-| GoHighLevel (sub-account Private Integration Token, `Version` header) | Distribution + contact system of record: Social Planner (scheduler), email campaigns, conversations, lead attribution | `GHL_PIT`, `GHL_LOCATION_ID` in App Service / Key Vault; rotate every 90 days (7-day overlap). Start read-only scopes (Social Planner post/account read, email stats read, contacts read); add Social Planner post write + email campaign write only when v2 push is approved |
+| GoHighLevel (sub-account Private Integration Token, `Version` header) | Distribution + contact system of record: Social Planner (scheduler), email campaigns, conversations, lead attribution | `GHL_PIT`, `GHL_LOCATION_ID` in App Service / Key Vault; rotate every 90 days (7-day overlap). Start read-only scopes (Social Planner post/account read, email stats read, contacts read); add Social Planner post write + email campaign write only when v2 push is approved. **Provisioned 2026-10-04:** secret `ghl-pit` in `nutraaxis-mkt-kv`, `GHL_PIT` (Key Vault reference) + `GHL_LOCATION_ID` on `nutraaxis-marketing-func`; read-only scopes `locations`, `socialplanner/account`, `socialplanner/post`, `socialplanner/statistics`, `emails/schedule`, `workflows`, `conversations`, `conversations/message`, `contacts` (all `.readonly`). No code uses it yet — see RUNBOOK §6 |
 | X / LinkedIn APIs | Paid / restricted | Phase 2 harvesting; manual clip until then |
 
 ---
@@ -541,4 +541,4 @@ Console operator target remains ~8–10 h/week once habits form; early weeks may
 
 ## 14. Immediate next step after this spec
 
-S0–S4 and the post-S4 hardening are built (GHL ingest deferred — metrics and responses are manual until it lands). Operations follow [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md). Next: the GHL ingest when API access is approved, then Phase 2.
+S0–S4 and the post-S4 hardening are built (GHL ingest deferred — metrics and responses are manual until it lands). Operations follow [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md). GHL API access was provisioned on 2026-10-04 (read-only token on the Function App), so the GHL ingest is unblocked and is the next build, then Phase 2. Open item before building it: the GHL sub-account time zone is Eastern while the portal calendar is Central.

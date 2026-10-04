@@ -12,6 +12,7 @@ Build history and design live in [`docs/SEO_OPS_BUILD_SPEC.md`](../SEO_OPS_BUILD
 | Database | Azure SQL (same database as the portal) | Tables `Mkt*`; job runs in `dbo.ProcessExecutionLog`. |
 | Secrets | Key Vault **`nutraaxis-mkt-kv`** | Referenced from Function App settings — see §6. |
 | Portal → jobs | `NUTRA_FUNCTIONS_MARKETING_BASE_URL` / `NUTRA_FUNCTIONS_MARKETING_KEY` on `nutraaxisweb` | “Run now” buttons and on-demand actions call the Function App through these. |
+| GoHighLevel | Sub-account Private Integration (white-labeled at `app.wellsrx.com`; API `services.leadconnectorhq.com`) | Distribution and contact system of record. Token provisioned on the Function App (read-only scopes) but **no job uses it yet** — loading, metrics and responses are by hand until the GHL ingest is built. |
 
 Scope rules that always apply: only **nutraaxislabs.com** properties (Search Console, GA4, OpenRush imports refuse anything else — no Biote access); nothing writes to the website or ad platforms and nothing auto-posts; no customer PII goes to AI providers.
 
@@ -84,8 +85,9 @@ Secrets are in Key Vault **`nutraaxis-mkt-kv`** and the Function App reads them 
 | `OPENAI_API_KEY` | `openai-api-key` |
 | `GOOGLE_SA_JSON_B64` | `google-sa-json-b64` (base64 of the `nutraaxislabs-seo` service-account JSON key) |
 | `SMTP_PASS` | `smtp-pass` |
+| `GHL_PIT` | `ghl-pit` (GoHighLevel Private Integration Token; tag `rotate_by`) |
 
-Non-secret settings (`DB_SERVER`, `DB_USER`, `GSC_SITE_URL`, `GA4_PROPERTY_ID`, `SMTP_HOST` …) stay as plain app settings. The portal (`nutraaxisweb`) keeps its own copies of the database and SMTP credentials — rotating those means updating both places.
+Non-secret settings (`DB_SERVER`, `DB_USER`, `GSC_SITE_URL`, `GA4_PROPERTY_ID`, `SMTP_HOST`, `GHL_LOCATION_ID` …) stay as plain app settings. The portal (`nutraaxisweb`) keeps its own copies of the database and SMTP credentials — rotating those means updating both places.
 
 **Rotating a secret**
 
@@ -102,7 +104,18 @@ Non-secret settings (`DB_SERVER`, `DB_USER`, `GSC_SITE_URL`, `GA4_PROPERTY_ID`, 
 5. Run `seo-noop`, then a job that uses the key (e.g. `seo-gsc-ingest` for Google, **Generate fix spec** for Anthropic), and check the result.
 6. Revoke the old key at the provider.
 
-Never paste keys into chat, tickets, shared folders or commits. The GoHighLevel token (`GHL_PIT`, deferred) follows the same pattern when it's added.
+Never paste keys into chat, tickets, shared folders or commits.
+
+**GoHighLevel token (`ghl-pit`)** — rotate every 90 days; the due date is the secret's `rotate_by` tag (`az keyvault secret show --vault-name nutraaxis-mkt-kv -n ghl-pit --query tags`). Don't set an expiry date on the secret: an expired secret stops resolving and silently breaks the integration.
+
+1. In GHL (sub-account → Settings → Private Integrations) create a new integration with the **same scopes** about 7 days before the due date. Read-only scopes in use: `locations.readonly`, `socialplanner/account.readonly`, `socialplanner/post.readonly`, `socialplanner/statistics.readonly`, `emails/schedule.readonly`, `workflows.readonly`, `conversations.readonly`, `conversations/message.readonly`, `contacts.readonly`. No write scopes unless the v2 push is approved.
+2. GHL shows the token once. Store it without displaying it (zsh):
+   ```bash
+   read -rs "t?Paste GHL token: " && echo && printf %s "$t" | az keyvault secret set --vault-name nutraaxis-mkt-kv -n ghl-pit --file /dev/stdin --tags rotate_by=$(date -v+90d +%Y-%m-%d) --query "{name:name, rotate_by:tags.rotate_by}" -o table; unset t
+   ```
+3. Restart the Function App and confirm `GHL_PIT` shows `Resolved` (steps 3–4 above), then delete the old integration in GHL.
+
+**GHL time zone:** the sub-account is set to `America/New_York`; portal calendar times are Central. Convert when loading posts by hand (or switch the GHL time zone to Central).
 
 **If Key Vault is unreachable** (references show an error and jobs fail with auth errors): check the vault exists, the managed identity still has its access policy, and the secret isn't disabled or expired. As a last resort, temporarily put the value straight into the app setting, then switch back to the reference once the vault is fixed.
 
