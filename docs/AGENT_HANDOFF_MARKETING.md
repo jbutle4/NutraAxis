@@ -1,10 +1,11 @@
 # Agent handoff — Marketing & Research
 
-Last updated: **Sep 30, 2026** (end of session). Everything below is merged to `main` and live on `nutraaxisweb`; the marketing Function App (`nutraaxis-marketing-func`) is published from `main`.
+Last updated: **Oct 4, 2026** (end of session). Everything below is merged to `main` and live on `nutraaxisweb`; the marketing Function App (`nutraaxis-marketing-func`) is published from `main`.
 
 ## Where things stand
 
-- Worktree: `/Users/jbutle4/Sites/nutraaxis-mkt` on `main` at `85cb812`, clean. `.env` is a symlink to the main repo.
+- Worktree: `/Users/jbutle4/Sites/nutraaxis-mkt` on `main`, clean. `.env` is a symlink to the main repo.
+- **GoHighLevel API access is provisioned (Oct 4) but nothing uses it yet** — see "GoHighLevel connection" below. Next build item when the user resumes: the GHL ingest.
 - Main repo `/Users/jbutle4/Sites/nutraaxis` holds the user's **own uncommitted work** (branch `jbutle4/cursor/supplier-invoice-ap-workflow`, plus edits to `assets/css/operations.css`, `includes/process-functions-client.php`, QBO files and more). Leave it alone; do not commit it. Avoid changing `operations.css` from marketing work — use a module stylesheet (see `marketing-docs.css`, `marketing-manual.css`).
 - Open PRs: only [#28](https://github.com/jbutle4/NutraAxis/pull/28) (Process Log dropdown) — not ours; conflict-scan against it before merging.
 - Latest SQL migration: `sql/168_create_marketing_reports.sql` (applied). Next number: **169**.
@@ -33,14 +34,24 @@ Last updated: **Sep 30, 2026** (end of session). Everything below is merged to `
 - Code: `includes/marketing-reports.php`, `marketing/reports/{index,view}.php`, `functions-marketing/src/lib/jobs/report.js`, `functions-marketing/src/functions/marketing-reports.js`.
 - July and August 2026 are frozen with highlights.
 
+### GoHighLevel connection (provisioned Oct 4, no code yet)
+- Today GHL is used **by hand only**: the coordinator loads approved assets into GHL and records the GHL ID on the asset (`MktAsset.ExternalPostID`); metrics are entered by hand / CSV (`MktAssetMetric.Source` already accepts `ghl`, preferred in scoring); responses are pasted into the Response Inbox.
+- Sub-account Private Integration (white-labeled GHL at `app.wellsrx.com`; API is `https://services.leadconnectorhq.com`, `Version: 2021-07-28` header). Location ID `1FjmFpyj3ubOiNLwyMO5`.
+- Token in Key Vault `nutraaxis-mkt-kv` as secret **`ghl-pit`** (tag `rotate_by=2027-01-02`; no expiry date on purpose — an expired secret stops resolving). Function App settings: `GHL_PIT` = Key Vault reference (status **Resolved**), `GHL_LOCATION_ID` plain. Not on `nutraaxisweb`.
+- Scopes granted (read-only): `locations.readonly`, `socialplanner/account.readonly`, `socialplanner/post.readonly`, `socialplanner/statistics.readonly`, `emails/schedule.readonly`, `workflows.readonly`, `conversations.readonly`, `conversations/message.readonly`, `contacts.readonly`. No write scopes — add `socialplanner/post.write` / `emails/builder.write` only if the user approves the v2 push.
+- Probe on Oct 4 (status codes only): all scopes OK; statistics returned 422 for an empty profile list (authorized). `conversations/message.readonly` untested (needs a real message ID). `emails/schedule.readonly` is documented as "list scheduled emails" — confirm it returns opens/clicks; if not, find the stats endpoint's scope.
+- **Open decision:** the GHL sub-account time zone is **America/New_York**, the portal calendar is Central. Hand-loaded times will be an hour off unless the user switches GHL to Central or the calendar also shows Eastern.
+- Planned subdomain `ma_seo.nutraaxislabs.com` (not created yet). Underscores are invalid in hostnames/certificates — recommended `ma-seo.nutraaxislabs.com`. Any `*.nutraaxislabs.com` host passes the ingest allowlist (`hostAllowed` in `functions-marketing/src/lib/mkt/google.js`); ask what it will point at before changing `pages.site_url` or similar.
+
 ## What remains
 
 ### To build
 1. **Original Research** (`/marketing/original-research/`) — still a placeholder (the manual shows it as "Not built yet"). Scope not yet agreed with the user; start with a preview + AskQuestion as for Literature and Reports.
 
+2. **GoHighLevel ingest** — **unblocked** (token provisioned Oct 4). Read with `GHL_PIT` / `GHL_LOCATION_ID`: email campaign stats per asset (match on `ExternalPostID`), Social Planner account statistics, post status (confirm posted), conversations → Response Inbox (redact before saving / AI), lead counts by UTM (aggregate only; discard contact PII). Write metrics with `Source = 'ghl'`; re-runs must not duplicate rows. Preview + AskQuestion with the user first. Never print or paste the token.
+
 ### Deferred (needs something from the user first)
-2. **GoHighLevel stats ingest** — needs the GHL token set in App Settings (Key Vault reference). Never paste the token in chat.
-3. **GoHighLevel push of approved posts** — needs GHL write scopes.
+3. **GoHighLevel push of approved posts** — needs user approval and GHL write scopes; person-triggered only, never autonomous.
 4. **Paid X / LinkedIn harvesting** — needs paid API access.
 5. **Attribution join** (GHL contacts ↔ GA4) — depends on 2; no contact PII may be persisted or sent to AI.
 6. Adobe — out of scope.
@@ -71,6 +82,7 @@ Last updated: **Sep 30, 2026** (end of session). Everything below is merged to `
 
 ## Useful commands
 - Publish Function App: `cd functions-marketing && func azure functionapp publish nutraaxis-marketing-func --javascript`
+- Check Key Vault references resolve: `az rest --method get --url "https://management.azure.com/subscriptions/7833848a-51da-4f4f-b800-a0d34711f8ea/resourceGroups/NutraSync/providers/Microsoft.Web/sites/nutraaxis-marketing-func/config/configreferences/appsettings?api-version=2022-03-01" --query "value[].{name:name,status:properties.status}" -o table`
 - Run a marketing job from a local PHP script (never print the key): `KEY=$(az functionapp keys list -g NutraSync -n nutraaxis-marketing-func --query functionKeys.default -o tsv) && NUTRA_FUNCTIONS_MARKETING_BASE_URL=https://nutraaxis-marketing-func.azurewebsites.net NUTRA_FUNCTIONS_MARKETING_KEY="$KEY" php script.php`
 - Apply a migration: `node scripts/run-sql-file.js sql/<file>`
 - Watch a deploy: `gh run list --workflow "Deploy to Azure App Service" --commit <sha>` then `gh run watch <id> --exit-status`
