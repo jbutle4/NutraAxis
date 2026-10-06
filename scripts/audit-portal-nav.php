@@ -25,6 +25,10 @@ $warnings = [];
 const AUDIT_SPECIAL_AUTH_SLUGS = [
     'procurement-approvals',
     'approvals',
+    'supply-chain-manual',
+    'administration-manual',
+    'operations-manual',
+    'it-systems-manual',
 ];
 
 /** Folders that are routes/utilities, not permission-gated modules. */

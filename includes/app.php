@@ -735,6 +735,14 @@ $appFunctions = [
         'group' => 'supply-chain',
     ],
     [
+        'slug'  => 'supply-chain-manual',
+        'title' => 'Supply Chain User Manual',
+        'desc'  => 'Roles, workflows, and a guide to every Supply Chain module — inventory, procurement, receiving, sales, labeling, and COAs.',
+        'href'  => '/supply-chain/manual/',
+        'icon'  => 'document',
+        'group' => 'supply-chain',
+    ],
+    [
         'slug'  => 'accounting',
         'title' => 'Accounting',
         'desc'  => 'QuickBooks Online, supplier invoices and payments, and approval queues for PO, payment, and QBO insert workflows.',
@@ -780,6 +788,14 @@ $appFunctions = [
         'desc'  => 'IT system monitoring, Geckoboard dashboards, and Zendesk totals — coming soon.',
         'href'  => '/system-performance-dashboard/',
         'icon'  => 'trend',
+        'group' => 'admin',
+    ],
+    [
+        'slug'  => 'administration-manual',
+        'title' => 'Administration User Manual',
+        'desc'  => 'Roles, workflows, and a guide to Accounting, legal agreements, support, territories, and admin shortcuts.',
+        'href'  => '/administration/manual/',
+        'icon'  => 'document',
         'group' => 'admin',
     ],
 ];

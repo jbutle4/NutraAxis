@@ -6,8 +6,17 @@ function operations_dashboard_sections(): array
 {
     return [
         [
+            'key'   => 'operations',
             'title' => 'Operations',
             'links' => [
+                [
+                    'title'    => 'User Manual',
+                    'desc'     => 'Roles, workflows, and a guide to every Operations card — including external Microsoft 365 and support tools.',
+                    'href'     => '/operations/manual/',
+                    'icon'     => 'document',
+                    'internal' => true,
+                    'module'   => 'operations-manual',
+                ],
                 [
                     'title' => 'Issues and Actions',
                     'desc'  => 'SharePoint tracker for open issues, action items, and team follow-ups.',
@@ -129,8 +138,17 @@ function operations_dashboard_sections(): array
             ],
         ],
         [
+            'key'   => 'it-systems',
             'title' => 'IT & Ecommerce Management Systems',
             'links' => [
+                [
+                    'title'    => 'User Manual',
+                    'desc'     => 'Production vs UAT system links — Azure, Adobe Commerce, Jazz OMS, Intuit, PayPal, and how to use each safely.',
+                    'href'     => '/it-systems/manual/',
+                    'icon'     => 'document',
+                    'internal' => true,
+                    'module'   => 'it-systems-manual',
+                ],
                 [
                     'title' => 'Azure Portal',
                     'desc'  => 'Microsoft Azure portal for NutraAxis cloud resources and app services.',

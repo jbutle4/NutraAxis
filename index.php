@@ -6,7 +6,7 @@ require_once __DIR__ . '/includes/operations-dashboard.php';
 $pageTitle = 'NutraAxis Operations Dashboard';
 $pageDescription = 'NutraAxis Operations Dashboard — internal tools and resources for the NutraAxis team.';
 $visibleFunctions = array_values(array_filter(
-    auth_filter_modules(app_functions()),
+    auth_filter_modules(app_home_function_cards()),
     fn(array $module): bool => ($module['slug'] ?? '') !== 'operations-dashboard'
 ));
 $functionGroups = app_functions_grouped($visibleFunctions);
@@ -25,12 +25,18 @@ if (auth_is_logged_in() && auth_can_read_module('operations-dashboard')) {
         }
 
         if ($links !== []) {
+            $title = (string) ($section['title'] ?? 'Operations Dashboard');
+            $key = trim((string) ($section['key'] ?? ''));
+            if ($key === '') {
+                $key = (string) preg_replace('/[^a-z0-9]+/', '-', strtolower($title));
+            }
+
             $dashboardGroups[] = [
-                'key'     => preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($section['title'] ?? 'dashboard'))),
-                'title'   => (string) ($section['title'] ?? 'Operations Dashboard'),
-                'desc'    => (string) (($section['title'] ?? '') === 'Operations'
+                'key'     => $key,
+                'title'   => $title,
+                'desc'    => $title === 'Operations'
                     ? 'Operational shortcuts, support tools, documentation, and curated team links.'
-                    : 'Production and UAT systems for Adobe Commerce, QuickBooks, Jazz OMS, Azure, and ecommerce administration.'),
+                    : 'Production and UAT systems for Adobe Commerce, QuickBooks, Jazz OMS, Azure, and ecommerce administration.',
                 'links'   => $links,
             ];
         }
@@ -96,14 +102,18 @@ require __DIR__ . '/includes/header.php';
               <span class="portal-function-group__toggle" aria-hidden="true">Expand</span>
             </summary>
             <div class="portal-function-group__panel" id="portal-group-panel-<?= htmlspecialchars($group['key']) ?>">
+            <?php if (($group['key'] ?? '') === 'marketing'): ?>
+              <?php hub_render_marketing_home_cards($group['modules']); ?>
+            <?php else: ?>
             <div class="functions">
               <?php foreach ($group['modules'] as $item): ?>
               <?php
                 $moduleHref = auth_is_logged_in()
                     ? $item['href']
                     : auth_login_url($item['href']);
+                $tierClass = hub_card_tier_class($item);
               ?>
-              <a class="function-card" href="<?= htmlspecialchars($moduleHref) ?>">
+              <a class="function-card <?= htmlspecialchars($tierClass) ?>" href="<?= htmlspecialchars($moduleHref) ?>">
                 <div class="function-icon"><?= icon_svg($item['icon']) ?></div>
                 <h3><?= htmlspecialchars($item['title']) ?></h3>
                 <p><?= htmlspecialchars($item['desc']) ?></p>
@@ -116,6 +126,7 @@ require __DIR__ . '/includes/header.php';
               </a>
               <?php endforeach; ?>
             </div>
+            <?php endif; ?>
             </div>
           </details>
           <?php endforeach; ?>
