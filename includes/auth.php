@@ -46,6 +46,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'process-log'                   => 'OperationsDashboard',
     'site-documentation'            => 'OperationsDashboard',
     'enhancement-log'               => 'OperationsDashboard',
+    'accs-order-account-support'    => 'OperationsDashboard',
     'legal-agreements'       => 'LegalAgreements',
     'product-catalog'        => 'ProductCatalog',
     'product-enrichment'     => 'ProductCatalog',
@@ -106,6 +107,10 @@ const MODULE_PERMISSION_COLUMNS = [
     'research-production'    => 'Marketing',
     'marketing-admin'        => 'Marketing',
     'marketing-manual'       => 'Marketing',
+    'supply-chain-manual'    => 'InventoryReporting',
+    'administration-manual'  => 'Accounting',
+    'operations-manual'      => 'OperationsDashboard',
+    'it-systems-manual'      => 'OperationsDashboard',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -334,6 +339,29 @@ function auth_can_read_leaf_module(string $slug): bool
         return approval_can_read_type('PO')
             || approval_can_read_type('Payment')
             || approval_can_read_type('QBOInsert');
+    }
+
+    // Hub User Manuals: visible if the user can read any module in that area.
+    if ($slug === 'supply-chain-manual') {
+        foreach (['ProductCatalog', 'InventoryReporting', 'InventoryForecasting', 'POManagement', 'SalesReporting', 'LabelingOperations'] as $col) {
+            if (auth_can_read($col)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    if ($slug === 'administration-manual') {
+        foreach (['Accounting', 'LegalAgreements', 'Support', 'SalesReporting', 'OperationsDashboard'] as $col) {
+            if (auth_can_read($col)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    if ($slug === 'operations-manual' || $slug === 'it-systems-manual') {
+        return auth_can_read('OperationsDashboard');
     }
 
     $column = MODULE_PERMISSION_COLUMNS[$slug] ?? null;

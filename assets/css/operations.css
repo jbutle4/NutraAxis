@@ -16,6 +16,12 @@
   --bg-light:    #f5fafa;
   --link-blue:   #0ea5e9;
   --link-blue-hover: #0284c7;
+  --marketing:   #3d7ea6;
+  --marketing-pale: #eaf3f8;
+  --operations:  #5f7a5f;
+  --operations-pale: #eef4ee;
+  --it-systems:  #4a6b8a;
+  --it-systems-pale: #eef2f6;
   --radius:      12px;
   --shadow:      0 4px 24px rgba(42, 107, 101, 0.10);
 }
@@ -851,10 +857,12 @@ body.page-catalog-list {
   background: linear-gradient(180deg, #fbf6ec 0%, var(--white) 140px);
 }
 
+.portal-function-group--it-systems,
 .portal-function-group--it-ecommerce-management-systems {
   border-top: 4px solid #3b6ea5;
   background: linear-gradient(180deg, #eef3f9 0%, var(--white) 140px);
 }
+
 
 .portal-function-group__header {
   margin-bottom: 24px;
@@ -3621,11 +3629,52 @@ body.te-print-page {
 }
 
 .hub-section-title {
-  margin: 28px 0 4px;
+  margin: 8px 0 12px;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--text);
+}
+
+.hub-section-title--spaced {
+  margin-top: 1.75rem;
+}
+
+/* Home Marketing expand: match /marketing/ capability cards (mint production tiles) */
+.portal-function-group--marketing .capability-grid {
+  margin-bottom: 0;
+}
+
+.portal-function-group--marketing .capability-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.portal-function-group--marketing .capability-card .function-link {
+  margin-top: auto;
+}
+
+/* Ensure tier tint wins over plain .function-card white fill on home groups */
+.function-card.card-tier-production {
+  background: #e8f5e9;
+  border-color: #b9dcc0;
+}
+
+.function-card.card-tier-uat {
+  background: #fdecea;
+  border-color: #f0c4bf;
+}
+
+.function-card.card-tier-external {
+  background: #f0f0f0;
+  border-color: #d8d8d8;
+}
+
+.function-card.card-tier-hub {
+  background: #e8ede6;
+  border-color: #c5d4c0;
 }
 
 .hub-production-section-title {

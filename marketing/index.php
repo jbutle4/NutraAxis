@@ -19,17 +19,6 @@ usort(
     static fn(array $a, array $b): int => ((int) ($a['sort'] ?? 0)) <=> ((int) ($b['sort'] ?? 0))
 );
 
-$sections = [
-    'engine'  => ['title' => 'Content Engine', 'items' => []],
-    'library' => ['title' => 'Supporting Libraries & Governance', 'items' => []],
-    'seo'     => ['title' => 'SEO & Site', 'items' => []],
-    'other'   => ['title' => 'Other', 'items' => []],
-];
-foreach ($areas as $item) {
-    $key = (string) ($item['section'] ?? 'other');
-    $sections[isset($sections[$key]) ? $key : 'other']['items'][] = $item;
-}
-
 $activeSlug = 'marketing';
 $pageTitle = ($hub['title'] ?? 'Marketing & Research Hub') . ' | NutraAxis Operations';
 $pageDescription = (string) ($hub['desc'] ?? '');
@@ -55,12 +44,7 @@ require dirname(__DIR__) . '/includes/header.php';
         </div>
       </div>
 <?php else: ?>
-<?php foreach ($sections as $section): ?>
-<?php if ($section['items'] !== []): ?>
-      <h2 class="hub-section-title"><?= htmlspecialchars($section['title']) ?></h2>
-      <?php hub_render_card_grid($section['items'], 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
-<?php endif; ?>
-<?php endforeach; ?>
+      <?php hub_render_marketing_home_cards($areas); ?>
 <?php endif; ?>
     </div>
   </main>

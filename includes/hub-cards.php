@@ -110,3 +110,91 @@ function hub_render_function_card_items(array $items): void
         echo '</svg></span></a>';
     }
 }
+
+/**
+ * Marketing & Research hub sections — same layout on /marketing/ and home expand.
+ *
+ * @param list<array<string, mixed>> $items
+ * @return array<string, array{title: string, items: list<array<string, mixed>>}>
+ */
+function hub_marketing_sections(array $items): array
+{
+    $sections = [
+        'engine'  => ['title' => 'Content Engine', 'items' => []],
+        'library' => ['title' => 'Supporting Libraries & Governance', 'items' => []],
+        'seo'     => ['title' => 'SEO & Site', 'items' => []],
+        'other'   => ['title' => 'Other', 'items' => []],
+    ];
+
+    $hasExplicitSection = false;
+    foreach ($items as $item) {
+        if (isset($item['section']) && (string) $item['section'] !== '') {
+            $hasExplicitSection = true;
+            break;
+        }
+    }
+
+    // Older registries without section keys: split research-* vs everything else.
+    if (!$hasExplicitSection) {
+        $sections = [
+            'seo'      => ['title' => 'SEO & Content', 'items' => []],
+            'research' => ['title' => 'Research Engine', 'items' => []],
+        ];
+        foreach ($items as $item) {
+            $slug = (string) ($item['slug'] ?? '');
+            $key = str_starts_with($slug, 'research-') ? 'research' : 'seo';
+            $sections[$key]['items'][] = $item;
+        }
+
+        return $sections;
+    }
+
+    foreach ($items as $item) {
+        $key = (string) ($item['section'] ?? 'other');
+        if (!isset($sections[$key])) {
+            $key = 'other';
+        }
+        $sections[$key]['items'][] = $item;
+    }
+
+    return $sections;
+}
+
+/**
+ * Render Marketing cards like /marketing/ (mint capability cards, section titles, 6-up grid).
+ *
+ * @param list<array<string, mixed>> $items
+ */
+function hub_render_marketing_home_cards(array $items): void
+{
+    if ($items === []) {
+        return;
+    }
+
+    $prepared = [];
+    foreach ($items as $item) {
+        $href = (string) ($item['href'] ?? '');
+        if ($href !== '' && function_exists('auth_is_logged_in') && !auth_is_logged_in()) {
+            $item['href'] = auth_login_url($href);
+        }
+        $prepared[] = $item;
+    }
+
+    $first = true;
+    foreach (hub_marketing_sections($prepared) as $section) {
+        if ($section['items'] === []) {
+            continue;
+        }
+        $titleClass = 'hub-section-title';
+        if (!$first) {
+            $titleClass .= ' hub-section-title--spaced';
+        }
+        $first = false;
+        echo '<h2 class="' . htmlspecialchars($titleClass) . '">' . htmlspecialchars($section['title']) . '</h2>';
+        hub_render_card_grid(
+            $section['items'],
+            'capability-card capability-card-link',
+            'capability-grid capability-grid--six'
+        );
+    }
+}
