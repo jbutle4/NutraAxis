@@ -2,20 +2,39 @@
 
 /**
  * ACCS Order and Account Support — process registry for IT & Ecommerce.
- * Add each support process here; the hub landing page renders the cards.
  *
  * @return list<array{slug: string, title: string, desc: string, href: string, icon: string}>
  */
 function accs_order_account_support_processes(): array
 {
     return [
-        // Example shape for upcoming processes:
-        // [
-        //     'slug'  => 'order-status-lookup',
-        //     'title' => 'Order status lookup',
-        //     'desc'  => 'Find an ACCS order and confirm fulfillment / payment state.',
-        //     'href'  => '/accs-order-account-support/order-status/',
-        //     'icon'  => 'clipboard',
-        // ],
+        [
+            'slug'  => 'cases',
+            'title' => 'Support cases',
+            'desc'  => 'Open cases, comment history, Stage resource ledger, and clone/purge status.',
+            'href'  => '/accs-order-account-support/cases/',
+            'icon'  => 'clipboard',
+        ],
+        [
+            'slug'  => 'clone',
+            'title' => 'Clone account to Stage',
+            'desc'  => 'Mirror a Production clinic onto Stage with Prod shared-catalog membership and prices.',
+            'href'  => '/accs-order-account-support/clone/',
+            'icon'  => 'support',
+        ],
+        [
+            'slug'  => 'cart',
+            'title' => 'Recreate order as Stage cart',
+            'desc'  => 'Coming next — build an open Stage cart from a Production order (Phase 2).',
+            'href'  => '/accs-order-account-support/cart/',
+            'icon'  => 'catalog',
+        ],
+        [
+            'slug'  => 'purge',
+            'title' => 'Purge Stage support account',
+            'desc'  => 'Tear down SUPPORT- Stage company, catalog, prices, and admin using the case ledger.',
+            'href'  => '/accs-order-account-support/purge/',
+            'icon'  => 'document',
+        ],
     ];
 }

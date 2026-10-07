@@ -46,7 +46,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'process-log'                   => 'OperationsDashboard',
     'site-documentation'            => 'OperationsDashboard',
     'enhancement-log'               => 'OperationsDashboard',
-    'accs-order-account-support'    => 'OperationsDashboard',
+    'accs-order-account-support'    => 'AccsOrderAccountSupport',
     'legal-agreements'       => 'LegalAgreements',
     'product-catalog'        => 'ProductCatalog',
     'product-enrichment'     => 'ProductCatalog',
@@ -159,6 +159,7 @@ function auth_permissions_from_role_row(array $row): array
         'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
         'Marketing'            => $row['Marketing'] ?? null,
         'MarketingCompliance'  => $row['MarketingCompliance'] ?? null,
+        'AccsOrderAccountSupport' => $row['AccsOrderAccountSupport'] ?? null,
     ];
 }
 
@@ -198,7 +199,8 @@ function auth_refresh_permissions(): void
                 PaymentApproval,
                 ProviderAccountReview,
                 Marketing,
-                MarketingCompliance
+                MarketingCompliance,
+                AccsOrderAccountSupport
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -654,7 +656,8 @@ function auth_attempt_login(string $login, string $password): array
             r.PaymentApproval,
             r.ProviderAccountReview,
             r.Marketing,
-            r.MarketingCompliance
+            r.MarketingCompliance,
+            r.AccsOrderAccountSupport
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login
