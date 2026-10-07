@@ -23,21 +23,12 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => 'Back to Operations Home',
           'category'   => 'IT & Ecommerce',
           'title'      => 'ACCS Order and Account Support',
-          'lead'       => 'Guided processes for ACCS order and clinic account support. Open a process below when available.',
+          'lead'       => 'Clone Production clinics to Stage with Prod catalog mirror, track support cases, and purge SUPPORT- accounts when done.',
           'permission' => auth_module_permission_label($activeSlug),
       ]);
       ?>
 
-<?php if ($processes === []): ?>
-      <div class="status-banner">
-        <div>
-          <strong>Support processes coming next</strong>
-          <p>This hub will list ACCS order and account support workflows as they are defined. Check back after the first processes are published.</p>
-        </div>
-      </div>
-<?php else: ?>
       <?php hub_render_card_grid($processes, 'capability-card capability-card-link', 'capability-grid capability-grid--six'); ?>
-<?php endif; ?>
     </div>
   </main>
 <?php
