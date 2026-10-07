@@ -84,6 +84,28 @@ const MODULE_PERMISSION_COLUMNS = [
     'delivery-scheduling-log-uat' => 'POManagement',
     'travel-expense'         => 'TEManagement',
     'signup-review'          => 'ProviderAccountReview',
+    'marketing'              => 'Marketing',
+    'research-interests'     => 'Marketing',
+    'research-harvester'     => 'Marketing',
+    'research-topics'        => 'Marketing',
+    'marketing-campaigns'    => 'Marketing',
+    'marketing-calendar'     => 'Marketing',
+    'marketing-performance'  => 'Marketing',
+    'marketing-keywords'     => 'Marketing',
+    'research-literature'    => 'Marketing',
+    'research-claims'        => 'Marketing',
+    'research-prompt-lab'    => 'Marketing',
+    'marketing-tasks'        => 'Marketing',
+    'research-output'        => 'Marketing',
+    'marketing-content'      => 'Marketing',
+    'marketing-pages'        => 'Marketing',
+    'marketing-issues'       => 'Marketing',
+    'marketing-ranks'        => 'Marketing',
+    'marketing-backlinks'    => 'Marketing',
+    'marketing-reports'      => 'Marketing',
+    'research-production'    => 'Marketing',
+    'marketing-admin'        => 'Marketing',
+    'marketing-manual'       => 'Marketing',
     'supply-chain-manual'    => 'InventoryReporting',
     'administration-manual'  => 'Accounting',
     'operations-manual'      => 'OperationsDashboard',
@@ -134,6 +156,8 @@ function auth_permissions_from_role_row(array $row): array
         'QBOInsertApproval'    => $row['QBOInsertApproval'] ?? null,
         'PaymentApproval'      => $row['PaymentApproval'] ?? null,
         'ProviderAccountReview'=> $row['ProviderAccountReview'] ?? null,
+        'Marketing'            => $row['Marketing'] ?? null,
+        'MarketingCompliance'  => $row['MarketingCompliance'] ?? null,
     ];
 }
 
@@ -171,7 +195,9 @@ function auth_refresh_permissions(): void
                 TEProcessing,
                 QBOInsertApproval,
                 PaymentApproval,
-                ProviderAccountReview
+                ProviderAccountReview,
+                Marketing,
+                MarketingCompliance
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -625,7 +651,9 @@ function auth_attempt_login(string $login, string $password): array
             r.TEProcessing,
             r.QBOInsertApproval,
             r.PaymentApproval,
-            r.ProviderAccountReview
+            r.ProviderAccountReview,
+            r.Marketing,
+            r.MarketingCompliance
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

@@ -2,10 +2,11 @@
 
 require_once __DIR__ . '/process-log.php';
 require_once __DIR__ . '/process-functions-client.php';
+require_once __DIR__ . '/marketing-jobs.php';
 
 function process_registry(): array
 {
-    return [
+    return marketing_process_registry() + [
         'daily-sales-summary' => [
             'code'          => 'daily-sales-summary',
             'name'          => 'Daily Sales Summary',
@@ -120,6 +121,15 @@ function process_registry(): array
             'uat_step'      => 12,
             'function_app'  => 'profile',
         ],
+        'accs-jazz-tracking-sync' => [
+            'code'          => 'accs-jazz-tracking-sync',
+            'name'          => 'ACCS Jazz Tracking Sync',
+            'description'   => 'Backfill missing ACCS shipment tracking numbers from Jazz Prod (including historical complete/closed orders) for customer-service proof of delivery.',
+            'function_name' => 'accs-jazz-tracking-sync',
+            'schedule'      => 'Every 4 hours (production Function App timer)',
+            'uat_e2e'       => false,
+            'function_app'  => 'prod',
+        ],
         'supplier-payment-pull' => [
             'code'          => 'supplier-payment-pull',
             'name'          => 'Supplier Bill Payment Pull',
@@ -160,6 +170,10 @@ function process_registry_function_app_label(array $entry): string
 
     if ($mode === 'prod') {
         return process_functions_prod_app_label();
+    }
+
+    if ($mode === 'marketing') {
+        return process_functions_marketing_app_label();
     }
 
     if ($mode === 'portal') {

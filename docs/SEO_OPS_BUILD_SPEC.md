@@ -1,0 +1,544 @@
+# NutraAxis SEO Operations Platform — Build Specification
+
+**Version 2.1 · 2026-09-28 · Track C (portal extension) + Content Engine loop**  
+Companion to: *NutraAxis SEO Operations Platform Framework v2* (Word)  
+Source of truth for Cursor. Work **one phase at a time**. Do not start a phase until the previous phase’s acceptance criteria pass. When the spec and existing code disagree, the spec wins; propose a change in the PR description rather than silently diverging.
+
+---
+
+## 0. Locked decisions (2026-09-22)
+
+| # | Decision |
+|---|---|
+| 1 | **Portal extension** — build inside the existing NutraAxis PHP operations portal (`nutraaxis` / `nutraaxisweb`). No Laravel greenfield, no separate `seo-ops` app. |
+| 2 | **SEO-standalone until Research App lands** — local taxonomy + in-repo prompts in `seo_ops` / Prompt tables. When Research Config / Prompt Lab exist, read them via shared views; do not block S0–S4 on Track A/B. |
+| 3 | **Content + social first** — new domain needs demand creation before deep analytics. Phase 2 stubs for modules not needed to produce/publish/promote. |
+| 4 | **Jobs vs AI** — nightly/batch work on **Azure Function Apps + Python** (cheap, idempotent). AI only where generative judgment is required (briefs, drafts, social copy, claims pre-check, digests, fix specs). |
+| 5 | **No Adobe CMS write path** — editors publish in CMS manually; pipeline records `published_url`; crawler verifies. Revisit only when Adobe has capable AI/MCP integrations. |
+| 6 | **Attribution (store join) deferred** — Performance phase 2; UTM + Magento/store read is not a S0–S3 blocker. |
+
+**Boundary (unchanged):** system of record for SEO + content ops. Never writes to the website or any ad platform. Paid media is read-only when connected. No PII to AI providers.
+
+---
+
+## 1. Purpose (new-domain reality)
+
+nutraaxislabs.com is a **new domain**. Flat GSC/GA4 charts are expected until content and social drive crawl/index/engagement. The first product value is the **Content Engine loop** (§3A):
+
+1. **Interests & Sources** — define what to watch (human).
+2. **Harvest** — scheduled search and crawl of those sources (automated, no AI).
+3. **Synthesize** — compile harvested items into topics (AI), then interpret and accept (human).
+4. **Generate** — single posts, series, and email campaigns from accepted topics (AI draft, human approve, clinical gate).
+5. **Track** — responses, engagement, and site performance per asset, fed back into steps 1 and 3.
+
+SEO (keywords, long-form articles, technical health) runs alongside and shares the same keyword list, review gates, and tracking. Measurement is the **feedback loop**, not the first deliverable.
+
+---
+
+## 2. Environments & stack
+
+| Env | Where | Details |
+|---|---|---|
+| Local | Existing NutraAxis MAMP / local PHP | Same portal codebase; MySQL schema `seo_ops` (or `dbo`-style tables with `Seo` prefix if matching portal SQL Server conventions — **prefer Azure SQL / MySQL to match portal’s live DB**; follow existing `sql/NNN_*.sql` + `node scripts/run-sql-file.js` pattern). |
+| Staging / Production | `nutraaxisweb` App Service + existing Function Apps | Selective FTP or git-push deploy per `AGENTS.md`. SEO jobs register in `functions/src/lib/process-runner.js` like other nightly jobs. |
+
+### Stack conventions (portal, not Laravel)
+
+- PHP pages: `includes/init.php` first; domain logic in `includes/seo-*.php`; hub via `includes/app.php` + `MODULE_PERMISSION_COLUMNS` in `includes/auth.php`.
+- UI: existing operations CSS / `render_list_page_header` / form-group patterns — no Tailwind/Laravel Blade.
+- Workers: Node/Python Function App jobs under `functions/src/lib/jobs/seo-*.js` (or `.py` via the same runner pattern used for heavy jobs). Prefer **Python** for crawl/GSC/GA4/Semrush REST when libraries are clearer; Node is fine when matching existing clients.
+- Auth/RBAC: extend portal roles; map Framework roles → portal permission columns (Section 8).
+- Secrets: App Service settings / Key Vault — never commit `.env` secrets.
+- Nav: one hub **SEO Operations** under Admin (or Marketing group if added); leaf modules listed below. Phase 2 stubs appear as hub cards labeled **Phase 2** and stay in `app_nav_hidden_module_slugs()` or show a “Coming soon” leaf until built.
+
+---
+
+## 3. Module map
+
+| Module | S1–S4 | Phase 2 stub | Notes |
+|---|---|---|---|
+| Config & Taxonomy | Live (thin) | — | Competitors, brand terms, settings, therapeutic areas (local seed) |
+| Keyword Universe | **S1** | — | Seed, cluster, priority, map-to-page |
+| Content Pipeline | **S1** | — | Kanban + AI brief/draft/claims + compliance gate + publish URL |
+| Task Engine (thin) | **S1** | Full SLA / templates later | Assign editor + social; Friday roll-up light |
+| Social queue | **S1** | — | Content type `social`; calendar/status; Claude drafts; coordinator executes off-platform |
+| Page Inventory | **S2** | — | Grows as URLs publish; light crawl |
+| Performance (thin) | **S3** | Full + attribution | GSC/GA4 explore, recommendations → content/tasks |
+| Audit & Issues | **S4** | — | OpenRush + crawler checks |
+| Rank Tracker | Stub nav | **Phase 2** | Until rankings exist at scale |
+| Backlinks & Outreach | Stub nav | **Phase 2** | |
+| Reports (full) | Monday digest in S3 | Monthly Word/PDF Phase 2 | |
+| Admin & Governance | Jobs + api_usage in S0 | Prompt Lab polish Phase 2 | |
+
+---
+
+## 3A. Content Engine — five-stage loop
+
+The engine is a loop, not a line: stage 5 results re-weight stages 1 and 3. Three rules hold throughout:
+
+- **Python fetches; AI interprets and discovers.** Known sources are fetched and deduplicated by plain Python jobs. AI runs on a schedule too — in batch mode to interpret the queue, and as a research agent to find what the feeds miss (see "AI execution modes").
+- **Humans own interpretation and release.** AI proposes topics and drafts; only a person accepts a topic, approves an asset, or replies to a response.
+- **Tracking is designed in at generation, not bolted on after.** Every asset gets an `asset_id` and UTM tags when it is created, or stage 5 cannot attribute results.
+
+### Stage overview
+
+| # | Stage | Hub card | Driver | Runs on | AI role | Output |
+|---|---|---|---|---|---|---|
+| 1 | Interests & Sources | Interests & Sources | Human setup; monthly review | PHP UI | Assist only: suggest terms (Semrush/OpenRush), draft prompts | Interest profiles, terms, sources, prompts, schedules |
+| 2 | Scheduled search & crawl | Content Harvester | Scheduled | Function App (Python) timers + weekly AI research agent | None for fetching; research agent discovers new items and sources | Deduplicated `harvested_items` queue |
+| 3 | Compile & synthesize | Topic Synthesis | Automated compile, then human interpretation | Nightly batch AI (Anthropic Message Batches / OpenAI Batch) + PHP Topic Board | Score relevance, tag, extract study facts, cluster, summarize | Topics: proposed → accepted, with human angle + evidence |
+| 4 | Generate posts & campaigns | Campaign Studio → Publishing Calendar | Human-triggered | AI runner + review gates | Draft single posts, series, email | Campaigns and assets with UTM, claims score, approvals |
+| 5 | Track responses & performance | Engagement & Performance | Scheduled collection; human responses | Function App ingest + PHP inbox | Triage responses, weekly narrative | Metrics per asset, response inbox, scores fed back to 1 and 3 |
+
+### Stage 1 — Interests & Sources (human)
+
+An **interest** is a watched topic tied to the taxonomy (therapeutic area, product line, audience), e.g. "GLP-1 companion nutrition", "berberine evidence", "practitioner dispensary trends". Each interest holds:
+
+- Include terms, exclude terms, hashtags, and search queries.
+- Priority, harvest cadence, owner.
+- Prompt versions (from Prompt Lab) used for relevance scoring and synthesis.
+- Linked sources (many-to-many).
+
+Interest terms and the SEO **Keyword Universe** share one keyword table with a `purpose` flag — no second keyword list.
+
+Source types and realistic access:
+
+| Source type | Examples | Access |
+|---|---|---|
+| RSS / Atom | NutraIngredients, CRN, NBJ, Examine, AHPA; FDA / FTC feeds; journal feeds | `feedparser` — S1 |
+| Search-as-feed | Google News RSS queries, Google Alerts RSS, PubMed E-utilities saved searches, ClinicalTrials.gov API | API/RSS — S1 |
+| Targeted site crawl | Competitor blogs, association news pages | robots-respecting, rate-limited crawler — S1 |
+| Keyword trend signal | Semrush / OpenRush keyword volume for interest terms | Weekly job, unit budget guard — S1 |
+| Social (open) | Reddit subreddit/search RSS, YouTube channel RSS | RSS — S1 |
+| Social (restricted) | X, LinkedIn | Paid or restricted APIs — Phase 2 or manual clip |
+| Interest groups | Facebook groups, closed practitioner communities | Not programmatically accessible — manual clip only |
+| Newsletters | Practitioner associations, competitor newsletters | Dedicated mailbox parse + manual PDF/URL import — S2 |
+| AI research agent | Weekly per-interest discovery queries across the open web | Claude / OpenAI with web search tool — S1a; every cited URL verified by Python before use |
+
+Every source records terms-of-service notes, auth reference (Key Vault), schedule, and health.
+
+### Stage 2 — Content Harvester (scheduled, no AI)
+
+- One job per source type: `research-harvest-rss`, `research-harvest-search`, `research-harvest-crawl`, `research-harvest-trends`, later `research-harvest-newsletter`.
+- Per-source schedule (hourly / daily / weekly) from stage 1.
+- Dedup by canonical URL hash and content hash; near-duplicates by simhash (embeddings optional, not an LLM call).
+- Raw payload to Blob; cleaned text + metadata to `harvested_items` with status `new`.
+- Source health: last success, consecutive failures, auto-pause after N failures, surfaced on the card.
+- Manual "add item" (URL, PDF, pasted text) enters the same queue.
+- **AI research agent** (`research-agent-discover`, weekly per interest): runs the interest's discovery prompt with a web search tool. Results enter `harvested_items` with `source_type = ai_research` and the prompt version. Python fetches every cited URL; items whose URL fails or does not contain the claimed content are rejected. Domains the agent finds repeatedly are proposed as new sources for stage 1.
+
+### AI execution modes
+
+| Mode | Used for | Why |
+|---|---|---|
+| Python only (no model) | Fetching, crawling, dedup, URL verification, metrics ingest | Deterministic and nearly free; LLMs add cost with no benefit here |
+| Embeddings | Near-duplicate detection, clustering input | Cheap; not a generative call |
+| Batch AI — Anthropic Message Batches / OpenAI Batch (~50% of standard price, results within 24 h) | Nightly relevance scoring, tagging, study-fact extraction, cluster summaries, weekly synthesis | Context-aware interpretation at the lowest cost; nothing waits on it |
+| Scheduled real-time AI with web search | Weekly research-agent discovery per interest | Needs live search and multi-step reasoning |
+| Interactive real-time AI | Topic Board assists, Campaign Studio drafts, response triage, claims check | A person is waiting on the result |
+
+Claude is the primary provider and OpenAI the secondary (same dual-provider runner); every run logs provider, mode, prompt version, tokens, and cost to `api_usage`.
+
+### Stage 3 — Topic Synthesis (AI compile + human interpretation)
+
+**3a Automated (after each harvest batch):**
+
+- Relevance score per interest; items below threshold are discarded (kept for audit, hidden by default).
+- Taxonomy tags and evidence type (peer-reviewed, regulatory, news, competitor, opinion).
+- Weekly clustering of relevant items into **candidate topics**, each with a summary, "why it matters", source list, and trend signal (item velocity, source diversity, keyword volume change).
+- **Emerging-interest suggestions:** clusters with rising velocity that match no existing interest well (e.g. themes surfacing from conference, association, and trade-press sources) are proposed as new interests with suggested include terms. The operator creates the interest; AI never creates one on its own.
+- Peer-reviewed and regulatory items are flagged for promotion to **Literature & Intelligence** (the durable evidence library).
+
+**3b Human — the Topic Board:**
+
+- Operator accepts, rejects, merges, or parks candidate topics.
+- Operator writes the **angle**: NutraAxis point of view, audience, what to avoid.
+- Operator links Claims Matrix entries and Literature items as allowed evidence.
+- Only an accepted topic can seed generation. AI never promotes a topic on its own.
+
+AI run history for 3a lives on the Topic Synthesis card (replaces the separate Research Runs card).
+
+### Stage 4 — Campaign Studio → Publishing Calendar (AI draft, human release)
+
+From an accepted topic (or a keyword / published article), the operator picks a format:
+
+| Format | Description |
+|---|---|
+| Single post | One message with per-channel variants (LinkedIn, X, Facebook, Instagram caption) |
+| Series | N posts over a cadence with a narrative arc (e.g. 5-part evidence explainer) |
+| Email | Single send or sequence; subject/preview variants; delivered through GoHighLevel |
+| Long-form | Hands off to **Content Pipeline** (web article, SEO, CMS publish) |
+
+Every generated **asset** carries:
+
+- `asset_id`, `campaign_id`, channel, sequence number, body, media notes, CTA URL.
+- UTM on the CTA: `utm_source={channel}`, `utm_medium=social|email`, `utm_campaign={campaign_slug}`, `utm_content={asset_id}`.
+- Claims score, review state, scheduled time, and — once posted — external post URL / ID.
+
+Gates (same engine as Content Pipeline):
+
+- Claims check runs on every asset.
+- Compliance review (the compliance officer) is required when claims flags exist or the asset references efficacy or a condition.
+- Editorial approval before an asset reaches the calendar. Editors cannot approve their own work.
+- Brand voice and audience (practitioner vs consumer) come from Research Config.
+
+Distribution — **Publishing Calendar** (social + email in one schedule), delivered through **GoHighLevel**:
+
+- v1: coordinator loads approved assets into GHL Social Planner / email campaigns and records the GHL post or campaign ID on the asset.
+- v2: portal pushes approved assets via the GHL API — Social Planner posts (per-platform variants, scheduled time) and email campaigns as drafts. A person still approves every asset; the platform never posts autonomously.
+- GHL Social Planner **RSS auto-post stays off** (it would bypass the claims gate). GHL Content AI is not used for claims-bearing copy.
+- Optional: interest topics map to GHL tags on email links so GHL workflows can start follow-up sequences. Contact data never leaves GHL.
+
+### Stage 5 — Engagement & Performance (scheduled collection, human response)
+
+Collected on schedule and joined to `asset_id`:
+
+| Signal | Source |
+|---|---|
+| Per-asset clicks → site sessions, engagement, conversions | GA4 by `utm_content` = `asset_id` (primary per-post social signal) |
+| Social account totals (reach, engagement) by date range | GHL Social Planner statistics API — account-level, **not per post** |
+| Per-post likes / comments / shares | Not in GHL API; native platform APIs (Phase 2) or manual entry |
+| Email sent, delivered, opens, clicks, replies, unsubscribes, bounces | GHL campaign stats API (per campaign / workflow step / bulk action) |
+| New leads by campaign | GHL contact attribution (UTM) — nightly job aggregates counts and discards PII |
+| Organic search | GSC for long-form pages |
+
+**Response Inbox:** DMs and email replies via the GHL Conversations API; public post comments where an API allows (GHL comment coverage to be confirmed before S3). AI triages each one (question / praise / complaint / claims-risk). Claims-risk responses escalate to the compliance officer within 24 hours. People write the replies.
+
+**Scoring and feedback:** asset score rolls up to campaign → topic → interest. The weekly digest recommends: double down on a topic, start a follow-up series, retire an interest, or add a source. Scores adjust interest priority (stage 1) and relevance weights (stage 3).
+
+**PII scope (change from v2.0):** responses contain names and handles. Store only the external URL, text, and timestamp; redact handles before any AI call; never store email contact lists here — GoHighLevel stays the contact system of record, and email metrics are aggregate per asset.
+
+### Content Engine data model
+
+| Table | Purpose |
+|---|---|
+| `interests`, `interest_terms` | Watched topics and their include / exclude / hashtag / query terms |
+| `sources`, `interest_sources` | Typed source registry and many-to-many link to interests |
+| `harvest_runs`, `harvested_items` | Job runs and the deduplicated item queue (`new` → `scored` → `discarded` / `clustered` / `promoted`) |
+| `item_scores`, `item_tags` | Relevance per interest, taxonomy and evidence tags |
+| `topics`, `topic_items`, `topic_briefs` | Candidate / accepted topics, member items, human angle and evidence links |
+| `campaigns`, `assets`, `asset_versions`, `asset_reviews` | Single / series / email campaigns and their gated assets |
+| `asset_metrics_daily` | Per-asset social, email, and site metrics |
+| `responses` | Response inbox rows with triage label and escalation state |
+| `interest_scores`, `topic_scores` | Rolled-up performance used by the feedback loop |
+
+### Content Engine jobs and prompts
+
+| Job (no LLM) | When |
+|---|---|
+| `research-harvest-rss` / `-search` / `-crawl` / `-trends` | Per-source schedule |
+| `research-harvest-newsletter` | On mailbox poll (S2) |
+| `research-verify-citations` | After each research-agent run |
+| `research-batch-submit` / `research-batch-collect` | Nightly submit; collect when the batch completes |
+
+| Scheduled AI job | When |
+|---|---|
+| `research-agent-discover` (web search) | Weekly per interest |
+| `engagement-social-ingest`, `engagement-email-ingest` | Daily |
+| `engagement-score` | Daily after ingest |
+
+| Prompt (AI) | Stage |
+|---|---|
+| `research.discover` (with web search) | 2 |
+| `research.relevance_score`, `research.tag_item`, `research.extract_study` | 3a (batch) |
+| `research.cluster_summary` | 3a |
+| `campaign.single_post`, `campaign.series_plan`, `campaign.series_post`, `campaign.email` | 4 |
+| `seo.claims_check` (shared) | 4 |
+| `engagement.response_triage`, `engagement.weekly_digest` | 5 |
+
+---
+
+## 4. Jobs vs AI
+
+### 4.1 Function App / Python jobs (no LLM)
+
+| Job | When | Purpose |
+|---|---|---|
+| `seo-gsc-ingest` | Nightly | Search Analytics → `gsc_daily` |
+| `seo-ga4-ingest` | Nightly | Landing/channel/events → `ga4_daily` |
+| `seo-crawl` | Weekly + on-demand URL | Sitemap/pages → `page_crawls`, metadata diffs |
+| `seo-semrush-keywords` | Weekly / on demand | Metrics history; unit budget guard |
+| `seo-analyze` | Nightly after ingest | Priority scores, striking-distance, decay flags → `recommendations` |
+| `seo-verify-published` | Hourly | Published URLs without `page_id` → crawl + link |
+| `seo-openrush-audit` | Monthly | Findings → issues (S4) |
+| `seo-alerts` | Daily | Threshold rules → Teams/Zapier webhook |
+
+OpenRush MCP remains for **interactive** console/operator analysis in Cursor/Claude. Scheduled owned-data pulls use **Google APIs direct** once the service account is on GSC/GA4.
+
+### 4.2 AI-only (on demand / queued)
+
+| Prompt | Use |
+|---|---|
+| `seo.brief` | Content brief from keyword + SERP + evidence hooks |
+| `seo.draft_article` / `seo.draft_pdp` | First draft |
+| `seo.social_post` | Platform-ready post from published/approved asset |
+| `seo.claims_check` | Score + flags; blocks compliance_review if score &lt; 7 |
+| `seo.meta_rewrite` | Title/meta suggestions → content_item `meta_rewrite` |
+| `seo.cluster_keywords` | Clustering assist (operator approves) |
+| `seo.weekly_digest` | Narrative + top 5 actions (S3+) |
+| `seo.fix_spec` | Issue → developer fix spec (S4) |
+
+Do **not** use AI to parse GSC CSVs, dedupe crawl rows, or compute CTR.
+
+---
+
+## 5. Data model (core)
+
+Schema/tables as in Framework v2 §6 / prior BUILD_SPEC §5, delivered as `sql/NNN_create_seo_ops_*.sql` migrations (portal style), not Laravel migrations.
+
+**Ship with S0–S1:** config tables, `keywords` / clusters / metrics_history, `content_items` / `content_versions` / `content_reviews`, `tasks` / `task_templates` (minimal), `jobs` / `api_usage` / `audit_log` / `prompts` / `settings` / `competitors` / `brand_terms`.
+
+**S2:** `pages`, `page_crawls`, `page_keyword_map`, `page_links` (optional early).
+
+**S3:** `gsc_daily`, `ga4_daily`, `page_weekly` / `kw_weekly` aggregates, `recommendations`, `reports` (weekly), `alerts` / `alert_rules`.
+
+**S4:** `audits`, `issues`, `issue_urls`.
+
+**Phase 2:** `rank_snapshots`, backlinks/prospects/outreach, store `conversions` join, monthly report blobs.
+
+Content stages (enforced in PHP service layer):
+
+`idea → brief → draft → compliance_review → editorial → approved → published → monitoring`
+
+- `draft → compliance_review` requires `claims_score`.
+- `compliance_review → editorial` requires a compliance `approved` review row.
+- `approved → published` requires `published_url` (manual CMS publish).
+- Editors cannot approve their own versions.
+
+Social items are `content_items.type = 'social'` (or linked child tasks). They may skip compliance review when copy is non-claims; claims-bearing social still goes through compliance.
+
+---
+
+## 6. Portal surfaces
+
+Hub slug: `marketing`  
+Display title: **Marketing & Research Hub**  
+Href: `/marketing/`  
+Group: `marketing` (Ops home section, above Supply Chain)  
+Permission column: `Marketing` (label: Marketing & Research)
+
+### Target card layout (organized by the Content Engine loop)
+
+Five existing placeholder cards are renamed or merged so each loop stage has exactly one home. The card count stays at 20.
+
+**Content Engine — the loop**
+
+| # | Card | Slug | Path | Replaces |
+|---|---|---|---|---|
+| 1 | Interests & Sources | `research-interests` | `/marketing/interests/` | Research Config (taxonomy moves to a tab here) |
+| 2 | Content Harvester | `research-harvester` | `/marketing/content-harvester/` | — (runs, queue, source health) |
+| 3 | Topic Synthesis | `research-topics` | `/marketing/topics/` | Research Runs (run log becomes a tab) |
+| 4 | Campaign Studio | `marketing-campaigns` | `/marketing/campaigns/` | Post Candidates |
+| 4 | Publishing Calendar | `marketing-calendar` | `/marketing/calendar/` | Social Queue (now social + email) |
+| 5 | Engagement & Performance | `marketing-performance` | `/marketing/performance/` | Performance (adds Response Inbox) |
+
+**Supporting libraries and governance**
+
+| Card | Slug | Path | Used by stages |
+|---|---|---|---|
+| Keyword Universe | `marketing-keywords` | `/marketing/keywords/` | 1 (interest terms), SEO |
+| Literature & Intelligence | `research-literature` | `/marketing/literature/` | 3, 4 (evidence) |
+| Claims Matrix | `research-claims` | `/marketing/claims-matrix/` | 3, 4 (gate) |
+| Prompt Lab | `research-prompt-lab` | `/marketing/prompt-lab/` | 1, 3, 4, 5 |
+| Tasks | `marketing-tasks` | `/marketing/tasks/` | 4, 5 (human work) |
+| Output Generator | `research-output` | `/marketing/output-generator/` | Reports, exports |
+
+**SEO & Site**
+
+| Card | Slug | Path | Phase |
+|---|---|---|---|
+| Content Pipeline (long-form web) | `marketing-content` | `/marketing/content/` | S1b |
+| Page Inventory | `marketing-pages` | `/marketing/pages/` | S2 |
+| Audit & Issues | `marketing-issues` | `/marketing/issues/` | S4 |
+| Rank Tracker | `marketing-ranks` | `/marketing/ranks/` | Phase 2 |
+| Backlinks & Outreach | `marketing-backlinks` | `/marketing/backlinks/` | Phase 2 |
+| Reports | `marketing-reports` | `/marketing/reports/` | Phase 2 |
+
+**Other**
+
+| Card | Slug | Path | Notes |
+|---|---|---|---|
+| Original Research | `research-production` | `/marketing/original-research/` | Research Track B (surveys / studies) |
+| Admin & Jobs | `marketing-admin` | `/marketing/admin/` | Job monitor, API usage, settings |
+
+Nothing auto-publishes or auto-posts. Distribution push to the scheduler / GoHighLevel is a v2 decision (§3A stage 4).
+
+---
+
+## 7. Roles (portal mapping)
+
+| Framework role | Portal capability |
+|---|---|
+| Admin | Full SEO module + Key Vault / budgets |
+| Console Operator | Run jobs, approve keywords/briefs, assign tasks, record publish, social approve |
+| Reviewer (compliance / editorial) | Review content versions only |
+| Editor (offshore) | Edit assigned drafts; record published URL; no self-approve; no api_usage |
+| Coordinator (social) | Social queue tasks only |
+| Developer | Issues fix/verify; crawl read |
+| Viewer | Read dashboards |
+
+Offshore must not see API keys, cost burn, or store attribution detail.
+
+---
+
+## 8. Integrations
+
+| System | Path | Notes |
+|---|---|---|
+| Semrush | REST from Function App | Same units as MCP; budget abort |
+| OpenRush | MCP interactive; optional job for `audit_site` | Credits in `api_usage` |
+| GSC / GA4 | Service account direct | Preferred for nightly; OpenRush OK until SA wired |
+| Google Ads | OpenRush read-only when account activated | Not required for S1 |
+| Anthropic / OpenAI | On-demand AI runner | Logged per run |
+| CMS | **None** | Manual publish |
+| Store DB | Phase 2 | |
+| Zapier / Teams | Webhooks for digest/alerts | |
+| RSS / search feeds | `feedparser`, Google News RSS, PubMed E-utilities, ClinicalTrials.gov | Content Harvester — S1a |
+| GoHighLevel (sub-account Private Integration Token, `Version` header) | Distribution + contact system of record: Social Planner (scheduler), email campaigns, conversations, lead attribution | `GHL_PIT`, `GHL_LOCATION_ID` in App Service / Key Vault; rotate every 90 days (7-day overlap). Start read-only scopes (Social Planner post/account read, email stats read, contacts read); add Social Planner post write + email campaign write only when v2 push is approved. **Provisioned 2026-10-04:** secret `ghl-pit` in `nutraaxis-mkt-kv`, `GHL_PIT` (Key Vault reference) + `GHL_LOCATION_ID` on `nutraaxis-marketing-func`; read-only scopes `locations`, `socialplanner/account`, `socialplanner/post`, `socialplanner/statistics`, `emails/schedule`, `workflows`, `conversations`, `conversations/message`, `contacts` (all `.readonly`). No code uses it yet — see RUNBOOK §6 |
+| X / LinkedIn APIs | Paid / restricted | Phase 2 harvesting; manual clip until then |
+
+---
+
+## 9. Build phases and acceptance criteria
+
+One feature branch per phase: `phase/seo-s0-chassis`, `phase/seo-s1-demand`, …
+
+### S0 — Chassis (~1 week)
+
+- SQL: config, settings, competitors, brand_terms, jobs, api_usage, audit_log, prompts, users permission columns.
+- Hub `marketing` (Marketing & Research Hub) + placeholder cards (done 2026-09-25) + Admin jobs/usage page.
+- Process-runner registration for `seo-noop` (writes `jobs` row).
+- Rename placeholder cards to the §6 target layout.
+- Acceptance: migrate clean; operator opens hub; noop job visible in jobs list; `audit-portal-nav.php` clean.
+- **As built (2026-09-28):** `sql/152_create_marketing_chassis.sql` adds `MktSetting`, `MktPrompt`, `MktApiUsage`. Job runs reuse `dbo.ProcessExecutionLog`; operator writes reuse `dbo.AuditChangeLog`; brand terms and competitors are line-list settings rather than separate tables. Jobs run in a dedicated Flex Consumption Function App, **`nutraaxis-marketing-func`** (code in `functions-marketing/`, registry `src/lib/mkt/registry.js`; shares storage `stforecasttool` and App Insights `appi-forecast-tool` but not code with the forecast tool). Publish with `cd functions-marketing && func azure functionapp publish nutraaxis-marketing-func --javascript` — safe at any time because only marketing functions live there. The portal routes every marketing job code there via `NUTRA_FUNCTIONS_MARKETING_BASE_URL` / `NUTRA_FUNCTIONS_MARKETING_KEY` regardless of the Process Log UAT/production profile. PHP registry in `includes/marketing-jobs.php`. Admin & Jobs (`/marketing/admin/`) requires full Marketing CRUD so editors never see spend or settings. Local runs: `node scripts/run-marketing-job.js <code>`.
+
+### S1a — Intake: stages 1–2 (~2 weeks) — **priority**
+
+- Interests & Sources UI: interests, terms (shared keyword table), source registry, schedules, taxonomy tab.
+- Keyword Universe basic CRUD + CSV import (interest terms and SEO keywords in one table).
+- Harvester jobs: RSS, search-as-feed (Google News, PubMed, ClinicalTrials.gov), targeted crawl, keyword trends; dedup; source health; manual add item.
+- Weekly AI research agent per interest, with Python citation verification.
+- Acceptance: 10+ sources configured across 3+ interests; scheduled runs fill `harvested_items` with no duplicates on re-run; a failing source auto-pauses and shows on the card; fetch jobs make no LLM calls (verified in `api_usage`); research-agent items with unverifiable URLs are rejected.
+- **As built (2026-09-28):** `sql/153_create_marketing_intake.sql` adds `MktKeyword`, `MktKeywordMetric`, `MktInterest`, `MktInterestTerm`, `MktSource`, `MktInterestSource`, `MktHarvestRun`, `MktHarvestedItem` and seeds prompt `research.discover` v1. Pages: `/marketing/interests/` (interests, sources, taxonomy), `/marketing/content-harvester/` (queue, runs, manual add, suggested sources), `/marketing/keywords/` (CRUD + CSV import), `/marketing/prompt-lab/` (versions, activate). Jobs: `research-harvest-due` (timer `marketing-harvest`, hourly at :15; adapters in `functions-marketing/src/lib/mkt/adapters.js`; dedup by canonical-URL hash, content hash, and 64-bit simhash) and `research-agent-discover` (timer `marketing-research-agent`, daily 11:00 UTC; each interest runs at most every 6 days, so interests that miss the 9-minute window run the next day). Citation verification runs in Node, not Python: each cited URL is fetched and kept only if the quote or title is on the page; 404/unreachable → `rejected`; sites that refuse all automated clients (401/403/429/503, e.g. ods.od.nih.gov) stay `new` with an `UNVERIFIED` note for manual confirmation. AI calls go through `functions-marketing/src/lib/mkt/ai.js` (Anthropic Messages / OpenAI Responses, web search, monthly budget guard, cost in `MktApiUsage`). Keyword trends (Semrush) deferred to S2 with GSC.
+
+### S1b — Produce: stages 3–4 (~3 weeks)
+
+- Topic Synthesis: batch scoring, tagging, and study-fact extraction; daily clustering; Topic Board (accept / reject / merge / angle / evidence links).
+- Campaign Studio: single post, series, and email generation from an accepted topic; claims check; compliance + editorial gates; UTM + `asset_id` on every asset.
+- Publishing Calendar: social + email schedule; coordinator records external post URL / ID.
+- Content Pipeline (long-form web) with the same gate engine; thin Task Engine.
+- **Claims Matrix as built (2026-09-28):** `sql/154_create_marketing_claims.sql` adds `MktProduct` (pillar, formula, suggested/intended use, flyer reference list, review notes) and `MktClaim` (type headline / benefit / mechanism / ingredient / general, evidence tier, flyer reference numbers, audience, DSHEA flag, draft → approved → retired) and settings `claims.flag_terms`, `claims.disclaimer`, `claims.min_score`. `/marketing/claims-matrix/` (claims, products, rules tabs) + `product.php`. Approval requires full Marketing CRUD and a different user than the last editor; editing the wording or evidence of an approved claim returns it to draft. `scripts/seed-marketing-claims.php` seeds 14 products / 118 claims from the 6.23.26 practitioner flyers (flyer defects recorded in product review notes). `mkt_claims_approved()` is the allowed-claims source for generation and the claims check.
+- **Topic Synthesis as built (2026-09-28):** `sql/155_create_marketing_topics.sql` adds scoring columns to `MktHarvestedItem` (RelevanceMax, PrimaryInterestID, TherapeuticArea, EvidenceType, AiSummary, TagsJson, StudyJson, ScoredAt, ScoreBatchID) plus `MktItemScore`, `MktAiBatch`, `MktTopic`, `MktTopicItem`, `MktTopicClaim`, prompts `research.score_item` v1 (Haiku) and `research.cluster_topics` v1 (default Sonnet), and `research.score_*` / `research.cluster_*` settings. Jobs: `research-score-batch` (timer `marketing-score`, hourly at :45) collects finished Anthropic Message Batches and submits waiting items once 25 are queued or the oldest has waited 12 hours — one combined call per item returns per-interest relevance, tags, evidence type, a one-line summary, and study facts; below `research.relevance_threshold` → `discarded`. `research-cluster-topics` (timer `marketing-cluster`, daily 12:30 UTC; runs only when 8+ items were scored since the last run) sends compact item lines plus open topics to one realtime call, creates `proposed` topics (2+ items), extends open topics instead of duplicating, and flags emerging themes with a suggested interest name and terms. Trend signals are computed in SQL (items 7d vs prior 7d, distinct domains, peer-reviewed/regulatory count). `/marketing/topics/` tabs: Board, Accepted, Emerging interests, Parked & rejected, Scored items, Scoring runs; `view.php` edits the brief, accepts (angle required), parks / rejects / reopens, merges, marks evidence items, removes items back to the pool, and links approved claims. Emerging topics prefill `/marketing/interests/edit.php?from_topic=ID`. Measured cost ≈ $0.002 per scored item (system prompt is under Haiku's 4,096-token cache minimum). Promotion of evidence items to Literature & Intelligence is deferred to that module.
+- **Campaign Studio as built (2026-09-28):** "Medical review" is a **compliance review** by the compliance officer. `sql/156_create_marketing_campaigns.sql` adds `MktCampaign` (topic, format post / series / email, channels, audience, parts + cadence, CTA URL/text, brief, unique slug = `utm_campaign`), `MktAsset` (per channel × part: title / subject + variants / preview / body with a `[LINK]` token, hashtags, media notes, claim ids used, `ContentVersion`; claims score + check JSON + checked version; `ComplianceStatus` / `EditorialStatus` with by/at; submitted, scheduled, posted fields) and `MktAssetReview` (submit / compliance / editorial / system rows with version and score). Settings: `review.compliance_mode` (`claims` or `all`), `campaign.default_cta_url`, `campaign.channels` (`key|label|medium|max chars|guidance`), `campaign.rules`. Prompts `campaign.generate`, `campaign.claims_check`, `campaign.revise_asset` (v1, Sonnet). On-demand jobs (not timers) in `functions-marketing/src/lib/jobs/campaign.js`: `campaign-generate` (one call drafts every asset, then claims-checks each; regenerate only while all assets are drafts), `campaign-claims-check`, `campaign-revise-asset`. Claims score = AI score minus one per distinct `claims.flag_terms` hit; length and missing `[LINK]` are reported as issues; compliance is required for any flag term, claim-class statement, efficacy/condition reference or score under 10. Gate engine in `includes/marketing-campaigns.php`: submit needs a current check (checked version = content version) at or above `claims.min_score`; compliance clears first (users whose role grants Marketing Compliance Review update, plus Marketing update), then editorial (full Marketing CRUD); nobody reviews an asset they last edited or submitted; changes requested needs a note; editing an asset in review or approved sends it back to draft and clears both gates. Pages: `/marketing/campaigns/` (campaigns, review queue, new campaign, archived), `campaign.php`, `asset.php` (copy-ready preview with the tracked link, claims panel, AI revise, review history). The tracked link is built at render time from the campaign CTA URL + UTM (`utm_content` = asset id). Measured cost: a 3-part × 3-channel series ≈ $0.17 and ~70 s; a 2-channel post ≈ $0.05.
+- **Publishing Calendar as built (2026-09-28):** v1 (no GHL API). `sql/157_alter_marketing_asset_publishing.sql` adds `ScheduledBy`, `LoadedAt`, `LoadedBy`, `PostedBy` to `MktAsset` and settings `calendar.default_times` (channel|HH:MM, Central) and `calendar.min_gap_hours` (20). Asset states after approval: `approved` → `scheduled` (time set; `ExternalPostID` recorded when the coordinator loads it into GHL) → `posted` (posted time defaults to the scheduled time; public URL optional — email has none). Times are entered and shown in Central time and stored UTC. `/marketing/calendar/` tabs: Month (grid; chips colored by in-GHL / not loaded / past due / posted), Upcoming (7/30/90 days, copy-ready text, record GHL ID inline), Ready to schedule (lay out a whole campaign: part N on start + (N − 1) × cadence days at each channel's default time, or one asset at a time), Coordinator to-do (load into GHL; past due — confirm posted with URL), Posted. CSV export of scheduled assets (date, Central time, channel, campaign, part, subject/preview, copy-ready text with tracked link, GHL ID) for loading by hand. Warnings: same channel closer than `calendar.min_gap_hours`, and series parts out of order. Moving an asset already loaded into GHL, or taking it off the calendar, notes that GHL must be changed too (the GHL ID is cleared on unschedule). Scheduled assets must be taken off the calendar before their content can be edited; every schedule / load / post action writes a `MktAssetReview` system row. The asset page has a Publishing panel with the same actions; `campaign.php` shows scheduled times and links approved assets to the Ready tab. Code: `includes/marketing-calendar.php`.
+- **Content Pipeline as built (2026-09-28):** `sql/158_create_marketing_content.sql` adds `MktContent` (type from `content.types`, stage idea → brief → draft → compliance_review → editorial → approved → published → monitoring, or archived; optional topic / product / keyword links, primary + secondary keywords, audience, target words, planned URL, brief JSON + editable Markdown brief with approval, current and submitted version, compliance / editorial status with by/at, published URL/at/by, owner, due date), `MktContentVersion` (immutable: title, meta title / description, Markdown body, word count, source ai_draft / ai_revision / manual, change note, claim ids, claims score + check JSON + needs-compliance), `MktContentReview` (brief / submit / compliance / editorial / publish / system rows), settings `content.types` (`key|label|default words|guidance`), prompts `content.brief` (JSON brief, 8k tokens), `content.draft` and `content.revise` (plain `TITLE:` / `META_TITLE:` / `META_DESCRIPTION:` / `CLAIM_IDS:` header, `---`, Markdown body). A piece links an accepted topic (its evidence and linked claims), a product (all its approved claims), or both. On-demand jobs in `functions-marketing/src/lib/jobs/content.js`: `content-brief`, `content-draft` (after brief approval; new version, then checked), `content-claims-check`, `content-revise` (uses the check findings plus the latest reviewer note). The check reuses `campaign.claims_check` via `reviewCopy()` in `mkt/campaign.js`, adds meta-length, word-count, H1 and raw-URL issues, and for long-form flag terms force compliance review without deducting points (educational pieces name conditions and drug uses in context). Stage engine in `includes/marketing-content.php`: any Marketing editor approves the brief (moves to draft; type / links / keywords lock until the brief is reopened); submit needs a check on the current version at or above `claims.min_score`; compliance (Marketing Compliance Review role permission) then editorial (full CRUD); nobody reviews a version they created or submitted; changes requested needs a note and returns to draft; any edit saves a new version and, past draft, clears both reviews (a published piece keeps its URL so the update can be re-published). Publish is manual — the coordinator puts the approved version live (copy HTML or Markdown) and records the http(s) URL. Pages: `/marketing/content/` (board, all content, review queue, new, archived) and `view.php` (brief editor, draft actions, review, publish, SERP preview, rendered article, claims panel, editor, version history with paragraph-level diff, review history, details). Accepted topics link to "Start a long-form piece". Measured: brief ≈ $0.04 / 30 s, 1,600-word draft + check ≈ $0.08 / 45 s, revise + check ≈ $0.08.
+- **Marketing Compliance Reviewer role (2026-09-28):** `sql/159_marketing_compliance_role.sql` adds the `Role.MarketingCompliance` permission column (CRUD letters; Update = may clear or return compliance), shown in Site Admin → Roles as "Marketing Compliance Review", and seeds the preset role **Marketing Compliance Reviewer** (Marketing RU, Marketing Compliance Review RU) that is assigned in Site Admin → Users. It replaces the old `review.compliance_reviewers` login roster (setting deleted). Compliance review needs Marketing Compliance Review update plus Marketing update; Admin is intentionally not granted it so compliance and editorial stay separate people. Because a user has one role, a compliance officer who also needs other modules needs a role that carries Marketing Compliance Review alongside that access.
+- **Task Engine (thin) as built (2026-09-28):** `MktTask` (manual or automatic; role writer / compliance / editorial / coordinator; assignee; ref + link; due date; priority; open / done / cancelled; `AutoKey` unique while open) and setting `tasks.sla_days` (`kind|days`). `mkt_tasks_sync()` in `includes/marketing-tasks.php` runs on the Tasks page and after Content Pipeline actions: it opens tasks the current state calls for — content (write brief, approve brief, finish draft / address review changes, compliance review, editorial review, publish and record URL) and campaigns grouped per campaign (address changes, compliance, editorial, schedule approved assets, load into GHL, confirm posted) — refreshes their title / due date / priority, and closes them automatically when the condition clears. Compliance tasks go to the single named reviewer when there is exactly one; reassigning an automatic task sticks. Automatic tasks cannot be closed by hand; manual tasks can be completed (with note), cancelled or reopened. `/marketing/tasks/` tabs: My tasks (assigned to me, or unassigned for a role I hold), All open, Closed, New task; filters by role and automatic / manual.
+- Acceptance: harvested items → accepted topic → 5-part series + email drafted → claims-flagged asset blocked until compliance approval → calendar shows scheduled assets with valid UTMs; editor cannot self-approve; AI costs in `api_usage`.
+
+### S2 — Findable + collect (~2 weeks)
+
+- GA4 + GSC nightly ingest; UTM → `asset_id` join; GoHighLevel email stats ingest.
+- Page Inventory, `page_keyword_map`, verify published long-form URLs.
+- Newsletter mailbox ingest for the harvester.
+- GHL ingest: email campaign stats, Social Planner account statistics, lead counts by campaign (aggregate only).
+- Acceptance: a test asset's UTM clicks appear against its `asset_id`; email stats per asset match GoHighLevel within 2%; no GHL contact PII persisted; ingest re-runs do not duplicate rows.
+- **S2 as built (2026-09-28) — Page Inventory, GSC / GA4 ingest, Performance.** GHL ingest is **deferred** (no GHL API integration yet) and newsletters stay manual (Content Harvester → add item); the GHL acceptance items move with that work.
+  - **Google access:** Cloud project `nutraaxislabs-seo` owned by nutraaxislabs@gmail.com; service account `nutraaxis-seo-ingest@…` has Restricted access to GSC `sc-domain:nutraaxislabs.com` and Viewer on GA4 property 547490500. The key lives only in the `nutraaxis-marketing-func` setting `GOOGLE_SA_JSON_B64` (with `GSC_SITE_URL`, `GA4_PROPERTY_ID`); scopes are read-only. Every run refuses a GSC site or GA4 property whose host is not `analytics.allowed_host` (nutraaxislabs.com) — checked against the property's web data streams.
+  - **Data:** `sql/160_create_marketing_pages_analytics.sql` adds `MktPage` (one row per URL by normalized page key: host without www + path, no query / trailing slash; type, source sitemap / content / manual / search, status active / excluded / gone, latest crawl snapshot, issues), `MktPageCrawl` (snapshot per crawl + changed fields), `MktPageKeyword` (page ↔ keyword, primary / secondary, source manual / content / search), `MktGscDaily` (site / page / query grain) and `MktGa4Daily` (channel / landing / utm grain, with `PageID`, `CampaignID`, `AssetID`), plus `pages.*`, `gsc.*`, `ga4.*`, `seo.*` settings.
+  - **Jobs** (`functions-marketing/src/lib/jobs/seo-pages.js`, `seo-analytics.js`; timers in `marketing-seo.js`, UTC): `seo-crawl` (Mondays 10:00 — robots.txt sitemaps incl. indexes, exclusion + type rules, published content sync, crawl each page for status / title / meta / canonical / robots / H1 / word count, issue codes, duplicate titles, change detection; a page is `gone` after two 404/410s), `seo-gsc-ingest` (daily 9:30), `seo-ga4-ingest` (daily 9:45), `seo-verify-published` (daily 10:20, and right after a piece is marked published or its URL changes — writes a `system` verified / verify_failed review on `MktContentReview`, only when the outcome changes). Ingest reloads a date window (backfill `*.backfill_days` when empty, else the last `*.refresh_days`) with delete + insert in one transaction, so re-runs never duplicate.
+  - **UTM → asset join:** campaign links carry `utm_campaign` = campaign slug and `utm_content` = asset ID. The GA4 utm grain (source / medium / campaign / manual ad content) sets `CampaignID` by slug and `AssetID` only when the asset belongs to that campaign. Tagged traffic that does not resolve is listed as "other tagged traffic".
+  - **Pages:** `/marketing/pages/` (Pages with 28-day search clicks / impressions / position and GA4 sessions, Issues summary, Changes before / after, Keyword map with multi-primary conflicts; crawl now; add a page by URL) and `view.php` (what to fix, SERP preview, metrics vs prior window, target keywords, 90-day search queries with "map as secondary", crawl history, recrawl, exclude / include — exclude writes an exact rule into `pages.exclude_patterns`). `/marketing/performance/` (7 / 28 / 90-day windows vs prior: search and GA4 KPIs, sessions by channel, campaign assets with sessions / engaged / key events / purchases / all-time, other tagged traffic, search queries with top page and keyword-map status, landing pages with search clicks and issues; refresh now). `campaigns/asset.php` shows the asset's GA4 traffic once posted.
+  - **First crawl findings (2026-09-28):** 40 active pages (63 account / checkout / fragment URLs excluded). Product titles are ingredient lists, product meta descriptions are short, most pages have no H1, category pages are ~50 words, `/qr-landing` has no title or meta.
+
+### S3 — Engagement loop: stage 5 (~2 weeks)
+
+- Social metrics ingest by external post ID; Response Inbox with AI triage and 24-hour claims-risk escalation.
+- Asset → campaign → topic → interest scoring; scores adjust interest priority and relevance weights.
+- Monday digest (AI narrative) → ≤ 5 operator tasks, including "double down / follow-up series / retire interest".
+- Acceptance: a claims-risk comment creates a compliance officer task; digest recommendations trace to scored assets; dashboards show empty states (not errors) on sparse new-site data.
+- **S3 as built (2026-09-29) — Response Inbox, scoring, Monday digest.** GHL is still deferred, so per-post / email metrics and responses are **entered by hand or CSV import**; scoring, triage, escalation and the digest are complete and will take GHL data (`Source` = `ghl`) without changes.
+  - **Data:** `sql/161_create_marketing_engagement.sql` adds `MktAssetMetric` (lifetime-total snapshots per asset, as-of date and source manual / import / ghl / platform — the latest snapshot counts, preferring ghl > platform > import > manual), `MktResponse` (redacted text, link, received time; triage label / source / confidence / sentiment / reason / suggested action; status new → open / escalated → replied / closed; escalation due + notified; compliance note; reply note), `MktEngagementScore` (one row per level / item / day with score, points, confidence and summed metrics), `MktDigest` (one per week: narrative, facts, kept / dropped recommendations, cost), `MktInterest.RelevanceWeight / PerformanceScore / SuggestedPriority`, the `engagement.*` settings and prompts `engagement.response_triage` (Haiku) and `engagement.weekly_digest` (Sonnet).
+  - **PII:** emails, phone numbers and @handles are replaced with `[email]` / `[phone]` / `[handle]` on save (PHP) and again before any AI call (Function App); no names or contact records are stored.
+  - **Triage** (`engagement-triage`, every 6 hours and right after a response is added): AI label plus keyword rules — any `engagement.adverse_terms` hit forces **possible adverse event**, any `claims.flag_terms` hit forces **claims risk**. Both escalate: the response locks (no reply recorded) until a compliance reviewer clears it, a high-priority compliance task (`response:{id}:compliance`) is due in `engagement.escalation_hours` (24), and compliance reviewers are emailed. Only compliance can clear or de-escalate. Three failed AI attempts leave it for manual labeling (a triage task opens). Questions / complaints awaiting reply roll into one coordinator reply task.
+  - **Scoring** (`engagement-score`, daily 05:40 CT): asset points = Σ metric × `engagement.weights` (GA4 sessions / engaged / key events / purchases by UTM, post interactions, email opens / clicks / replies, leads, positive responses); score = 100 × P ÷ (P + `half_points`). Confidence is "early read" under `mature_days` or with no data. Published content scores from landing sessions + search clicks. Campaigns average assets; topics average campaigns + content; interests average topics. With ≥ 2 interests that each have ≥ `min_assets_for_weight` non-early asset scores, weight = 1 ± (score − mean) / 50 × `weight_range` (clamped to ±20%) and a ±1 suggested priority when 15+ points from the mean. Topic Synthesis multiplies item relevance by the interest weight (capped at 1). Priority changes are suggested only — "Apply suggested priority" on the Scores tab or the interest page (audit-logged).
+  - **Digest** (`engagement-digest`, Mondays 07:00 CT, or on demand / regenerate): last Monday–Sunday facts (search + GA4 vs prior week, scored assets / campaigns / content / topics / interests, responses, pages with issues, unmapped queries). Sparse weeks get a plain note and no AI call. Each AI recommendation must cite at least one item present in the facts or it is dropped (shown on the digest); the kept ones (≤ `digest_max_tasks`) become tasks with evidence and a link to the first cited item. Regenerating cancels the old digest's open tasks.
+  - **Pages:** `/marketing/performance/inbox.php` (needs action / with compliance / done / all / add), `response.php` (triage guidance, compliance decision, reply, relabel, re-run triage), `metrics.php` (enter per asset, CSV import by asset_id or external_post_id, recent), Performance tabs **Scores** (by level; interest weights and suggested priority) and **Weekly digests** → `digest.php`. The asset page shows latest metrics and score; Interests shows score / weight / suggestion.
+
+### S4 — Harden (~2 weeks)
+
+- OpenRush audit + crawler issue types; Issues UI; fix_spec AI; verify → recrawl.
+- Alert rules (job failed, traffic drop when baseline exists, legacy brand string).
+- Acceptance: duplicate audit does not duplicate fingerprints; recur → reopened; developer export works.
+- **S4 as built (2026-09-29) — Audit & Issues, fix specs, verify → recrawl, alerts.** OpenRush has no server key, so its `audit_site` result is **pasted in** (run interactively in Cursor / Claude); the crawler is the full-coverage audit.
+  - **Data:** `sql/162_create_marketing_issues_alerts.sql` adds `MktAudit` (one row per crawl / page recrawl / fix recheck / OpenRush import with counts and score), `MktIssue` (one per check, fingerprint = sha256 of the check code, unique; status new → open → fixed → verified, or ignored; reopen count; assignee; fix spec), `MktIssueUrl` (one per issue × page key, open / resolved), `MktAlert` (fingerprint unique while open / acknowledged), `MktPage.ImagesMissingAlt / LegacyTerms`, settings `brand.legacy_terms`, `brand.legacy_allow_paths`, `seo.title_min`, `issues.platform_notes`, `alerts.*`, and prompt `seo.fix_spec` (Sonnet).
+  - **Crawler checks added:** short title, duplicate meta description, no structured data, images without alt text, legacy brand names (whole-word, any case, in visible text; `/nutrasync-landing` allowed). Every crawl (weekly full, page recrawl) records an audit: findings merge into existing issues by fingerprint and URL key, URLs the audit no longer sees resolve, an issue with no open URLs is verified, and a verified issue found again is **reopened**. Each source only resolves its own checks (crawler: built-in codes; OpenRush: `or_*` codes such as `or_low_content`), and an OpenRush import only touches active inventory pages on nutraaxislabs.com.
+  - **Workflow:** "Mark fixed and recheck" recrawls the issue's open pages (`seo-issue-verify`) → verified, or back to open with "still present on N URLs". "Generate fix spec" (`seo-fix-spec`, ~$0.02) writes a developer spec (where to fix on Edge Delivery / Commerce, steps, affected-URL table, how it will be verified) from up to 25 open pages. Ignore needs a reason. New issues open one coordinator triage task.
+  - **Exports:** CSV (one row per URL) and a Markdown developer packet (each issue with its fix spec or advice and open URLs) from any issue tab and filter.
+  - **Alerts** (`seo-alerts`, daily 06:00 CT, or "Check now"): scheduled job whose latest run in 7 days failed; GA4 sessions / Search Console clicks down ≥ `alerts.traffic_drop_pct` for the last 7 days vs the 4 weeks before (needs all 35 days and the baseline minimums); each open legacy-brand URL; each open high-severity issue; each overdue compliance escalation. Alerts resolve themselves when the cause clears; new ones are emailed once (to `alerts.recipients`, else everyone with full Marketing access) and to `ALERTS_WEBHOOK_URL` if set. The marketing Function App now carries the portal's SMTP settings.
+  - **Pages:** `/marketing/issues/` (Open / Fixed / Verified / Ignored / Audits with crawl + OpenRush import / Alerts), `view.php` (status actions, assignee, fix spec, pages), `export.php`. Page Inventory detail links each check to its issue.
+
+### Phase 2 (stubs only until scheduled)
+
+- X / LinkedIn harvesting via paid APIs (budget decision).
+- Push approved assets to the scheduler / GoHighLevel as scheduled drafts (if approved).
+- Rank Tracker (Semrush/GSC positions at scale).
+- Backlinks & Outreach.
+- Full Reports (monthly Word/PDF).
+- Attribution store join.
+- Richer Task SLA / offshore MFA policies if not already in portal.
+- Adobe CMS integration — **explicitly out of scope** until Adobe AI/MCP exists.
+
+**Hardening after S4 — done:**
+- **Key Vault:** `nutraaxis-mkt-kv` holds the Function App secrets (`db-password`, `anthropic-api-key`, `openai-api-key`, `google-sa-json-b64`, `smtp-pass`); app settings are Key Vault references read by the system-assigned managed identity (access-policy model).
+- **Spend dashboard:** Admin & Jobs → AI & API Usage shows budget used plus forecast (month-to-date + trailing 7-day rate), runway, daily (30 d) and monthly (6 mo) spend, and cost by job and by prompt/model. New `ai_budget` alert rule (`alerts.budget_warn_pct`, default 80%; separate high alert when the budget is reached) — `sql/163_marketing_ai_budget_alert.sql`.
+- **Runbook:** [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md) — schedules (UTC/CT), alert responses, reruns, secret rotation, budget, deploys, troubleshooting. Job failure alerts landed in S4.
+
+---
+
+## 10. Operating cadence (once S1 live)
+
+| Cadence | Focus |
+|---|---|
+| Daily (automated) | Harvest runs; metrics ingest; response triage |
+| Daily (human) | Response Inbox replies and escalations; alert triage; task queue |
+| Weekly (human) | Topic Board review (accept 2–4 topics, write angles); generate and approve posts / series / email; calendar check; Monday digest |
+| Monthly (human) | Interests & Sources review — add / pause sources, re-weight interests from scores; (S4) audit triage; competitor gap refresh |
+| Quarterly | Keyword universe re-score; prompt review; retire low-yield interests |
+
+Console operator target remains ~8–10 h/week once habits form; early weeks may run higher while seeding keywords and backlog.
+
+---
+
+## 11. Definition of done (every PR)
+
+- SQL migrations runnable via `node scripts/run-sql-file.js`; reversible notes in header comment.
+- Portal nav audit passes; breadcrumbs use `app_module_hub_back_link('…')`.
+- No secrets committed; no website/ad writes.
+- Every operator write → audit log; every external API → `api_usage`.
+- Jobs idempotent; AI only on listed prompts.
+- PR lists phase, acceptance criteria verified, any spec deviations proposed.
+
+---
+
+## 12. Supersedes
+
+- BUILD_SPEC **v1.0** (Laravel / separate `seo-ops` repo / measurement-first S0–S8) — **obsolete**.
+- Framework v2 §10 phase table — follow **this document’s §9** instead; Framework activities (§2) and data concepts (§6) remain valid.
+- Framework open decision “Laravel vs portal” — **resolved: portal**.
+- Framework CMS write exploration — **deferred indefinitely** pending Adobe AI/MCP.
+
+---
+
+## 13. Open decisions (Content Engine)
+
+| # | Decision | Recommendation |
+|---|---|---|
+| 1 | Social scheduler | **Resolved 2026-09-28: GoHighLevel Social Planner** (API supports create / schedule / list posts). Per-post social engagement is not in the GHL API — per-post signal comes from UTM clicks in GA4. |
+| 2 | v2 push of approved assets to GoHighLevel | Yes, as scheduled posts / draft campaigns after human approval; never autonomous posting. Requires adding write scopes to the Private Integration. |
+| 3 | Paid X / LinkedIn API for harvesting | Defer; use open RSS sources + manual clip until the loop proves value. |
+| 4 | PII scope for Response Inbox | Accept minimal storage (URL, text, timestamp) with handle redaction before AI. |
+
+## 14. Immediate next step after this spec
+
+S0–S4 and the post-S4 hardening are built (GHL ingest deferred — metrics and responses are manual until it lands). Operations follow [`docs/seo-ops/RUNBOOK.md`](seo-ops/RUNBOOK.md). GHL API access was provisioned on 2026-10-04 (read-only token on the Function App), so the GHL ingest is unblocked and is the next build, then Phase 2. Open item before building it: the GHL sub-account time zone is Eastern while the portal calendar is Central.

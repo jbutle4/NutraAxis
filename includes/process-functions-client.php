@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/env.php';
+require_once __DIR__ . '/marketing-jobs.php';
 
 function process_functions_prod_base_url(): string
 {
@@ -36,6 +37,35 @@ function process_functions_prod_codes(): array
         'accs-sales-order-sync',
         'accs-employee-customer-create',
         'supplier-invoice-ap-recon',
+        'accs-jazz-tracking-sync',
+    ];
+}
+
+function process_functions_marketing_base_url(): string
+{
+    return rtrim(trim((string) env('NUTRA_FUNCTIONS_MARKETING_BASE_URL', '')), '/');
+}
+
+function process_functions_marketing_key(): string
+{
+    return trim((string) env('NUTRA_FUNCTIONS_MARKETING_KEY', ''));
+}
+
+function process_functions_marketing_app_label(): string
+{
+    return 'nutraaxis-marketing-func';
+}
+
+/**
+ * Marketing & Research jobs always run on their own Function App (no UAT copy), regardless of Process Log profile.
+ */
+function process_functions_marketing_target(): array
+{
+    return [
+        'base_url' => process_functions_marketing_base_url(),
+        'key'      => process_functions_marketing_key(),
+        'app'      => process_functions_marketing_app_label(),
+        'profile'  => 'production',
     ];
 }
 
@@ -80,6 +110,10 @@ function process_functions_should_use_prod_app(string $code): bool
 
 function process_functions_resolve_target(string $code): array
 {
+    if (in_array($code, marketing_job_codes(), true)) {
+        return process_functions_marketing_target();
+    }
+
     if (process_functions_should_use_prod_app($code) && process_functions_prod_is_configured()) {
         return process_functions_prod_target();
     }
@@ -119,10 +153,12 @@ function process_functions_request(array $payload): array
     $code = (string) ($payload['code'] ?? '');
     $target = process_functions_resolve_target($code);
     $key = $target['key'];
-    if ($key === '') {
-        $missing = $target['app'] === process_functions_prod_app_label()
-            ? 'NUTRA_FUNCTIONS_PROD_KEY'
-            : 'NUTRA_FUNCTIONS_KEY';
+    if ($key === '' || $target['base_url'] === '') {
+        $missing = match ($target['app']) {
+            process_functions_marketing_app_label() => 'NUTRA_FUNCTIONS_MARKETING_BASE_URL / NUTRA_FUNCTIONS_MARKETING_KEY',
+            process_functions_prod_app_label()      => 'NUTRA_FUNCTIONS_PROD_KEY',
+            default                                 => 'NUTRA_FUNCTIONS_KEY',
+        };
 
         return [
             'ok'    => false,

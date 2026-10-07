@@ -20,6 +20,7 @@ function icon_svg(string $name, int $size = 24): string
         'calendar'  => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
         'support'   => '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
         'accounting'=> '<path d="M4 2h16a2 2 0 012 2v16a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z"/><path d="M8 6h8M8 10h8M8 14h5"/>',
+        'marketing' => '<path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.2-3"/>',
     ];
 
     $body = $icons[$name] ?? $icons['dashboard'];
@@ -669,7 +670,228 @@ $salesReportingSubModules = [
     ],
 ];
 
+$marketingSubModules = [
+    [
+        'slug'    => 'research-interests',
+        'title'   => 'Interests & Sources',
+        'desc'    => 'Watched topics, include/exclude terms, feeds, sites, search queries, and harvest schedules.',
+        'href'    => '/marketing/interests/',
+        'icon'    => 'tag',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 10,
+    ],
+    [
+        'slug'    => 'research-harvester',
+        'title'   => 'Content Harvester',
+        'desc'    => 'Scheduled RSS, search-feed, crawl, and AI research-agent runs; item queue and source health.',
+        'href'    => '/marketing/content-harvester/',
+        'icon'    => 'boxes',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 20,
+    ],
+    [
+        'slug'    => 'research-topics',
+        'title'   => 'Topic Synthesis',
+        'desc'    => 'Nightly AI scoring and clustering of harvested items; Topic Board to accept, merge, and set angles.',
+        'href'    => '/marketing/topics/',
+        'icon'    => 'dashboard',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 30,
+    ],
+    [
+        'slug'    => 'marketing-campaigns',
+        'title'   => 'Campaign Studio',
+        'desc'    => 'Generate single posts, series, and emails from accepted topics with claims check and approval gates.',
+        'href'    => '/marketing/campaigns/',
+        'icon'    => 'marketing',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 40,
+    ],
+    [
+        'slug'    => 'marketing-calendar',
+        'title'   => 'Publishing Calendar',
+        'desc'    => 'Approved social and email assets by date; record the GoHighLevel post or campaign ID once loaded.',
+        'href'    => '/marketing/calendar/',
+        'icon'    => 'clipboard',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 50,
+    ],
+    [
+        'slug'    => 'marketing-performance',
+        'title'   => 'Engagement & Performance',
+        'desc'    => 'Search Console and GA4 results, sessions by channel, and the site traffic each campaign asset drove.',
+        'href'    => '/marketing/performance/',
+        'icon'    => 'chart',
+        'tier'    => 'production',
+        'section' => 'engine',
+        'sort'    => 60,
+    ],
+    [
+        'slug'    => 'marketing-keywords',
+        'title'   => 'Keyword Universe',
+        'desc'    => 'Interest terms and SEO keywords in one list: purpose, priority, cluster, and CSV import.',
+        'href'    => '/marketing/keywords/',
+        'icon'    => 'tag',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 110,
+    ],
+    [
+        'slug'    => 'research-literature',
+        'title'   => 'Literature & Intelligence',
+        'desc'    => 'Evidence library behind claims and content, product-flyer references matched to their papers, claim coverage, and the regulatory watch.',
+        'href'    => '/marketing/literature/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 120,
+    ],
+    [
+        'slug'    => 'research-claims',
+        'title'   => 'Claims Matrix',
+        'desc'    => 'Approved claims, evidence tiers, and compliance rules used by the claims check.',
+        'href'    => '/marketing/claims-matrix/',
+        'icon'    => 'accounting',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 130,
+    ],
+    [
+        'slug'    => 'research-prompt-lab',
+        'title'   => 'Prompt Lab',
+        'desc'    => 'Versioned AI prompts for discovery, scoring, synthesis, and generation; provider and model per prompt.',
+        'href'    => '/marketing/prompt-lab/',
+        'icon'    => 'clipboard',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 140,
+    ],
+    [
+        'slug'    => 'marketing-tasks',
+        'title'   => 'Tasks',
+        'desc'    => 'Review, loading, and follow-up work assigned from campaigns and content.',
+        'href'    => '/marketing/tasks/',
+        'icon'    => 'clipboard',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 150,
+    ],
+    [
+        'slug'    => 'research-output',
+        'title'   => 'Output Generator',
+        'desc'    => 'Word and PDF evidence packs, claim summaries, topic briefs, bibliographies and articles for the site author.',
+        'href'    => '/marketing/output-generator/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'library',
+        'sort'    => 160,
+    ],
+    [
+        'slug'    => 'marketing-content',
+        'title'   => 'Content Pipeline',
+        'desc'    => 'Long-form web articles: brief, draft, claims check, compliance and editorial review, published URL.',
+        'href'    => '/marketing/content/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 210,
+    ],
+    [
+        'slug'    => 'marketing-pages',
+        'title'   => 'Page Inventory',
+        'desc'    => 'Every public page with crawl health, SEO issues, keyword-to-page map, and search and GA4 numbers.',
+        'href'    => '/marketing/pages/',
+        'icon'    => 'links',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 220,
+    ],
+    [
+        'slug'    => 'marketing-issues',
+        'title'   => 'Audit & Issues',
+        'desc'    => 'Site audit findings grouped by check, AI fix specs, fixed → recrawl verification, and alerts.',
+        'href'    => '/marketing/issues/',
+        'icon'    => 'support',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 230,
+    ],
+    [
+        'slug'    => 'marketing-ranks',
+        'title'   => 'Rank Tracker',
+        'desc'    => 'Keyword positions from Search Console and imported results, movers, and competitors on page 1.',
+        'href'    => '/marketing/ranks/',
+        'icon'    => 'trend',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 240,
+    ],
+    [
+        'slug'    => 'marketing-backlinks',
+        'title'   => 'Backlinks & Outreach',
+        'desc'    => 'Link profile, competitor link gap, disavow list, and outreach tracking with AI-drafted pitches.',
+        'href'    => '/marketing/backlinks/',
+        'icon'    => 'links',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 250,
+    ],
+    [
+        'slug'    => 'marketing-reports',
+        'title'   => 'Reports',
+        'desc'    => 'Monthly marketing report for Word and PDF, with AI highlights and review, plus the weekly digests.',
+        'href'    => '/marketing/reports/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'seo',
+        'sort'    => 260,
+    ],
+    [
+        'slug'    => 'research-production',
+        'title'   => 'Original Research',
+        'desc'    => 'Surveys and studies that produce original NutraAxis research (Research Track B). Placeholder.',
+        'href'    => '/marketing/original-research/',
+        'icon'    => 'boxes',
+        'tier'    => 'production',
+        'section' => 'other',
+        'sort'    => 310,
+    ],
+    [
+        'slug'    => 'marketing-admin',
+        'title'   => 'Admin & Jobs',
+        'desc'    => 'Job runs, AI and API usage and cost, and Marketing & Research settings.',
+        'href'    => '/marketing/admin/',
+        'icon'    => 'dashboard',
+        'tier'    => 'production',
+        'section' => 'other',
+        'sort'    => 320,
+    ],
+    [
+        'slug'    => 'marketing-manual',
+        'title'   => 'User Manual',
+        'desc'    => 'Roles, step-by-step workflows with timing, a guide to every page and how to read it, alerts, and what to do when something goes wrong.',
+        'href'    => '/marketing/manual/',
+        'icon'    => 'document',
+        'tier'    => 'production',
+        'section' => 'other',
+        'sort'    => 330,
+    ],
+];
+
 $appFunctions = [
+    [
+        'slug'  => 'marketing',
+        'title' => 'Marketing & Research Hub',
+        'desc'  => 'SEO operations, content/social, and the Research Application (literature, prompts, claims, outputs) for nutraaxislabs.com.',
+        'href'  => '/marketing/',
+        'icon'  => 'marketing',
+        'group' => 'marketing',
+    ],
     [
         'slug'  => 'product-master',
         'title' => 'Product Master',
@@ -1143,6 +1365,17 @@ $modulePages = [
             ['title' => 'Azure Portal', 'desc' => 'Microsoft Azure cloud resources and services.'],
         ],
     ],
+    'marketing' => [
+        'label'       => 'Marketing & Research',
+        'headline'    => 'Marketing & Research Hub',
+        'lead'        => 'SEO operations and the Research Application for nutraaxislabs.com — keywords, content, social, literature, prompts, claims, and outputs. Cards below are placeholders until each build phase lands.',
+        'capabilities' => [
+            ['title' => 'SEO & Content', 'desc' => 'Keyword universe, content pipeline, social queue, and performance feedback.'],
+            ['title' => 'Research Engine', 'desc' => 'Content harvester, literature intelligence, research runs, and original research.'],
+            ['title' => 'Shared chassis', 'desc' => 'Research config, Prompt Lab, claims matrix, post candidates, and output generator.'],
+            ['title' => 'Technical SEO', 'desc' => 'Page inventory, audits, ranks, and backlinks.'],
+        ],
+    ],
     'legal-agreements' => [
         'label'       => 'Legal',
         'headline'    => 'Legal Agreements & Contracts',
@@ -1248,6 +1481,7 @@ $modulePages = [
 function app_hub_slugs(): array
 {
     return [
+        'marketing',
         'product-master',
         'inventory-management',
         'procurement',
@@ -1320,9 +1554,17 @@ function app_accounting_submodules(): array
     return $accountingSubModules;
 }
 
+function app_marketing_submodules(): array
+{
+    global $marketingSubModules;
+
+    return $marketingSubModules;
+}
+
 function app_hub_submodules(string $hubSlug): array
 {
     return match ($hubSlug) {
+        'marketing'             => app_marketing_submodules(),
         'product-master'        => app_product_master_submodules(),
         'inventory-management'  => app_inventory_management_submodules(),
         'procurement'           => app_procurement_submodules(),
@@ -1336,6 +1578,7 @@ function app_hub_submodules(string $hubSlug): array
 function app_all_leaf_module_definitions(): array
 {
     return array_merge(
+        app_marketing_submodules(),
         app_product_master_submodules(),
         app_inventory_management_submodules(),
         app_procurement_submodules(),
@@ -1394,9 +1637,45 @@ function app_functions(): array
     return $appFunctions;
 }
 
+/**
+ * Home-page cards. Marketing & Research expands to its leaf modules so
+ * placeholder functions appear on Ops home (nav still uses the hub card).
+ *
+ * @return list<array<string, mixed>>
+ */
+function app_home_function_cards(): array
+{
+    $cards = [];
+
+    foreach (app_functions() as $fn) {
+        $slug = (string) ($fn['slug'] ?? '');
+        if ($slug === 'marketing') {
+            $leaves = app_marketing_submodules();
+            usort(
+                $leaves,
+                static fn(array $a, array $b): int => ((int) ($a['sort'] ?? 0)) <=> ((int) ($b['sort'] ?? 0))
+            );
+            foreach ($leaves as $child) {
+                $cards[] = array_merge($child, [
+                    'group' => 'marketing',
+                ]);
+            }
+            continue;
+        }
+
+        $cards[] = $fn;
+    }
+
+    return $cards;
+}
+
 function app_function_groups(): array
 {
     return [
+        'marketing' => [
+            'title' => 'Marketing & Research',
+            'desc'  => 'SEO operations, content/social, and the Research Application for nutraaxislabs.com.',
+        ],
         'supply-chain' => [
             'title' => 'Supply Chain',
             'desc'  => 'Product master data through order fulfillment — inventory, procurement, receiving, sales reporting, and labeling.',

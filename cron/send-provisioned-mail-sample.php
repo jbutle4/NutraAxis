@@ -67,6 +67,8 @@ echo json_encode([
     'application_id' => $applicationId,
     'company'        => (string) ($application['CompanyName'] ?? ''),
     'clinic_id'      => (string) ($application['AccsClinicId'] ?? ''),
+    'accs_environment' => provider_signup_application_accs_environment($application),
+    'login_url'      => provider_signup_accs_login_url(provider_signup_application_accs_environment($application)),
     'sign_in_email'  => $signInEmail,
     'transport'      => $config['transport'],
     'message'        => 'Provisioned welcome sample sent via production SMTP.',

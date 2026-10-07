@@ -1,0 +1,191 @@
+<?php
+require dirname(__DIR__, 2) . '/includes/init.php';
+require dirname(__DIR__, 2) . '/includes/marketing-topics.php';
+require dirname(__DIR__, 2) . '/includes/marketing-engagement.php';
+
+auth_require_module_read('research-interests');
+
+$activeSlug = 'research-interests';
+$id = (int) ($_GET['id'] ?? 0) ?: null;
+$existing = $id !== null ? mkt_interest_get($id) : null;
+if ($id !== null && $existing === null) {
+    marketing_redirect('/marketing/interests/', ['error' => 'Interest not found.']);
+}
+$canSave = $id === null ? marketing_can_create() : marketing_can_update();
+$error = null;
+
+$form = [
+    'name'             => (string) ($existing['Name'] ?? ''),
+    'description'      => (string) ($existing['Description'] ?? ''),
+    'therapeutic_area' => (string) ($existing['TherapeuticArea'] ?? ''),
+    'product_line'     => (string) ($existing['ProductLine'] ?? ''),
+    'audience'         => (string) ($existing['Audience'] ?? ''),
+    'priority'         => (int) ($existing['Priority'] ?? 3),
+    'status'           => (string) ($existing['Status'] ?? 'active'),
+    'agent_enabled'    => $existing === null ? 1 : (int) $existing['AgentEnabled'],
+    'source_ids'       => $existing['source_ids'] ?? [],
+];
+foreach (array_keys(MKT_TERM_TYPES) as $type) {
+    $form['terms_' . $type] = implode("\n", $existing['terms'][$type] ?? []);
+}
+if ($existing === null && !empty($_GET['from_topic'])) {
+    $suggestion = mkt_topic_interest_suggestion((int) $_GET['from_topic']);
+    if ($suggestion !== null) {
+        $form['name'] = $suggestion['name'];
+        $form['description'] = $suggestion['description'];
+        $form['terms_include'] = implode("\n", $suggestion['include']);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!$canSave) {
+        auth_render_access_denied('You do not have permission to save interests.');
+    }
+    if ($id !== null && (string) ($_POST['action'] ?? '') === 'apply_priority') {
+        $applied = mkt_interest_apply_priority($id);
+        marketing_redirect('/marketing/interests/edit.php', ['id' => $id] + ($applied['ok']
+            ? ['notice' => 'Priority set to ' . $applied['priority'] . '.']
+            : ['error' => $applied['error']]));
+    }
+    $form = array_merge($form, $_POST, ['source_ids' => array_map('intval', (array) ($_POST['source_ids'] ?? []))]);
+    $result = mkt_interest_save($_POST, $id);
+    if ($result['ok']) {
+        marketing_redirect('/marketing/interests/', ['notice' => $id === null ? 'Interest created.' : 'Interest updated.']);
+    }
+    $error = $result['error'];
+}
+
+$sources = mkt_sources_list();
+$areas = marketing_setting_lines('taxonomy.therapeutic_areas');
+$productLines = marketing_setting_lines('taxonomy.product_lines');
+$audiences = [];
+foreach (marketing_setting_lines('brand.audiences') as $line) {
+    [$key, $label] = array_pad(explode('|', $line, 2), 2, null);
+    $audiences[trim($key)] = trim((string) ($label ?? $key));
+}
+
+$title = $id === null ? 'New interest' : 'Edit interest';
+$pageTitle = $title . ' | NutraAxis Operations';
+$pageDescription = 'Define a watched topic for the Content Harvester.';
+
+require dirname(__DIR__, 2) . '/includes/head.php';
+require dirname(__DIR__, 2) . '/includes/header.php';
+
+$select = static function (string $name, array $options, string $current, string $empty = '—'): void {
+    echo '<select class="form-input" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '">';
+    echo '<option value="">' . htmlspecialchars($empty) . '</option>';
+    $known = false;
+    foreach ($options as $value => $label) {
+        $value = (string) (is_int($value) ? $label : $value);
+        $known = $known || $value === $current;
+        echo '<option value="' . htmlspecialchars($value) . '"' . ($value === $current ? ' selected' : '') . '>' . htmlspecialchars((string) $label) . '</option>';
+    }
+    if (!$known && $current !== '') {
+        echo '<option value="' . htmlspecialchars($current) . '" selected>' . htmlspecialchars($current) . '</option>';
+    }
+    echo '</select>';
+};
+?>
+  <main class="page-main">
+    <div class="container page-inner">
+      <?php render_list_page_header([
+          'back_href'  => '/marketing/interests/',
+          'back_label' => 'Back to Interests & Sources',
+          'category'   => 'Marketing & Research',
+          'title'      => $title,
+          'lead'       => 'Include terms are added to the Keyword Universe automatically and guide relevance scoring. Exclude terms and search queries steer the weekly AI research agent.',
+      ]); ?>
+      <?php marketing_render_notice($_GET['notice'] ?? null, $error ?? ($_GET['error'] ?? null)); ?>
+
+      <?php if ($existing !== null && $existing['PerformanceScore'] !== null): ?>
+      <div class="detail-card" style="margin-bottom:1rem">
+        <dl class="detail-list detail-list-inline">
+          <dt>Engagement score</dt>
+          <dd>
+            <?= number_format((float) $existing['PerformanceScore'], 0) ?> / 100
+            <span class="form-hint">— average of its topics' campaign and content scores<?= !empty($existing['PerformanceAt']) ? ', ' . htmlspecialchars(marketing_format_datetime($existing['PerformanceAt'])) : '' ?></span>
+            <a class="btn-text" href="/marketing/performance/?tab=scores&amp;level=interest">All interest scores</a>
+          </dd>
+          <dt>Relevance weight</dt>
+          <dd><?= number_format((float) $existing['RelevanceWeight'], 2) ?>× <span class="form-hint">— multiplies each harvested item's relevance to this interest when items are scored; set from engagement scores</span></dd>
+          <?php if ($existing['SuggestedPriority'] !== null && (int) $existing['SuggestedPriority'] !== (int) $existing['Priority']): ?>
+          <dt>Suggested priority</dt>
+          <dd>
+            <?= (int) $existing['SuggestedPriority'] ?> <span class="form-hint">(now <?= (int) $existing['Priority'] ?>)</span>
+            <?php if ($canSave): ?>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="apply_priority" />
+              <button type="submit" class="btn-text">Apply suggested priority</button>
+            </form>
+            <?php endif; ?>
+          </dd>
+          <?php endif; ?>
+        </dl>
+      </div>
+      <?php endif; ?>
+
+      <form class="admin-form" method="post">
+        <?php marketing_render_field_guide_link('interest'); ?>
+        <div class="form-grid">
+          <div class="form-group form-grid-full">
+            <label for="name">Name</label>
+            <input class="form-input" id="name" name="name" required maxlength="150" value="<?= htmlspecialchars((string) $form['name']) ?>" placeholder="e.g. Berberine evidence" />
+          </div>
+          <div class="form-group form-grid-full">
+            <label for="description">Description</label>
+            <textarea class="form-input" id="description" name="description" rows="2" placeholder="What we want to learn and why it matters to NutraAxis"><?= htmlspecialchars((string) $form['description']) ?></textarea>
+          </div>
+          <div class="form-group">
+            <label for="therapeutic_area">Therapeutic area</label>
+            <?php $select('therapeutic_area', $areas, (string) $form['therapeutic_area']); ?>
+          </div>
+          <div class="form-group">
+            <label for="product_line">Product line</label>
+            <?php $select('product_line', $productLines, (string) $form['product_line']); ?>
+          </div>
+          <div class="form-group">
+            <label for="audience">Audience</label>
+            <?php $select('audience', $audiences, (string) $form['audience']); ?>
+          </div>
+          <div class="form-group">
+            <label for="priority">Priority (1–5)</label>
+            <input class="form-input" type="number" min="1" max="5" id="priority" name="priority" value="<?= (int) $form['priority'] ?>" />
+          </div>
+          <div class="form-group">
+            <label for="status">Status</label>
+            <?php $select('status', MKT_RECORD_STATUSES, (string) $form['status'], 'Active'); ?>
+          </div>
+          <div class="form-group form-group--stacked">
+            <label><input type="checkbox" name="agent_enabled" value="1" <?= !empty($form['agent_enabled']) ? 'checked' : '' ?> /> Run the weekly AI research agent for this interest</label>
+          </div>
+          <?php foreach (MKT_TERM_TYPES as $type => $label): ?>
+          <div class="form-group">
+            <label for="terms_<?= $type ?>"><?= htmlspecialchars($label) ?></label>
+            <textarea class="form-input" id="terms_<?= $type ?>" name="terms_<?= $type ?>" rows="5" placeholder="One per line"><?= htmlspecialchars((string) $form['terms_' . $type]) ?></textarea>
+          </div>
+          <?php endforeach; ?>
+          <div class="form-group form-grid-full form-group--stacked">
+            <label>Sources</label>
+            <?php if ($sources === []): ?>
+            <p class="form-hint">No sources yet — <a href="/marketing/interests/source.php">add a source</a>, then link it here.</p>
+            <?php else: ?>
+            <div class="capability-grid capability-grid--six">
+              <?php foreach ($sources as $source): ?>
+              <label><input type="checkbox" name="source_ids[]" value="<?= (int) $source['SourceID'] ?>" <?= in_array((int) $source['SourceID'], $form['source_ids'], true) ? 'checked' : '' ?> />
+                <?= htmlspecialchars((string) $source['Name']) ?> <span class="form-hint">(<?= htmlspecialchars(MKT_SOURCE_TYPES[(string) $source['SourceType']]['label'] ?? '') ?>)</span></label>
+              <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php if ($canSave): ?>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary"><?= $id === null ? 'Create interest' : 'Save changes' ?></button>
+          <a class="btn-secondary" href="/marketing/interests/">Cancel</a>
+        </div>
+        <?php endif; ?>
+      </form>
+    </div>
+  </main>
+<?php
+require dirname(__DIR__, 2) . '/includes/footer.php';

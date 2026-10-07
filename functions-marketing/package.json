@@ -1,0 +1,16 @@
+{
+  "name": "nutraaxis-marketing-func",
+  "version": "1.0.0",
+  "description": "NutraAxis Marketing & Research jobs (Function App nutraaxis-marketing-func).",
+  "private": true,
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "fast-xml-parser": "^4.5.7",
+    "mssql": "^11.0.1",
+    "nodemailer": "^6.10.1"
+  }
+}

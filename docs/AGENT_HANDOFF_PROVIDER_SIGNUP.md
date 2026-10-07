@@ -1,7 +1,7 @@
 # Agent handoff — Provider Signup process & ACCS provisioning
 
 Continuation document for agents working on NutraAxis practitioner/provider onboarding.  
-**Last updated:** 2026-08-01  
+**Last updated:** 2026-10-02  
 **Repo:** `nutraaxis` on Azure App Service **`nutraaxisweb`**
 
 ---
@@ -63,6 +63,8 @@ flowchart TD
 - **Submit without cert/ACH** — Allowed with warnings. No reseller certificate → tax-exempt is not configured. No ACH → Clinic Store is not auto-configured after provision (ops can still run Complete ACCS clinic configuration). Provider can return via same token to complete documents. Ops review still shows these warnings; they do not require an override.
 - **Provider cannot edit full form** after submit (except **Returned** / **Draft**). Certificate + ACH editable in **complete-documents** statuses.
 - **Ops must approve before provision** — Provider is **not** emailed “Clinic Store ready” until provisioning completes.
+- **Welcome email is environment-specific** — Production clinics get a Production notice + `www.nutraaxislabs.com`. Stage/Dev clinics get a Stage (UAT — not live) notice + `https://main--nutrasync-eds-staging--capocommerce.aem.live/`. Already-sent emails are not rewritten.
+- **Clinic catalog clone source is Clinic Master** — Production catalog **14**, Stage catalog **12**. Azure `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_PRODUCTION` / `_STAGE`. Clone skips `NA_MKT_*` and Marketing categories. Default (General) is Retail only.
 
 ---
 
@@ -181,7 +183,7 @@ Five ACCS setup steps are tracked on `dbo.ProviderSignupApplication` with `AccsS
 | Clinic (company) | Yes | Sets `AccsStepClinicDone` + `AccsCompanyId` |
 | Clinic admin | Yes | Sets `AccsStepAdminDone` + `AccsCustomerId` |
 | Shared catalog | Yes (automation) or manual | Creates/reuses `SC-{CompanyName}`; ops can still mark manually |
-| Categories & products | Yes (automation) or manual | Clones from master shared catalog; skips `NA_MKT_INFO_FOLDER`; sets admin `patient_shared_catalog_id` (does not call `assignCompanies`) |
+| Categories & products | Yes (automation) or manual | Clones from Clinic Master; skips `NA_MKT_*` SKUs and Marketing categories; sets admin `patient_shared_catalog_id` (does not call `assignCompanies`) |
 | Company roles | Yes (automation) or manual | Clones template roles; verifies required role names |
 
 **Ops UI:** Application view → **Clinic configuration** card with checklist, **Complete ACCS clinic configuration** button (Provisioned + incomplete), and per-step **Mark complete** forms (Approved or Provisioned only).
@@ -194,10 +196,11 @@ Provisioned applications get **Remove Clinic Store** on the review page (`operat
 
 1. Removes Advanced Pricing / tier prices for the clinic shared catalog (the `SC-…` rows on the product)
 2. Deletes the custom shared catalog (never catalog 1 / public Default)
-3. Deletes the ACCS company (roles go with it)
-4. Optionally deletes company customer accounts (unchecked by default — leave off for reused admins)
-5. Best-effort deletes the leftover shared-catalog customer group
-6. Resets Ops ACCS IDs/steps and sets status back to **Approved** (no provider email)
+3. Removes that catalog group from the $75 free-shipping cart price rule (Prod rule **3** / Stage rule **9**)
+4. Deletes the ACCS company (roles go with it)
+5. Optionally deletes company customer accounts (unchecked by default — leave off for reused admins)
+6. Best-effort deletes the leftover shared-catalog customer group (never Practitioner groups 4/10/16)
+7. Resets Ops ACCS IDs/steps and sets status back to **Approved** (no provider email)
 
 Guards: type the exact practice name; Production requires an extra checkbox; blocked if the company/catalog is Clinic_Template, master/public catalog, or still linked to another Provisioned application in the same ACCS environment.
 
@@ -216,7 +219,7 @@ Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_depr
 
 **ACCS automation** (`includes/provider-signup-accs-config.php`):
 
-- `provider_signup_accs_complete_clinic_configuration($application)` — shared catalog, catalog assign, roles clone
+- `provider_signup_accs_complete_clinic_configuration($application)` — shared catalog, add catalog group to $75 free-shipping rule (Prod rule **3** / Stage rule **9**), catalog assign, roles clone
 - Runs automatically after successful **Create Clinic Store** (non-fatal if automation fails; review log comment)
 - Batch CLI: `php scripts/provider-signup-complete-accs-config.php` (`--id=`, `--limit=`)
 - Bootstrap template company + roles: `php scripts/provider-signup-bootstrap-clinic-template.php`
@@ -225,13 +228,15 @@ Code: `includes/provider-signup-accs-deprovision.php`, `provider_signup_ops_depr
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Source catalog (`Default (General)` on Stage/Prod/Dev). Optional `_*_STAGE` / `_*_PRODUCTION` |
+| `PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID` | `1` | Code fallback only. Live clone source is Clinic Master: `_PRODUCTION=14`, `_STAGE=12`. Do not clone Default (General). |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME` | `Clinic_Template` | Looked up **in the current tenant** for role cloning |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_{STAGE\|PRODUCTION\|DEV}` | Stage **9**, Prod **3**, Dev **7** | Clinic_Template with full roles. Shared `TEMPLATE_COMPANY_ID` is ignored across tenants |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_ENVIRONMENT` | `dev` | Bootstrap script copies role permissions from this ACCS tenant |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_SOURCE_COMPANY_ID` | `5` | Dev Butler Health (full clinic roles; Stage Butler only has Default User) |
 | `PROVIDER_SIGNUP_ACCS_TEMPLATE_ROLE_IDS_{STAGE\|PRODUCTION\|DEV}` | (none) | Optional per-tenant role IDs instead of company clone. Shared list is not used |
 | `PROVIDER_SIGNUP_ACCS_REQUIRED_ROLE_NAMES` | `Default User,Owner,Company_Admin,Provider,Affiliated Patients` | Post-clone verification |
+| `PROVIDER_SIGNUP_ACCS_FREE_SHIPPING_RULE_ID_{STAGE\|PRODUCTION}` | Stage **9**, Prod **3** | $75 free-shipping cart price rule. Clinic `SC-…` groups are added here. Dev is skipped unless set |
+| `PROVIDER_SIGNUP_ACCS_PRACTITIONER_GROUP_IDS_{STAGE\|PRODUCTION\|DEV}` | Stage **4,16**, Prod **4,10**, Dev **4** | Practitioner groups that stay on that rule |
 
 ### Company payload highlights (`provider_signup_accs_build_company_payload`)
 
@@ -263,14 +268,18 @@ All in `includes/provider-signup-mail.php`. Sent via Office 365 SMTP (`notificat
 | Ops comment | `provider_signup_mail_commented` | Provider | |
 | Ops return | `provider_signup_mail_returned` | Provider | Apply link |
 | Ops reopen | `provider_signup_mail_reopened` | Provider | |
-| After provision | `provider_signup_mail_provisioned` | Provider | **Branded HTML welcome**; `support@nutraaxislabs.com`; sign-in + Clinic ID + temp password |
+| After provision | `provider_signup_mail_provisioned` | Provider | **Two notices:** Production vs Stage (Dev uses Stage). `support@nutraaxislabs.com`; sign-in + Clinic ID + temp password |
 
-**Welcome email subject:** `Welcome to NutraAxis — your Clinic Store account is ready`  
+**Welcome email subjects:**
+- Production: `Welcome to NutraAxis — your Clinic Store account is ready (Production)`
+- Stage / Dev: `Welcome to NutraAxis — your Clinic Store account is ready (Stage)`
+
 **Logo:** `/assets/logos/nutraaxis-logo-email.png` (absolute URL via `SITE_URL`)  
-**Sign-in URL:** `PROVIDER_ACCS_LOGIN_URL` or `NUTRAAXIS_STORE_URL` (default `https://www.nutraaxislabs.com`)
+**Sign-in URL:** from application `AccsEnvironment` — Production `https://www.nutraaxislabs.com`, Stage/Dev `https://main--nutrasync-eds-staging--capocommerce.aem.live`. Optional overrides: `PROVIDER_ACCS_LOGIN_URL_PRODUCTION` / `_STAGE` / `_DEV`. Shared `PROVIDER_ACCS_LOGIN_URL` and `NUTRAAXIS_STORE_URL` apply to Production only.
 
 **Test/sample provisioned email (secured cron):**  
-`GET /cron/send-provisioned-mail-sample.php?to=…&application_id=20` with header `X-Cron-Secret: $CRON_SECRET`
+`GET /cron/send-provisioned-mail-sample.php?to=…&application_id=20` with header `X-Cron-Secret: $CRON_SECRET`  
+The sample uses that application's `AccsEnvironment` (Stage app → Stage notice and Stage storefront).
 
 **Mail pitfall:** Local CLI without `SMTP_PASS` uses PHP `mail()` and silently does not deliver. Always test via **production Azure SMTP** or the cron endpoint above.
 
@@ -358,7 +367,9 @@ All provider signup process work is on **`main`**. Feature branches below were m
 ```text
 # Provider signup
 PROVIDER_SIGNUP_OPS_EMAIL=          # Internal new-application alert
-PROVIDER_ACCS_LOGIN_URL=            # Sign-in link in welcome email
+PROVIDER_ACCS_LOGIN_URL_PRODUCTION=https://www.nutraaxislabs.com
+PROVIDER_ACCS_LOGIN_URL_STAGE=https://main--nutrasync-eds-staging--capocommerce.aem.live
+PROVIDER_ACCS_LOGIN_URL=            # Production-only fallback (do not use for Stage)
 PROVIDER_SIGNUP_ACCS_ENVIRONMENT=   # production | stage
 PROVIDER_SIGNUP_ACCS_USER_GROUP_ID=4
 PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_PRODUCTION=12
@@ -366,7 +377,9 @@ PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_STAGE=18
 PROVIDER_SIGNUP_ACCS_SALES_REPRESENTATIVE_ID_DEV=1
 PROVIDER_SIGNUP_ACCS_WEBSITE_ID=1
 PROVIDER_SIGNUP_ACCS_DEFAULT_PASSWORD=
-PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_PRODUCTION=14
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID_STAGE=12
+PROVIDER_SIGNUP_ACCS_MASTER_SHARED_CATALOG_ID=1          # Fallback only; do not use for clinic clone
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_NAME=Clinic_Template
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_PRODUCTION=3
 PROVIDER_SIGNUP_ACCS_TEMPLATE_COMPANY_ID_STAGE=9

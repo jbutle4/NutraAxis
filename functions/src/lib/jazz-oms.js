@@ -417,10 +417,43 @@ async function listInventory(options = {}) {
   return fetchPaginated('/api/v1/product/inventory', options);
 }
 
+/**
+ * Look up Jazz shipping shipments for an order number (e.g. NA-000000045).
+ * @param {string} orderNumber
+ * @param {object} [options]
+ * @returns {Promise<{ok:boolean,error:?string,shipments:object[]}>}
+ */
+async function listShipmentsByOrderNumber(orderNumber, options = {}) {
+  const normalized = String(orderNumber ?? '').trim();
+  if (!normalized) {
+    return { ok: false, error: 'Jazz order_number is required.', shipments: [] };
+  }
+
+  const error = configError(options);
+  if (error) {
+    return { ok: false, error, shipments: [] };
+  }
+
+  const url = `${baseUrl(options)}/api/v1/shipping/shipment`;
+  const result = await apiGet(url, { order_number: normalized, page_size: '50' }, options);
+  if (!result.ok) {
+    return { ok: false, error: result.error, shipments: [] };
+  }
+
+  const records = result.data?.results ?? (Array.isArray(result.data) ? result.data : []);
+  const shipments = Array.isArray(records)
+    ? records.filter((row) => row && typeof row === 'object'
+      && String(row.order_number || '').trim() === normalized)
+    : [];
+
+  return { ok: true, error: null, shipments };
+}
+
 module.exports = {
   baseUrl,
   configError,
   importOrder,
   listInventory,
+  listShipmentsByOrderNumber,
   orderImportEndpoint,
 };
