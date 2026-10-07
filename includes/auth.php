@@ -46,6 +46,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'process-log'                   => 'OperationsDashboard',
     'site-documentation'            => 'OperationsDashboard',
     'enhancement-log'               => 'OperationsDashboard',
+    'accs-order-account-support'    => 'OperationsDashboard',
     'legal-agreements'       => 'LegalAgreements',
     'product-catalog'        => 'ProductCatalog',
     'product-enrichment'     => 'ProductCatalog',

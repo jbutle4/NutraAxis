@@ -156,6 +156,13 @@ function it_systems_manual_pages(): array
             'analyze' => ['Changes here affect live customers — prefer Stage first.'],
             'actions' => ['Admin catalog / config'],
         ],
+        'accs-order-account-support' => [
+            'who'     => 'IT / ecommerce support',
+            'purpose' => 'Hub for guided ACCS order and clinic account support processes.',
+            'screens' => ['Process cards for each published support workflow.'],
+            'analyze' => ['Use Production ACCS / Jazz tools for live cases; Stage only for rehearsals.'],
+            'actions' => ['Open a support process when listed'],
+        ],
         'link-prod-da' => [
             'who'     => 'Content',
             'purpose' => 'Document Authoring for NutraSync EDS production content.',

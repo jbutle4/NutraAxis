@@ -195,6 +195,15 @@ function operations_dashboard_sections(): array
                     'tier'  => ENVIRONMENT_TIER_PRODUCTION,
                 ],
                 [
+                    'title'    => 'ACCS Order and Account Support',
+                    'desc'     => 'Guided support processes for ACCS orders, clinic accounts, and related ecommerce follow-ups.',
+                    'href'     => '/accs-order-account-support/',
+                    'icon'     => 'support',
+                    'internal' => true,
+                    'module'   => 'accs-order-account-support',
+                    'tier'     => ENVIRONMENT_TIER_PRODUCTION,
+                ],
+                [
                     'title' => 'Prod DA',
                     'desc'  => 'Document Authoring for NutraSync EDS production content.',
                     'href'  => 'https://da.live/#/capocommerce/nutrasync-eds',
