@@ -76,6 +76,8 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Stage clone completed.</div>
       <?php elseif ($noticeKey === 'purged'): ?>
       <div class="admin-notice is-success" role="status">Stage support account purged.</div>
+      <?php elseif ($noticeKey === 'cart'): ?>
+      <div class="admin-notice is-success" role="status">Open Stage cart created. Log in on Stage and complete checkout to observe the issue.</div>
       <?php endif; ?>
       <?php if ($error !== null): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -92,12 +94,17 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <div><dt>Stage company</dt><dd><?= htmlspecialchars((string) ($case['StageCompanyName'] ?? '—')) ?> <?php if (!empty($case['StageCompanyId'])): ?><span class="muted">#<?= (int) $case['StageCompanyId'] ?></span><?php endif; ?></dd></div>
           <div><dt>Stage customer</dt><dd><?= !empty($case['StageCustomerId']) ? '#' . (int) $case['StageCustomerId'] : '—' ?></dd></div>
           <div><dt>Stage catalog</dt><dd><?= !empty($case['StageSharedCatalogId']) ? '#' . (int) $case['StageSharedCatalogId'] : '—' ?></dd></div>
+          <div><dt>Prod order</dt><dd><?= htmlspecialchars((string) ($case['ProdOrderId'] ?? '—')) ?></dd></div>
+          <div><dt>Stage cart</dt><dd><?= htmlspecialchars((string) ($case['StageCartId'] ?? '—')) ?></dd></div>
           <div><dt>Created</dt><dd><?= htmlspecialchars((string) ($case['CreatedAt'] ?? '')) ?><?php if (!empty($case['CreatedByName'])): ?> by <?= htmlspecialchars((string) $case['CreatedByName']) ?><?php endif; ?></dd></div>
           <div><dt>Updated</dt><dd><?= htmlspecialchars((string) ($case['UpdatedAt'] ?? '')) ?></dd></div>
         </dl>
         <div class="form-actions" style="margin-top:1rem;">
           <?php if ($canUpdate && empty($case['StageCompanyId']) && !in_array((string) $case['Status'], ['purged', 'closed'], true)): ?>
           <a class="btn-primary" href="/accs-order-account-support/clone/?case_id=<?= $caseId ?>">Clone to Stage</a>
+          <?php endif; ?>
+          <?php if ($canUpdate && !empty($case['StageCustomerId']) && !in_array((string) $case['Status'], ['purged', 'purge_started'], true)): ?>
+          <a class="btn-primary" href="/accs-order-account-support/cart/?case_id=<?= $caseId ?>">Recreate order as Stage cart</a>
           <?php endif; ?>
           <?php if ($canUpdate && !empty($case['StageCompanyId']) && (string) $case['Status'] !== 'purged'): ?>
           <a class="btn-secondary" href="/accs-order-account-support/purge/?case_id=<?= $caseId ?>">Purge Stage account</a>
@@ -110,6 +117,31 @@ require dirname(__DIR__, 2) . '/includes/header.php';
           <?php endif; ?>
         </div>
       </section>
+
+      <?php
+      $cartSummary = (is_array($cloneSummary) && is_array($cloneSummary['cart'] ?? null))
+          ? $cloneSummary['cart']
+          : null;
+      if ($cartSummary === null && !empty($case['StageCartId'])) {
+          $cartSummary = [
+              'cart_id'        => (string) $case['StageCartId'],
+              'prod_order_id'  => (string) ($case['ProdOrderId'] ?? ''),
+              'storefront_url' => null,
+          ];
+      }
+      ?>
+      <?php if ($cartSummary !== null): ?>
+      <section class="detail-card">
+        <h2>Stage cart</h2>
+        <dl class="detail-list detail-list-inline">
+          <div><dt>Cart ID</dt><dd><?= htmlspecialchars((string) ($cartSummary['cart_id'] ?? $case['StageCartId'] ?? '—')) ?></dd></div>
+          <div><dt>Prod order</dt><dd><?= htmlspecialchars((string) ($cartSummary['prod_order_id'] ?? $case['ProdOrderId'] ?? '—')) ?></dd></div>
+          <div><dt>Lines added</dt><dd><?= is_array($cartSummary['lines_added'] ?? null) ? count($cartSummary['lines_added']) : '—' ?></dd></div>
+          <div><dt>Storefront</dt><dd><?php if (!empty($cartSummary['storefront_url'])): ?><a href="<?= htmlspecialchars((string) $cartSummary['storefront_url']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars((string) $cartSummary['storefront_url']) ?></a><?php else: ?>—<?php endif; ?></dd></div>
+        </dl>
+        <p class="muted" style="margin-top:0.75rem;">Order was not placed. Sign in as the Stage admin and complete checkout to reproduce the issue.</p>
+      </section>
+      <?php endif; ?>
 
       <?php if ($cloneSummary !== null): ?>
       <section class="detail-card">

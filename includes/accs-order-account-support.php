@@ -25,7 +25,7 @@ function accs_order_account_support_processes(): array
         [
             'slug'  => 'cart',
             'title' => 'Recreate order as Stage cart',
-            'desc'  => 'Coming next — build an open Stage cart from a Production order (Phase 2).',
+            'desc'  => 'Build an open Stage cart from a Production order so you can finish checkout on Stage.',
             'href'  => '/accs-order-account-support/cart/',
             'icon'  => 'catalog',
         ],
