@@ -143,7 +143,7 @@ function operations_dashboard_sections(): array
             'links' => [
                 [
                     'title'    => 'User Manual',
-                    'desc'     => 'Production vs UAT system links — Azure, Adobe Commerce, Jazz OMS, Intuit, PayPal, and how to use each safely.',
+                    'desc'     => 'Production vs UAT system links — Azure, Adobe Commerce, Jazz OMS, Avalara, Intuit, PayPal, and how to use each safely.',
                     'href'     => '/it-systems/manual/',
                     'icon'     => 'document',
                     'internal' => true,
@@ -160,6 +160,13 @@ function operations_dashboard_sections(): array
                     'desc'  => 'PayPal fraud protection dashboard for monitoring and managing payment risk.',
                     'href'  => 'https://www.paypal.com/fraud-protection',
                     'icon'  => 'payment',
+                ],
+                [
+                    'title' => 'Avalara Production',
+                    'desc'  => 'Avalara AvaTax production console for live sales-tax configuration and reporting.',
+                    'href'  => 'https://app.avalara.com/home',
+                    'icon'  => 'accounting',
+                    'tier'  => ENVIRONMENT_TIER_PRODUCTION,
                 ],
                 [
                     'title' => 'Intuit Development Registration',
@@ -270,6 +277,13 @@ function operations_dashboard_sections(): array
                     'title' => 'QuickBooks Sandbox',
                     'desc'  => 'UAT System — QuickBooks Online sandbox company for testing accounting integrations.',
                     'href'  => 'https://sandbox.qbo.intuit.com/app/homepage',
+                    'icon'  => 'accounting',
+                    'tier'  => ENVIRONMENT_TIER_UAT,
+                ],
+                [
+                    'title' => 'Avalara Sandbox',
+                    'desc'  => 'UAT System — Avalara AvaTax sandbox console for testing sales-tax configuration.',
+                    'href'  => 'https://app.sbx.avalara.com/home',
                     'icon'  => 'accounting',
                     'tier'  => ENVIRONMENT_TIER_UAT,
                 ],
