@@ -27,10 +27,11 @@ function it_systems_manual_definition(): array
         'active_slug' => 'it-systems-manual',
         'category'    => 'IT & Ecommerce',
         'title'       => 'User Manual',
-        'lead'        => 'Production and UAT system links — Azure, Adobe Commerce, Jazz OMS, QuickBooks developer tools, PayPal fraud, and related admin consoles.',
-        'intro'       => 'The **IT & Ecommerce Management Systems** block on the home page is a curated launchpad. Almost every card opens an external console (Azure, Adobe, Jazz, Intuit, PayPal, WordPress). Use **Production** links for live customer impact and **UAT / Stage** links only for testing. The portal does not store passwords for these systems — access is granted in each vendor’s admin.',
+        'lead'        => 'Production and UAT system links — Azure, Adobe Commerce, Jazz OMS, Avalara, QuickBooks developer tools, PayPal fraud, and related admin consoles.',
+        'intro'       => 'The **IT & Ecommerce Management Systems** block on the home page is a curated launchpad. Almost every card opens an external console (Azure, Adobe, Jazz, Avalara, Intuit, PayPal, WordPress). Use **Production** links for live customer impact and **UAT / Stage** links only for testing. The portal does not store passwords for these systems — access is granted in each vendor’s admin.',
         'golden_rules' => [
-            '**Never use a Production admin URL to “just test.”** Stage / UAT cards are labeled — ACCS Stage, Stage DA/DAM, Jazz UAT, QBO Sandbox, NA Test Site.',
+            '**Never use a Production admin URL to “just test.”** Stage / UAT cards are labeled — ACCS Stage, Stage DA/DAM, Jazz UAT, Avalara Sandbox, QBO Sandbox, NA Test Site.',
+            '**Avalara Prod vs Sandbox.** Sales-tax config and nexus live in separate Avalara tenants — use **Avalara Sandbox** for tests; **Avalara Production** for live tax.',
             '**Least privilege.** Admin consoles can change live catalog, content, and orders. Prefer read-only roles when you only need to look.',
             '**ACCS Prod vs Stage.** Production tenant and stage tenant are different Adobe Commerce environments. Orders, customers, and catalogs do not share data.',
             '**Jazz OMS Prod vs UAT** use different hosts and API users (NutraSync_API_PROD vs NutraSync_API_UAT).',
@@ -73,7 +74,7 @@ function it_systems_manual_definition(): array
             'Provider Signup (UAT)' => 'The Stage signup URL tags applications for ACCS Stage provisioning — do not use it for real providers.',
             'NA Test Site' => 'Concept pages and HTML previews on the NutraAxis test path — not the live storefront.',
             'NutraSync WordPress' => 'Legacy/content WordPress admin; prefer Adobe DA/DAM for EDS storefront content unless you know the page still lives in WP.',
-            'Asking for access' => 'Request vendor console access through IT (Azure AD groups, Adobe Admin Console product seats, Jazz users, Intuit developer, PayPal).',
+            'Asking for access' => 'Request vendor console access through IT (Azure AD groups, Adobe Admin Console product seats, Jazz users, Avalara, Intuit developer, PayPal).',
         ],
         'troubleshooting' => [
             ['Wrong environment after login', 'Check the URL host (sandbox vs prod, stage vs live). Sign out and use the card from this section again.'],
@@ -129,6 +130,17 @@ function it_systems_manual_pages(): array
             'who'     => 'Payments risk',
             'purpose' => 'PayPal fraud protection dashboard.',
             'actions' => ['Review cases'],
+        ],
+        'link-avalara-production' => [
+            'who'     => 'Tax / ecommerce / IT',
+            'purpose' => 'Avalara AvaTax production console for live sales-tax configuration and reporting.',
+            'analyze' => ['Changes here affect live tax calculation — prefer Avalara Sandbox for tests.'],
+            'actions' => ['Open Avalara Production'],
+        ],
+        'link-avalara-sandbox' => [
+            'who'     => 'Tax / ecommerce / IT',
+            'purpose' => 'Avalara AvaTax sandbox console for testing sales-tax configuration.',
+            'actions' => ['Open Avalara Sandbox'],
         ],
         'link-intuit-development-registration' => [
             'who'     => 'IT',
