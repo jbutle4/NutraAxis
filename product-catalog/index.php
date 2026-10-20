@@ -201,9 +201,10 @@ require dirname(__DIR__) . '/includes/header.php';
             <tr><td colspan="13">No SKUs match your filters.</td></tr>
             <?php else: ?>
             <?php foreach ($skus as $sku): ?>
+            <?php $skuViewHref = '/product-catalog/view.php?id=' . (int) $sku['SKUID']; ?>
             <tr>
-              <td><?= htmlspecialchars($sku['SKUCode']) ?></td>
-              <td class="catalog-col-product-name"><?= htmlspecialchars($sku['ProductName']) ?></td>
+              <td><a href="<?= htmlspecialchars($skuViewHref) ?>"><?= htmlspecialchars((string) $sku['SKUCode']) ?></a></td>
+              <td class="catalog-col-product-name"><a href="<?= htmlspecialchars($skuViewHref) ?>"><?= htmlspecialchars((string) $sku['ProductName']) ?></a></td>
               <td><?= !empty($sku['UPC']) ? htmlspecialchars($sku['UPC']) : '—' ?></td>
               <td><?= htmlspecialchars($sku['Brand']) ?></td>
               <td><?= htmlspecialchars($sku['PrimaryTherapeuticCategory']) ?></td>
@@ -217,7 +218,7 @@ require dirname(__DIR__) . '/includes/header.php';
               <td><span class="status-badge <?= catalog_qbo_sync_status_class($qboStatus) ?>" title="<?= htmlspecialchars(catalog_qbo_sync_status_label($qboStatus)) ?>"><?= htmlspecialchars(catalog_qbo_sync_status_short_label($qboStatus)) ?></span></td>
               <?php
                 $rowActions = [
-                    ['href' => '/product-catalog/view.php?id=' . (int) $sku['SKUID'], 'label' => 'View'],
+                    ['href' => $skuViewHref, 'label' => 'View'],
                 ];
                 if (catalog_can_update()) {
                     $rowActions[] = ['href' => '/product-catalog/edit.php?id=' . (int) $sku['SKUID'], 'label' => 'Edit'];
