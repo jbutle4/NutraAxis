@@ -1668,8 +1668,9 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 }
 
 .admin-table--catalog {
+  /* Keep intrinsic column widths so Actions stays visible; wrap scrolls horizontally. */
   width: max-content;
-  max-width: 100%;
+  min-width: 100%;
   table-layout: auto;
   font-size: 0.82rem;
 }
@@ -1719,14 +1720,24 @@ a.btn-danger:hover { background: var(--danger-dark); transform: translateY(-1px)
 .admin-table--catalog .catalog-col-actions,
 .admin-table--catalog td.table-actions {
   width: 1%;
-  min-width: 11ch;
+  min-width: 14ch;
 }
 
 .admin-table--catalog th:last-child,
 .admin-table--catalog td.table-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
+  background: var(--surface, #fff);
+  box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.18);
+}
+
+.admin-table--catalog thead th:last-child {
+  z-index: 2;
+  background: var(--surface-muted, var(--surface, #fff));
 }
 
 .detail-list {
