@@ -47,6 +47,7 @@ require dirname(__DIR__, 2) . '/includes/header.php';
       if (provider_signup_can_update()) {
           render_list_page_toolbar(
               '<a class="btn-primary" href="/operations-dashboard/signup-review/new.php">Create new clinic</a>'
+              . '<a class="btn-secondary" href="/operations-dashboard/signup-review/new-patient.php">Create clinic patient</a>'
           );
       }
       ?>
