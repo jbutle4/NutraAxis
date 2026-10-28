@@ -91,6 +91,7 @@ function operations_manual_workflows(): array
             'steps'   => [
                 ['who' => 'Onboarding', 'when' => 'Daily', 'what' => 'Open **Provider Signup Management**, review pending applications.', 'link' => ['signup-review', '', null]],
                 ['who' => 'Onboarding', 'when' => 'Same day', 'what' => 'Validate NPI and banking; approve or return with notes; create ACCS company when ready.', 'link' => ['signup-review', '', null]],
+                ['who' => 'Onboarding', 'when' => 'As needed', 'what' => 'Use **Create clinic patient** to add an individual patient to a clinic catalog (Clinic ID + Practitioner ID).', 'link' => ['signup-review', '', null]],
                 ['who' => 'Onboarding', 'when' => 'After go-live', 'what' => 'Assign **Practitioner Tiers** when revenue thresholds apply.', 'link' => ['practitioner-tiers', '', null]],
             ],
         ],
@@ -173,7 +174,7 @@ function operations_manual_pages(): array
         'signup-review' => [
             'who'     => 'Provider onboarding',
             'purpose' => 'Review provider applications, validate NPI/banking, approve, create ACCS companies.',
-            'actions' => ['Review', 'Approve / return', 'Provision'],
+            'actions' => ['Review', 'Approve / return', 'Provision', 'Create clinic patient'],
         ],
         'practitioner-tiers' => [
             'who'     => 'Provider onboarding',

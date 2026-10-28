@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__, 2) . '/includes/init.php';
 require dirname(__DIR__, 2) . '/includes/provider-signup.php';
+require dirname(__DIR__, 2) . '/includes/clinic-patient.php';
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -382,6 +383,16 @@ require dirname(__DIR__, 2) . '/includes/header.php';
             <div><dt>ACCS customer ID</dt><dd><?= htmlspecialchars((string) ($application['AccsCustomerId'] ?? '—')) ?></dd></div>
             <div><dt>Clinic ID</dt><dd><?= htmlspecialchars((string) ($application['AccsClinicId'] ?? '—')) ?></dd></div>
           </dl>
+          <?php
+          $patientEnv = clinic_patient_normalize_environment((string) ($application['AccsEnvironment'] ?? ''))
+              ?? clinic_patient_normalize_environment((string) ($targetAccsEnvironment ?? ''))
+              ?? 'production';
+          if ($canUpdate && (int) ($application['AccsCompanyId'] ?? 0) > 0):
+          ?>
+          <div class="module-actions" style="margin-top:1rem;">
+            <a class="btn-secondary" href="/operations-dashboard/signup-review/new-patient.php?env=<?= rawurlencode($patientEnv) ?>&amp;company_id=<?= (int) $application['AccsCompanyId'] ?>">Create clinic patient</a>
+          </div>
+          <?php endif; ?>
         </section>
 
         <section class="detail-card detail-card--wide">
