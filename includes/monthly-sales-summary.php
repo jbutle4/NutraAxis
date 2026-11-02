@@ -135,7 +135,10 @@ function monthly_sales_summary_list(array $filters = []): array
     $sql .= ' ORDER BY ' . table_sort_sql_clause(MONTHLY_SALES_SUMMARY_LIST_SORT_SQL, $sortState, 'month', 'sku');
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    foreach ($params as $key => $value) {
+        db_bind_value($stmt, ':' . $key, $value);
+    }
+    $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
@@ -153,7 +156,9 @@ function monthly_sales_summary_distinct_months(int $limit = 24): array
         FROM dbo.MonthlySalesSummary
         ORDER BY MonthStart DESC
     SQL);
-    $stmt->execute(['limit' => max(1, min(100, $limit))]);
+    $limitParam = max(1, min(100, $limit));
+    db_bind_value($stmt, ':limit', $limitParam);
+    $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }

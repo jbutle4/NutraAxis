@@ -317,7 +317,10 @@ function daily_sales_summary_list(array $filters = []): array
     $sql .= ' ORDER BY ' . table_sort_sql_clause(DAILY_SALES_SUMMARY_LIST_SORT_SQL, $sortState, 'summary_date', 'sku');
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    foreach ($params as $key => $value) {
+        db_bind_value($stmt, ':' . $key, $value);
+    }
+    $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
@@ -332,7 +335,9 @@ function daily_sales_summary_distinct_dates(int $limit = 30): array
         FROM dbo.DailySalesSummary
         ORDER BY SummaryDate DESC
     SQL);
-    $stmt->execute(['limit' => max(1, min(100, $limit))]);
+    $limitParam = max(1, min(100, $limit));
+    db_bind_value($stmt, ':limit', $limitParam);
+    $stmt->execute();
 
     return array_map(
         fn(array $row): string => (string) $row['SummaryDate'],
