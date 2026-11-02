@@ -21,7 +21,7 @@ $filters = [
 ] + table_sort_state(PROCESS_LOG_LIST_SORT_COLUMNS, 'started', 'desc', $_GET);
 
 $logs = process_log_list($filters);
-$registry = process_registry();
+$registryEntries = process_registry_entries_sorted();
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 
@@ -105,11 +105,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <label for="run_process_code">Run process</label>
             <select class="form-input" id="run_process_code" name="process_code" required>
               <option value="">Select a registered process…</option>
-              <?php foreach ($registry as $entry): ?>
-              <option value="<?= htmlspecialchars($entry['code']) ?>">
-                <?= htmlspecialchars($entry['name']) ?> (<?= htmlspecialchars($entry['code']) ?>)
-              </option>
-              <?php endforeach; ?>
+              <?php process_registry_echo_select_options(null, true); ?>
             </select>
           </div>
         </div>
@@ -126,11 +122,7 @@ require dirname(__DIR__) . '/includes/header.php';
             <label for="process_code">Process</label>
             <select class="form-input" id="process_code" name="process_code">
               <option value="">All processes</option>
-              <?php foreach ($registry as $entry): ?>
-              <option value="<?= htmlspecialchars($entry['code']) ?>" <?= $filters['process_code'] === $entry['code'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($entry['name']) ?>
-              </option>
-              <?php endforeach; ?>
+              <?php process_registry_echo_select_options($filters['process_code'], false); ?>
             </select>
           </div>
           <div>
@@ -255,7 +247,7 @@ require dirname(__DIR__) . '/includes/header.php';
               </tr>
             </thead>
             <tbody>
-              <?php foreach ($registry as $entry): ?>
+              <?php foreach ($registryEntries as $entry): ?>
               <tr>
                 <td>
                   <strong><?= htmlspecialchars($entry['name']) ?></strong>

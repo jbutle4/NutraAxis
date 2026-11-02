@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1650" height="960" viewBox="0 0 1650 960">
+<defs>
+<marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F2937"/></marker>
+<marker id="arrow-lookup" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4B5563"/></marker>
+<marker id="arrow-log" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2E7D32"/></marker>
+<marker id="arrow-telemetry" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7B3FA0"/></marker>
+</defs>
+<rect width="1650" height="960" fill="#FFFFFF"/>
+<text x="20" y="38" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="20" font-weight="600" fill="#111827" text-anchor="start">NutraAxis · Order Fulfillment Integration Architecture (Conceptual)</text>
+<text x="20" y="60" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="start">Event-driven routing of ACCS orders to fulfillment suppliers by the product &#x27;fulfillment&#x27; attribute · Draft 2026-10-09</text>
+<text x="105" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">SOURCE</text>
+<text x="360" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">STAGE 1 · INBOUND</text>
+<text x="695" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">STAGE 2 · TOPIC</text>
+<text x="990" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">STAGE 3 · QUEUES</text>
+<text x="1245" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">STAGE 4 · OUTBOUND</text>
+<text x="1517" y="100" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="700" fill="#6B7280" text-anchor="middle">SUPPLIERS</text>
+<line x1="20" y1="110" x2="1625" y2="110" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="530" y="130" width="570" height="480" rx="8" fill="#FFF8E6" stroke="#B7791F" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="544" y="152" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">Azure Service Bus · sb-forecast-tool (Standard)</text>
+<rect x="20" y="725" width="1605" height="205" rx="8" fill="#F7F0FC" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="8 5"/>
+<text x="34" y="747" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Monitoring &amp; Alerting</text>
+<rect x="20" y="290" width="170" height="150" rx="8" fill="#F3F4F6" stroke="#4B5563" stroke-width="1.5"/>
+<rect x="20" y="290" width="6" height="150" rx="3" fill="#4B5563"/>
+<text x="36" y="312" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Adobe Commerce (ACCS)</text>
+<text x="36" y="332" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Order source (storefront)</text>
+<text x="36" y="349" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Adobe I/O Events webhook</text>
+<text x="36" y="366" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">REST API: product attrs</text>
+<rect x="250" y="220" width="220" height="290" rx="8" fill="#E8F1FB" stroke="#0078D4" stroke-width="1.5"/>
+<rect x="250" y="220" width="6" height="290" rx="3" fill="#0078D4"/>
+<text x="266" y="242" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#004E8C" text-anchor="start">Stage 1 · Inbound Adapter</text>
+<text x="266" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Azure Function · HTTP trigger</text>
+<text x="266" y="279" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start" font-style="italic">accs-order-webhook</text>
+<text x="266" y="313" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Validate ACCS signature</text>
+<text x="266" y="330" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Idempotency check (orderId)</text>
+<text x="266" y="347" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Enrich SKU → fulfillment</text>
+<text x="266" y="364" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Map → Canonical Order</text>
+<text x="266" y="381" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Split items by supplier</text>
+<text x="266" y="398" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Publish 1 msg / supplier</text>
+<text x="266" y="415" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">• Write OrderFulfillmentLog</text>
+<rect x="250" y="560" width="200" height="90" rx="8" fill="#EEF7EE" stroke="#2E7D32" stroke-width="1.5"/>
+<rect x="250" y="560" width="6" height="90" rx="3" fill="#2E7D32"/>
+<text x="266" y="582" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#1B5E20" text-anchor="start">Azure SQL</text>
+<text x="266" y="602" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">OrderFulfillmentLog</text>
+<text x="266" y="619" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Idempotency + audit trail</text>
+<rect x="550" y="175" width="290" height="85" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="550" y="175" width="6" height="85" rx="3" fill="#B7791F"/>
+<text x="566" y="197" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">Stage 2 · Topic: orders.canonical</text>
+<text x="566" y="217" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">App property: supplier</text>
+<text x="566" y="234" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Duplicate detection 24h · TTL 7d</text>
+<rect x="600" y="300" width="230" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="600" y="300" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="616" y="322" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">sub-nutralogics</text>
+<text x="616" y="342" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">SQL filter: supplier = &#x27;nutralogics&#x27;</text>
+<rect x="600" y="400" width="230" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="600" y="400" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="616" y="422" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">sub-cartcom</text>
+<text x="616" y="442" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">SQL filter: supplier = &#x27;cartcom&#x27;</text>
+<rect x="600" y="500" width="230" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="600" y="500" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="616" y="522" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">sub-mtl</text>
+<text x="616" y="542" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">SQL filter: supplier = &#x27;mtl&#x27;</text>
+<rect x="900" y="300" width="180" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="900" y="300" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="916" y="322" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">Stage 3 · to-nutralogics</text>
+<text x="916" y="342" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Max delivery 3 → DLQ</text>
+<rect x="900" y="400" width="180" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="900" y="400" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="916" y="422" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">Stage 3 · to-cartcom</text>
+<text x="916" y="442" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Max delivery 3 → DLQ</text>
+<rect x="900" y="500" width="180" height="62" rx="8" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.5"/>
+<rect x="900" y="500" width="6" height="62" rx="3" fill="#B7791F"/>
+<text x="916" y="522" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#7C4A03" text-anchor="start">Stage 3 · to-mtl</text>
+<text x="916" y="542" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Max delivery 3 → DLQ</text>
+<rect x="1140" y="296" width="210" height="70" rx="8" fill="#E8F1FB" stroke="#0078D4" stroke-width="1.5"/>
+<rect x="1140" y="296" width="6" height="70" rx="3" fill="#0078D4"/>
+<text x="1156" y="318" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#004E8C" text-anchor="start">fulfillment-nutralogics</text>
+<text x="1156" y="338" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Function · SB queue trigger</text>
+<text x="1156" y="355" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Map canonical → NL format</text>
+<rect x="1140" y="396" width="210" height="70" rx="8" fill="#E8F1FB" stroke="#0078D4" stroke-width="1.5"/>
+<rect x="1140" y="396" width="6" height="70" rx="3" fill="#0078D4"/>
+<text x="1156" y="418" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#004E8C" text-anchor="start">fulfillment-cartcom</text>
+<text x="1156" y="438" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Function · SB queue trigger</text>
+<text x="1156" y="455" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Map canonical → Jazz format</text>
+<rect x="1140" y="496" width="210" height="70" rx="8" fill="#E8F1FB" stroke="#0078D4" stroke-width="1.5"/>
+<rect x="1140" y="496" width="6" height="70" rx="3" fill="#0078D4"/>
+<text x="1156" y="518" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#004E8C" text-anchor="start">fulfillment-mtl</text>
+<text x="1156" y="538" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Function · SB queue trigger</text>
+<text x="1156" y="555" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Map canonical → MTL format</text>
+<rect x="1410" y="296" width="215" height="70" rx="8" fill="#F3F4F6" stroke="#4B5563" stroke-width="1.5"/>
+<rect x="1410" y="296" width="6" height="70" rx="3" fill="#4B5563"/>
+<text x="1426" y="318" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#111827" text-anchor="start">NutraLogics</text>
+<text x="1426" y="338" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">fulfillment = CPPC</text>
+<text x="1426" y="355" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#B45309" text-anchor="start">API TBD · Phase 1: email stub</text>
+<rect x="1410" y="396" width="215" height="70" rx="8" fill="#F3F4F6" stroke="#4B5563" stroke-width="1.5"/>
+<rect x="1410" y="396" width="6" height="70" rx="3" fill="#4B5563"/>
+<text x="1426" y="418" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Cart.com (Jazz)</text>
+<text x="1426" y="438" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">fulfillment = Cart</text>
+<text x="1426" y="455" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#B45309" text-anchor="start">Jazz API (ASN creds) · email stub</text>
+<rect x="1410" y="496" width="215" height="70" rx="8" fill="#F3F4F6" stroke="#4B5563" stroke-width="1.5"/>
+<rect x="1410" y="496" width="6" height="70" rx="3" fill="#4B5563"/>
+<text x="1426" y="518" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#111827" text-anchor="start">MTL</text>
+<text x="1426" y="538" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">fulfillment = MTL</text>
+<text x="1426" y="555" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#B45309" text-anchor="start">API TBD · Phase 1: email stub</text>
+<rect x="1410" y="120" width="215" height="140" rx="8" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.5"/>
+<text x="1422" y="142" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#111827" text-anchor="start">Legend</text>
+<line x1="1424" y1="164" x2="1474" y2="164" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<text x="1486" y="168" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Order flow</text>
+<line x1="1424" y1="188" x2="1474" y2="188" stroke="#4B5563" stroke-width="1.5" stroke-dasharray="2 4" marker-end="url(#arrow-lookup)"/>
+<text x="1486" y="192" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Lookup (read)</text>
+<line x1="1424" y1="212" x2="1474" y2="212" stroke="#2E7D32" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-log)"/>
+<text x="1486" y="216" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Log write</text>
+<line x1="1424" y1="236" x2="1474" y2="236" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<text x="1486" y="240" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Telemetry / alert</text>
+<rect x="45" y="770" width="330" height="135" rx="8" fill="#FFFFFF" stroke="#7B3FA0" stroke-width="1.5"/>
+<rect x="45" y="770" width="6" height="135" rx="3" fill="#7B3FA0"/>
+<text x="61" y="792" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Application Insights</text>
+<text x="61" y="812" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start" font-style="italic">appi-forecast-tool</text>
+<text x="61" y="829" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Requests · exceptions · dependencies</text>
+<text x="61" y="846" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Custom events: order.received,</text>
+<text x="61" y="863" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">order.published, order.delivered</text>
+<rect x="415" y="770" width="260" height="135" rx="8" fill="#FFFFFF" stroke="#7B3FA0" stroke-width="1.5"/>
+<rect x="415" y="770" width="6" height="135" rx="3" fill="#7B3FA0"/>
+<text x="431" y="792" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Smart Detection</text>
+<text x="431" y="812" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Failure anomalies</text>
+<text x="431" y="829" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Performance degradation</text>
+<text x="431" y="846" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Memory leak · security</text>
+<rect x="715" y="770" width="380" height="135" rx="8" fill="#FFFFFF" stroke="#7B3FA0" stroke-width="1.5"/>
+<rect x="715" y="770" width="6" height="135" rx="3" fill="#7B3FA0"/>
+<text x="731" y="792" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Azure Monitor alert rules</text>
+<text x="731" y="812" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Sev 1: SB dead-letter count &gt; 0</text>
+<text x="731" y="829" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Sev 1: order not delivered in 15 min (KQL)</text>
+<text x="731" y="846" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Sev 1: SQL availability test (every 5 min)</text>
+<text x="731" y="863" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Sev 2: Function failure rate &gt; 5%</text>
+<text x="731" y="880" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Sev 2: SB throttling · Function App down</text>
+<rect x="1135" y="770" width="220" height="135" rx="8" fill="#FFFFFF" stroke="#7B3FA0" stroke-width="1.5"/>
+<rect x="1135" y="770" width="6" height="135" rx="3" fill="#7B3FA0"/>
+<text x="1151" y="792" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Action Group</text>
+<text x="1151" y="812" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">P1: Email + SMS</text>
+<text x="1151" y="829" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">P2: Email</text>
+<rect x="1395" y="770" width="205" height="135" rx="8" fill="#FFFFFF" stroke="#7B3FA0" stroke-width="1.5"/>
+<rect x="1395" y="770" width="6" height="135" rx="3" fill="#7B3FA0"/>
+<text x="1411" y="792" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13" font-weight="700" fill="#5B2C83" text-anchor="start">Ops / on-call</text>
+<text x="1411" y="812" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">Investigate · replay DLQ</text>
+<text x="1411" y="829" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#374151" text-anchor="start">OrderFulfillmentLog lookup</text>
+<path d="M190,335 L250,335" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="186.0" y="315" width="68" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="220" y="326" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">HTTPS POST</text>
+<path d="M250,410 L190,410" fill="none" stroke="#4B5563" stroke-width="1.5" stroke-dasharray="2 4" marker-end="url(#arrow-lookup)"/>
+<rect x="186.0" y="417" width="68" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="220" y="428" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#4B5563" text-anchor="middle">SKU lookup</text>
+<path d="M470,260 L510,260 L510,218 L550,218" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="463.0" y="239" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="488" y="250" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">publish</text>
+<path d="M575,260 L575,331 L600,331" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<path d="M575,260 L575,431 L600,431" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<path d="M575,260 L575,531 L600,531" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<path d="M830,331 L900,331" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="840.0" y="311" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="865" y="322" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">forward</text>
+<path d="M830,431 L900,431" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="840.0" y="411" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="865" y="422" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">forward</text>
+<path d="M830,531 L900,531" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="840.0" y="511" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="865" y="522" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">forward</text>
+<path d="M1080,331 L1140,331" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1085.0" y="311" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1110" y="322" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">trigger</text>
+<path d="M1080,431 L1140,431" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1085.0" y="411" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1110" y="422" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">trigger</text>
+<path d="M1080,531 L1140,531" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1085.0" y="511" width="50" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1110" y="522" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">trigger</text>
+<path d="M1350,331 L1410,331" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1364.0" y="311" width="32" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1380" y="322" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">send</text>
+<path d="M1350,431 L1410,431" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1364.0" y="411" width="32" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1380" y="422" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">send</text>
+<path d="M1350,531 L1410,531" fill="none" stroke="#1F2937" stroke-width="1.8" marker-end="url(#arrow-flow)"/>
+<rect x="1364.0" y="511" width="32" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1380" y="522" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#1F2937" text-anchor="middle">send</text>
+<path d="M350,510 L350,560" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-log)"/>
+<rect x="359.0" y="529" width="62" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="390" y="540" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#2E7D32" text-anchor="middle">write log</text>
+<path d="M1200,566 L1200,685 L350,685 L350,650" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-log)"/>
+<rect x="647.0" y="667" width="266" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="780" y="678" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#2E7D32" text-anchor="middle">log delivery result (all outbound adapters)</text>
+<path d="M462,510 L462,725" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<rect x="472.0" y="701" width="116" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="530" y="712" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#7B3FA0" text-anchor="middle">Function telemetry</text>
+<path d="M1000,610 L1000,725" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<rect x="1011.0" y="701" width="68" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1045" y="712" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#7B3FA0" text-anchor="middle">SB metrics</text>
+<path d="M1320,566 L1320,725" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<rect x="1330.0" y="701" width="116" height="15" fill="#FFFFFF" fill-opacity="0.9"/>
+<text x="1388" y="712" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="10" font-weight="600" fill="#7B3FA0" text-anchor="middle">Function telemetry</text>
+<path d="M375,837 L415,837" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<path d="M675,837 L715,837" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<path d="M1095,837 L1135,837" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<path d="M1355,837 L1395,837" fill="none" stroke="#7B3FA0" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-telemetry)"/>
+<text x="20" y="948" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="11" font-weight="normal" fill="#6B7280" text-anchor="start">Phase 1: outbound adapters send email stubs. Phase 2: replace with supplier APIs (Jazz reuses existing ASN credentials).</text>
+</svg>

@@ -46,11 +46,10 @@ GO
 
 UPDATE dbo.Role
 SET
-    QBOInsertApproval = N'RU',
     PaymentApproval = N'RU',
     ModifiedbyUser = 1
 WHERE RoleName = N'Management User'
-  AND (QBOInsertApproval IS NULL OR QBOInsertApproval = N'');
+  AND (PaymentApproval IS NULL OR PaymentApproval = N'');
 GO
 
 UPDATE dbo.Role
