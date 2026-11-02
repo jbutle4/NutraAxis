@@ -11,6 +11,7 @@ const inventorySalesSync = require('./jobs/inventory-sales-sync');
 const inventoryMovementRecon = require('./jobs/inventory-movement-recon');
 const supplierInvoiceApRecon = require('./jobs/supplier-invoice-ap-recon');
 const accsJazzTrackingSync = require('./jobs/accs-jazz-tracking-sync');
+const inventoryBalancesWeekly = require('./jobs/inventory-balances-weekly');
 
 const REGISTRY = {
   'monthly-sales-summary': {
@@ -61,6 +62,10 @@ const REGISTRY = {
     code: 'accs-jazz-tracking-sync',
     name: 'ACCS Jazz Tracking Sync',
   },
+  'inventory-balances-weekly': {
+    code: 'inventory-balances-weekly',
+    name: 'Inventory Balances Weekly Excel',
+  },
 };
 
 function buildResultMessage(code, result) {
@@ -99,6 +104,9 @@ function buildResultMessage(code, result) {
       return `Scanned ${result.scanned ?? 0} — ${result.missing_candidates ?? 0} missing tracking, `
         + `updated ${result.updated ?? 0}, skipped ${result.skipped ?? 0}, failed ${result.failed ?? 0}`
         + (result.dry_run ? ' (dry-run).' : '.');
+    case 'inventory-balances-weekly':
+      return `Sent ${result.filename ?? 'workbook'} (${result.row_count ?? 0} rows) to `
+        + `${(result.recipients || []).join(', ') || 'no recipients'}.`;
     default:
       return 'Process completed.';
   }
@@ -144,6 +152,8 @@ async function invoke(code, params = {}) {
         incrementId: params.increment_id || params.incrementId || null,
         delayMs: params.delay_ms ?? params.delayMs ?? null,
       });
+    case 'inventory-balances-weekly':
+      return inventoryBalancesWeekly.run();
     default:
       return {
         ok: false,

@@ -18,6 +18,7 @@ const ALERT_NAME_PAYMENT_APPROVAL_REQUEST = 'payment-approval-request';
 const ALERT_NAME_PAYMENT_STATUS_UPDATE = 'payment-status-update';
 const ALERT_NAME_PAYMENT_VIEWED_BY_APPROVER = 'payment-viewed-by-approver';
 const ALERT_NAME_QBO_CONNECTION_DOWN = 'qbo-connection-down';
+const ALERT_NAME_INVENTORY_BALANCES_WEEKLY = 'inventory-balances-weekly';
 
 const ALERT_ADDRESS_TYPES = ['TO', 'CC'];
 

@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-ledger.php';
+require dirname(__DIR__) . '/includes/inventory-balances-report.php';
 
 inventory_ledger_require_read();
 inventory_ims_bind_page_environments();
@@ -9,12 +10,48 @@ inventory_ims_bind_page_environments();
 $activeSlug = $activeSlug ?? 'inventory-balances';
 $module = get_module('inventory-balances');
 
-$facilityFilter = trim($_GET['facility'] ?? '');
-$skuFilter = trim($_GET['sku'] ?? '');
+$request = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? $_POST : $_GET;
+$facilityFilter = trim((string) ($request['facility'] ?? ''));
+$skuFilter = trim((string) ($request['sku'] ?? ''));
 $listFilters = [
     'facility' => $facilityFilter !== '' ? $facilityFilter : null,
     'sku'      => $skuFilter !== '' ? $skuFilter : null,
 ] + table_sort_state(INVENTORY_LEDGER_LIST_SORT_COLUMNS, 'sku', 'asc', $_GET);
+
+$flashOk = null;
+$flashErr = null;
+$canSend = auth_can_access_site_admin() || auth_can_update(INVENTORY_REPORTING_PERMISSION_COLUMN);
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $action = trim((string) ($_POST['action'] ?? ''));
+    if ($action === 'export') {
+        $rows = inventory_balances_report_rows([
+            'facility' => $facilityFilter,
+            'sku'      => $skuFilter,
+        ]);
+        $bytes = inventory_balances_report_xlsx_bytes($rows);
+        $filename = inventory_balances_report_filename();
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($bytes));
+        header('Cache-Control: private, no-store');
+        echo $bytes;
+        exit;
+    }
+    if ($action === 'send_now') {
+        if (!$canSend) {
+            $flashErr = 'You do not have permission to send the inventory balances report.';
+        } else {
+            $send = inventory_balances_report_send_now(inventory_ledger_profile());
+            if (!empty($send['ok'])) {
+                $flashOk = 'Sent ' . $send['filename'] . ' (' . (int) $send['row_count'] . ' rows) to '
+                    . implode(', ', $send['sent']) . '.';
+            } else {
+                $flashErr = (string) ($send['error'] ?? $send['skipped_reason'] ?? 'Send failed.');
+            }
+        }
+    }
+}
 
 $facilities = inventory_ledger_list_facilities();
 $rows = inventory_ledger_list_balances($listFilters);
@@ -36,6 +73,13 @@ require dirname(__DIR__) . '/includes/header.php';
           'lead'       => $module['lead'] ?? 'Operational stock on hand by SKU, facility, and status bucket from the IMS ledger.',
           'permission' => permission_label(inventory_ledger_permission_value()),
       ]); ?>
+
+      <?php if ($flashOk !== null): ?>
+      <div class="status-banner status-banner--success"><div><strong>Sent</strong><p><?= htmlspecialchars($flashOk) ?></p></div></div>
+      <?php endif; ?>
+      <?php if ($flashErr !== null): ?>
+      <div class="status-banner status-banner--error"><div><strong>Send failed</strong><p><?= htmlspecialchars($flashErr) ?></p></div></div>
+      <?php endif; ?>
 
       <form class="admin-filter-bar" method="get" action="<?= htmlspecialchars(data_profile_page_path('/inventory-balances')) ?>">
         <div class="form-field">
@@ -64,7 +108,21 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="status-banner">
         <div>
           <strong>IMS ledger loaded</strong>
-          <p><?= count($rows) ?> balance row<?= count($rows) === 1 ? '' : 's' ?> · QBO valuation uses OK + Quarantine + On hold across all facilities (excludes Destroy)</p>
+          <p><?= count($rows) ?> balance row<?= count($rows) === 1 ? '' : 's' ?> · QBO valuation uses OK + Quarantine + On hold across all facilities (excludes Destroy) · Excel export includes SKU Master COGS</p>
+        </div>
+        <div class="form-actions" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+          <form method="post" action="<?= htmlspecialchars(data_profile_page_path('/inventory-balances')) ?>">
+            <?php if ($facilityFilter !== ''): ?><input type="hidden" name="facility" value="<?= htmlspecialchars($facilityFilter) ?>" /><?php endif; ?>
+            <?php if ($skuFilter !== ''): ?><input type="hidden" name="sku" value="<?= htmlspecialchars($skuFilter) ?>" /><?php endif; ?>
+            <input type="hidden" name="action" value="export" />
+            <button type="submit" class="btn-secondary">Export Excel</button>
+          </form>
+          <?php if ($canSend && !data_profile_is_uat()): ?>
+          <form method="post" action="<?= htmlspecialchars(data_profile_page_path('/inventory-balances')) ?>" onsubmit="return confirm('Send the full production Inventory Balances workbook to alert subscribers now?');">
+            <input type="hidden" name="action" value="send_now" />
+            <button type="submit" class="btn-secondary">Send to subscribers</button>
+          </form>
+          <?php endif; ?>
         </div>
       </div>
 

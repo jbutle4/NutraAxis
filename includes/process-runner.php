@@ -141,6 +141,15 @@ function process_registry(): array
             'function_app'  => 'portal',
             'runner'        => 'php',
         ],
+        'inventory-balances-weekly' => [
+            'code'          => 'inventory-balances-weekly',
+            'name'          => 'Inventory Balances Weekly Excel',
+            'description'   => 'Email the full production Inventory Balances workbook (SKU Master COGS) to alert subscribers.',
+            'function_name' => 'inventory-balances-weekly',
+            'schedule'      => 'Mondays at 8:00 AM US Central',
+            'uat_e2e'       => false,
+            'function_app'  => 'prod',
+        ],
     ];
 }
 
