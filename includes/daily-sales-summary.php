@@ -284,8 +284,10 @@ function daily_sales_summary_list(array $filters = []): array
     $pdo = db();
     db_apply_sql_server_options($pdo);
 
+    $topLimit = max(1, min(1000, (int) ($filters['limit'] ?? 500)));
+
     $sql = <<<SQL
-        SELECT TOP (:limit)
+        SELECT TOP ({$topLimit})
             DailySalesSummaryID,
             SummaryDate,
             SKU,
@@ -297,9 +299,7 @@ function daily_sales_summary_list(array $filters = []): array
         WHERE 1 = 1
     SQL;
 
-    $params = [
-        'limit' => max(1, min(1000, (int) ($filters['limit'] ?? 500))),
-    ];
+    $params = [];
 
     $summaryDate = trim((string) ($filters['summary_date'] ?? ''));
     if ($summaryDate !== '') {
@@ -330,14 +330,12 @@ function daily_sales_summary_distinct_dates(int $limit = 30): array
     $pdo = db();
     db_apply_sql_server_options($pdo);
 
-    $stmt = $pdo->prepare(<<<SQL
-        SELECT DISTINCT TOP (:limit) SummaryDate
+    $topLimit = max(1, min(100, $limit));
+    $stmt = $pdo->query(<<<SQL
+        SELECT DISTINCT TOP ({$topLimit}) SummaryDate
         FROM dbo.DailySalesSummary
         ORDER BY SummaryDate DESC
     SQL);
-    $limitParam = max(1, min(100, $limit));
-    db_bind_value($stmt, ':limit', $limitParam);
-    $stmt->execute();
 
     return array_map(
         fn(array $row): string => (string) $row['SummaryDate'],

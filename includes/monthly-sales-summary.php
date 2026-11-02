@@ -96,8 +96,10 @@ function monthly_sales_summary_list(array $filters = []): array
     $pdo = db();
     db_apply_sql_server_options($pdo);
 
+    $topLimit = max(1, min(1000, (int) ($filters['limit'] ?? 500)));
+
     $sql = <<<SQL
-        SELECT TOP (:limit)
+        SELECT TOP ({$topLimit})
             MonthlySalesSummaryID,
             SKU,
             SaleYear,
@@ -109,9 +111,7 @@ function monthly_sales_summary_list(array $filters = []): array
         WHERE 1 = 1
     SQL;
 
-    $params = [
-        'limit' => max(1, min(1000, (int) ($filters['limit'] ?? 500))),
-    ];
+    $params = [];
 
     $saleYear = (int) ($filters['sale_year'] ?? 0);
     if ($saleYear > 0) {
@@ -148,17 +148,15 @@ function monthly_sales_summary_distinct_months(int $limit = 24): array
     $pdo = db();
     db_apply_sql_server_options($pdo);
 
-    $stmt = $pdo->prepare(<<<SQL
-        SELECT DISTINCT TOP (:limit)
+    $topLimit = max(1, min(100, $limit));
+    $stmt = $pdo->query(<<<SQL
+        SELECT DISTINCT TOP ({$topLimit})
             SaleYear,
             SaleMonth,
             MonthStart
         FROM dbo.MonthlySalesSummary
         ORDER BY MonthStart DESC
     SQL);
-    $limitParam = max(1, min(100, $limit));
-    db_bind_value($stmt, ':limit', $limitParam);
-    $stmt->execute();
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
