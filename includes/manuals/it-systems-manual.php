@@ -30,7 +30,7 @@ function it_systems_manual_definition(): array
         'lead'        => 'Production and UAT system links — Azure, Adobe Commerce, Jazz OMS, Avalara, QuickBooks developer tools, PayPal fraud, and related admin consoles.',
         'intro'       => 'The **IT & Ecommerce Management Systems** block on the home page is a curated launchpad. Almost every card opens an external console (Azure, Adobe, Jazz, Avalara, Intuit, PayPal, WordPress). Use **Production** links for live customer impact and **UAT / Stage** links only for testing. The portal does not store passwords for these systems — access is granted in each vendor’s admin.',
         'golden_rules' => [
-            '**Never use a Production admin URL to “just test.”** Stage / UAT cards are labeled — ACCS Stage, Stage DA/DAM, Jazz UAT, Avalara Sandbox, QBO Sandbox, NA Test Site.',
+            '**Never use a Production admin URL to “just test.”** Stage / UAT cards are labeled — ACCS Stage, Stage DA/DAM, Jazz UAT, Avalara Sandbox, PayPal Sandbox, QBO Sandbox, NA Test Site.',
             '**Avalara Prod vs Sandbox.** Sales-tax config and nexus live in separate Avalara tenants — use **Avalara Sandbox** for tests; **Avalara Production** for live tax.',
             '**Least privilege.** Admin consoles can change live catalog, content, and orders. Prefer read-only roles when you only need to look.',
             '**ACCS Prod vs Stage.** Production tenant and stage tenant are different Adobe Commerce environments. Orders, customers, and catalogs do not share data.',
@@ -130,6 +130,12 @@ function it_systems_manual_pages(): array
             'who'     => 'Payments risk',
             'purpose' => 'PayPal fraud protection dashboard.',
             'actions' => ['Review cases'],
+        ],
+        'link-paypal-sandbox' => [
+            'who'     => 'Payments / ecommerce / IT',
+            'purpose' => 'PayPal sandbox home for testing payments and buyer/seller accounts.',
+            'analyze' => ['Use sandbox accounts only — never process real customer payments here.'],
+            'actions' => ['Open PayPal Sandbox'],
         ],
         'link-avalara-production' => [
             'who'     => 'Tax / ecommerce / IT',

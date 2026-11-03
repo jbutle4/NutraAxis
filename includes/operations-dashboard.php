@@ -288,6 +288,13 @@ function operations_dashboard_sections(): array
                     'tier'  => ENVIRONMENT_TIER_UAT,
                 ],
                 [
+                    'title' => 'PayPal Sandbox',
+                    'desc'  => 'UAT System — PayPal sandbox home for testing payments and buyer/seller accounts.',
+                    'href'  => 'https://www.sandbox.paypal.com/us/home',
+                    'icon'  => 'payment',
+                    'tier'  => ENVIRONMENT_TIER_UAT,
+                ],
+                [
                     'title' => 'NA Test Site',
                     'desc'  => 'UAT System — NutraAxis site index, HTML previews, concept pages, and test renders.',
                     'href'  => 'https://nutraaxisweb.azurewebsites.net/nutraaxis_test/',
@@ -333,7 +340,7 @@ function operations_dashboard_normalize_link(array $link): array
             $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
         } elseif (preg_match('#zendesk\.com#i', (string) ($link['href'] ?? ''))) {
             $link['tier'] = ENVIRONMENT_TIER_PRODUCTION;
-        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|sandbox\.qbo\.intuit\.com|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
+        } elseif (preg_match('#(sandbox\.admin\.commerce\.adobe\.com|admin\.commerce\.adobe\.com/UAEy|sandbox\.qbo\.intuit\.com|sandbox\.paypal\.com|nutrasync-eds-staging|e1905796|nutraaxis_test|/nutraaxis_test/|/function-test/)#i', (string) ($link['href'] ?? ''))) {
             $link['tier'] = ENVIRONMENT_TIER_UAT;
         } elseif (str_starts_with((string) ($link['href'] ?? ''), 'http')) {
             $link['tier'] = ENVIRONMENT_TIER_EXTERNAL;
