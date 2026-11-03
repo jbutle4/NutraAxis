@@ -3,6 +3,10 @@
 require_once __DIR__ . '/subdomain-routing.php';
 subdomain_routing_apply();
 
+if (!headers_sent()) {
+    header('X-Robots-Tag: noindex, nofollow', true);
+}
+
 require_once __DIR__ . '/data-profile.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/app.php';

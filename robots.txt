@@ -1,0 +1,3 @@
+# NutraAxis Operations portal — internal only; not for search indexing.
+User-agent: *
+Disallow: /

@@ -1,5 +1,11 @@
 <?php
 require __DIR__ . '/includes/init.php';
+
+if (!auth_is_logged_in()) {
+    header('Location: /login/', true, 302);
+    exit;
+}
+
 require_once __DIR__ . '/includes/hub-cards.php';
 require_once __DIR__ . '/includes/operations-dashboard.php';
 
