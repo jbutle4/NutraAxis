@@ -27,13 +27,24 @@ function facilityForFulfillment(fulfillment) {
   return 'CART';
 }
 
-async function hasSyncedLog(pool, docNumber) {
+function productionSalesMode() {
+  return qboConfig.environment() === 'production';
+}
+
+async function hasImsSalePosted(pool, referenceId, ledgerProfile) {
+  const txnId = await findExistingSaleTxn(pool, referenceId, ledgerProfile);
+  return txnId > 0;
+}
+
+async function hasSyncedLog(pool, docNumber, ledgerProfile) {
   const result = await pool.request()
     .input('doc', sql.NVarChar(50), docNumber)
+    .input('ledgerProfile', sql.NVarChar(20), ledgerProfile)
     .query(`
       SELECT 1 AS ok
       FROM dbo.QBOInventorySyncLog
       WHERE DocNumber = @doc
+        AND LedgerProfile = @ledgerProfile
         AND SyncStatus = N'Synced'
     `);
   return Boolean(result.recordset[0]);
@@ -243,8 +254,9 @@ async function loadShippedOrderLines(pool, sourceEnvironment) {
 }
 
 async function run() {
+  const imsOnly = productionSalesMode();
   const accountId = adjustAccountId();
-  if (!accountId) {
+  if (!imsOnly && !accountId) {
     const env = qboConfig.environment();
     return {
       ok: false,
@@ -268,11 +280,18 @@ async function run() {
 
   try {
     const lines = await loadShippedOrderLines(pool, sourceEnvironment);
-    // Group by header for IMS posting once per order, but QBO lines per detail.
     const byHeader = new Map();
     for (const line of lines) {
+      if (imsOnly) {
+        if (!byHeader.has(line.header_id)) {
+          byHeader.set(line.header_id, []);
+        }
+        byHeader.get(line.header_id).push(line);
+        continue;
+      }
+
       const docNumber = `NA-SAL-${line.header_id}-${line.detail_id}`;
-      if (await hasSyncedLog(pool, docNumber)) {
+      if (await hasSyncedLog(pool, docNumber, ledgerProfile)) {
         skipped += 1;
         continue;
       }
@@ -283,12 +302,26 @@ async function run() {
     }
 
     for (const [headerId, headerLines] of byHeader.entries()) {
+      if (imsOnly && await hasImsSalePosted(pool, headerId, ledgerProfile)) {
+        skipped += 1;
+        continue;
+      }
+
       processed += 1;
       const facility = headerLines[0].facility;
       const qboLines = [];
       let missing = false;
 
       for (const line of headerLines) {
+        if (imsOnly) {
+          qboLines.push({
+            ...line,
+            sku: line.sku,
+            source_sku: line.sku,
+          });
+          continue;
+        }
+
         const resolved = await qboInventory.resolveInventoryItemId(pool, sql, line.sku);
         if (resolved.skip) {
           continue;
@@ -334,6 +367,11 @@ async function run() {
           ledgerProfile
         );
 
+        if (imsOnly) {
+          posted += 1;
+          continue;
+        }
+
         const adj = await qboInventory.postInventoryAdjustment({
           docNumber: `NA-SAL-${headerId}`,
           lines: qboLines.map((line) => ({
@@ -378,6 +416,7 @@ async function run() {
       ok: failed === 0,
       error: failed === 0 ? null : `${failed} sales sync failure(s).`,
       environment,
+      ims_only: imsOnly,
       processed,
       posted,
       skipped,
