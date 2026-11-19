@@ -103,23 +103,20 @@ function status_update_blob_upload(string $blobPath, string $content): array
         return ['ok' => false, 'error' => 'Azure Blob Storage is not configured.'];
     }
 
-    $ensure = status_update_blob_ensure_container($config);
-    if (!$ensure['ok']) {
-        return ['ok' => false, 'error' => $ensure['error'] ?? 'Unable to access blob container.'];
-    }
-
     $contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     $response = status_update_blob_request('PUT', $blobPath, $content, $config, [
         'Content-Type'   => $contentType,
         'x-ms-blob-type' => 'BlockBlob',
     ]);
-    if (!$response['ok'] && (int) ($response['status'] ?? 0) === 404) {
+    if (!$response['ok'] && (int) ($response['status'] ?? 0) === 404 && status_update_blob_should_auto_create_container($config)) {
         $ensure = status_update_blob_ensure_container($config);
         if ($ensure['ok']) {
             $response = status_update_blob_request('PUT', $blobPath, $content, $config, [
                 'Content-Type'   => $contentType,
                 'x-ms-blob-type' => 'BlockBlob',
             ]);
+        } elseif ($ensure['error'] !== null) {
+            return ['ok' => false, 'error' => $ensure['error']];
         }
     }
     if (!$response['ok']) {
@@ -141,6 +138,23 @@ function status_update_blob_upload(string $blobPath, string $content): array
  * @param array<string, string> $extraHeaders
  * @return array{ok: bool, error: ?string, body: ?string, headers: array<string, string>, status: int}
  */
+/**
+ * Only auto-create dedicated status containers — not the shared portal-attachments bucket.
+ *
+ * @param array<string, mixed> $config
+ */
+function status_update_blob_should_auto_create_container(array $config): bool
+{
+    $current = strtolower(trim((string) ($config['container'] ?? '')));
+    if ($current === '') {
+        return false;
+    }
+
+    $portalContainer = strtolower(trim((string) env('AZURE_STORAGE_CONTAINER', 'portal-attachments')));
+
+    return $current !== $portalContainer;
+}
+
 /**
  * @param array<string, mixed> $config
  * @return array{ok: bool, error: ?string}
@@ -199,6 +213,14 @@ function status_update_blob_ensure_container(array $config): array
         return [
             'ok'    => false,
             'error' => 'Storage account or container endpoint returned HTTP 404. Verify AZURE_STORAGE_CONNECTION_STRING on the app.',
+        ];
+    }
+
+    if ($status === 403) {
+        return [
+            'ok'    => false,
+            'error' => 'Storage denied container creation (HTTP 403). Create container "'
+                . $container . '" manually in Azure, or set STATUS_BLOB_CONTAINER to portal-attachments.',
         ];
     }
 
