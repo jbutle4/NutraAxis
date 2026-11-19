@@ -20,7 +20,7 @@ final class StatusUpdateDeckSpec
     public static function shapeNamesForSlide(int $slide): array
     {
         return match ($slide) {
-            2 => ['TextBox 2', 'Eyebrow'],
+            2 => ['TextBox 2'],
             3 => self::marketingShapes(),
             4 => self::accountingItShapes(),
             5 => self::businessDevShapes(),
