@@ -143,11 +143,12 @@ require dirname(__DIR__) . '/includes/header.php';
           </thead>
           <tbody>
             <?php if ($rows === []): ?>
-            <tr><td colspan="10">No inventory balance rows found. Run the IMS bootstrap migration or post a receipt to populate balances.</td></tr>
+            <tr><td colspan="11">No inventory balance rows found. Run the IMS bootstrap migration or post a receipt to populate balances.</td></tr>
             <?php else: ?>
             <?php foreach ($rows as $row): ?>
             <tr>
               <td><?= htmlspecialchars((string) ($row['SKUCode'] ?? '')) ?></td>
+              <td><?= htmlspecialchars((string) ($row['ProductName'] ?? '')) ?></td>
               <td><?= htmlspecialchars((string) ($row['FacilityCode'] ?? '')) ?></td>
               <td><?= htmlspecialchars(inventory_ledger_format_quantity($row['QtyOK'] ?? null)) ?></td>
               <td><?= htmlspecialchars(inventory_ledger_format_quantity($row['QtyQuarantine'] ?? null)) ?></td>

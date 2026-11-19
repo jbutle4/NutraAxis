@@ -40,6 +40,7 @@ function inventory_ims_page_path(string $productionPath): string
 
 const INVENTORY_LEDGER_LIST_SORT_COLUMNS = [
     'sku'           => 'SKU',
+    'product_name'  => 'Description',
     'facility'      => 'Facility',
     'qty_ok'        => 'OK',
     'qty_quarantine'=> 'Quarantine',
@@ -52,6 +53,7 @@ const INVENTORY_LEDGER_LIST_SORT_COLUMNS = [
 
 const INVENTORY_LEDGER_LIST_SORT_SQL = [
     'sku'           => 'b.SKUCode',
+    'product_name'  => 's.ProductName',
     'facility'      => 'b.FacilityCode',
     'qty_ok'        => 'b.QtyOK',
     'qty_quarantine'=> 'b.QtyQuarantine',
@@ -118,6 +120,7 @@ function inventory_ledger_list_balances(array $filters = []): array
         SELECT
             b.BalanceID,
             b.SKUCode,
+            ISNULL(s.ProductName, N'') AS ProductName,
             b.FacilityCode,
             f.FacilityName,
             f.IsActive AS FacilityIsActive,
@@ -133,6 +136,7 @@ function inventory_ledger_list_balances(array $filters = []): array
             b.LastUpdated
         FROM dbo.InvCurrentBalance b
         INNER JOIN dbo.Facility f ON f.FacilityCode = b.FacilityCode
+        LEFT JOIN dbo.SKUMaster s ON s.SKUCode = b.SKUCode
         WHERE b.LedgerProfile = :ledger_profile
     SQL;
 
