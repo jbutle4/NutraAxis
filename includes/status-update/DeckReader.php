@@ -149,17 +149,18 @@ final class DeckReader
         $expected = StatusUpdateDeckSpec::shapeNamesForSlide($slideNum);
         $foundNames = [];
         $fields = [];
+        $allNames = [];
 
-        foreach ($xpath->query('//p:sp') ?: [] as $sp) {
-            if (!$sp instanceof DOMElement) {
-                continue;
-            }
-            $nameNode = $xpath->query('.//p:cNvPr', $sp)?->item(0);
+        foreach ($xpath->query('//p:cNvPr[@name]') ?: [] as $nameNode) {
             if (!$nameNode instanceof DOMElement) {
                 continue;
             }
             $shapeName = trim($nameNode->getAttribute('name'));
-            if ($shapeName === '' || !in_array($shapeName, $expected, true)) {
+            if ($shapeName === '') {
+                continue;
+            }
+            $allNames[$shapeName] = true;
+            if (!in_array($shapeName, $expected, true)) {
                 continue;
             }
             if (isset($foundNames[$shapeName])) {
@@ -168,7 +169,13 @@ final class DeckReader
             }
             $foundNames[$shapeName] = true;
 
-            $paragraphs = $this->readParagraphs($xpath, $sp);
+            $context = $this->shapeTextContext($nameNode);
+            if ($context === null) {
+                $problems[] = 'Slide ' . $slideNum . ': shape "' . $shapeName . '" has no readable text container.';
+                continue;
+            }
+
+            $paragraphs = $this->readParagraphs($xpath, $context);
             $key = $slideNum . ':' . $shapeName;
             $kind = StatusUpdateDeckSpec::inferFieldKind($key, $shapeName);
             $fields[$key] = [
@@ -182,7 +189,7 @@ final class DeckReader
         }
 
         if (in_array('RAG Matrix', $expected, true)) {
-            foreach ($xpath->query("//p:graphicFrame[.//p:cNvPr[@name='RAG Matrix']]") ?: [] as $frame) {
+            foreach ($xpath->query("//p:graphicFrame[.//p:cNvPr[@name=\"RAG Matrix\"]]") ?: [] as $frame) {
                 $tableFields = $this->readRagTable($slideNum, $xpath, $frame, $problems);
                 $fields = array_merge($fields, $tableFields);
             }
@@ -209,7 +216,28 @@ final class DeckReader
             }
         }
 
+        if ($problems !== [] && $allNames !== []) {
+            $names = array_keys($allNames);
+            sort($names);
+            $problems[] = 'Slide ' . $slideNum . ' shape names found in file: ' . implode(', ', array_slice($names, 0, 40))
+                . (count($names) > 40 ? '…' : '');
+        }
+
         return $fields;
+    }
+
+    private function shapeTextContext(DOMElement $cNvPr): ?DOMElement
+    {
+        $node = $cNvPr->parentNode;
+        while ($node instanceof DOMElement) {
+            $local = strtolower($node->localName ?? $node->tagName);
+            if ($local === 'sp' || $local === 'tc') {
+                return $node;
+            }
+            $node = $node->parentNode;
+        }
+
+        return null;
     }
 
     /**

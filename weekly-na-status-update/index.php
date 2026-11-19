@@ -45,6 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tmp = (string) ($file['tmp_name'] ?? '');
         $validation = $templateService->validateUpload($tmp, (string) ($file['name'] ?? ''));
         if (!$validation['ok']) {
+            auth_start_session();
+            $problems = $validation['summary']['problems'] ?? [];
+            $_SESSION['status_template_validation_problems'] = is_array($problems) ? $problems : [];
             header('Location: ' . $redirect . '&error=' . rawurlencode((string) $validation['error']), true, 302);
             exit;
         }
@@ -179,6 +182,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'changes') {
 
 auth_start_session();
 $templatePending = is_array($_SESSION['status_template_pending'] ?? null) ? $_SESSION['status_template_pending'] : null;
+$validationProblems = [];
+if (!empty($_SESSION['status_template_validation_problems']) && is_array($_SESSION['status_template_validation_problems'])) {
+    $validationProblems = $_SESSION['status_template_validation_problems'];
+    unset($_SESSION['status_template_validation_problems']);
+}
 
 $draftState = $week !== null ? $draftService->buildDraftValues($week) : null;
 $chat = $week !== null ? $repo->chatThread((int) $week['id'], $author, 12) : [];
@@ -208,6 +216,17 @@ require dirname(__DIR__) . '/includes/header.php';
 
       <?php if ($error): ?>
       <div class="admin-notice is-error" role="alert"><?= htmlspecialchars($error) ?></div>
+      <?php endif; ?>
+      <?php if ($validationProblems !== []): ?>
+      <div class="admin-card" style="margin-bottom:1.25rem;border-color:#e8b4b4;">
+        <h2 class="h4">Template validation details</h2>
+        <p class="text-muted">Rename shapes in PowerPoint: <strong>Home → Arrange → Selection Pane</strong>. Names must match the weekly status deck spec exactly (slides 2–8).</p>
+        <ul style="max-height:20rem;overflow:auto;font-size:0.9rem;">
+          <?php foreach ($validationProblems as $problem): ?>
+          <li><?= htmlspecialchars((string) $problem) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
       <?php endif; ?>
       <?php if ($notice === 'opened'): ?>
       <div class="admin-notice is-success" role="status">Week opened for <?= htmlspecialchars($statusDate) ?>.</div>
