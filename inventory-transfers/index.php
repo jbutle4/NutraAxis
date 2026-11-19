@@ -26,7 +26,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => $hubBack['label'],
           'category'   => 'Inventory',
           'title'      => 'Facility Transfers',
-          'lead'       => 'Hub-and-spoke transfers from Cart.com to pharmacies (Ocala, Dallas, Melbourne), CPPC / WPC, CMO, and transit.',
+          'lead'       => 'Hub-and-spoke from Cart.com; pharmacies can return to Cart or rebalance overstock to another pharmacy (Ocala, Dallas, Melbourne).',
           'permission' => permission_label(inventory_transfers_permission_value()),
       ]);
       if (inventory_transfers_can_update()) {

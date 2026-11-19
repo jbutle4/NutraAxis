@@ -157,7 +157,7 @@ function inventory_transfers_list_destination_facilities(string $fromCode): arra
             }
 
             if ($fromIsPharmacy) {
-                return !empty($facility['IsMothership']);
+                return !empty($facility['IsMothership']) || facility_is_pharmacy_location($facility);
             }
 
             if ($fromIsMothership) {

@@ -226,12 +226,16 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
         return null;
     }
 
-    if ($toIsPharmacy && !$fromIsMothership && !$fromIsTransit) {
-        return 'Pharmacy locations are replenished from Cart.com only.';
+    if ($fromIsPharmacy && $toIsPharmacy) {
+        return null;
     }
 
-    if ($fromIsPharmacy && !$toIsMothership) {
-        return 'Pharmacy stock can only transfer back to Cart.com.';
+    if ($toIsPharmacy && !$fromIsMothership && !$fromIsTransit && !$fromIsPharmacy) {
+        return 'Pharmacy locations are replenished from Cart.com or another pharmacy only.';
+    }
+
+    if ($fromIsPharmacy && !$toIsMothership && !$toIsPharmacy) {
+        return 'Pharmacy stock can transfer to Cart.com or another pharmacy only.';
     }
 
     if ($toIsCmo && !$fromIsMothership) {

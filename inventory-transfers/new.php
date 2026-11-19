@@ -54,7 +54,7 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => 'Back to Transfers',
           'category'   => 'Inventory',
           'title'      => 'New Facility Transfer',
-          'lead'       => 'Replenish pharmacies and spokes from Cart.com, return pharmacy stock to Cart, or send material to CMO storage.',
+          'lead'       => 'Replenish from Cart.com, return pharmacy stock to Cart, move overstock between pharmacies, or send material to CMO storage.',
       ]); ?>
 
       <?php if ($error !== null): ?>
