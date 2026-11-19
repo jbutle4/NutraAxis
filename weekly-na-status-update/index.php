@@ -247,49 +247,46 @@ require dirname(__DIR__) . '/includes/header.php';
         <?php endif; ?>
       </section>
 
-      <?php if ($template === null || status_update_can_manage_template()): ?>
       <section class="admin-card" style="margin-bottom:1.25rem;">
         <h2 class="h4">Template</h2>
-        <?php if (!status_update_can_manage_template()): ?>
-        <p>You can view this page but cannot upload the template. An admin must grant <strong>Status Update Template</strong> (Update or Create) or <strong>Status Update</strong> (Create) on your role under Site Admin → Roles, then log out and back in.</p>
-        <p class="text-muted">Your access: Status Update = <?= htmlspecialchars(permission_label(auth_permission_value(STATUS_UPDATE_PERMISSION_COLUMN))) ?>; Status Update Template = <?= htmlspecialchars(permission_label(auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN))) ?>.</p>
-        <?php else: ?>
         <?php if ($template !== null): ?>
         <p>Current template: <?= (int) $template['field_count'] ?> fields · uploaded <?= htmlspecialchars((string) $template['uploaded_at']) ?> by <?= htmlspecialchars((string) $template['uploaded_by']) ?>.</p>
         <?php endif; ?>
-        <?php if (($_GET['step'] ?? '') === 'template_confirm' && $templatePending !== null): ?>
+
+        <?php if (!status_update_can_manage_template()): ?>
+        <p>You can view this page but cannot upload the template. Grant <strong>Status Update Template</strong> (Update or Create) or <strong>Status Update</strong> (Create) on your role under Site Admin → Roles, then log out and back in.</p>
+        <p class="text-muted"><?= htmlspecialchars(status_update_permission_summary()) ?></p>
+        <?php elseif (($_GET['step'] ?? '') === 'template_confirm' && $templatePending !== null): ?>
         <?php $summary = $templatePending['summary'] ?? []; ?>
         <p>Validation: <?= (int) ($summary['field_count'] ?? 0) ?> editable fields on <?= (int) ($summary['slides'] ?? 0) ?> slides.</p>
         <?php if (!empty($summary['problems'])): ?>
         <ul><?php foreach ($summary['problems'] as $problem): ?><li><?= htmlspecialchars((string) $problem) ?></li><?php endforeach; ?></ul>
         <?php endif; ?>
-        <form method="post" class="admin-form">
+        <form method="post" class="admin-form" style="margin-top:1rem;">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
           <input type="hidden" name="action" value="template_confirm" />
-          <label class="form-group form-group--stacked">
+          <label class="form-group form-group--stacked checkbox-label">
             <input type="checkbox" name="use_for_next_week" value="1" <?= empty($template) ? 'checked disabled' : '' ?> />
             Start the next week from this template (structural change path)
           </label>
           <button type="submit" class="btn-primary">Confirm template</button>
         </form>
         <?php else: ?>
-        <form method="post" enctype="multipart/form-data" class="admin-form">
+        <form method="post" enctype="multipart/form-data" class="admin-form" style="margin-top:1rem;">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
           <input type="hidden" name="action" value="template_upload" />
-          <div class="form-group">
+          <div class="form-group form-group--stacked">
             <label for="template_file">Upload .pptx template</label>
-            <input type="file" id="template_file" name="template_file" accept=".pptx" required />
+            <input class="form-input" type="file" id="template_file" name="template_file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" required />
           </div>
-          <label class="form-group form-group--stacked">
+          <label class="form-group form-group--stacked checkbox-label">
             <input type="checkbox" name="use_for_next_week" value="1" />
             Start the next week from this template after confirm
           </label>
-          <button type="submit" class="btn-secondary">Validate upload</button>
+          <button type="submit" class="btn-primary">Validate upload</button>
         </form>
         <?php endif; ?>
-        <?php endif; ?>
       </section>
-      <?php endif; ?>
 
       <?php if ($week !== null && ($week['state'] ?? '') === 'draft' && status_update_can_contribute() && $draftState !== null && $draftState['ok']): ?>
       <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;">

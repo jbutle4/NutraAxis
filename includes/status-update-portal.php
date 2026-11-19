@@ -32,13 +32,30 @@ function status_update_can_publish(): bool
 
 function status_update_can_manage_template(): bool
 {
+    if (auth_can_create('RoleAdmin') || auth_can_update('RoleAdmin')) {
+        return true;
+    }
+
+    $user = auth_user();
+    $roleName = is_array($user) ? trim((string) ($user['RoleName'] ?? '')) : '';
+    if (strcasecmp($roleName, 'Admin') === 0) {
+        return true;
+    }
+
     $templatePerm = auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN);
     if (permission_allows($templatePerm, 'U') || permission_allows($templatePerm, 'C')) {
         return true;
     }
 
-    // Publishers (Create on Status Update) can upload the master deck when no template role is split out.
     return auth_can_create(STATUS_UPDATE_PERMISSION_COLUMN);
+}
+
+function status_update_permission_summary(): string
+{
+    return 'Status Update = '
+        . permission_label(auth_permission_value(STATUS_UPDATE_PERMISSION_COLUMN))
+        . '; Status Update Template = '
+        . permission_label(auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN));
 }
 
 function status_update_require_read(): void
