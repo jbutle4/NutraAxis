@@ -93,6 +93,27 @@ function facility_is_cmo_storage(?array $facility): bool
     return strcasecmp((string) ($facility['FacilityType'] ?? ''), 'CMO') === 0;
 }
 
+/**
+ * @return list<string>
+ */
+function facility_pharmacy_codes(): array
+{
+    return ['OCALA', 'DALLAS', 'MELBOURNE'];
+}
+
+function facility_is_pharmacy_location(?array $facility): bool
+{
+    if ($facility === null) {
+        return false;
+    }
+
+    return in_array(
+        strtoupper(trim((string) ($facility['FacilityCode'] ?? ''))),
+        facility_pharmacy_codes(),
+        true
+    );
+}
+
 function facility_cmo_storage_code(): string
 {
     return FACILITY_CMO_STORAGE_CODE;
@@ -186,6 +207,8 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
     $toReceivesPo = !empty($to['ReceivesPurchaseOrders']);
     $fromIsCmo = facility_is_cmo_storage($from);
     $toIsCmo = facility_is_cmo_storage($to);
+    $fromIsPharmacy = facility_is_pharmacy_location($from);
+    $toIsPharmacy = facility_is_pharmacy_location($to);
 
     if ($fromIsMothership && $toIsCmo) {
         return null;
@@ -193,6 +216,22 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
 
     if ($fromIsCmo && $toIsMothership) {
         return null;
+    }
+
+    if ($fromIsMothership && $toIsPharmacy) {
+        return null;
+    }
+
+    if ($fromIsPharmacy && $toIsMothership) {
+        return null;
+    }
+
+    if ($toIsPharmacy && !$fromIsMothership && !$fromIsTransit) {
+        return 'Pharmacy locations are replenished from Cart.com only.';
+    }
+
+    if ($fromIsPharmacy && !$toIsMothership) {
+        return 'Pharmacy stock can only transfer back to Cart.com.';
     }
 
     if ($toIsCmo && !$fromIsMothership) {
@@ -203,7 +242,7 @@ function facility_validate_transfer(string $fromFacilityCode, string $toFacility
         return 'CMO storage can only transfer back to the Cart.com mothership.';
     }
 
-    if ($toReceivesPo && !$fromIsMothership) {
+    if ($toReceivesPo && !$fromIsMothership && !$fromIsPharmacy) {
         return 'Inventory cannot be transferred into the mothership from a spoke facility through this workflow.';
     }
 

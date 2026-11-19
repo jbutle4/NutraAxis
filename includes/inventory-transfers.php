@@ -119,6 +119,10 @@ function inventory_transfers_list_source_facilities(): array
                 return true;
             }
 
+            if (facility_is_pharmacy_location($facility)) {
+                return true;
+            }
+
             return strcasecmp((string) ($facility['FacilityType'] ?? ''), 'Transit') === 0;
         }
     ));
@@ -138,16 +142,21 @@ function inventory_transfers_list_destination_facilities(string $fromCode): arra
     $fromIsMothership = !empty($from['IsMothership']);
     $fromIsCmo = facility_is_cmo_storage($from);
     $fromIsTransit = strcasecmp((string) ($from['FacilityType'] ?? ''), 'Transit') === 0;
+    $fromIsPharmacy = facility_is_pharmacy_location($from);
 
     return array_values(array_filter(
         inventory_transfers_list_facilities(),
-        static function (array $facility) use ($fromCode, $fromIsMothership, $fromIsCmo, $fromIsTransit): bool {
+        static function (array $facility) use ($fromCode, $fromIsMothership, $fromIsCmo, $fromIsTransit, $fromIsPharmacy): bool {
             $code = (string) $facility['FacilityCode'];
             if (strcasecmp($code, $fromCode) === 0) {
                 return false;
             }
 
             if ($fromIsCmo) {
+                return !empty($facility['IsMothership']);
+            }
+
+            if ($fromIsPharmacy) {
                 return !empty($facility['IsMothership']);
             }
 
@@ -188,18 +197,6 @@ function inventory_transfers_ship(int $transferId, ?int $userId = null): array
     }
     if (($transfer['TransferStatus'] ?? '') !== 'Pending') {
         return ['ok' => false, 'error' => 'Only pending transfers can be shipped.'];
-    }
-
-    require_once __DIR__ . '/inventory-transfers-jazz.php';
-    if (
-        inventory_transfers_jazz_require_before_ship()
-        && inventory_transfers_jazz_send_required($transfer)
-        && !inventory_transfers_jazz_send_satisfied($transfer)
-    ) {
-        return [
-            'ok'    => false,
-            'error' => 'Send this transfer to Jazz OMS first, then ship to update the IMS ledger.',
-        ];
     }
 
     $qty = (float) ($transfer['QtyRequested'] ?? 0);
@@ -414,10 +411,12 @@ function inventory_transfers_maybe_post_qbo_journal(int $transferId): array
 function inventory_transfers_asset_account_for_facility(string $facilityCode): string
 {
     $facilityCode = strtoupper(trim($facilityCode));
+    $cppcAssetEnv = qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CPPC');
+    $cppcAssetName = 'Inventory Asset - CPPC';
     $envMap = [
         'CART' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART'),
         'CART_COM' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART'),
-        'CPPC' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CPPC'),
+        'CPPC' => $cppcAssetEnv,
         'WLO' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
         'WPC_QUEUE' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
         'WPC_WIP' => qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_WPC'),
@@ -425,11 +424,15 @@ function inventory_transfers_asset_account_for_facility(string $facilityCode): s
     $nameMap = [
         'CART' => 'Inventory Asset - Cart.com',
         'CART_COM' => 'Inventory Asset - Cart.com',
-        'CPPC' => 'Inventory Asset - CPPC',
+        'CPPC' => $cppcAssetName,
         'WLO' => 'Inventory Asset - WPC WIP',
         'WPC_QUEUE' => 'Inventory Asset - WPC WIP',
         'WPC_WIP' => 'Inventory Asset - WPC WIP',
     ];
+    foreach (facility_pharmacy_codes() as $pharmacyCode) {
+        $envMap[$pharmacyCode] = $cppcAssetEnv;
+        $nameMap[$pharmacyCode] = $cppcAssetName;
+    }
 
     $fromEnv = $envMap[$facilityCode] ?? '';
     if ($fromEnv !== '' && inventory_transfers_coa_account_id_exists($fromEnv)) {
