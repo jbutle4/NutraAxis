@@ -237,7 +237,7 @@ function supply_chain_manual_pages(): array
         'inventory-transfers' => [
             'who'     => 'Inventory operators',
             'purpose' => 'Move stock between Cart.com, CPPC, White Label, and transit on the IMS ledger.',
-            'actions' => ['Create transfer', 'Confirm'],
+            'actions' => ['Create transfer', 'Send to Jazz', 'Ship', 'Receive'],
         ],
         'inventory-adjustments' => [
             'who'     => 'Inventory operators + approvers',

@@ -190,6 +190,18 @@ function inventory_transfers_ship(int $transferId, ?int $userId = null): array
         return ['ok' => false, 'error' => 'Only pending transfers can be shipped.'];
     }
 
+    require_once __DIR__ . '/inventory-transfers-jazz.php';
+    if (
+        inventory_transfers_jazz_require_before_ship()
+        && inventory_transfers_jazz_send_required($transfer)
+        && !inventory_transfers_jazz_send_satisfied($transfer)
+    ) {
+        return [
+            'ok'    => false,
+            'error' => 'Send this transfer to Jazz OMS first, then ship to update the IMS ledger.',
+        ];
+    }
+
     $qty = (float) ($transfer['QtyRequested'] ?? 0);
     $from = (string) $transfer['FromFacilityCode'];
     $to = (string) $transfer['ToFacilityCode'];

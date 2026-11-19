@@ -439,157 +439,16 @@ function por_asn_endpoint(): string
     return '/' . ltrim($endpoint, '/');
 }
 
-function jazz_oms_api_post(string $url, array $payload): array
-{
-    $tokenResult = jazz_oms_get_token();
-    if (!$tokenResult['ok']) {
-        return $tokenResult + ['data' => null, 'status' => 0];
-    }
-
-    if (!function_exists('curl_init')) {
-        return ['ok' => false, 'error' => 'cURL is required to connect to Jazz OMS.', 'data' => null, 'status' => 0];
-    }
-
-    try {
-        $body = json_encode($payload, JSON_THROW_ON_ERROR);
-    } catch (Throwable) {
-        return ['ok' => false, 'error' => 'Unable to encode the ASN payload for Jazz OMS.', 'data' => null, 'status' => 0];
-    }
-
-    $headers = jazz_oms_request_headers($tokenResult['token']);
-    $headers[] = 'User-Agent: NutraAxis-Operations/1.0 (+https://nutraaxisweb.azurewebsites.net)';
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $body,
-        CURLOPT_HTTPHEADER     => $headers,
-        CURLOPT_TIMEOUT        => 30,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_ENCODING       => '',
-    ]);
-
-    $responseBody = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    if (is_resource($ch)) {
-        curl_close($ch);
-    }
-
-    if ($responseBody === false) {
-        $detail = 'Unable to reach Jazz OMS at ' . $url . '.';
-        if ($curlError !== '') {
-            $detail .= ' cURL: ' . $curlError;
-        }
-
-        return ['ok' => false, 'error' => $detail, 'data' => null, 'status' => $status];
-    }
-
-    $responseBody = (string) $responseBody;
-
-    if ($status === 403 && jazz_oms_is_cloudflare_block($responseBody)) {
-        return ['ok' => false, 'error' => jazz_oms_cloudflare_error_message(), 'data' => null, 'status' => $status];
-    }
-
-    $data = null;
-    if (trim($responseBody) !== '') {
-        try {
-            $data = json_decode($responseBody, true, 512, JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
-            if ($status < 400) {
-                return ['ok' => false, 'error' => 'Jazz OMS returned a non-JSON acknowledgement (HTTP ' . $status . ').', 'data' => null, 'status' => $status];
-            }
-            $data = null;
-        }
-    }
-
-    if ($status >= 400) {
-        $message = null;
-        if (is_array($data)) {
-            $message = $data['detail'] ?? $data['message'] ?? $data['error'] ?? null;
-            if (!is_string($message)) {
-                $message = jazz_oms_flatten_validation_errors($data);
-            }
-        }
-        if (!is_string($message) || $message === '') {
-            $preview = trim(preg_replace('/\s+/', ' ', $responseBody) ?? '');
-            if (strlen($preview) > 160) {
-                $preview = substr($preview, 0, 160) . '…';
-            }
-            $message = 'Jazz OMS ASN request failed (HTTP ' . $status . ').' . ($preview !== '' ? ' Response: ' . $preview : '');
-        }
-
-        $message = por_asn_normalize_jazz_error($message, $responseBody);
-
-        return ['ok' => false, 'error' => 'Jazz rejected the ASN: ' . $message, 'data' => $data, 'status' => $status];
-    }
-
-    return ['ok' => true, 'error' => null, 'data' => $data, 'status' => $status];
-}
-
-/**
- * Flatten DRF-style validation errors ({field: ["msg"], details: [{field: "msg"}]})
- * into a readable one-line message.
- */
-function jazz_oms_flatten_validation_errors(array $data, string $prefix = ''): ?string
-{
-    $parts = [];
-    foreach ($data as $field => $messages) {
-        $label = $prefix !== '' ? $prefix . '.' . $field : (string) $field;
-        if (is_string($messages)) {
-            $parts[] = $label . ': ' . $messages;
-        } elseif (is_array($messages)) {
-            foreach ($messages as $idx => $item) {
-                if (is_string($item)) {
-                    $parts[] = $label . ': ' . $item;
-                } elseif (is_array($item)) {
-                    $nested = jazz_oms_flatten_validation_errors($item, $label . '[' . $idx . ']');
-                    if ($nested !== null) {
-                        $parts[] = $nested;
-                    }
-                }
-            }
-        }
-    }
-
-    return $parts !== [] ? implode(' ', $parts) : null;
-}
-
 /**
  * Pull the Jazz ASN number out of the acknowledgement, tolerating
  * different key names and a nested data/result wrapper.
  */
 function por_asn_extract_ack($data): ?string
 {
-    if (!is_array($data)) {
-        return null;
-    }
-
-    $candidates = ['asn_number', 'asnNumber', 'asn_no', 'asn', 'shipment_notice_number', 'number', 'id'];
-    foreach ($candidates as $key) {
-        if (isset($data[$key]) && (is_string($data[$key]) || is_numeric($data[$key]))) {
-            $value = trim((string) $data[$key]);
-            if ($value !== '') {
-                return $value;
-            }
-        }
-    }
-
-    foreach (['data', 'result', 'results'] as $wrapper) {
-        if (isset($data[$wrapper]) && is_array($data[$wrapper])) {
-            $nested = $data[$wrapper];
-            if (array_is_list($nested) && $nested !== [] && is_array($nested[0])) {
-                $nested = $nested[0];
-            }
-            $found = por_asn_extract_ack($nested);
-            if ($found !== null) {
-                return $found;
-            }
-        }
-    }
-
-    return null;
+    return jazz_oms_extract_ack_id(
+        is_array($data) ? $data : null,
+        ['asn_number', 'asnNumber', 'asn_no', 'asn', 'shipment_notice_number', 'number', 'id']
+    );
 }
 
 function jazz_oms_list_asns(): array
@@ -1170,7 +1029,9 @@ function por_transmit_to_jazz(int $porId): array
             ];
         }
 
-        return ['ok' => false, 'error' => $result['error'], 'jazz_asn' => null];
+        $error = por_asn_normalize_jazz_error((string) ($result['error'] ?? ''), '');
+
+        return ['ok' => false, 'error' => 'Jazz rejected the ASN: ' . $error, 'jazz_asn' => null];
     }
 
     $jazzAsn = por_asn_extract_ack($result['data']);

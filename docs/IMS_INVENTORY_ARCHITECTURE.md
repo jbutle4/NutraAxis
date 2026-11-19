@@ -76,7 +76,7 @@ Implementation: `facility_validate_transfer()` in `includes/facility.php`; rewor
 | Event | Facility | Post when |
 |-------|----------|-----------|
 | Supplier receipt | CART | Jazz ASN confirmed received |
-| Transfer ship | CART | Jazz confirms ship (TBD with Cart.com) |
+| Transfer ship | CART | **Send to Jazz** on transfer detail (`POST /api/v1/shipping/asn`, optional `order/import`), then portal IMS ship |
 | Transfer receive | CPPC / WLO | Portal receive confirmed (local) |
 | Transfer in transit | TRANSIT | On ship from CART; clear on spoke receive |
 | Sale | CART | Jazz / ACCS ship confirm |
@@ -90,5 +90,6 @@ Implementation: `facility_validate_transfer()` in `includes/facility.php`; rewor
 
 - [ ] Jazz adjustment event import → `InvTransaction` (`JazzSyncReconcile`)
 - [ ] ASN confirmed received → `InvTransaction` (`POReceipt`)
-- [ ] Cart.com transfer confirmation object (ship order vs ASN pair) for CART → spoke
+- [x] Portal **Send to Jazz** on facility transfers (ASN + optional transfer order import; tune via `JAZZ_TRANSFER_*` env)
+- [ ] Jazz ship confirmation webhook → auto-advance transfer when Cart.com completes the mothership move
 - [ ] Transfer UI in Operations portal (validation layer is in place)

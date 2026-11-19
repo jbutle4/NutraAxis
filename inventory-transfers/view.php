@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
+require dirname(__DIR__) . '/includes/inventory-transfers-jazz.php';
 require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-rework.php';
 
@@ -26,6 +27,20 @@ $syncStatus = qbo_inventory_sync_log_status($docNumber);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
     $action = (string) ($_POST['action'] ?? '');
+    if ($action === 'send_jazz') {
+        $result = inventory_transfers_send_to_jazz($transferId, $userId !== null ? (int) $userId : null);
+        $query = [];
+        if (!empty($result['ok'])) {
+            $query['notice'] = !empty($result['skipped']) ? 'jazz_skipped' : 'jazz_sent';
+            if (!empty($result['warning'])) {
+                $query['jazz_warning'] = (string) $result['warning'];
+            }
+        } else {
+            $query['error'] = $result['error'] ?? 'Send to Jazz failed.';
+        }
+        header('Location: ' . $viewPath . '&' . http_build_query($query), true, 302);
+        exit;
+    }
     if ($action === 'ship') {
         $result = inventory_transfers_ship($transferId, $userId !== null ? (int) $userId : null);
         header(
@@ -67,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
 
 $transfer = inventory_transfers_get($transferId);
 $syncStatus = qbo_inventory_sync_log_status($docNumber);
+$jazzSendRequired = inventory_transfers_jazz_send_required($transfer);
+$jazzSendSatisfied = inventory_transfers_jazz_send_satisfied($transfer);
+$jazzSendStatus = trim((string) ($transfer['JazzSendStatus'] ?? ''));
+$jazzAsnId = trim((string) ($transfer['JazzAsnId'] ?? ''));
+$jazzAsnStatus = trim((string) ($transfer['JazzAsnStatus'] ?? ''));
 $cmoSupplier = !empty($transfer['SupplierID']) ? supplier_get((int) $transfer['SupplierID']) : null;
 $isCmoOutbound = facility_is_cmo_storage(facility_get_by_code((string) ($transfer['ToFacilityCode'] ?? '')));
 $reworkReturnPoId = (int) ($transfer['ReworkReturnPOID'] ?? 0);
@@ -89,7 +109,22 @@ require dirname(__DIR__) . '/includes/header.php';
           'lead_html'  => true,
       ]);
       ob_start();
-      if (inventory_transfers_can_update() && ($transfer['TransferStatus'] ?? '') === 'Pending'): ?>
+      if (
+          inventory_transfers_can_update()
+          && ($transfer['TransferStatus'] ?? '') === 'Pending'
+          && $jazzSendRequired
+          && !$jazzSendSatisfied
+      ): ?>
+      <form method="post" class="inline-form" onsubmit="return confirm('Send this facility transfer to Jazz OMS at Cart.com?');">
+        <input type="hidden" name="action" value="send_jazz" />
+        <button type="submit" class="btn-primary">Send to Jazz</button>
+      </form>
+      <?php endif;
+      if (
+          inventory_transfers_can_update()
+          && ($transfer['TransferStatus'] ?? '') === 'Pending'
+          && (!$jazzSendRequired || $jazzSendSatisfied)
+      ): ?>
       <form method="post" class="inline-form" onsubmit="return confirm('Ship this transfer and update IMS quantities?');">
         <input type="hidden" name="action" value="ship" />
         <button type="submit" class="btn-primary">Ship transfer</button>
@@ -131,6 +166,13 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">QuickBooks journal entry synced.</div>
       <?php elseif ($notice === 'qbo_skipped'): ?>
       <div class="admin-notice is-success" role="status">QuickBooks journal entry already synced or skipped.</div>
+      <?php elseif ($notice === 'jazz_sent'): ?>
+      <div class="admin-notice is-success" role="status">Transfer sent to Jazz OMS.</div>
+      <?php elseif ($notice === 'jazz_skipped'): ?>
+      <div class="admin-notice is-success" role="status">Jazz send step skipped (not required or already sent).</div>
+      <?php endif; ?>
+      <?php if (!empty($_GET['jazz_warning'])): ?>
+      <div class="admin-notice is-warning" role="status"><?= htmlspecialchars((string) $_GET['jazz_warning']) ?></div>
       <?php endif; ?>
       <?php if ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -145,6 +187,12 @@ require dirname(__DIR__) . '/includes/header.php';
         <div><dt>Shipped</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyShipped'] ?? null)) ?></dd></div>
         <div><dt>Received</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyReceived'] ?? null)) ?></dd></div>
         <div><dt>QBO Doc</dt><dd><?= htmlspecialchars($docNumber) ?><?= $syncStatus !== null ? ' · ' . htmlspecialchars($syncStatus) : '' ?></dd></div>
+        <?php if ($jazzSendRequired): ?>
+        <div><dt>Jazz send</dt><dd><?= $jazzSendStatus !== '' ? htmlspecialchars($jazzSendStatus) : 'Pending' ?><?= $jazzAsnId !== '' ? ' · ASN ' . htmlspecialchars($jazzAsnId) : '' ?><?= $jazzAsnStatus !== '' ? ' · ' . htmlspecialchars($jazzAsnStatus) : '' ?></dd></div>
+        <?php if (!empty($transfer['JazzSendError'])): ?>
+        <div><dt>Jazz last error</dt><dd><?= htmlspecialchars((string) $transfer['JazzSendError']) ?></dd></div>
+        <?php endif; ?>
+        <?php endif; ?>
         <?php if ($cmoSupplier !== null): ?>
         <div><dt>CMO partner</dt><dd><?= htmlspecialchars((string) $cmoSupplier['SupplierName']) ?></dd></div>
         <?php endif; ?>

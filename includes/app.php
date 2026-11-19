@@ -1153,6 +1153,7 @@ $modulePages = [
         'capabilities' => [
             ['title' => 'Hub and Spoke', 'desc' => 'Replenish CPPC and White Label from Cart.com only.'],
             ['title' => 'Transit Bucket', 'desc' => 'Optional TRANSIT facility for in-flight quantities.'],
+            ['title' => 'Jazz OMS', 'desc' => 'Send to Jazz at Cart.com (ASN and optional transfer order) before IMS ship.'],
             ['title' => 'IMS Posting', 'desc' => 'Ship and receive posts TransferOut / TransferIn to the ledger.'],
             ['title' => 'QBO Valuation', 'desc' => 'Same-SKU transfers keep company QtyOnHand unchanged; G/L moves via Journal Entry when configured.'],
         ],
