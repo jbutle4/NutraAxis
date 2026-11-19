@@ -27,6 +27,8 @@ const ROLE_PERMISSION_FIELDS = [
     'Marketing'            => 'Marketing & Research',
     'MarketingCompliance'  => 'Marketing Compliance Review',
     'AccsOrderAccountSupport' => 'ACCS Order and Account Support',
+    'StatusUpdate'         => 'Weekly NA Status Update',
+    'StatusUpdateTemplate' => 'Status Update Template',
     'UserAdmin'            => 'User Administration',
     'RoleAdmin'            => 'Role Administration',
 ];
@@ -391,6 +393,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 InventoryReporting, SalesReporting, InventoryForecasting,
                 LabelingOperations, OperationsDashboard, LegalAgreements, ProductCatalog, LinksIndex, ContactsList, EducationResources, Support, Accounting,
                 ProviderAccountReview, Marketing, MarketingCompliance, AccsOrderAccountSupport,
+                StatusUpdate, StatusUpdateTemplate,
                 UserAdmin, RoleAdmin
             )
             OUTPUT INSERTED.RoleID AS inserted_id
@@ -401,6 +404,7 @@ function admin_save_role(array $input, ?int $roleId = null): array
                 :inv_rep, :sales_rep, :inv_forecast,
                 :labeling, :dashboard, :legal, :catalog, :links, :contacts, :education, :support, :accounting,
                 :provider_review, :marketing, :marketing_compliance, :accs_support,
+                :status_update, :status_update_template,
                 :user_admin, :role_admin
             )
         SQL);
@@ -431,6 +435,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
             'marketing'           => $permissions['Marketing'],
             'marketing_compliance' => $permissions['MarketingCompliance'],
             'accs_support'        => $permissions['AccsOrderAccountSupport'],
+            'status_update'       => $permissions['StatusUpdate'],
+            'status_update_template'=> $permissions['StatusUpdateTemplate'],
             'user_admin'          => $permissions['UserAdmin'],
             'role_admin'          => $permissions['RoleAdmin'],
         ]);
@@ -479,6 +485,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
             Marketing = :marketing,
             MarketingCompliance = :marketing_compliance,
             AccsOrderAccountSupport = :accs_support,
+            StatusUpdate = :status_update,
+            StatusUpdateTemplate = :status_update_template,
             UserAdmin = :user_admin,
             RoleAdmin = :role_admin
         WHERE RoleID = :id
@@ -510,6 +518,8 @@ function admin_save_role(array $input, ?int $roleId = null): array
         'marketing'           => $permissions['Marketing'],
         'marketing_compliance' => $permissions['MarketingCompliance'],
         'accs_support'        => $permissions['AccsOrderAccountSupport'],
+        'status_update'       => $permissions['StatusUpdate'],
+        'status_update_template'=> $permissions['StatusUpdateTemplate'],
         'user_admin'          => $permissions['UserAdmin'],
         'role_admin'          => $permissions['RoleAdmin'],
         'id'                  => $roleId,

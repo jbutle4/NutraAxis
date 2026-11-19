@@ -112,6 +112,16 @@ function operations_manual_workflows(): array
                 ['who' => 'Ops / training', 'when' => 'When ready', 'what' => 'Add or replace files on **Education Resources**; set publish flags.', 'link' => ['education-resources', '', null]],
             ],
         ],
+        'status-deck' => [
+            'title'   => 'Weekly NA status deck',
+            'summary' => 'Upload template once; each week opens a shared draft; Claude maps notes to deck fields; a publisher locks the week.',
+            'cadence' => 'Weekly (Monday status date by default).',
+            'steps'   => [
+                ['who' => 'Template admin', 'when' => 'As needed', 'what' => 'Upload and confirm the master .pptx; check **Start next week from this template** only for structural layout changes.', 'link' => ['weekly-na-status-update', '', null]],
+                ['who' => 'Contributors', 'when' => 'Early week', 'what' => 'Open the week, paste status notes to Claude, review proposals, **Accept** into the shared draft.', 'link' => ['weekly-na-status-update', '', null]],
+                ['who' => 'Publisher', 'when' => 'Before distribution', 'what' => 'Download draft if needed, then **Publish week** to store the final .pptx and lock edits.', 'link' => ['weekly-na-status-update', '', null]],
+            ],
+        ],
     ];
 }
 
@@ -185,6 +195,15 @@ function operations_manual_pages(): array
             'who'     => 'IT',
             'purpose' => 'IT product backlog — status, due dates, implementation notes.',
             'actions' => ['Add item', 'Update status'],
+        ],
+        'weekly-na-status-update' => [
+            'who'     => 'Ops leadership & contributors',
+            'purpose' => 'Collaborative weekly NA status PowerPoint with Claude-assisted field updates.',
+            'analyze' => [
+                'Claude only proposes JSON field changes — you must Accept each proposal.',
+                'Structural deck changes require uploading a new template with “Start next week from this template”.',
+            ],
+            'actions' => ['Open week', 'Send notes to Claude', 'Accept changes', 'Download draft', 'Publish week', 'Upload template (admins)'],
         ],
         'site-documentation' => [
             'who'     => 'Everyone',

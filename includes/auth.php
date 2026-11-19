@@ -111,6 +111,7 @@ const MODULE_PERMISSION_COLUMNS = [
     'administration-manual'  => 'Accounting',
     'operations-manual'      => 'OperationsDashboard',
     'it-systems-manual'      => 'OperationsDashboard',
+    'weekly-na-status-update' => 'StatusUpdate',
 ];
 
 const ADMIN_PERMISSION_COLUMNS = [
@@ -160,6 +161,8 @@ function auth_permissions_from_role_row(array $row): array
         'Marketing'            => $row['Marketing'] ?? null,
         'MarketingCompliance'  => $row['MarketingCompliance'] ?? null,
         'AccsOrderAccountSupport' => $row['AccsOrderAccountSupport'] ?? null,
+        'StatusUpdate'            => $row['StatusUpdate'] ?? null,
+        'StatusUpdateTemplate'    => $row['StatusUpdateTemplate'] ?? null,
     ];
 }
 
@@ -200,7 +203,9 @@ function auth_refresh_permissions(): void
                 ProviderAccountReview,
                 Marketing,
                 MarketingCompliance,
-                AccsOrderAccountSupport
+                AccsOrderAccountSupport,
+                StatusUpdate,
+                StatusUpdateTemplate
             FROM dbo.Role
             WHERE RoleID = :role_id
         SQL);
@@ -657,7 +662,9 @@ function auth_attempt_login(string $login, string $password): array
             r.ProviderAccountReview,
             r.Marketing,
             r.MarketingCompliance,
-            r.AccsOrderAccountSupport
+            r.AccsOrderAccountSupport,
+            r.StatusUpdate,
+            r.StatusUpdateTemplate
         FROM dbo.[User] u
         INNER JOIN dbo.Role r ON r.RoleID = u.UserAssignedRole
         WHERE u.UserLogin = :login

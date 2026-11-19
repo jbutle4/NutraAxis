@@ -109,6 +109,14 @@ function operations_dashboard_sections(): array
                     'internal' => true,
                 ],
                 [
+                    'title'    => 'Weekly NA Status Update',
+                    'desc'     => 'Collaborative weekly status PowerPoint — Claude proposes deck field updates; publish when ready.',
+                    'href'     => '/weekly-na-status-update/',
+                    'icon'     => 'chart',
+                    'internal' => true,
+                    'module'   => 'weekly-na-status-update',
+                ],
+                [
                     'title'    => 'Site Documentation',
                     'desc'     => 'Support reference for all portal pages, modules, and scheduled background processes.',
                     'href'     => '/site-documentation/',
