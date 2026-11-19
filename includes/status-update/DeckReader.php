@@ -160,6 +160,9 @@ final class DeckReader
                 continue;
             }
             $allNames[$shapeName] = true;
+            if ($shapeName === 'RAG Matrix') {
+                continue;
+            }
             if (!in_array($shapeName, $expected, true)) {
                 continue;
             }
@@ -191,6 +194,9 @@ final class DeckReader
         if (in_array('RAG Matrix', $expected, true)) {
             foreach ($xpath->query("//p:graphicFrame[.//p:cNvPr[@name=\"RAG Matrix\"]]") ?: [] as $frame) {
                 $tableFields = $this->readRagTable($slideNum, $xpath, $frame, $problems);
+                if ($tableFields !== []) {
+                    $foundNames['RAG Matrix'] = true;
+                }
                 $fields = array_merge($fields, $tableFields);
             }
         }
