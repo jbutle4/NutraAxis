@@ -50,6 +50,31 @@ function status_update_can_manage_template(): bool
     return auth_can_create(STATUS_UPDATE_PERMISSION_COLUMN);
 }
 
+function status_update_upload_error_message(?array $file): string
+{
+    if ($file === null || !is_array($file)) {
+        return 'No file was uploaded. Choose a .pptx file and try again.';
+    }
+
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return 'No file was uploaded. Choose a .pptx file and try again.';
+    }
+
+    if ($error !== UPLOAD_ERR_OK) {
+        return match ($error) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File is too large for the server upload limit (max 50 MB).',
+            UPLOAD_ERR_PARTIAL => 'Upload was interrupted. Please try again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Server temporary upload folder is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'Server could not save the upload.',
+            UPLOAD_ERR_EXTENSION => 'A server extension blocked this upload.',
+            default => 'Template upload failed.',
+        };
+    }
+
+    return 'Template upload failed.';
+}
+
 function status_update_permission_summary(): string
 {
     return 'Status Update = '

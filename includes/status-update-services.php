@@ -340,11 +340,21 @@ final class StatusUpdateTemplateService
     ) {
     }
 
-    public function validateUpload(string $tmpPath): array
+    public function validateUpload(string $tmpPath, ?string $originalName = null): array
     {
-        $ext = strtolower(pathinfo($tmpPath, PATHINFO_EXTENSION));
+        $ext = strtolower(pathinfo((string) $originalName, PATHINFO_EXTENSION));
         if ($ext !== 'pptx') {
-            return ['ok' => false, 'error' => 'Upload a .pptx file.', 'summary' => null];
+            $ext = strtolower(pathinfo($tmpPath, PATHINFO_EXTENSION));
+        }
+        if ($ext !== 'pptx') {
+            $handle = @fopen($tmpPath, 'rb');
+            $magic = is_resource($handle) ? fread($handle, 2) : '';
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            if ($magic !== 'PK') {
+                return ['ok' => false, 'error' => 'Upload a .pptx file.', 'summary' => null];
+            }
         }
 
         if (filesize($tmpPath) > 50 * 1024 * 1024) {

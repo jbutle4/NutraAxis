@@ -39,11 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'template_upload' && status_update_can_manage_template()) {
         $file = $_FILES['template_file'] ?? null;
         if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            header('Location: ' . $redirect . '&error=' . rawurlencode('Template upload failed.'), true, 302);
+            header('Location: ' . $redirect . '&error=' . rawurlencode(status_update_upload_error_message(is_array($file) ? $file : null)), true, 302);
             exit;
         }
         $tmp = (string) ($file['tmp_name'] ?? '');
-        $validation = $templateService->validateUpload($tmp);
+        $validation = $templateService->validateUpload($tmp, (string) ($file['name'] ?? ''));
         if (!$validation['ok']) {
             header('Location: ' . $redirect . '&error=' . rawurlencode((string) $validation['error']), true, 302);
             exit;
