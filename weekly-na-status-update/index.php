@@ -228,7 +228,7 @@ require dirname(__DIR__) . '/includes/header.php';
           <?php endif; ?>
         </p>
         <?php if ($week === null && $template === null): ?>
-        <p>No template is loaded yet. Template admins must upload the master .pptx before contributors can work.</p>
+        <p>No template is loaded yet. Upload the master .pptx in the <strong>Template</strong> section below before contributors can work.</p>
         <?php elseif ($week === null): ?>
         <form method="post" class="inline-form">
           <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>" />
@@ -247,9 +247,13 @@ require dirname(__DIR__) . '/includes/header.php';
         <?php endif; ?>
       </section>
 
-      <?php if (status_update_can_manage_template()): ?>
+      <?php if ($template === null || status_update_can_manage_template()): ?>
       <section class="admin-card" style="margin-bottom:1.25rem;">
         <h2 class="h4">Template</h2>
+        <?php if (!status_update_can_manage_template()): ?>
+        <p>You can view this page but cannot upload the template. An admin must grant <strong>Status Update Template</strong> (Update or Create) or <strong>Status Update</strong> (Create) on your role under Site Admin → Roles, then log out and back in.</p>
+        <p class="text-muted">Your access: Status Update = <?= htmlspecialchars(permission_label(auth_permission_value(STATUS_UPDATE_PERMISSION_COLUMN))) ?>; Status Update Template = <?= htmlspecialchars(permission_label(auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN))) ?>.</p>
+        <?php else: ?>
         <?php if ($template !== null): ?>
         <p>Current template: <?= (int) $template['field_count'] ?> fields · uploaded <?= htmlspecialchars((string) $template['uploaded_at']) ?> by <?= htmlspecialchars((string) $template['uploaded_by']) ?>.</p>
         <?php endif; ?>
@@ -282,6 +286,7 @@ require dirname(__DIR__) . '/includes/header.php';
           </label>
           <button type="submit" class="btn-secondary">Validate upload</button>
         </form>
+        <?php endif; ?>
         <?php endif; ?>
       </section>
       <?php endif; ?>

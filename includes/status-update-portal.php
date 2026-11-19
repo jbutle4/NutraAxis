@@ -32,9 +32,13 @@ function status_update_can_publish(): bool
 
 function status_update_can_manage_template(): bool
 {
-    $value = auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN);
+    $templatePerm = auth_permission_value(STATUS_UPDATE_TEMPLATE_PERMISSION_COLUMN);
+    if (permission_allows($templatePerm, 'U') || permission_allows($templatePerm, 'C')) {
+        return true;
+    }
 
-    return permission_allows($value, 'U') || permission_allows($value, 'C');
+    // Publishers (Create on Status Update) can upload the master deck when no template role is split out.
+    return auth_can_create(STATUS_UPDATE_PERMISSION_COLUMN);
 }
 
 function status_update_require_read(): void
