@@ -43,12 +43,12 @@ const INVENTORY_LEDGER_LIST_SORT_COLUMNS = [
     'product_name'  => 'Description',
     'facility'      => 'Facility',
     'qty_ok'        => 'OK',
-    'qty_quarantine'=> 'Quarantine',
-    'qty_on_hold'   => 'On hold',
-    'qty_destroy'   => 'Destroy',
-    'qty_reserved'  => 'Reserved',
-    'qty_on_hand'   => 'On hand',
-    'qty_available' => 'Available',
+    'qty_quarantine'=> 'QTRNE',
+    'qty_on_hold'   => 'Hold',
+    'qty_destroy'   => 'DSTRY',
+    'qty_reserved'  => 'Resvd',
+    'qty_on_hand'   => 'OH',
+    'qty_available' => 'Avail',
 ];
 
 const INVENTORY_LEDGER_LIST_SORT_SQL = [
