@@ -166,7 +166,14 @@ require dirname(__DIR__) . '/includes/header.php';
       render_list_page_toolbar(trim(ob_get_clean()) ?: null);
       ?>
 
-      <?php if ($notice === 'created' || $notice === 'shipped' || $notice === 'received'): ?>
+      <?php if ($notice === 'batch_created'): ?>
+      <div class="admin-notice is-success" role="status"><?php
+          $n = max(1, (int) ($_GET['n'] ?? 1));
+          echo $n === 1
+              ? 'Transfer line created. Use Send to Jazz below when ready (Pending only).'
+              : 'Created ' . $n . ' transfer lines in this shipment. Send to Jazz posts the full batch for matching ship-by lines.';
+      ?></div>
+      <?php elseif ($notice === 'created' || $notice === 'shipped' || $notice === 'received'): ?>
       <div class="admin-notice is-success" role="status">Transfer updated.</div>
       <?php elseif ($notice === 'qbo_synced'): ?>
       <div class="admin-notice is-success" role="status">QuickBooks journal entry synced.</div>

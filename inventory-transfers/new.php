@@ -2,6 +2,7 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
+require dirname(__DIR__) . '/includes/po.php';
 require dirname(__DIR__) . '/includes/po-rework.php';
 
 inventory_transfers_require_update();
@@ -40,14 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], is_array($_POST['lines'] ?? null) ? $_POST['lines'] : []);
 
         if ($result['ok']) {
-            $count = count($result['transfer_ids']);
-            header(
-                'Location: ' . inventory_ims_page_path(
-                    '/inventory-transfers/?notice=batch_created&n=' . $count
-                ),
-                true,
-                302
-            );
+            $ids = $result['transfer_ids'];
+            $count = count($ids);
+            $firstId = $count > 0 ? (int) $ids[0] : 0;
+            $target = $firstId > 0
+                ? '/inventory-transfers/view.php?id=' . $firstId . '&notice=batch_created&n=' . $count
+                : '/inventory-transfers/?notice=batch_created&n=' . $count;
+            header('Location: ' . inventory_ims_page_path($target), true, 302);
             exit;
         }
         $error = $result['error'] ?? 'Unable to create transfer.';
@@ -73,6 +73,27 @@ $batchOrderPreview = $showPharmacyBatchHint
     ? inventory_transfers_jazz_batch_order_number($routePreview)
     : '';
 
+$skuOptions = po_sku_options();
+$skuCodes = array_map(static fn(array $opt): string => (string) $opt['SKUCode'], $skuOptions);
+$renderTransferSkuSelect = static function (int $index, string $selected) use ($skuOptions, $skuCodes): string {
+    $html = '<select class="form-input transfer-line-sku" name="lines[' . $index . '][sku_code]">';
+    $html .= '<option value="">Select SKU</option>';
+    if ($selected !== '' && !in_array($selected, $skuCodes, true)) {
+        $html .= '<option value="' . htmlspecialchars($selected) . '" selected>'
+            . htmlspecialchars($selected) . ' (not in SKU Master)</option>';
+    }
+    foreach ($skuOptions as $opt) {
+        $code = (string) $opt['SKUCode'];
+        $html .= '<option value="' . htmlspecialchars($code) . '" data-product-name="' . htmlspecialchars((string) $opt['ProductName']) . '"'
+            . ($selected === $code ? ' selected' : '') . '>'
+            . htmlspecialchars($code . ' · ' . $opt['ProductName'])
+            . '</option>';
+    }
+    $html .= '</select>';
+
+    return $html;
+};
+
 $pageTitle = 'New Facility Transfer | Inventory Management';
 require dirname(__DIR__) . '/includes/head.php';
 require dirname(__DIR__) . '/includes/header.php';
@@ -84,7 +105,8 @@ require dirname(__DIR__) . '/includes/header.php';
           'back_label' => 'Back to Transfers',
           'category'   => 'Inventory',
           'title'      => 'New Facility Transfer',
-          'lead'       => 'One shipment header with multiple SKU lines — pharmacy replen batches share one Jazz order when ship-by and destination match.',
+          'lead'       => 'One shipment header with multiple SKU lines. Use <strong>Send to Jazz</strong> on the transfer detail page after lines are created (while Pending).',
+          'lead_html'  => true,
       ]); ?>
 
       <?php if ($error !== null): ?>
@@ -161,14 +183,27 @@ require dirname(__DIR__) . '/includes/header.php';
               <thead>
                 <tr>
                   <th>SKU</th>
+                  <th>Description</th>
                   <th>Quantity</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody id="transfer-lines-body">
-                <?php foreach ($lines as $index => $line): ?>
+                <?php foreach ($lines as $index => $line):
+                    $selectedSku = trim((string) ($line['sku_code'] ?? $line['sku'] ?? ''));
+                    $description = '';
+                    if ($selectedSku !== '') {
+                        foreach ($skuOptions as $opt) {
+                            if (strcasecmp((string) $opt['SKUCode'], $selectedSku) === 0) {
+                                $description = (string) $opt['ProductName'];
+                                break;
+                            }
+                        }
+                    }
+                    ?>
                 <tr class="transfer-line-row">
-                  <td><input class="form-input" type="text" name="lines[<?= (int) $index ?>][sku_code]" maxlength="100" value="<?= htmlspecialchars((string) ($line['sku_code'] ?? '')) ?>" /></td>
+                  <td><?= $renderTransferSkuSelect($index, $selectedSku) ?></td>
+                  <td><input class="form-input transfer-line-description" type="text" value="<?= htmlspecialchars($description) ?>" readonly tabindex="-1" aria-label="Product description" /></td>
                   <td><input class="form-input" type="number" min="0.0001" step="0.0001" name="lines[<?= (int) $index ?>][qty_requested]" value="<?= htmlspecialchars((string) ($line['qty_requested'] ?? '')) ?>" /></td>
                   <td><button type="button" class="btn-text btn-text-danger remove-transfer-line">Remove</button></td>
                 </tr>
@@ -203,6 +238,7 @@ require dirname(__DIR__) . '/includes/header.php';
     var batchOrder = document.getElementById('jazz-batch-order');
     var body = document.getElementById('transfer-lines-body');
     var addBtn = document.getElementById('add-transfer-line');
+    var skuSelectTemplate = <?= json_encode($renderTransferSkuSelect(0, '')) ?>;
     var cmoReasonId = <?= $cmoReasonId !== null ? (int) $cmoReasonId : 'null' ?>;
     var mothershipCode = <?= json_encode(facility_default_po_receipt_code()) ?>;
 
@@ -280,10 +316,22 @@ require dirname(__DIR__) . '/includes/header.php';
     function reindexRows() {
       if (!body) return;
       body.querySelectorAll('.transfer-line-row').forEach(function (row, index) {
-        row.querySelectorAll('input').forEach(function (input) {
-          input.name = input.name.replace(/lines\[\d+\]/, 'lines[' + index + ']');
+        row.querySelectorAll('input, select').forEach(function (input) {
+          if (input.name) {
+            input.name = input.name.replace(/lines\[\d+\]/, 'lines[' + index + ']');
+          }
         });
       });
+    }
+
+    function syncDescriptionFromSku(select) {
+      if (!select) return;
+      var row = select.closest('tr');
+      if (!row) return;
+      var description = row.querySelector('.transfer-line-description');
+      if (!description) return;
+      var option = select.options[select.selectedIndex];
+      description.value = option && option.getAttribute('data-product-name') ? option.getAttribute('data-product-name') : '';
     }
 
     function bindRemoveButtons() {
@@ -310,13 +358,22 @@ require dirname(__DIR__) . '/includes/header.php';
     if (form) {
       form.addEventListener('submit', syncFacilityPair);
     }
+    if (body) {
+      body.addEventListener('change', function (event) {
+        var select = event.target.closest('.transfer-line-sku');
+        if (select) {
+          syncDescriptionFromSku(select);
+        }
+      });
+    }
     if (addBtn && body) {
       addBtn.addEventListener('click', function () {
         var index = body.querySelectorAll('.transfer-line-row').length;
         var row = document.createElement('tr');
         row.className = 'transfer-line-row';
         row.innerHTML =
-          '<td><input class="form-input" type="text" name="lines[' + index + '][sku_code]" maxlength="100" /></td>' +
+          '<td>' + skuSelectTemplate.replace('lines[0][sku_code]', 'lines[' + index + '][sku_code]') + '</td>' +
+          '<td><input class="form-input transfer-line-description" type="text" value="" readonly tabindex="-1" aria-label="Product description" /></td>' +
           '<td><input class="form-input" type="number" min="0.0001" step="0.0001" name="lines[' + index + '][qty_requested]" /></td>' +
           '<td><button type="button" class="btn-text btn-text-danger remove-transfer-line">Remove</button></td>';
         body.appendChild(row);
@@ -325,6 +382,7 @@ require dirname(__DIR__) . '/includes/header.php';
     }
 
     bindRemoveButtons();
+    body.querySelectorAll('.transfer-line-sku').forEach(syncDescriptionFromSku);
     syncFacilityPair();
   })();
   </script>
