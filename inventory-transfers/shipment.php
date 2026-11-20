@@ -136,6 +136,12 @@ require dirname(__DIR__) . '/includes/header.php';
         <button type="submit" class="btn-primary">Receive shipment</button>
       </form>
       <?php endif;
+      if (
+          inventory_transfers_can_update()
+          && in_array((string) ($shipment['TransferStatus'] ?? ''), ['Pending', 'InTransit'], true)
+      ): ?>
+      <a class="btn-secondary" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/edit-shipment.php?shipment_id=' . $shipmentId)) ?>">Edit shipment</a>
+      <?php endif;
       render_list_page_toolbar(trim(ob_get_clean()) ?: null);
       ?>
 
@@ -147,6 +153,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">Shipment sent to Jazz OMS (one order).</div>
       <?php elseif ($notice === 'jazz_already_sent'): ?>
       <div class="admin-notice is-success" role="status">This shipment was already sent to Jazz.</div>
+      <?php elseif ($notice === 'updated'): ?>
+      <div class="admin-notice is-success" role="status">Shipment saved.</div>
       <?php endif; ?>
       <?php if ($error !== null && $error !== ''): ?>
       <div class="admin-notice is-error is-detail" role="alert"><?= htmlspecialchars($error) ?></div>
@@ -158,17 +166,9 @@ require dirname(__DIR__) . '/includes/header.php';
         <div><dt>To</dt><dd><?= htmlspecialchars((string) ($shipment['ToFacilityCode'] ?? '')) ?></dd></div>
         <div><dt>Jazz order</dt><dd><?= htmlspecialchars($jazzOrderLabel) ?></dd></div>
         <div><dt>Jazz send</dt><dd><?= $jazzSendStatus !== '' ? htmlspecialchars($jazzSendStatus) : 'Pending' ?></dd></div>
-        <div><dt>Jazz ship-by</dt><dd><?php
-            $shipByDisplay = '—';
-            if (!empty($shipment['JazzShipByDate'])) {
-                try {
-                    $shipByDisplay = (new DateTimeImmutable((string) $shipment['JazzShipByDate']))->format('Y-m-d');
-                } catch (Throwable) {
-                    $shipByDisplay = (string) $shipment['JazzShipByDate'];
-                }
-            }
-            echo htmlspecialchars($shipByDisplay);
-        ?></dd></div>
+        <div><dt>Jazz ship-by</dt><dd><?= htmlspecialchars(inventory_transfers_format_ship_by_display(
+            $shipment['JazzShipByDate'] ?? ($leadLine['JazzShipByDate'] ?? null)
+        )) ?></dd></div>
         <div><dt>Notes</dt><dd><?= htmlspecialchars((string) ($shipment['Notes'] ?? '—')) ?></dd></div>
       </dl>
 

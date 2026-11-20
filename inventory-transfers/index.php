@@ -115,12 +115,11 @@ require dirname(__DIR__) . '/includes/header.php';
                         $jazzLabel .= ' · ' . $orderRef;
                     }
                 }
-                $shipBy = '';
-                if (!empty($row['JazzShipByDate'])) {
-                    try {
-                        $shipBy = (new DateTimeImmutable((string) $row['JazzShipByDate']))->format('Y-m-d');
-                    } catch (Throwable) {
-                        $shipBy = '';
+                $shipBy = inventory_transfers_format_ship_by_display($row['JazzShipByDate'] ?? null);
+                if ($shipBy === '—' && $useShipments && !empty($row['ShipmentID'])) {
+                    $lineRows = inventory_transfers_shipment_lines((int) $row['ShipmentID']);
+                    if ($lineRows !== [] && !empty($lineRows[0]['JazzShipByDate'])) {
+                        $shipBy = inventory_transfers_format_ship_by_display($lineRows[0]['JazzShipByDate']);
                     }
                 }
                 $qtyDisplay = $useShipments
@@ -144,6 +143,9 @@ require dirname(__DIR__) . '/includes/header.php';
               <td class="table-actions">
                 <?php if ($useShipments): ?>
                 <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/shipment.php?shipment_id=' . (int) $row['ShipmentID'])) ?>">View</a>
+                <?php if (inventory_transfers_can_update()): ?>
+                <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/edit-shipment.php?shipment_id=' . (int) $row['ShipmentID'])) ?>">Edit</a>
+                <?php endif; ?>
                 <?php else: ?>
                 <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $row['TransferID'])) ?>">View</a>
                 <?php if (inventory_transfers_can_update()): ?>

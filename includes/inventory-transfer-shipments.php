@@ -60,11 +60,134 @@ function inventory_transfers_normalize_ship_by_date(mixed $raw): ?string
         return null;
     }
 
+    if (preg_match('/\b(\d{4}-\d{2}-\d{2})\b/', $text, $matches)) {
+        return $matches[1];
+    }
+
+    $sqlServerish = preg_replace('/:(AM|PM)$/i', ' $1', $text) ?? $text;
+    $timestamp = strtotime($sqlServerish);
+    if ($timestamp !== false) {
+        return date('Y-m-d', $timestamp);
+    }
+
     try {
         return (new DateTimeImmutable($text))->format('Y-m-d');
     } catch (Throwable) {
         return null;
     }
+}
+
+function inventory_transfers_format_ship_by_display(mixed $raw): string
+{
+    $normalized = inventory_transfers_normalize_ship_by_date($raw);
+
+    return $normalized ?? '—';
+}
+
+/**
+ * @param array{notes?:string,jazz_ship_by_date?:string,transfer_status?:string} $fields
+ * @return array{ok:bool, error:?string}
+ */
+function inventory_transfers_shipment_update(int $shipmentId, array $fields, ?int $userId = null): array
+{
+    $shipment = inventory_transfers_shipment_get($shipmentId);
+    if ($shipment === null) {
+        return ['ok' => false, 'error' => 'Shipment not found.'];
+    }
+
+    $status = (string) ($shipment['TransferStatus'] ?? '');
+    if (!in_array($status, ['Pending', 'InTransit'], true)) {
+        return ['ok' => false, 'error' => 'Only pending or in-transit shipments can be edited.'];
+    }
+
+    $newStatus = trim((string) ($fields['transfer_status'] ?? $status));
+    if ($newStatus !== $status) {
+        $allowed = $status === 'Pending' && $newStatus === 'Cancelled';
+        if (!$allowed) {
+            return ['ok' => false, 'error' => 'Status can only be changed from Pending to Cancelled.'];
+        }
+    }
+
+    $notes = array_key_exists('notes', $fields)
+        ? trim((string) $fields['notes'])
+        : (string) ($shipment['Notes'] ?? '');
+
+    $shipBySql = null;
+    if (array_key_exists('jazz_ship_by_date', $fields)) {
+        $raw = trim((string) $fields['jazz_ship_by_date']);
+        if ($raw === '') {
+            $shipBySql = null;
+        } else {
+            $shipBySql = inventory_transfers_normalize_ship_by_date($raw);
+            if ($shipBySql === null) {
+                return ['ok' => false, 'error' => 'Ship-by date must be YYYY-MM-DD.'];
+            }
+        }
+    }
+
+    $pdo = db();
+    $pdo->prepare(<<<SQL
+        UPDATE dbo.InvTransferShipment
+        SET Notes = :notes,
+            JazzShipByDate = :ship_by,
+            TransferStatus = :transfer_status,
+            ModifiedDate = SYSUTCDATETIME(),
+            ModifiedByUser = :user_id
+        WHERE ShipmentID = :shipment_id
+          AND LedgerProfile = :ledger_profile
+    SQL)->execute([
+        'notes'           => $notes !== '' ? $notes : null,
+        'ship_by'         => $shipBySql,
+        'transfer_status' => $newStatus,
+        'user_id'         => $userId,
+        'shipment_id'     => $shipmentId,
+        'ledger_profile'  => inventory_ledger_profile(),
+    ]);
+
+    if (inventory_transfer_has_ship_by_column()) {
+        $pdo->prepare(<<<SQL
+            UPDATE dbo.InvTransfer
+            SET Notes = :notes,
+                JazzShipByDate = :ship_by,
+                TransferStatus = :transfer_status,
+                ModifiedDate = SYSUTCDATETIME(),
+                ModifiedByUser = :user_id
+            WHERE ShipmentID = :shipment_id
+              AND LedgerProfile = :ledger_profile
+        SQL)->execute([
+            'notes'           => $notes !== '' ? $notes : null,
+            'ship_by'         => $shipBySql,
+            'transfer_status' => $newStatus,
+            'user_id'         => $userId,
+            'shipment_id'     => $shipmentId,
+            'ledger_profile'  => inventory_ledger_profile(),
+        ]);
+    }
+
+    return ['ok' => true, 'error' => null];
+}
+
+/**
+ * @param list<int> $shipmentIds
+ */
+function inventory_transfers_set_shipments_ship_by(array $shipmentIds, string $shipByYmd): int
+{
+    $shipBySql = inventory_transfers_normalize_ship_by_date($shipByYmd);
+    if ($shipBySql === null) {
+        return 0;
+    }
+
+    $updated = 0;
+    foreach ($shipmentIds as $shipmentId) {
+        $result = inventory_transfers_shipment_update((int) $shipmentId, [
+            'jazz_ship_by_date' => $shipBySql,
+        ], auth_user()['UserID'] ?? null);
+        if ($result['ok']) {
+            $updated++;
+        }
+    }
+
+    return $updated;
 }
 
 /**
