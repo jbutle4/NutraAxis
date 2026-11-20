@@ -192,36 +192,60 @@ function inventory_transfers_jazz_build_order_payload(array $transfer): ?array
         'nutraaxis_to_facility'     => (string) ($transfer['ToFacilityCode'] ?? ''),
     ];
 
+    $toFacility = facility_get_by_code((string) ($transfer['ToFacilityCode'] ?? ''));
+    $shipToContact = facility_jazz_ship_to_contact($toFacility)
+        ?? facility_jazz_transfer_ship_to_fallback();
+
+    $customer = [
+        'customer_number' => $customerNumber,
+        'first_name'      => $shipToContact['first_name'],
+        'last_name'       => $shipToContact['last_name'],
+        'company'         => $shipToContact['company'] !== '' ? $shipToContact['company'] : null,
+        'address1'        => $shipToContact['address']['address1'],
+        'city'            => $shipToContact['address']['city'],
+        'state'           => $shipToContact['address']['state'],
+        'zipcode'         => $shipToContact['address']['zipcode'],
+        'country'         => $shipToContact['address']['country'],
+    ];
+    if (!empty($shipToContact['address']['address2'])) {
+        $customer['address2'] = $shipToContact['address']['address2'];
+    }
+    if (!empty($shipToContact['phone'])) {
+        $customer['phone_number'] = $shipToContact['phone'];
+    }
+    if (!empty($shipToContact['email'])) {
+        $customer['email'] = $shipToContact['email'];
+    }
+    $customer = array_filter($customer, static fn ($value) => $value !== null && $value !== '');
+
     $businessType = trim((string) env('JAZZ_TRANSFER_ORDER_BUSINESS_TYPE', ''));
+    $shiptoAddress = $shipToContact['address'];
+    $shiptoRow = [
+        'first_name'    => $shipToContact['first_name'],
+        'last_name'     => $shipToContact['last_name'],
+        'ship_code'     => $shipCode,
+        'address'       => $shiptoAddress,
+        'detail_set'    => [[
+            'sku'           => $sku,
+            'qty_ordered'   => $qty,
+            'current_price' => '0',
+        ]],
+        'subtotal_amount' => '0',
+        'total_amount'    => '0',
+    ];
+    if ($shipToContact['company'] !== '') {
+        $shiptoRow['company'] = $shipToContact['company'];
+    }
+
     $payload = [
         'order_number' => $shipmentNumber,
         'order_date'   => $now,
         'source_code'  => $sourceCode,
         'attributes'   => $attributes,
-        'customer'     => [
-            'customer_number' => $customerNumber,
-            'first_name'      => 'NutraAxis',
-            'last_name'       => 'Facility Transfer',
-        ],
+        'customer'     => $customer,
         'shipto'       => [[
-            'shipto_number'   => '1',
-            'first_name'      => 'Internal',
-            'last_name'       => 'Transfer',
-            'ship_code'       => $shipCode,
-            'address'         => [
-                'address1' => 'Internal facility transfer',
-                'city'     => 'Plano',
-                'state'    => 'TX',
-                'zipcode'  => '75074',
-                'country'  => 'US',
-            ],
-            'detail_set'      => [[
-                'sku'           => $sku,
-                'qty_ordered'   => $qty,
-                'current_price' => '0',
-            ]],
-            'subtotal_amount' => '0',
-            'total_amount'    => '0',
+            'shipto_number' => '1',
+            ...$shiptoRow,
         ]],
     ];
 

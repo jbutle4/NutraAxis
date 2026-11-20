@@ -20,6 +20,20 @@ function facility_get_by_code(string $facilityCode): ?array
     }
 
     $pdo = db();
+    $shipSelect = facility_has_ship_to_columns()
+        ? ',
+            ShipAddress1,
+            ShipAddress2,
+            ShipCity,
+            ShipState,
+            ShipPostalCode,
+            ShipCountry,
+            ShipAttnFirstName,
+            ShipAttnLastName,
+            ShipCompany,
+            ShipPhone,
+            ShipEmail'
+        : '';
     $stmt = $pdo->prepare(<<<SQL
         SELECT
             FacilityID,
@@ -30,7 +44,7 @@ function facility_get_by_code(string $facilityCode): ?array
             IsMothership,
             ReceivesPurchaseOrders,
             IntegrationMode,
-            ExternalReferenceCode
+            ExternalReferenceCode{$shipSelect}
         FROM dbo.Facility
         WHERE UPPER(FacilityCode) = UPPER(:facility_code)
            OR (
@@ -129,6 +143,125 @@ function facility_jazz_facility_code(string $facilityCode): string
     $external = trim((string) ($facility['ExternalReferenceCode'] ?? ''));
 
     return $external !== '' ? $external : (string) $facility['FacilityCode'];
+}
+
+function facility_has_ship_to_columns(): bool
+{
+    static $has = null;
+    if ($has !== null) {
+        return $has;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->query("SELECT COL_LENGTH('dbo.Facility', 'ShipAddress1') AS col_len");
+        $row = $stmt->fetch();
+        $has = $row !== false && $row['col_len'] !== null;
+    } catch (Throwable) {
+        $has = false;
+    }
+
+    return $has;
+}
+
+/**
+ * Jazz order/import ship-to for outbound replenishment (e.g. CART → pharmacy).
+ *
+ * @return array{
+ *     first_name: string,
+ *     last_name: string,
+ *     company: string,
+ *     phone: ?string,
+ *     email: ?string,
+ *     address: array<string, string>
+ * }|null
+ */
+function facility_jazz_ship_to_contact(?array $facility): ?array
+{
+    if ($facility === null || !facility_has_ship_to_columns()) {
+        return null;
+    }
+
+    $address1 = trim((string) ($facility['ShipAddress1'] ?? ''));
+    $city = trim((string) ($facility['ShipCity'] ?? ''));
+    $state = trim((string) ($facility['ShipState'] ?? ''));
+    $zip = trim((string) ($facility['ShipPostalCode'] ?? ''));
+    if ($address1 === '' || $city === '' || $state === '' || $zip === '') {
+        return null;
+    }
+
+    $country = trim((string) ($facility['ShipCountry'] ?? 'US'));
+    if ($country === '') {
+        $country = 'US';
+    }
+
+    $firstName = trim((string) ($facility['ShipAttnFirstName'] ?? ''));
+    $lastName = trim((string) ($facility['ShipAttnLastName'] ?? ''));
+    if ($firstName === '') {
+        $firstName = 'Receiving';
+    }
+    if ($lastName === '') {
+        $lastName = 'Department';
+    }
+
+    $address = [
+        'address1' => $address1,
+        'city'     => $city,
+        'state'    => $state,
+        'zipcode'  => $zip,
+        'country'  => $country,
+    ];
+    $address2 = trim((string) ($facility['ShipAddress2'] ?? ''));
+    if ($address2 !== '') {
+        $address['address2'] = $address2;
+    }
+
+    $phone = trim((string) ($facility['ShipPhone'] ?? ''));
+    $email = trim((string) ($facility['ShipEmail'] ?? ''));
+    if ($phone !== '') {
+        $address['phone_number'] = $phone;
+    }
+    if ($email !== '') {
+        $address['email'] = $email;
+    }
+
+    $company = trim((string) ($facility['ShipCompany'] ?? ''));
+    if ($company === '') {
+        $company = trim((string) ($facility['FacilityName'] ?? ''));
+    }
+
+    return [
+        'first_name' => $firstName,
+        'last_name'  => $lastName,
+        'company'    => $company,
+        'phone'      => $phone !== '' ? $phone : null,
+        'email'      => $email !== '' ? $email : null,
+        'address'    => $address,
+    ];
+}
+
+/**
+ * @return array{
+ *     first_name: string,
+ *     last_name: string,
+ *     company: string,
+ *     address: array<string, string>
+ * }
+ */
+function facility_jazz_transfer_ship_to_fallback(): array
+{
+    return [
+        'first_name' => 'Internal',
+        'last_name'  => 'Transfer',
+        'company'    => 'NutraAxis Facility Transfer',
+        'address'    => [
+            'address1' => 'Internal facility transfer',
+            'city'     => 'Plano',
+            'state'    => 'TX',
+            'zipcode'  => '75074',
+            'country'  => 'US',
+        ],
+    ];
 }
 
 /**
