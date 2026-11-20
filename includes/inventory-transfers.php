@@ -648,3 +648,132 @@ function inventory_transfers_adjust_account_id(): string
 
     return qbo_inv_account_setting('QBO_INV_ASSET_ACCOUNT_CART');
 }
+
+/**
+ * Create one pending InvTransfer row per line, shared header (from/to/reason/notes/ship-by).
+ *
+ * @param array<string, mixed> $header
+ * @param list<array<string, mixed>> $lines
+ * @return array{ok:bool, error:?string, transfer_ids:list<int>}
+ */
+function inventory_transfers_create_batch(array $header, array $lines): array
+{
+    require_once __DIR__ . '/facility.php';
+
+    $fromCode = trim((string) ($header['from_facility_code'] ?? ''));
+    $toCode = trim((string) ($header['to_facility_code'] ?? ''));
+    $notes = trim((string) ($header['notes'] ?? ''));
+    $reasonCodeId = isset($header['reason_code_id']) ? (int) $header['reason_code_id'] : null;
+    $supplierId = isset($header['supplier_id']) ? (int) $header['supplier_id'] : null;
+    $fromBucket = trim((string) ($header['from_status_bucket'] ?? 'OK'));
+    $toBucket = trim((string) ($header['to_status_bucket'] ?? 'OK'));
+    $shipByRaw = trim((string) ($header['jazz_ship_by_date'] ?? ''));
+
+    $parsedLines = [];
+    foreach ($lines as $line) {
+        if (!is_array($line)) {
+            continue;
+        }
+        $sku = trim((string) ($line['sku_code'] ?? $line['sku'] ?? ''));
+        $qtyRaw = $line['qty_requested'] ?? $line['quantity'] ?? null;
+        $qty = $qtyRaw === null || $qtyRaw === '' ? 0.0 : (float) $qtyRaw;
+        if ($sku === '' && $qty <= 0) {
+            continue;
+        }
+        if ($sku === '') {
+            return ['ok' => false, 'error' => 'Each line must include a SKU.', 'transfer_ids' => []];
+        }
+        if ($qty <= 0) {
+            return ['ok' => false, 'error' => 'Quantity must be greater than zero for SKU ' . $sku . '.', 'transfer_ids' => []];
+        }
+        $parsedLines[] = ['sku_code' => $sku, 'qty_requested' => $qty];
+    }
+
+    if ($parsedLines === []) {
+        return ['ok' => false, 'error' => 'Add at least one line with SKU and quantity.', 'transfer_ids' => []];
+    }
+
+    $routeCheck = [
+        'FromFacilityCode' => $fromCode,
+        'ToFacilityCode'   => $toCode,
+    ];
+    if (inventory_transfers_jazz_is_pharmacy_replenishment($routeCheck) && $shipByRaw === '') {
+        return [
+            'ok'            => false,
+            'error'         => 'Jazz ship-by date is required for Cart.com → pharmacy replenishment.',
+            'transfer_ids'  => [],
+        ];
+    }
+
+    if ($shipByRaw !== '') {
+        try {
+            $shipByRaw = (new DateTimeImmutable($shipByRaw))->format('Y-m-d');
+        } catch (Throwable) {
+            return ['ok' => false, 'error' => 'Ship-by date must be YYYY-MM-DD.', 'transfer_ids' => []];
+        }
+    }
+
+    $userId = auth_user()['UserID'] ?? null;
+    if ($userId === null) {
+        return ['ok' => false, 'error' => 'You must be signed in to create a transfer.', 'transfer_ids' => []];
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+        $transferIds = [];
+        foreach ($parsedLines as $parsedLine) {
+            $result = facility_insert_transfer([
+                'from_facility_code' => $fromCode,
+                'to_facility_code'   => $toCode,
+                'sku_code'           => $parsedLine['sku_code'],
+                'qty_requested'      => $parsedLine['qty_requested'],
+                'from_status_bucket' => $fromBucket,
+                'to_status_bucket'   => $toBucket,
+                'reason_code_id'     => $reasonCodeId,
+                'supplier_id'        => $supplierId,
+                'notes'              => $notes,
+            ]);
+
+            if (!$result['ok']) {
+                $pdo->rollBack();
+
+                return [
+                    'ok'           => false,
+                    'error'        => $result['error'] ?? 'Unable to save a transfer line.',
+                    'transfer_ids' => [],
+                ];
+            }
+
+            $transferId = (int) $result['transfer_id'];
+            $transferIds[] = $transferId;
+
+            if (inventory_transfer_has_ship_by_column() && $shipByRaw !== '') {
+                $update = inventory_transfers_update($transferId, [
+                    'jazz_ship_by_date' => $shipByRaw,
+                    'qty_requested'     => $parsedLine['qty_requested'],
+                ], (int) $userId);
+                if (!$update['ok']) {
+                    $pdo->rollBack();
+
+                    return [
+                        'ok'           => false,
+                        'error'        => $update['error'] ?? 'Unable to set Jazz ship-by on new lines.',
+                        'transfer_ids' => [],
+                    ];
+                }
+            }
+        }
+
+        $pdo->commit();
+
+        return ['ok' => true, 'error' => null, 'transfer_ids' => $transferIds];
+    } catch (Throwable) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        return ['ok' => false, 'error' => 'Unable to save the transfer shipment.', 'transfer_ids' => []];
+    }
+}

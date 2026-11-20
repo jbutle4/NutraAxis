@@ -34,7 +34,14 @@ require dirname(__DIR__) . '/includes/header.php';
       }
       ?>
 
-      <?php if ($notice === 'created'): ?>
+      <?php if ($notice === 'batch_created'): ?>
+      <div class="admin-notice is-success" role="status"><?php
+          $n = max(1, (int) ($_GET['n'] ?? 1));
+          echo $n === 1
+              ? 'Created 1 transfer line (Pending).'
+              : 'Created ' . $n . ' transfer lines in one shipment (Pending).';
+      ?></div>
+      <?php elseif ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Transfer request created.</div>
       <?php elseif ($notice === 'shipped'): ?>
       <div class="admin-notice is-success" role="status">Transfer shipped and IMS quantities updated.</div>
