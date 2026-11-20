@@ -30,7 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
         $result = inventory_transfers_send_to_jazz($transferId, $userId !== null ? (int) $userId : null);
         $query = [];
         if (!empty($result['ok'])) {
-            $query['notice'] = !empty($result['skipped']) ? 'jazz_skipped' : 'jazz_sent';
+            if (!empty($result['skipped']) && ($result['reason'] ?? '') === 'already_sent') {
+                $query['notice'] = 'jazz_already_sent';
+            } else {
+                $query['notice'] = !empty($result['skipped']) ? 'jazz_skipped' : 'jazz_sent';
+            }
             if (!empty($result['warning'])) {
                 $query['jazz_warning'] = (string) $result['warning'];
             }
@@ -80,6 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && inventory_transfers_can_update()) {
 }
 
 $transfer = inventory_transfers_get($transferId);
+inventory_transfers_jazz_sync_batch_if_sent($transfer);
+$transfer = inventory_transfers_get($transferId) ?? $transfer;
 $syncStatus = qbo_inventory_sync_log_status($docNumber);
 $jazzSendRequired = inventory_transfers_jazz_send_required($transfer);
 $jazzSendSatisfied = inventory_transfers_jazz_send_satisfied($transfer);
@@ -181,8 +187,10 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status">QuickBooks journal entry already synced or skipped.</div>
       <?php elseif ($notice === 'jazz_sent'): ?>
       <div class="admin-notice is-success" role="status">Transfer sent to Jazz OMS.</div>
+      <?php elseif ($notice === 'jazz_already_sent'): ?>
+      <div class="admin-notice is-success" role="status">This batch was already sent to Jazz; no duplicate order was posted.</div>
       <?php elseif ($notice === 'jazz_skipped'): ?>
-      <div class="admin-notice is-success" role="status">Jazz send step skipped (not required or already sent).</div>
+      <div class="admin-notice is-success" role="status">Jazz send step skipped (not required).</div>
       <?php endif; ?>
       <?php if (!empty($_GET['jazz_warning'])): ?>
       <div class="admin-notice is-warning" role="status"><?= htmlspecialchars((string) $_GET['jazz_warning']) ?></div>

@@ -20,6 +20,8 @@ $userId = auth_user()['UserID'] ?? null;
 $error = null;
 $notice = $_GET['notice'] ?? null;
 
+inventory_transfers_jazz_sync_batch_if_sent($transfer);
+$transfer = inventory_transfers_get($transferId) ?? $transfer;
 $jazzSendRequired = inventory_transfers_jazz_send_required($transfer);
 $jazzSendSatisfied = inventory_transfers_jazz_send_satisfied($transfer);
 $isPharmacyReplen = inventory_transfers_jazz_is_pharmacy_replenishment($transfer);
@@ -33,7 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = inventory_transfers_send_to_jazz($transferId, $userId !== null ? (int) $userId : null);
         $query = [];
         if (!empty($result['ok'])) {
-            $query['notice'] = !empty($result['skipped']) ? 'jazz_skipped' : 'jazz_sent';
+            if (!empty($result['skipped']) && ($result['reason'] ?? '') === 'already_sent') {
+                $query['notice'] = 'jazz_already_sent';
+            } else {
+                $query['notice'] = !empty($result['skipped']) ? 'jazz_skipped' : 'jazz_sent';
+            }
             if (!empty($result['warning'])) {
                 $query['jazz_warning'] = (string) $result['warning'];
             }

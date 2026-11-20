@@ -52,8 +52,239 @@ function inventory_transfers_jazz_send_satisfied(array $transfer): bool
     }
 
     $status = trim((string) ($transfer['JazzSendStatus'] ?? ''));
+    if (strcasecmp($status, 'Sent') === 0 || strcasecmp($status, 'Sending') === 0) {
+        return true;
+    }
 
-    return strcasecmp($status, 'Sent') === 0;
+    if (inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        inventory_transfers_jazz_sync_batch_if_sent($transfer);
+        $fresh = inventory_transfers_get((int) ($transfer['TransferID'] ?? 0));
+        if ($fresh !== null && strcasecmp(trim((string) ($fresh['JazzSendStatus'] ?? '')), 'Sent') === 0) {
+            return true;
+        }
+
+        return inventory_transfers_jazz_batch_order_sent_reference($transfer) !== null;
+    }
+
+    return false;
+}
+
+function inventory_transfers_jazz_is_duplicate_order_error(string $error): bool
+{
+    $haystack = strtolower($error);
+
+    return (str_contains($haystack, 'duplicate') && str_contains($haystack, 'order'))
+        || (str_contains($haystack, 'order number') && str_contains($haystack, 'already'))
+        || (str_contains($haystack, 'already exists') && str_contains($haystack, 'order'));
+}
+
+/**
+ * @return array<string, mixed>|null Sent row for this batch order number, if any.
+ */
+function inventory_transfers_jazz_batch_order_sent_reference(array $transfer): ?array
+{
+    if (!inventory_transfer_has_jazz_columns()) {
+        return null;
+    }
+
+    if (!inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        $orderNumber = inventory_transfers_jazz_shipment_number((int) ($transfer['TransferID'] ?? 0));
+    } else {
+        $orderNumber = inventory_transfers_jazz_batch_order_number($transfer);
+    }
+
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT TOP (1) *
+        FROM dbo.InvTransfer
+        WHERE LedgerProfile = :ledger_profile
+          AND FromFacilityCode = :from_facility
+          AND ToFacilityCode = :to_facility
+          AND JazzSendStatus = N'Sent'
+          AND JazzShipmentNumber = :order_number
+        ORDER BY TransferID ASC
+    SQL);
+    $stmt->execute([
+        'ledger_profile' => inventory_ledger_profile(),
+        'from_facility'  => (string) ($transfer['FromFacilityCode'] ?? ''),
+        'to_facility'    => (string) ($transfer['ToFacilityCode'] ?? ''),
+        'order_number'   => $orderNumber,
+    ]);
+    $row = $stmt->fetch();
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * When any line in a pharmacy batch is Sent, align remaining Pending peers (no Jazz call).
+ */
+function inventory_transfers_jazz_sync_batch_if_sent(array $transfer): void
+{
+    if (!inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        return;
+    }
+
+    $sentRef = inventory_transfers_jazz_batch_order_sent_reference($transfer);
+    if ($sentRef === null) {
+        return;
+    }
+
+    $jazzOrderNumber = trim((string) ($sentRef['JazzShipmentNumber'] ?? ''));
+    if ($jazzOrderNumber === '') {
+        $jazzOrderNumber = inventory_transfers_jazz_batch_order_number($transfer);
+    }
+
+    $asnId = isset($sentRef['JazzAsnId']) ? trim((string) $sentRef['JazzAsnId']) : null;
+    $asnStatus = isset($sentRef['JazzAsnStatus']) ? trim((string) $sentRef['JazzAsnStatus']) : null;
+    if ($asnId === '') {
+        $asnId = null;
+    }
+    if ($asnStatus === '') {
+        $asnStatus = null;
+    }
+
+    $batchKey = inventory_transfers_jazz_batch_order_number($transfer);
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT *
+        FROM dbo.InvTransfer
+        WHERE LedgerProfile = :ledger_profile
+          AND FromFacilityCode = :from_facility
+          AND ToFacilityCode = :to_facility
+          AND TransferStatus = N'Pending'
+          AND (JazzSendStatus IS NULL OR JazzSendStatus <> N'Sent')
+        ORDER BY TransferID ASC
+    SQL);
+    $stmt->execute([
+        'ledger_profile' => inventory_ledger_profile(),
+        'from_facility'  => (string) ($transfer['FromFacilityCode'] ?? ''),
+        'to_facility'    => (string) ($transfer['ToFacilityCode'] ?? ''),
+    ]);
+
+    foreach ($stmt->fetchAll() as $row) {
+        if (!is_array($row) || inventory_transfers_jazz_batch_order_number($row) !== $batchKey) {
+            continue;
+        }
+        inventory_transfers_jazz_mark_sent(
+            (int) ($row['TransferID'] ?? 0),
+            $asnId,
+            $asnStatus,
+            null,
+            $jazzOrderNumber
+        );
+    }
+}
+
+/**
+ * @param list<int> $transferIds
+ * @return array{ok:bool, error:?string}
+ */
+function inventory_transfers_jazz_try_claim_send(array $transferIds): array
+{
+    if ($transferIds === [] || !inventory_transfer_has_jazz_columns()) {
+        return ['ok' => false, 'error' => 'No transfers to send.'];
+    }
+
+    $pdo = db();
+    $placeholders = implode(',', array_fill(0, count($transferIds), '?'));
+    $pdo->beginTransaction();
+
+    try {
+        $lockSql = <<<SQL
+            SELECT TransferID, JazzSendStatus
+            FROM dbo.InvTransfer WITH (UPDLOCK, ROWLOCK)
+            WHERE TransferID IN ({$placeholders})
+              AND LedgerProfile = ?
+        SQL;
+        $lockStmt = $pdo->prepare($lockSql);
+        $lockParams = [...$transferIds, inventory_ledger_profile()];
+        $lockStmt->execute($lockParams);
+        $rows = $lockStmt->fetchAll();
+        if (!is_array($rows) || count($rows) !== count($transferIds)) {
+            $pdo->rollBack();
+
+            return ['ok' => false, 'error' => 'Transfer batch changed; refresh and try again.'];
+        }
+
+        foreach ($rows as $row) {
+            $status = trim((string) ($row['JazzSendStatus'] ?? ''));
+            if (strcasecmp($status, 'Sent') === 0) {
+                $pdo->rollBack();
+
+                return ['ok' => false, 'error' => 'This batch was already sent to Jazz. Refresh the page.'];
+            }
+            if (strcasecmp($status, 'Sending') === 0) {
+                $pdo->rollBack();
+
+                return ['ok' => false, 'error' => 'This batch is already being sent to Jazz. Wait and refresh.'];
+            }
+        }
+
+        $claimSql = <<<SQL
+            UPDATE dbo.InvTransfer
+            SET JazzSendStatus = N'Sending',
+                JazzSendError = NULL,
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE TransferID IN ({$placeholders})
+              AND LedgerProfile = ?
+              AND (JazzSendStatus IS NULL OR JazzSendStatus = N'Error')
+        SQL;
+        $claimStmt = $pdo->prepare($claimSql);
+        $claimStmt->execute($lockParams);
+        if ((int) $claimStmt->rowCount() !== count($transferIds)) {
+            $pdo->rollBack();
+
+            return ['ok' => false, 'error' => 'Could not lock batch for Jazz send (already sent or in progress).'];
+        }
+
+        $pdo->commit();
+
+        return ['ok' => true, 'error' => null];
+    } catch (Throwable) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        return ['ok' => false, 'error' => 'Could not lock transfers for Jazz send.'];
+    }
+}
+
+/**
+ * @param list<int> $transferIds
+ */
+function inventory_transfers_jazz_release_send_claim(array $transferIds, ?string $error): void
+{
+    if ($transferIds === [] || !inventory_transfer_has_jazz_columns()) {
+        return;
+    }
+
+    $pdo = db();
+    $placeholders = implode(',', array_fill(0, count($transferIds), '?'));
+    $ledger = inventory_ledger_profile();
+
+    if ($error !== null && $error !== '') {
+        $sql = <<<SQL
+            UPDATE dbo.InvTransfer
+            SET JazzSendStatus = N'Error',
+                JazzSendError = ?,
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE TransferID IN ({$placeholders})
+              AND LedgerProfile = ?
+              AND JazzSendStatus = N'Sending'
+        SQL;
+        $pdo->prepare($sql)->execute([substr($error, 0, 500), ...$transferIds, $ledger]);
+    } else {
+        $sql = <<<SQL
+            UPDATE dbo.InvTransfer
+            SET JazzSendStatus = NULL,
+                JazzSendError = NULL,
+                ModifiedDate = SYSUTCDATETIME()
+            WHERE TransferID IN ({$placeholders})
+              AND LedgerProfile = ?
+              AND JazzSendStatus = N'Sending'
+        SQL;
+        $pdo->prepare($sql)->execute([...$transferIds, $ledger]);
+    }
 }
 
 function inventory_transfers_jazz_shipment_number(int $transferId): string
@@ -667,6 +898,8 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         ];
     }
 
+    inventory_transfers_jazz_sync_batch_if_sent($transfer);
+    $transfer = inventory_transfers_get($transferId) ?? $transfer;
     if (inventory_transfers_jazz_send_satisfied($transfer)) {
         return ['ok' => true, 'error' => null, 'skipped' => true, 'reason' => 'already_sent'];
     }
@@ -687,9 +920,23 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
 
     $isPharmacyBatch = inventory_transfers_jazz_is_pharmacy_replenishment($transfer);
     $batchPeers = $isPharmacyBatch ? inventory_transfers_jazz_batch_peers($transfer) : [$transfer];
+    $peerIds = array_values(array_filter(array_map(
+        static fn(array $peer): int => (int) ($peer['TransferID'] ?? 0),
+        $batchPeers
+    )));
+    if ($peerIds === []) {
+        return ['ok' => false, 'error' => 'No pending transfer lines in this Jazz batch.'];
+    }
+
+    $claim = inventory_transfers_jazz_try_claim_send($peerIds);
+    if (!$claim['ok']) {
+        return ['ok' => false, 'error' => $claim['error'] ?? 'Could not start Jazz send.'];
+    }
+
     $jazzOrderNumber = $isPharmacyBatch
         ? inventory_transfers_jazz_batch_order_number($transfer)
         : inventory_transfers_jazz_shipment_number($transferId);
+    $shipmentNumber = $jazzOrderNumber;
     $asnId = null;
     $asnStatus = null;
     $warnings = [];
@@ -697,6 +944,8 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
     if (inventory_transfers_jazz_post_order_enabled()) {
         $orderPayload = inventory_transfers_jazz_build_order_payload($transfer);
         if ($orderPayload === null) {
+            inventory_transfers_jazz_release_send_claim($peerIds, 'Unable to build the Jazz transfer order payload.');
+
             return ['ok' => false, 'error' => 'Unable to build the Jazz transfer order payload.'];
         }
 
@@ -706,15 +955,27 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         );
         if (!$orderResult['ok']) {
             $error = (string) ($orderResult['error'] ?? 'Jazz order import failed.');
-            foreach ($batchPeers as $peer) {
-                inventory_transfers_jazz_mark_sent(
-                    (int) ($peer['TransferID'] ?? 0),
-                    null,
-                    null,
-                    $error,
-                    $jazzOrderNumber
-                );
+            if (inventory_transfers_jazz_is_duplicate_order_error($error)) {
+                foreach ($batchPeers as $peer) {
+                    inventory_transfers_jazz_mark_sent(
+                        (int) ($peer['TransferID'] ?? 0),
+                        null,
+                        null,
+                        null,
+                        $jazzOrderNumber
+                    );
+                }
+
+                return [
+                    'ok'       => true,
+                    'error'    => null,
+                    'skipped'  => true,
+                    'reason'   => 'already_sent',
+                    'warning'  => 'Jazz already has order ' . $jazzOrderNumber . '; marked sent locally (no duplicate post).',
+                ];
             }
+
+            inventory_transfers_jazz_release_send_claim($peerIds, $error);
 
             return ['ok' => false, 'error' => 'Jazz rejected the transfer order: ' . $error];
         }
@@ -731,6 +992,8 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
     if ($postAsn) {
         $facilityCode = inventory_transfers_jazz_asn_facility_code($transfer);
         if ($facilityCode === null) {
+            inventory_transfers_jazz_release_send_claim($peerIds, 'Unable to resolve Jazz facility code.');
+
             return ['ok' => false, 'error' => 'Unable to resolve a Jazz facility code for this transfer path. Set Facility.ExternalReferenceCode or JAZZ_TRANSFER_ASN_FACILITY.'];
         }
 
@@ -753,7 +1016,7 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
                     }
                     $asnStatus = trim((string) ($existing['status'] ?? ''));
                 } else {
-                    inventory_transfers_jazz_mark_sent($transferId, null, null, $error);
+                    inventory_transfers_jazz_release_send_claim($peerIds, $error);
 
                     return [
                         'ok'    => false,
@@ -762,7 +1025,7 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
                     ];
                 }
             } else {
-                inventory_transfers_jazz_mark_sent($transferId, null, null, $error);
+                inventory_transfers_jazz_release_send_claim($peerIds, $error);
 
                 return ['ok' => false, 'error' => 'Jazz rejected the transfer ASN: ' . $error];
             }
