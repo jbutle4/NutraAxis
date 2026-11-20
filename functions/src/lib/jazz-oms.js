@@ -379,6 +379,98 @@ async function importOrder(payload, options = {}) {
   return apiPost(orderImportEndpoint(), payload, { uat: true, ...options });
 }
 
+async function apiPatch(path, payload, options = {}) {
+  const error = configError(options);
+  if (error) {
+    return { ok: false, error, data: null, status: 0 };
+  }
+
+  const tokenResult = await getToken(options);
+  if (!tokenResult.ok) {
+    return { ok: false, error: tokenResult.error, data: null, status: 0 };
+  }
+
+  const normalizedPath = `/${String(path).replace(/^\/+/, '')}`;
+  const url = `${baseUrl(options)}${normalizedPath}`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Token ${tokenResult.token}`,
+      Tenant: tenantCode(),
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': 'NutraAxis-Operations/1.0 (+https://nutra-forecast-tool.azurewebsites.net)',
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  const responseBody = await response.text();
+
+  if (response.status === 403 && isCloudflareBlock(responseBody)) {
+    return { ok: false, error: cloudflareErrorMessage(), data: null, status: response.status };
+  }
+
+  const parsed = parseResponseBody(responseBody, response.status);
+  const data = parsed.data;
+
+  if (response.status >= 400) {
+    return {
+      ok: false,
+      error: parsed.error || responseErrorMessage(data, response.status),
+      data,
+      status: response.status,
+    };
+  }
+
+  return { ok: true, error: null, data, status: response.status };
+}
+
+/**
+ * Set shipping method on the sole ship-to (Jazz PATCH shipto_address).
+ * @param {string} orderNumber
+ * @param {string} shipCode
+ * @param {object} [options]
+ */
+async function patchOrderShipCode(orderNumber, shipCode, options = {}) {
+  const normalizedOrder = String(orderNumber ?? '').trim();
+  const normalizedShipCode = String(shipCode ?? '').trim();
+  if (!normalizedOrder || !normalizedShipCode) {
+    return { ok: false, error: 'order_number and ship_code are required.', data: null, status: 0 };
+  }
+
+  const pathKey = `/api/v1/order/edit/${encodeURIComponent(normalizedOrder)}/shipto_address`;
+  const extra = options.shiptoPatch && typeof options.shiptoPatch === 'object'
+    ? options.shiptoPatch
+    : {};
+
+  return apiPatch(pathKey, {
+    shipto_number: '1',
+    ship_code: normalizedShipCode,
+    ...extra,
+  }, options);
+}
+
+/**
+ * PATCH order header (ship by date, PO, source, etc.).
+ * @param {string} orderNumber
+ * @param {object} headerFields
+ * @param {object} [options]
+ */
+async function patchOrderHeader(orderNumber, headerFields, options = {}) {
+  const normalizedOrder = String(orderNumber ?? '').trim();
+  if (!normalizedOrder) {
+    return { ok: false, error: 'order_number is required.', data: null, status: 0 };
+  }
+  if (!headerFields || typeof headerFields !== 'object' || Object.keys(headerFields).length === 0) {
+    return { ok: false, error: 'headerFields is required.', data: null, status: 0 };
+  }
+
+  const pathKey = `/api/v1/order/edit/${encodeURIComponent(normalizedOrder)}/header`;
+  return apiPatch(pathKey, headerFields, options);
+}
+
 async function fetchPaginated(path, options = {}) {
   const error = configError(options);
   if (error) {
@@ -456,4 +548,6 @@ module.exports = {
   listInventory,
   listShipmentsByOrderNumber,
   orderImportEndpoint,
+  patchOrderShipCode,
+  patchOrderHeader,
 };

@@ -84,6 +84,10 @@ $transfer = inventory_transfers_get($transferId);
 $syncStatus = qbo_inventory_sync_log_status($docNumber);
 $jazzSendRequired = inventory_transfers_jazz_send_required($transfer);
 $jazzSendSatisfied = inventory_transfers_jazz_send_satisfied($transfer);
+$jazzBatchPeers = inventory_transfers_jazz_is_pharmacy_replenishment($transfer)
+    ? inventory_transfers_jazz_batch_peers($transfer)
+    : [$transfer];
+$jazzBatchLineCount = count($jazzBatchPeers);
 $jazzSendStatus = trim((string) ($transfer['JazzSendStatus'] ?? ''));
 $jazzAsnId = trim((string) ($transfer['JazzAsnId'] ?? ''));
 $jazzAsnStatus = trim((string) ($transfer['JazzAsnStatus'] ?? ''));
@@ -115,9 +119,9 @@ require dirname(__DIR__) . '/includes/header.php';
           && $jazzSendRequired
           && !$jazzSendSatisfied
       ): ?>
-      <form method="post" class="inline-form" onsubmit="return confirm('Send this facility transfer to Jazz OMS at Cart.com?');">
+      <form method="post" class="inline-form" onsubmit="return confirm('Send this shipment to Jazz OMS (<?= (int) $jazzBatchLineCount ?> line<?= $jazzBatchLineCount === 1 ? '' : 's' ?> in one order)?');">
         <input type="hidden" name="action" value="send_jazz" />
-        <button type="submit" class="btn-primary">Send to Jazz</button>
+        <button type="submit" class="btn-primary">Send to Jazz<?= $jazzBatchLineCount > 1 ? ' (' . (int) $jazzBatchLineCount . ' lines)' : '' ?></button>
       </form>
       <?php endif;
       if (
@@ -157,6 +161,9 @@ require dirname(__DIR__) . '/includes/header.php';
         <button type="submit" class="btn-secondary">Retry QBO journal</button>
       </form>
       <?php endif;
+      if (inventory_transfers_can_update() && in_array((string) ($transfer['TransferStatus'] ?? ''), ['Pending', 'InTransit'], true)): ?>
+      <a class="btn-secondary" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/edit.php?id=' . $transferId)) ?>">Edit transfer</a>
+      <?php endif;
       render_list_page_toolbar(trim(ob_get_clean()) ?: null);
       ?>
 
@@ -188,6 +195,20 @@ require dirname(__DIR__) . '/includes/header.php';
         <div><dt>Received</dt><dd><?= htmlspecialchars(inventory_ledger_format_quantity($transfer['QtyReceived'] ?? null)) ?></dd></div>
         <div><dt>QBO Doc</dt><dd><?= htmlspecialchars($docNumber) ?><?= $syncStatus !== null ? ' · ' . htmlspecialchars($syncStatus) : '' ?></dd></div>
         <?php if ($jazzSendRequired): ?>
+        <div><dt>Jazz order</dt><dd><?= htmlspecialchars(inventory_transfers_jazz_shipment_number_for_transfer($transfer)) ?><?= $jazzBatchLineCount > 1 ? ' · ' . (int) $jazzBatchLineCount . ' pending lines' : '' ?></dd></div>
+        <?php if (inventory_transfer_has_ship_by_column()): ?>
+        <div><dt>Jazz ship-by</dt><dd><?php
+            $shipByDisplay = '—';
+            if (!empty($transfer['JazzShipByDate'])) {
+                try {
+                    $shipByDisplay = (new DateTimeImmutable((string) $transfer['JazzShipByDate']))->format('Y-m-d');
+                } catch (Throwable) {
+                    $shipByDisplay = (string) $transfer['JazzShipByDate'];
+                }
+            }
+            echo htmlspecialchars($shipByDisplay);
+        ?></dd></div>
+        <?php endif; ?>
         <div><dt>Jazz send</dt><dd><?= $jazzSendStatus !== '' ? htmlspecialchars($jazzSendStatus) : 'Pending' ?><?= $jazzAsnId !== '' ? ' · ASN ' . htmlspecialchars($jazzAsnId) : '' ?><?= $jazzAsnStatus !== '' ? ' · ' . htmlspecialchars($jazzAsnStatus) : '' ?></dd></div>
         <?php if (!empty($transfer['JazzSendError'])): ?>
         <div><dt>Jazz last error</dt><dd><?= htmlspecialchars((string) $transfer['JazzSendError']) ?></dd></div>

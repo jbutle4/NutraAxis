@@ -64,6 +64,10 @@ function validateJazzImportPayload(payload) {
 
   shipTos.forEach((shipTo, index) => {
     errors.push(...validateAddressBlock(`Ship-to ${index + 1}`, shipTo?.address));
+    const shipCode = String(shipTo?.ship_code ?? '').trim();
+    if (!shipCode) {
+      errors.push(`Ship-to ${index + 1}: ship_code is required (tenant shipping method, e.g. LTL).`);
+    }
   });
 
   const lines = shipTos.flatMap((shipTo) => shipTo?.detail_set || []);

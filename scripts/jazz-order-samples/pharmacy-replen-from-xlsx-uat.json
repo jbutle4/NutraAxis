@@ -1,0 +1,398 @@
+{
+  "source_file": "PharmacyTransfer_JoeButler_20261120.xlsx",
+  "ship_method_note": "Operational move is LTL. Jazz UAT has no ship_code LTL yet — API requires a tenant code (ECONOMY). After Jazz IT adds LTL, set shipto.ship_code to LTL and JAZZ_ORDER_SHIP_CODE=LTL.",
+  "generated": "2026-11-20T01:38:01Z",
+  "orders": [
+    {
+      "order_number": "TRN-Ocala-20261120",
+      "order_date": "2026-11-20 12:00:00",
+      "ship_date": "2026-11-20",
+      "source_code": "WEB_2026",
+      "po_number": "TRN-Ocala-20261120",
+      "attributes": {
+        "allocation_facility": "FBF09",
+        "shipment_comments": "LTL",
+        "nutraaxis_transfer_sheet": "Transfer Ocala-20261120"
+      },
+      "customer": {
+        "first_name": "Chris",
+        "last_name": "Ulbricht",
+        "company": "Wells Pharmacy Network",
+        "address1": "1210 SW 33rd Avenue",
+        "city": "Ocala",
+        "state": "FL",
+        "zipcode": "34474",
+        "country": "US",
+        "phone": "352-622-2913",
+        "email": "CUlbricht@wellsrx.com"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "ship_code": "ECONOMY",
+          "packer_instructions": "Pharmacy transfer — ship LTL freight (not parcel).",
+          "first_name": "Chris",
+          "last_name": "Ulbricht",
+          "company": "Wells Pharmacy Network",
+          "phone": "352-622-2913",
+          "email": "CUlbricht@wellsrx.com",
+          "address": {
+            "address1": "1210 SW 33rd Avenue",
+            "city": "Ocala",
+            "state": "FL",
+            "zipcode": "34474",
+            "country": "US"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "NA-MT-001",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 2,
+              "sku": "NA-GW-002",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 3,
+              "sku": "NA-MT-003",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 4,
+              "sku": "NA-MT-004",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 5,
+              "sku": "NA-HR-005",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 6,
+              "sku": "NA-HR-006",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 7,
+              "sku": "NA-GW-007",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 8,
+              "sku": "NA-GT-008",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 9,
+              "sku": "NA-HR-009",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 10,
+              "sku": "NA-LV-010",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 11,
+              "sku": "NA-GW-011",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 12,
+              "sku": "NA-SS-013",
+              "qty_ordered": 240,
+              "current_price": 0
+            },
+            {
+              "line_number": 13,
+              "sku": "NA-GW-014",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 14,
+              "sku": "NA-IF-015",
+              "qty_ordered": 120,
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order_number": "TRN-Dallas-20261120",
+      "order_date": "2026-11-20 12:00:00",
+      "ship_date": "2026-11-20",
+      "source_code": "WEB_2026",
+      "po_number": "TRN-Dallas-20261120",
+      "attributes": {
+        "allocation_facility": "FBF09",
+        "shipment_comments": "LTL",
+        "nutraaxis_transfer_sheet": "Transfer Dallas-20261120"
+      },
+      "customer": {
+        "first_name": "Mike",
+        "last_name": "Flora",
+        "company": "Wells Pharma Labs",
+        "address1": "4001 McEwen Rd",
+        "city": "Dallas",
+        "state": "TX",
+        "zipcode": "75244",
+        "country": "US",
+        "phone": "800-441-0048",
+        "email": "mflora@wppharmalabs.com",
+        "address2": "Suite 110"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "ship_code": "ECONOMY",
+          "packer_instructions": "Pharmacy transfer — ship LTL freight (not parcel).",
+          "first_name": "Mike",
+          "last_name": "Flora",
+          "company": "Wells Pharma Labs",
+          "phone": "800-441-0048",
+          "email": "mflora@wppharmalabs.com",
+          "address": {
+            "address1": "4001 McEwen Rd",
+            "city": "Dallas",
+            "state": "TX",
+            "zipcode": "75244",
+            "country": "US",
+            "address2": "Suite 110"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "NA-MT-001",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 2,
+              "sku": "NA-GW-002",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 3,
+              "sku": "NA-MT-003",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 4,
+              "sku": "NA-MT-004",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 5,
+              "sku": "NA-HR-005",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 6,
+              "sku": "NA-HR-006",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 7,
+              "sku": "NA-GW-007",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 8,
+              "sku": "NA-GT-008",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 9,
+              "sku": "NA-HR-009",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 10,
+              "sku": "NA-LV-010",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 11,
+              "sku": "NA-GW-011",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 12,
+              "sku": "NA-SS-013",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 13,
+              "sku": "NA-GW-014",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 14,
+              "sku": "NA-IF-015",
+              "qty_ordered": 60,
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order_number": "TRN-Melbourne-20261120",
+      "order_date": "2026-11-20 12:00:00",
+      "ship_date": "2026-11-20",
+      "source_code": "WEB_2026",
+      "po_number": "TRN-Melbourne-20261120",
+      "attributes": {
+        "allocation_facility": "FBF09",
+        "shipment_comments": "LTL",
+        "nutraaxis_transfer_sheet": "Transfer Melbourne-20261120"
+      },
+      "customer": {
+        "first_name": "Connie",
+        "last_name": "Torres",
+        "company": "Melbourne Pharmacy",
+        "address1": "2225 South Babcock Street",
+        "city": "Melbourne",
+        "state": "FL",
+        "zipcode": "32901",
+        "country": "US",
+        "phone": "833-655-7500",
+        "email": "ctorres@melbournepharma.com",
+        "address2": "Suite #107"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "ship_code": "ECONOMY",
+          "packer_instructions": "Pharmacy transfer — ship LTL freight (not parcel).",
+          "first_name": "Connie",
+          "last_name": "Torres",
+          "company": "Melbourne Pharmacy",
+          "phone": "833-655-7500",
+          "email": "ctorres@melbournepharma.com",
+          "address": {
+            "address1": "2225 South Babcock Street",
+            "city": "Melbourne",
+            "state": "FL",
+            "zipcode": "32901",
+            "country": "US",
+            "address2": "Suite #107"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "NA-MT-001",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 2,
+              "sku": "NA-GW-002",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 3,
+              "sku": "NA-MT-003",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 4,
+              "sku": "NA-MT-004",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 5,
+              "sku": "NA-HR-005",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 6,
+              "sku": "NA-HR-006",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 7,
+              "sku": "NA-GW-007",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 8,
+              "sku": "NA-GT-008",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 9,
+              "sku": "NA-HR-009",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 10,
+              "sku": "NA-LV-010",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 11,
+              "sku": "NA-GW-011",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 12,
+              "sku": "NA-SS-013",
+              "qty_ordered": 120,
+              "current_price": 0
+            },
+            {
+              "line_number": 13,
+              "sku": "NA-GW-014",
+              "qty_ordered": 60,
+              "current_price": 0
+            },
+            {
+              "line_number": 14,
+              "sku": "NA-IF-015",
+              "qty_ordered": 60,
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

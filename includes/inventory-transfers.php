@@ -6,6 +6,8 @@ require_once __DIR__ . '/facility.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/quickbooks.php';
 
+require_once __DIR__ . '/inventory-transfers-jazz.php';
+
 function inventory_transfers_permission_value(): ?string
 {
     return inventory_ledger_permission_value();
@@ -51,6 +53,13 @@ function inventory_transfers_list(array $filters = []): array
         $params['status'] = $status;
     }
 
+    $shipBySelect = inventory_transfer_has_ship_by_column()
+        ? 't.JazzShipByDate'
+        : 'CAST(NULL AS DATE) AS JazzShipByDate';
+    $jazzSelect = inventory_transfer_has_jazz_columns()
+        ? 't.JazzSendStatus, t.JazzShipmentNumber, t.JazzSendError'
+        : 'CAST(NULL AS NVARCHAR(20)) AS JazzSendStatus, CAST(NULL AS NVARCHAR(50)) AS JazzShipmentNumber, CAST(NULL AS NVARCHAR(500)) AS JazzSendError';
+
     $sql = <<<SQL
         SELECT
             t.TransferID,
@@ -65,6 +74,8 @@ function inventory_transfers_list(array $filters = []): array
             t.TransferStatus,
             t.Notes,
             t.CreateDate,
+            {$shipBySelect},
+            {$jazzSelect},
             t.OutboundTransactionID,
             t.InboundTransactionID
         FROM dbo.InvTransfer t
@@ -187,6 +198,111 @@ function inventory_transfers_reason_codes(): array
     SQL);
 
     return $stmt->fetchAll();
+}
+
+function inventory_transfer_has_ship_by_column(): bool
+{
+    static $has = null;
+    if ($has !== null) {
+        return $has;
+    }
+
+    try {
+        $pdo = db();
+        $stmt = $pdo->query("SELECT COL_LENGTH('dbo.InvTransfer', 'JazzShipByDate') AS col_len");
+        $row = $stmt->fetch();
+        $has = $row !== false && $row['col_len'] !== null;
+    } catch (Throwable) {
+        $has = false;
+    }
+
+    return $has;
+}
+
+/**
+ * Admin edit while transfer is still open (Pending / InTransit).
+ *
+ * @param array{qty_requested?:float|int|string,notes?:string,jazz_ship_by_date?:string,transfer_status?:string} $fields
+ */
+function inventory_transfers_update(int $transferId, array $fields, ?int $userId = null): array
+{
+    $transfer = inventory_transfers_get($transferId);
+    if ($transfer === null) {
+        return ['ok' => false, 'error' => 'Transfer not found.'];
+    }
+
+    $status = (string) ($transfer['TransferStatus'] ?? '');
+    if (!in_array($status, ['Pending', 'InTransit'], true)) {
+        return ['ok' => false, 'error' => 'Only pending or in-transit transfers can be edited.'];
+    }
+
+    $newStatus = trim((string) ($fields['transfer_status'] ?? $status));
+    if ($newStatus !== $status) {
+        $allowed = $status === 'Pending' && $newStatus === 'Cancelled';
+        if (!$allowed) {
+            return ['ok' => false, 'error' => 'Status can only be changed from Pending to Cancelled.'];
+        }
+    }
+
+    $qty = (float) ($fields['qty_requested'] ?? $transfer['QtyRequested'] ?? 0);
+    if ($qty <= 0) {
+        return ['ok' => false, 'error' => 'Quantity must be greater than zero.'];
+    }
+    if ($status !== 'Pending' && abs($qty - (float) ($transfer['QtyRequested'] ?? 0)) > 0.0001) {
+        return ['ok' => false, 'error' => 'Quantity can only be changed while the transfer is Pending.'];
+    }
+
+    $notes = array_key_exists('notes', $fields)
+        ? trim((string) $fields['notes'])
+        : (string) ($transfer['Notes'] ?? '');
+
+    $shipBySql = null;
+    if (inventory_transfer_has_ship_by_column() && array_key_exists('jazz_ship_by_date', $fields)) {
+        $raw = trim((string) $fields['jazz_ship_by_date']);
+        if ($raw === '') {
+            $shipBySql = null;
+        } else {
+            try {
+                $shipBySql = (new DateTimeImmutable($raw))->format('Y-m-d');
+            } catch (Throwable) {
+                return ['ok' => false, 'error' => 'Ship-by date must be YYYY-MM-DD.'];
+            }
+        }
+    }
+
+    $pdo = db();
+    $sets = [
+        'Notes = :notes',
+        'ModifiedDate = SYSUTCDATETIME()',
+        'ModifiedByUser = :user_id',
+    ];
+    $params = [
+        'notes'   => $notes !== '' ? $notes : null,
+        'user_id' => $userId,
+        'id'      => $transferId,
+        'ledger_profile' => inventory_ledger_profile(),
+    ];
+
+    if ($status === 'Pending') {
+        $sets[] = 'QtyRequested = :qty';
+        $params['qty'] = $qty;
+    }
+
+    if ($newStatus !== $status) {
+        $sets[] = 'TransferStatus = :transfer_status';
+        $params['transfer_status'] = $newStatus;
+    }
+
+    if (inventory_transfer_has_ship_by_column()) {
+        $sets[] = 'JazzShipByDate = :ship_by';
+        $params['ship_by'] = $shipBySql;
+    }
+
+    $sql = 'UPDATE dbo.InvTransfer SET ' . implode(', ', $sets)
+        . ' WHERE TransferID = :id AND LedgerProfile = :ledger_profile';
+    $pdo->prepare($sql)->execute($params);
+
+    return ['ok' => true, 'error' => null];
 }
 
 function inventory_transfers_ship(int $transferId, ?int $userId = null): array

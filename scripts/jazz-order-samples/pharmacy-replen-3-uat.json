@@ -1,0 +1,147 @@
+{
+  "comment": "UAT only — unique order_numbers. Replace REPLACE_ME_SKU, REPLACE_ME_QTY, REPLACE_ME_SOURCE_CODE, REPLACE_ME_ALLOCATION_FACILITY before send.",
+  "orders": [
+    {
+      "order_number": "NA-PHARM-UAT-OCALA-001",
+      "order_date": "2026-11-19 20:00:00",
+      "source_code": "REPLACE_ME_SOURCE_CODE",
+      "po_number": "NA-PHARM-UAT-OCALA-001",
+      "attributes": {
+        "allocation_facility": "REPLACE_ME_ALLOCATION_FACILITY"
+      },
+      "customer": {
+        "first_name": "Christopher",
+        "last_name": "Ulbricht",
+        "company": "Wells Pharmacy Network, LLC",
+        "address1": "1210 SW 33rd Avenue",
+        "city": "Ocala",
+        "state": "FL",
+        "zipcode": "34474",
+        "country": "US",
+        "phone": "352-622-2913",
+        "email": "CUlbricht@wellsrx.com"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "first_name": "Christopher",
+          "last_name": "Ulbricht",
+          "company": "Wells Pharmacy Network, LLC",
+          "phone": "352-622-2913",
+          "email": "CUlbricht@wellsrx.com",
+          "address": {
+            "address1": "1210 SW 33rd Avenue",
+            "city": "Ocala",
+            "state": "FL",
+            "zipcode": "34474",
+            "country": "US"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "REPLACE_ME_SKU",
+              "qty_ordered": "REPLACE_ME_QTY",
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order_number": "NA-PHARM-UAT-DALLAS-001",
+      "order_date": "2026-11-19 20:00:00",
+      "source_code": "REPLACE_ME_SOURCE_CODE",
+      "po_number": "NA-PHARM-UAT-DALLAS-001",
+      "attributes": {
+        "allocation_facility": "REPLACE_ME_ALLOCATION_FACILITY"
+      },
+      "customer": {
+        "first_name": "Michael",
+        "last_name": "Flora",
+        "company": "Wells Pharma Labs",
+        "address1": "4001 McEwen Rd",
+        "address2": "Suite 110",
+        "city": "Dallas",
+        "state": "TX",
+        "zipcode": "75244",
+        "country": "US",
+        "phone": "800-441-0048",
+        "email": "mflora@wppharmalabs.com"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "first_name": "Michael",
+          "last_name": "Flora",
+          "company": "Wells Pharma Labs",
+          "phone": "800-441-0048",
+          "email": "mflora@wppharmalabs.com",
+          "address": {
+            "address1": "4001 McEwen Rd",
+            "address2": "Suite 110",
+            "city": "Dallas",
+            "state": "TX",
+            "zipcode": "75244",
+            "country": "US"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "REPLACE_ME_SKU",
+              "qty_ordered": "REPLACE_ME_QTY",
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order_number": "NA-PHARM-UAT-MELBOURNE-001",
+      "order_date": "2026-11-19 20:00:00",
+      "source_code": "REPLACE_ME_SOURCE_CODE",
+      "po_number": "NA-PHARM-UAT-MELBOURNE-001",
+      "attributes": {
+        "allocation_facility": "REPLACE_ME_ALLOCATION_FACILITY"
+      },
+      "customer": {
+        "first_name": "Connie",
+        "last_name": "Torres",
+        "company": "Melbourne Pharmacy",
+        "address1": "2225 South Babcock Street",
+        "address2": "Suite #107",
+        "city": "Melbourne",
+        "state": "FL",
+        "zipcode": "32901",
+        "country": "US",
+        "phone": "833-655-7500",
+        "email": "Ctorres@melbournepharma.com"
+      },
+      "shipto": [
+        {
+          "shipto_number": "1",
+          "first_name": "Connie",
+          "last_name": "Torres",
+          "company": "Melbourne Pharmacy",
+          "phone": "833-655-7500",
+          "email": "Ctorres@melbournepharma.com",
+          "address": {
+            "address1": "2225 South Babcock Street",
+            "address2": "Suite #107",
+            "city": "Melbourne",
+            "state": "FL",
+            "zipcode": "32901",
+            "country": "US"
+          },
+          "detail_set": [
+            {
+              "line_number": 1,
+              "sku": "REPLACE_ME_SKU",
+              "qty_ordered": "REPLACE_ME_QTY",
+              "current_price": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -227,6 +227,11 @@ function mapAccsOrderToJazzImport(order, options = {}) {
 
   const customer = mapContact(shipAddress, order);
   const shipto = mapShipToContact(customer);
+  const shipCode = envValue('JAZZ_ORDER_SHIP_CODE', 'ECONOMY');
+  if (shipCode) {
+    shipto.ship_code = shipCode;
+  }
+
   shipto.detail_set = mappedLines;
 
   const payload = {

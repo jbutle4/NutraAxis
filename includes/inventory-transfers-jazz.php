@@ -3,6 +3,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/facility.php';
 require_once __DIR__ . '/jazz-oms.php';
+require_once __DIR__ . '/inventory-ledger.php';
 
 function inventory_transfer_has_jazz_columns(): bool
 {
@@ -60,6 +61,103 @@ function inventory_transfers_jazz_shipment_number(int $transferId): string
     return 'NA-XFER-' . $transferId;
 }
 
+/**
+ * Excel-style order key: TRN-Ocala-20261120 (destination + ship-by date).
+ */
+function inventory_transfers_jazz_pharmacy_slug(string $toFacilityCode): string
+{
+    $code = strtoupper(trim($toFacilityCode));
+    $labels = [
+        'OCALA'     => 'Ocala',
+        'DALLAS'    => 'Dallas',
+        'MELBOURNE' => 'Melbourne',
+    ];
+    if (isset($labels[$code])) {
+        return $labels[$code];
+    }
+
+    $facility = facility_get_by_code($toFacilityCode);
+    if ($facility !== null) {
+        $name = trim((string) ($facility['FacilityName'] ?? ''));
+        if ($name !== '') {
+            return preg_replace('/[^A-Za-z0-9]+/', '', $name) ?: $code;
+        }
+    }
+
+    return ucfirst(strtolower($code));
+}
+
+function inventory_transfers_jazz_batch_order_number(array $transfer): string
+{
+    $shipBy = inventory_transfer_jazz_ship_by_date($transfer);
+    $ymd = str_replace('-', '', $shipBy);
+
+    return 'TRN-'
+        . inventory_transfers_jazz_pharmacy_slug((string) ($transfer['ToFacilityCode'] ?? ''))
+        . '-'
+        . $ymd;
+}
+
+/**
+ * Pending CART → pharmacy lines that share the same Jazz batch order number.
+ *
+ * @return list<array<string, mixed>>
+ */
+function inventory_transfers_jazz_batch_peers(array $transfer): array
+{
+    if (!inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        return [$transfer];
+    }
+
+    $batchKey = inventory_transfers_jazz_batch_order_number($transfer);
+    $pdo = db();
+    $stmt = $pdo->prepare(<<<SQL
+        SELECT *
+        FROM dbo.InvTransfer
+        WHERE LedgerProfile = :ledger_profile
+          AND FromFacilityCode = :from_facility
+          AND ToFacilityCode = :to_facility
+          AND TransferStatus = N'Pending'
+          AND (JazzSendStatus IS NULL OR JazzSendStatus <> N'Sent')
+        ORDER BY TransferID ASC
+    SQL);
+    $stmt->execute([
+        'ledger_profile' => inventory_ledger_profile(),
+        'from_facility'  => (string) ($transfer['FromFacilityCode'] ?? ''),
+        'to_facility'    => (string) ($transfer['ToFacilityCode'] ?? ''),
+    ]);
+    $rows = $stmt->fetchAll();
+    if (!is_array($rows)) {
+        return [$transfer];
+    }
+
+    $peers = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        if (inventory_transfers_jazz_batch_order_number($row) === $batchKey) {
+            $peers[] = $row;
+        }
+    }
+
+    return $peers !== [] ? $peers : [$transfer];
+}
+
+function inventory_transfers_jazz_shipment_number_for_transfer(array $transfer): string
+{
+    $stored = trim((string) ($transfer['JazzShipmentNumber'] ?? ''));
+    if ($stored !== '') {
+        return $stored;
+    }
+
+    if (inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        return inventory_transfers_jazz_batch_order_number($transfer);
+    }
+
+    return inventory_transfers_jazz_shipment_number((int) ($transfer['TransferID'] ?? 0));
+}
+
 function inventory_transfers_jazz_asn_endpoint(): string
 {
     $endpoint = trim((string) env(
@@ -100,7 +198,71 @@ function inventory_transfers_jazz_post_asn_enabled(): bool
 
 function inventory_transfers_jazz_post_order_enabled(): bool
 {
-    return trim((string) env('JAZZ_TRANSFER_ORDER_SOURCE_CODE', '')) !== '';
+    return inventory_transfers_jazz_order_source_code() !== '';
+}
+
+function inventory_transfers_jazz_is_pharmacy_replenishment(array $transfer): bool
+{
+    $from = facility_get_by_code((string) ($transfer['FromFacilityCode'] ?? ''));
+    $to = facility_get_by_code((string) ($transfer['ToFacilityCode'] ?? ''));
+    if ($from === null || $to === null) {
+        return false;
+    }
+
+    return !empty($from['IsMothership']) && facility_is_pharmacy_location($to);
+}
+
+function inventory_transfers_jazz_order_source_code(): string
+{
+    return trim((string) env_first([
+        'JAZZ_PHARMACY_ORDER_SOURCE_CODE',
+        'JAZZ_ORDER_SOURCE_CODE',
+        'JAZZ_TRANSFER_ORDER_SOURCE_CODE',
+    ], 'WEB_2026'));
+}
+
+function inventory_transfers_jazz_allocation_facility_code(array $transfer): string
+{
+    $fromJazz = facility_jazz_facility_code((string) ($transfer['FromFacilityCode'] ?? ''));
+
+    return trim((string) env_first([
+        'JAZZ_PHARMACY_ALLOCATION_FACILITY',
+        'JAZZ_ALLOCATION_FACILITY',
+        'JAZZ_CART_FACILITY_CODE',
+    ], $fromJazz !== '' ? $fromJazz : 'FBF09'));
+}
+
+function inventory_transfers_jazz_replenishment_ship_code(): string
+{
+    return trim((string) env('JAZZ_ORDER_SHIP_CODE', 'ECONOMY'));
+}
+
+/**
+ * Pharmacy CART → spoke: order/import only (no inbound ASN at Cart).
+ */
+function inventory_transfers_jazz_post_asn_for_transfer(array $transfer): bool
+{
+    if (inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        $raw = strtolower(trim((string) env('JAZZ_PHARMACY_TRANSFER_POST_ASN', '0')));
+
+        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    return inventory_transfers_jazz_post_asn_enabled();
+}
+
+function inventory_transfer_jazz_ship_by_date(array $transfer): string
+{
+    $raw = $transfer['JazzShipByDate'] ?? null;
+    if ($raw !== null && $raw !== '') {
+        try {
+            return (new DateTimeImmutable((string) $raw))->format('Y-m-d');
+        } catch (Throwable) {
+            // fall through
+        }
+    }
+
+    return (new DateTimeImmutable('now'))->format('Y-m-d');
 }
 
 function inventory_transfers_jazz_asn_facility_code(array $transfer): ?string
@@ -158,89 +320,229 @@ function inventory_transfers_jazz_build_asn_payload(array $transfer): array
 }
 
 /**
+ * @param list<array<string, mixed>> $transfers
+ * @return array<string, mixed>|null
+ */
+function inventory_transfers_jazz_build_pharmacy_batch_payload(array $transfers, string $orderNumber): ?array
+{
+    if ($transfers === []) {
+        return null;
+    }
+
+    $sourceCode = inventory_transfers_jazz_order_source_code();
+    if ($sourceCode === '') {
+        return null;
+    }
+
+    $lead = $transfers[0];
+    $transferIds = [];
+    $skuQty = [];
+    foreach ($transfers as $row) {
+        $transferIds[] = (int) ($row['TransferID'] ?? 0);
+        $sku = trim((string) ($row['SKUCode'] ?? ''));
+        $qty = (int) round((float) ($row['QtyRequested'] ?? 0));
+        if ($sku === '' || $qty <= 0) {
+            continue;
+        }
+        $skuQty[$sku] = ($skuQty[$sku] ?? 0) + $qty;
+    }
+    if ($skuQty === []) {
+        return null;
+    }
+
+    $now = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+    $shipBy = inventory_transfer_jazz_ship_by_date($lead);
+
+    $toFacility = facility_get_by_code((string) ($lead['ToFacilityCode'] ?? ''));
+    $shipToContact = facility_jazz_ship_to_contact($toFacility)
+        ?? facility_jazz_transfer_ship_to_fallback();
+
+    $attributes = [
+        'allocation_facility'       => inventory_transfers_jazz_allocation_facility_code($lead),
+        'shipment_comments'         => 'LTL',
+        'nutraaxis_transfer_ids'    => implode(',', $transferIds),
+        'nutraaxis_from_facility'   => (string) ($lead['FromFacilityCode'] ?? ''),
+        'nutraaxis_to_facility'     => (string) ($lead['ToFacilityCode'] ?? ''),
+        'nutraaxis_batch_line_count'=> count($skuQty),
+    ];
+
+    $customer = [
+        'first_name' => $shipToContact['first_name'],
+        'last_name'  => $shipToContact['last_name'],
+        'address1'   => $shipToContact['address']['address1'],
+        'city'       => $shipToContact['address']['city'],
+        'state'      => $shipToContact['address']['state'],
+        'zipcode'    => $shipToContact['address']['zipcode'],
+        'country'    => $shipToContact['address']['country'],
+    ];
+    if (!empty($shipToContact['address']['address2'])) {
+        $customer['address2'] = $shipToContact['address']['address2'];
+    }
+    if ($shipToContact['company'] !== '') {
+        $customer['company'] = $shipToContact['company'];
+    }
+    if (!empty($shipToContact['phone'])) {
+        $customer['phone'] = $shipToContact['phone'];
+    }
+    if (!empty($shipToContact['email'])) {
+        $customer['email'] = $shipToContact['email'];
+    }
+
+    $detailSet = [];
+    $lineNumber = 1;
+    ksort($skuQty);
+    foreach ($skuQty as $sku => $qty) {
+        $detailSet[] = [
+            'line_number'   => $lineNumber,
+            'sku'           => $sku,
+            'qty_ordered'   => $qty,
+            'current_price' => 0,
+        ];
+        $lineNumber += 1;
+    }
+
+    $shiptoRow = [
+        'first_name'          => $shipToContact['first_name'],
+        'last_name'           => $shipToContact['last_name'],
+        'ship_code'           => inventory_transfers_jazz_replenishment_ship_code(),
+        'address'             => $shipToContact['address'],
+        'detail_set'          => $detailSet,
+        'packer_instructions' => 'Pharmacy transfer — ship LTL freight (not parcel).',
+    ];
+    if ($shipToContact['company'] !== '') {
+        $shiptoRow['company'] = $shipToContact['company'];
+    }
+    if (!empty($shipToContact['phone'])) {
+        $shiptoRow['phone'] = $shipToContact['phone'];
+    }
+    if (!empty($shipToContact['email'])) {
+        $shiptoRow['email'] = $shipToContact['email'];
+    }
+
+    return [
+        'order_number' => $orderNumber,
+        'order_date'   => $now,
+        'ship_date'    => $shipBy,
+        'source_code'  => $sourceCode,
+        'po_number'    => $orderNumber,
+        'attributes'   => $attributes,
+        'customer'     => $customer,
+        'shipto'       => [[
+            'shipto_number' => '1',
+            ...$shiptoRow,
+        ]],
+    ];
+}
+
+/**
  * Optional internal transfer order import (tenant-specific source code).
  *
  * @return array<string, mixed>|null
  */
 function inventory_transfers_jazz_build_order_payload(array $transfer): ?array
 {
-    $sourceCode = trim((string) env('JAZZ_TRANSFER_ORDER_SOURCE_CODE', ''));
+    $sourceCode = inventory_transfers_jazz_order_source_code();
     if ($sourceCode === '') {
         return null;
     }
 
+    if (inventory_transfers_jazz_is_pharmacy_replenishment($transfer)) {
+        $peers = inventory_transfers_jazz_batch_peers($transfer);
+
+        return inventory_transfers_jazz_build_pharmacy_batch_payload(
+            $peers,
+            inventory_transfers_jazz_batch_order_number($transfer)
+        );
+    }
+
     $transferId = (int) ($transfer['TransferID'] ?? 0);
-    $shipmentNumber = inventory_transfers_jazz_shipment_number($transferId);
+    $orderNumber = inventory_transfers_jazz_shipment_number($transferId);
     $sku = (string) ($transfer['SKUCode'] ?? '');
     $qty = (int) round((float) ($transfer['QtyRequested'] ?? 0));
     if ($sku === '' || $qty <= 0) {
         return null;
     }
 
-    $customerNumber = trim((string) env(
-        'JAZZ_TRANSFER_ORDER_CUSTOMER_NUMBER',
-        'NUTRAAXIS_INTERNAL'
-    ));
-    $shipCode = trim((string) env('JAZZ_TRANSFER_ORDER_SHIP_CODE', 'INTERNAL_TRANSFER'));
+    $pharmacyPath = false;
     $now = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
-    $fromJazz = facility_jazz_facility_code((string) ($transfer['FromFacilityCode'] ?? ''));
-
-    $attributes = [
-        'allocation_facility'       => $fromJazz,
-        'nutraaxis_transfer_id'     => $transferId,
-        'nutraaxis_from_facility'   => (string) ($transfer['FromFacilityCode'] ?? ''),
-        'nutraaxis_to_facility'     => (string) ($transfer['ToFacilityCode'] ?? ''),
-    ];
+    $shipBy = inventory_transfer_jazz_ship_by_date($transfer);
 
     $toFacility = facility_get_by_code((string) ($transfer['ToFacilityCode'] ?? ''));
     $shipToContact = facility_jazz_ship_to_contact($toFacility)
         ?? facility_jazz_transfer_ship_to_fallback();
 
+    $attributes = [
+        'allocation_facility'     => inventory_transfers_jazz_allocation_facility_code($transfer),
+        'nutraaxis_transfer_id'   => $transferId,
+        'nutraaxis_from_facility' => (string) ($transfer['FromFacilityCode'] ?? ''),
+        'nutraaxis_to_facility'   => (string) ($transfer['ToFacilityCode'] ?? ''),
+    ];
+    $notes = trim((string) ($transfer['Notes'] ?? ''));
+    if ($notes !== '') {
+        $attributes['nutraaxis_notes'] = $notes;
+    }
+    if ($pharmacyPath) {
+        $attributes['shipment_comments'] = 'LTL';
+    }
+
     $customer = [
-        'customer_number' => $customerNumber,
-        'first_name'      => $shipToContact['first_name'],
-        'last_name'       => $shipToContact['last_name'],
-        'company'         => $shipToContact['company'] !== '' ? $shipToContact['company'] : null,
-        'address1'        => $shipToContact['address']['address1'],
-        'city'            => $shipToContact['address']['city'],
-        'state'           => $shipToContact['address']['state'],
-        'zipcode'         => $shipToContact['address']['zipcode'],
-        'country'         => $shipToContact['address']['country'],
+        'first_name' => $shipToContact['first_name'],
+        'last_name'  => $shipToContact['last_name'],
+        'address1'   => $shipToContact['address']['address1'],
+        'city'       => $shipToContact['address']['city'],
+        'state'      => $shipToContact['address']['state'],
+        'zipcode'    => $shipToContact['address']['zipcode'],
+        'country'    => $shipToContact['address']['country'],
     ];
     if (!empty($shipToContact['address']['address2'])) {
         $customer['address2'] = $shipToContact['address']['address2'];
     }
+    if ($shipToContact['company'] !== '') {
+        $customer['company'] = $shipToContact['company'];
+    }
     if (!empty($shipToContact['phone'])) {
-        $customer['phone_number'] = $shipToContact['phone'];
+        $customer['phone'] = $shipToContact['phone'];
     }
     if (!empty($shipToContact['email'])) {
         $customer['email'] = $shipToContact['email'];
     }
-    $customer = array_filter($customer, static fn ($value) => $value !== null && $value !== '');
 
-    $businessType = trim((string) env('JAZZ_TRANSFER_ORDER_BUSINESS_TYPE', ''));
+    $shipCode = $pharmacyPath
+        ? inventory_transfers_jazz_replenishment_ship_code()
+        : trim((string) env('JAZZ_TRANSFER_ORDER_SHIP_CODE', 'INTERNAL_TRANSFER'));
+
     $shiptoAddress = $shipToContact['address'];
     $shiptoRow = [
-        'first_name'    => $shipToContact['first_name'],
-        'last_name'     => $shipToContact['last_name'],
-        'ship_code'     => $shipCode,
-        'address'       => $shiptoAddress,
-        'detail_set'    => [[
+        'first_name' => $shipToContact['first_name'],
+        'last_name'  => $shipToContact['last_name'],
+        'ship_code'  => $shipCode,
+        'address'    => $shiptoAddress,
+        'detail_set' => [[
+            'line_number'   => 1,
             'sku'           => $sku,
             'qty_ordered'   => $qty,
-            'current_price' => '0',
+            'current_price' => 0,
         ]],
-        'subtotal_amount' => '0',
-        'total_amount'    => '0',
     ];
     if ($shipToContact['company'] !== '') {
         $shiptoRow['company'] = $shipToContact['company'];
     }
+    if (!empty($shipToContact['phone'])) {
+        $shiptoRow['phone'] = $shipToContact['phone'];
+    }
+    if (!empty($shipToContact['email'])) {
+        $shiptoRow['email'] = $shipToContact['email'];
+    }
+    if ($pharmacyPath) {
+        $shiptoRow['packer_instructions'] = 'Pharmacy transfer — ship LTL freight (not parcel).';
+    }
 
     $payload = [
-        'order_number' => $shipmentNumber,
+        'order_number' => $orderNumber,
         'order_date'   => $now,
+        'ship_date'    => $shipBy,
         'source_code'  => $sourceCode,
+        'po_number'    => $orderNumber,
         'attributes'   => $attributes,
         'customer'     => $customer,
         'shipto'       => [[
@@ -249,8 +551,13 @@ function inventory_transfers_jazz_build_order_payload(array $transfer): ?array
         ]],
     ];
 
-    if ($businessType !== '') {
-        $payload['business_type_code'] = $businessType;
+    if (!$pharmacyPath) {
+        $customerNumber = trim((string) env('JAZZ_TRANSFER_ORDER_CUSTOMER_NUMBER', 'NUTRAAXIS_INTERNAL'));
+        $payload['customer']['customer_number'] = $customerNumber;
+        $businessType = trim((string) env('JAZZ_TRANSFER_ORDER_BUSINESS_TYPE', ''));
+        if ($businessType !== '') {
+            $payload['business_type_code'] = $businessType;
+        }
     }
 
     return $payload;
@@ -265,14 +572,21 @@ function inventory_transfers_jazz_is_duplicate_shipment_error(string $error): bo
         || str_contains($haystack, 'already has an asn with shipment number');
 }
 
-function inventory_transfers_jazz_mark_sent(int $transferId, ?string $asnId, ?string $asnStatus, ?string $error = null): void
-{
+function inventory_transfers_jazz_mark_sent(
+    int $transferId,
+    ?string $asnId,
+    ?string $asnStatus,
+    ?string $error = null,
+    ?string $jazzOrderNumber = null,
+): void {
     if (!inventory_transfer_has_jazz_columns()) {
         return;
     }
 
     $pdo = db();
-    $shipmentNumber = inventory_transfers_jazz_shipment_number($transferId);
+    $shipmentNumber = $jazzOrderNumber !== null && trim($jazzOrderNumber) !== ''
+        ? trim($jazzOrderNumber)
+        : inventory_transfers_jazz_shipment_number($transferId);
     $sent = $error === null;
 
     $pdo->prepare(<<<SQL
@@ -330,6 +644,8 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
     unset($userId);
 
     require_once __DIR__ . '/inventory-transfers.php';
+    require_once __DIR__ . '/inventory-ledger.php';
+    inventory_ims_bind_page_environments();
 
     $transfer = inventory_transfers_get($transferId);
     if ($transfer === null) {
@@ -360,14 +676,20 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         return ['ok' => false, 'error' => $configError];
     }
 
-    if (!inventory_transfers_jazz_post_asn_enabled() && !inventory_transfers_jazz_post_order_enabled()) {
+    $postOrder = inventory_transfers_jazz_post_order_enabled();
+    $postAsn = inventory_transfers_jazz_post_asn_for_transfer($transfer);
+    if (!$postAsn && !$postOrder) {
         return [
             'ok'    => false,
-            'error' => 'Jazz transfer posting is disabled. Set JAZZ_TRANSFER_POST_ASN=1 and/or configure JAZZ_TRANSFER_ORDER_SOURCE_CODE.',
+            'error' => 'Jazz transfer posting is disabled. Configure JAZZ_ORDER_SOURCE_CODE (or JAZZ_PHARMACY_ORDER_SOURCE_CODE) for order import.',
         ];
     }
 
-    $shipmentNumber = inventory_transfers_jazz_shipment_number($transferId);
+    $isPharmacyBatch = inventory_transfers_jazz_is_pharmacy_replenishment($transfer);
+    $batchPeers = $isPharmacyBatch ? inventory_transfers_jazz_batch_peers($transfer) : [$transfer];
+    $jazzOrderNumber = $isPharmacyBatch
+        ? inventory_transfers_jazz_batch_order_number($transfer)
+        : inventory_transfers_jazz_shipment_number($transferId);
     $asnId = null;
     $asnStatus = null;
     $warnings = [];
@@ -384,7 +706,15 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         );
         if (!$orderResult['ok']) {
             $error = (string) ($orderResult['error'] ?? 'Jazz order import failed.');
-            inventory_transfers_jazz_mark_sent($transferId, null, null, $error);
+            foreach ($batchPeers as $peer) {
+                inventory_transfers_jazz_mark_sent(
+                    (int) ($peer['TransferID'] ?? 0),
+                    null,
+                    null,
+                    $error,
+                    $jazzOrderNumber
+                );
+            }
 
             return ['ok' => false, 'error' => 'Jazz rejected the transfer order: ' . $error];
         }
@@ -393,9 +723,12 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         if ($orderAck === null) {
             $warnings[] = 'Jazz accepted the transfer order but did not return an order id.';
         }
+        if ($isPharmacyBatch && count($batchPeers) > 1) {
+            $warnings[] = 'Posted batch order ' . $jazzOrderNumber . ' with ' . count($batchPeers) . ' transfer lines.';
+        }
     }
 
-    if (inventory_transfers_jazz_post_asn_enabled()) {
+    if ($postAsn) {
         $facilityCode = inventory_transfers_jazz_asn_facility_code($transfer);
         if ($facilityCode === null) {
             return ['ok' => false, 'error' => 'Unable to resolve a Jazz facility code for this transfer path. Set Facility.ExternalReferenceCode or JAZZ_TRANSFER_ASN_FACILITY.'];
@@ -446,17 +779,22 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         $asnStatus = inventory_transfers_jazz_resolve_asn_status($asnId);
     }
 
-    inventory_transfers_jazz_mark_sent(
-        $transferId,
-        $asnId,
-        $asnStatus !== null && $asnStatus !== '' ? $asnStatus : null,
-        null
-    );
+    foreach ($batchPeers as $peer) {
+        inventory_transfers_jazz_mark_sent(
+            (int) ($peer['TransferID'] ?? 0),
+            $asnId,
+            $asnStatus !== null && $asnStatus !== '' ? $asnStatus : null,
+            null,
+            $jazzOrderNumber
+        );
+    }
 
     return [
-        'ok'       => true,
-        'error'    => null,
-        'asn_id'   => $asnId,
-        'warning'  => $warnings !== [] ? implode(' ', $warnings) : null,
+        'ok'            => true,
+        'error'         => null,
+        'asn_id'        => $asnId,
+        'jazz_order'    => $jazzOrderNumber,
+        'batch_lines'   => count($batchPeers),
+        'warning'       => $warnings !== [] ? implode(' ', $warnings) : null,
     ];
 }
