@@ -7,7 +7,10 @@ inventory_transfers_require_read();
 
 $activeSlug = $activeSlug ?? 'inventory-transfers';
 $statusFilter = trim($_GET['status'] ?? '');
-$rows = inventory_transfers_list(['status' => $statusFilter]);
+$useShipments = inventory_transfers_use_shipment_model();
+$rows = $useShipments
+    ? inventory_transfers_list_shipments(['status' => $statusFilter])
+    : inventory_transfers_list(['status' => $statusFilter]);
 $notice = $_GET['notice'] ?? null;
 $error = $_GET['error'] ?? null;
 $hubBack = app_module_hub_back_link($activeSlug);
@@ -38,8 +41,8 @@ require dirname(__DIR__) . '/includes/header.php';
       <div class="admin-notice is-success" role="status"><?php
           $n = max(1, (int) ($_GET['n'] ?? 1));
           echo $n === 1
-              ? 'Created 1 transfer line (Pending).'
-              : 'Created ' . $n . ' transfer lines in one shipment (Pending).';
+              ? 'Created 1 transfer shipment (Pending).'
+              : 'Created 1 transfer shipment with ' . $n . ' lines (Pending).';
       ?></div>
       <?php elseif ($notice === 'created'): ?>
       <div class="admin-notice is-success" role="status">Transfer request created.</div>
@@ -71,8 +74,12 @@ require dirname(__DIR__) . '/includes/header.php';
         <table class="admin-table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th><?= $useShipments ? 'Shipment' : 'ID' ?></th>
+              <?php if ($useShipments): ?>
+              <th>Lines</th>
+              <?php else: ?>
               <th>SKU</th>
+              <?php endif; ?>
               <th>From</th>
               <th>To</th>
               <th>Qty</th>
@@ -94,18 +101,18 @@ require dirname(__DIR__) . '/includes/header.php';
                 ];
                 $jazzRequired = inventory_transfers_jazz_send_required($miniTransfer);
                 $jazzLabel = '—';
-                $batchOrder = '';
-                if ($jazzRequired && inventory_transfers_jazz_is_pharmacy_replenishment($miniTransfer)) {
-                    $batchOrder = inventory_transfers_jazz_shipment_number_for_transfer($row);
-                }
                 if ($jazzRequired) {
                     $jazzLabel = trim((string) ($row['JazzSendStatus'] ?? '')) !== ''
                         ? (string) $row['JazzSendStatus']
                         : 'Pending';
-                    if ($batchOrder !== '' && strcasecmp($jazzLabel, 'Sent') !== 0) {
-                        $jazzLabel .= ' · ' . $batchOrder;
-                    } elseif ($batchOrder !== '' && trim((string) ($row['JazzShipmentNumber'] ?? '')) === '') {
-                        $jazzLabel .= ' · ' . $batchOrder;
+                    $orderRef = trim((string) ($row['JazzShipmentNumber'] ?? ''));
+                    if ($orderRef === '' && inventory_transfers_jazz_is_pharmacy_replenishment($miniTransfer)) {
+                        $orderRef = inventory_transfers_jazz_batch_order_number(array_merge($miniTransfer, [
+                            'JazzShipByDate' => $row['JazzShipByDate'] ?? null,
+                        ]));
+                    }
+                    if ($orderRef !== '') {
+                        $jazzLabel .= ' · ' . $orderRef;
                     }
                 }
                 $shipBy = '';
@@ -116,21 +123,32 @@ require dirname(__DIR__) . '/includes/header.php';
                         $shipBy = '';
                     }
                 }
+                $qtyDisplay = $useShipments
+                    ? inventory_ledger_format_quantity($row['TotalQtyRequested'] ?? null)
+                    : inventory_ledger_format_quantity($row['QtyRequested'] ?? null);
             ?>
             <tr>
-              <td><?= (int) $row['TransferID'] ?></td>
+              <td><?= $useShipments ? (int) $row['ShipmentID'] : (int) $row['TransferID'] ?></td>
+              <?php if ($useShipments): ?>
+              <td><?= (int) ($row['LineCount'] ?? 0) ?></td>
+              <?php else: ?>
               <td><?= htmlspecialchars((string) $row['SKUCode']) ?></td>
+              <?php endif; ?>
               <td><?= htmlspecialchars((string) $row['FromFacilityCode']) ?></td>
               <td><?= htmlspecialchars((string) $row['ToFacilityCode']) ?></td>
-              <td><?= htmlspecialchars(inventory_ledger_format_quantity($row['QtyRequested'] ?? null)) ?></td>
+              <td><?= htmlspecialchars($qtyDisplay) ?></td>
               <td><?= htmlspecialchars((string) $row['TransferStatus']) ?></td>
               <td><?= htmlspecialchars($jazzLabel) ?></td>
               <td><?= $shipBy !== '' ? htmlspecialchars($shipBy) : '—' ?></td>
               <td><?= htmlspecialchars((string) ($row['CreateDate'] ?? '')) ?></td>
               <td class="table-actions">
+                <?php if ($useShipments): ?>
+                <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/shipment.php?shipment_id=' . (int) $row['ShipmentID'])) ?>">View</a>
+                <?php else: ?>
                 <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/view.php?id=' . (int) $row['TransferID'])) ?>">View</a>
                 <?php if (inventory_transfers_can_update()): ?>
                 <a class="btn-text" href="<?= htmlspecialchars(inventory_ims_page_path('/inventory-transfers/edit.php?id=' . (int) $row['TransferID'])) ?>">Edit</a>
+                <?php endif; ?>
                 <?php endif; ?>
               </td>
             </tr>

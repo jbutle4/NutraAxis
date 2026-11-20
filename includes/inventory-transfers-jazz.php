@@ -839,6 +839,10 @@ function inventory_transfers_jazz_mark_sent(
         'sent'            => $sent ? 1 : 0,
         'id'              => $transferId,
     ]);
+
+    if (function_exists('inventory_transfers_sync_shipment_from_line')) {
+        inventory_transfers_sync_shipment_from_line($transferId);
+    }
 }
 
 function inventory_transfers_jazz_lookup_existing_asn(string $shipmentNumber): ?array

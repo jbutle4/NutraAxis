@@ -41,12 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], is_array($_POST['lines'] ?? null) ? $_POST['lines'] : []);
 
         if ($result['ok']) {
-            $ids = $result['transfer_ids'];
-            $count = count($ids);
-            $firstId = $count > 0 ? (int) $ids[0] : 0;
-            $target = $firstId > 0
-                ? '/inventory-transfers/view.php?id=' . $firstId . '&notice=batch_created&n=' . $count
-                : '/inventory-transfers/?notice=batch_created&n=' . $count;
+            $shipmentId = (int) ($result['shipment_id'] ?? 0);
+            $count = count($result['transfer_ids']);
+            if ($shipmentId > 0 && inventory_transfers_use_shipment_model()) {
+                $target = '/inventory-transfers/shipment.php?shipment_id=' . $shipmentId . '&notice=batch_created&n=' . $count;
+            } elseif ($count > 0) {
+                $target = '/inventory-transfers/view.php?id=' . (int) $result['transfer_ids'][0] . '&notice=batch_created&n=' . $count;
+            } else {
+                $target = '/inventory-transfers/?notice=batch_created&n=' . $count;
+            }
             header('Location: ' . inventory_ims_page_path($target), true, 302);
             exit;
         }

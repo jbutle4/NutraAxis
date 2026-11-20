@@ -7,6 +7,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/quickbooks.php';
 
 require_once __DIR__ . '/inventory-transfers-jazz.php';
+require_once __DIR__ . '/inventory-transfer-shipments.php';
 
 function inventory_transfers_permission_value(): ?string
 {
@@ -654,7 +655,7 @@ function inventory_transfers_adjust_account_id(): string
  *
  * @param array<string, mixed> $header
  * @param list<array<string, mixed>> $lines
- * @return array{ok:bool, error:?string, transfer_ids:list<int>}
+ * @return array{ok:bool, error:?string, transfer_ids:list<int>, shipment_id:?int}
  */
 function inventory_transfers_create_batch(array $header, array $lines): array
 {
@@ -721,10 +722,38 @@ function inventory_transfers_create_batch(array $header, array $lines): array
     $pdo = db();
     $pdo->beginTransaction();
 
+        $headerPayload = [
+        'from_facility_code' => $fromCode,
+        'to_facility_code'   => $toCode,
+        'from_status_bucket' => $fromBucket,
+        'to_status_bucket'   => $toBucket,
+        'reason_code_id'     => $reasonCodeId,
+        'supplier_id'        => $supplierId,
+        'notes'              => $notes,
+        'jazz_ship_by_date'  => $shipByRaw,
+    ];
+
     try {
+        $shipmentId = null;
+        if (inventory_transfers_use_shipment_model()) {
+            $shipmentInsert = inventory_transfers_insert_shipment_header($headerPayload, (int) $userId);
+            if (!$shipmentInsert['ok'] || ($shipmentInsert['shipment_id'] ?? 0) <= 0) {
+                $pdo->rollBack();
+
+                return [
+                    'ok'           => false,
+                    'error'        => $shipmentInsert['error'] ?? 'Unable to create transfer shipment header.',
+                    'transfer_ids' => [],
+                    'shipment_id'  => null,
+                ];
+            }
+            $shipmentId = (int) $shipmentInsert['shipment_id'];
+        }
+
         $transferIds = [];
+        $lineNumber = 1;
         foreach ($parsedLines as $parsedLine) {
-            $result = facility_insert_transfer([
+            $lineInput = [
                 'from_facility_code' => $fromCode,
                 'to_facility_code'   => $toCode,
                 'sku_code'           => $parsedLine['sku_code'],
@@ -734,7 +763,13 @@ function inventory_transfers_create_batch(array $header, array $lines): array
                 'reason_code_id'     => $reasonCodeId,
                 'supplier_id'        => $supplierId,
                 'notes'              => $notes,
-            ]);
+            ];
+            if ($shipmentId !== null) {
+                $lineInput['shipment_id'] = $shipmentId;
+                $lineInput['line_number'] = $lineNumber;
+            }
+
+            $result = facility_insert_transfer($lineInput);
 
             if (!$result['ok']) {
                 $pdo->rollBack();
@@ -743,13 +778,19 @@ function inventory_transfers_create_batch(array $header, array $lines): array
                     'ok'           => false,
                     'error'        => $result['error'] ?? 'Unable to save a transfer line.',
                     'transfer_ids' => [],
+                    'shipment_id'  => null,
                 ];
             }
 
             $transferId = (int) $result['transfer_id'];
             $transferIds[] = $transferId;
+            $lineNumber++;
 
-            if (inventory_transfer_has_ship_by_column() && $shipByRaw !== '') {
+            if (
+                $shipmentId === null
+                && inventory_transfer_has_ship_by_column()
+                && $shipByRaw !== ''
+            ) {
                 $update = inventory_transfers_update($transferId, [
                     'jazz_ship_by_date' => $shipByRaw,
                     'qty_requested'     => $parsedLine['qty_requested'],
@@ -761,19 +802,32 @@ function inventory_transfers_create_batch(array $header, array $lines): array
                         'ok'           => false,
                         'error'        => $update['error'] ?? 'Unable to set Jazz ship-by on new lines.',
                         'transfer_ids' => [],
+                        'shipment_id'  => null,
                     ];
                 }
             }
         }
 
+        if ($shipmentId !== null && inventory_transfer_has_ship_by_column() && $shipByRaw !== '') {
+            $pdo->prepare(<<<SQL
+                UPDATE dbo.InvTransfer
+                SET JazzShipByDate = :ship_by
+                WHERE ShipmentID = :shipment_id AND LedgerProfile = :ledger_profile
+            SQL)->execute([
+                'ship_by'        => $shipByRaw,
+                'shipment_id'    => $shipmentId,
+                'ledger_profile' => inventory_ledger_profile(),
+            ]);
+        }
+
         $pdo->commit();
 
-        return ['ok' => true, 'error' => null, 'transfer_ids' => $transferIds];
+        return ['ok' => true, 'error' => null, 'transfer_ids' => $transferIds, 'shipment_id' => $shipmentId];
     } catch (Throwable) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
 
-        return ['ok' => false, 'error' => 'Unable to save the transfer shipment.', 'transfer_ids' => []];
+        return ['ok' => false, 'error' => 'Unable to save the transfer shipment.', 'transfer_ids' => [], 'shipment_id' => null];
     }
 }

@@ -15,6 +15,21 @@ if ($transfer === null) {
     exit;
 }
 
+if (inventory_transfers_use_shipment_model()) {
+    $shipmentId = inventory_transfers_shipment_id_for_line($transferId);
+    if ($shipmentId !== null && $shipmentId > 0) {
+        $target = inventory_ims_page_path('/inventory-transfers/shipment.php?shipment_id=' . $shipmentId);
+        if (!empty($_GET['notice']) || !empty($_GET['error'])) {
+            $target .= '&' . http_build_query(array_filter([
+                'notice' => $_GET['notice'] ?? null,
+                'error'  => $_GET['error'] ?? null,
+            ]));
+        }
+        header('Location: ' . $target, true, 302);
+        exit;
+    }
+}
+
 $activeSlug = $activeSlug ?? 'inventory-transfers';
 $viewPath = inventory_ims_page_path('/inventory-transfers/view.php?id=' . $transferId);
 $notice = $_GET['notice'] ?? null;

@@ -498,11 +498,21 @@ function facility_insert_transfer(array $input): array
         return ['ok' => false, 'error' => 'You must be signed in to create a transfer.', 'transfer_id' => null];
     }
 
+    $shipmentId = isset($input['shipment_id']) ? (int) $input['shipment_id'] : 0;
+    $lineNumber = isset($input['line_number']) ? (int) $input['line_number'] : 0;
+    $hasShipmentCol = false;
+    if ($shipmentId > 0) {
+        require_once __DIR__ . '/inventory-transfer-shipments.php';
+        $hasShipmentCol = inventory_transfers_shipment_column_exists();
+    }
+
     try {
         $pdo = db();
         db_apply_sql_server_options($pdo);
 
         if (facility_transfer_has_supplier_column()) {
+            $shipmentCols = $hasShipmentCol ? ",\n                    ShipmentID,\n                    LineNumber" : '';
+            $shipmentVals = $hasShipmentCol ? ",\n                    :shipment_id,\n                    :line_number" : '';
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO dbo.InvTransfer (
                     SKUCode,
@@ -516,7 +526,7 @@ function facility_insert_transfer(array $input): array
                     Notes,
                     RequestedByUser,
                     LedgerProfile,
-                    SupplierID
+                    SupplierID{$shipmentCols}
                 )
                 OUTPUT INSERTED.TransferID AS inserted_id
                 VALUES (
@@ -531,7 +541,7 @@ function facility_insert_transfer(array $input): array
                     :notes,
                     :requested_by,
                     :ledger_profile,
-                    :supplier_id
+                    :supplier_id{$shipmentVals}
                 )
             SQL);
             $params = [
@@ -547,7 +557,13 @@ function facility_insert_transfer(array $input): array
                 'ledger_profile'  => inventory_ledger_profile(),
                 'supplier_id'     => $supplierId > 0 ? $supplierId : null,
             ];
+            if ($hasShipmentCol) {
+                $params['shipment_id'] = $shipmentId;
+                $params['line_number'] = $lineNumber > 0 ? $lineNumber : null;
+            }
         } else {
+            $shipmentCols = $hasShipmentCol ? ",\n                    ShipmentID,\n                    LineNumber" : '';
+            $shipmentVals = $hasShipmentCol ? ",\n                    :shipment_id,\n                    :line_number" : '';
             $stmt = $pdo->prepare(<<<SQL
                 INSERT INTO dbo.InvTransfer (
                     SKUCode,
@@ -560,7 +576,7 @@ function facility_insert_transfer(array $input): array
                     TransferStatus,
                     Notes,
                     RequestedByUser,
-                    LedgerProfile
+                    LedgerProfile{$shipmentCols}
                 )
                 OUTPUT INSERTED.TransferID AS inserted_id
                 VALUES (
@@ -574,7 +590,7 @@ function facility_insert_transfer(array $input): array
                     N'Pending',
                     :notes,
                     :requested_by,
-                    :ledger_profile
+                    :ledger_profile{$shipmentVals}
                 )
             SQL);
             $params = [
@@ -589,6 +605,10 @@ function facility_insert_transfer(array $input): array
                 'requested_by'    => $userId,
                 'ledger_profile'  => inventory_ledger_profile(),
             ];
+            if ($hasShipmentCol) {
+                $params['shipment_id'] = $shipmentId;
+                $params['line_number'] = $lineNumber > 0 ? $lineNumber : null;
+            }
         }
 
         $stmt->execute($params);
