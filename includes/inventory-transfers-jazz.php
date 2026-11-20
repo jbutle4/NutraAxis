@@ -959,6 +959,13 @@ function inventory_transfers_send_to_jazz(int $transferId, ?int $userId = null):
         );
         if (!$orderResult['ok']) {
             $error = (string) ($orderResult['error'] ?? 'Jazz order import failed.');
+            if (stripos($error, 'source not found') !== false) {
+                $configuredSource = inventory_transfers_jazz_order_source_code();
+                $error .= ' Production Jazz must have order source «'
+                    . $configuredSource
+                    . '» (UAT has it; prod often does not). Ask Jazz IT to add that source or set Azure '
+                    . 'JAZZ_PHARMACY_ORDER_SOURCE_CODE to the production source id.';
+            }
             if (inventory_transfers_jazz_is_duplicate_order_error($error)) {
                 foreach ($batchPeers as $peer) {
                     inventory_transfers_jazz_mark_sent(
