@@ -2,7 +2,6 @@
 require dirname(__DIR__) . '/includes/init.php';
 require dirname(__DIR__) . '/includes/page-data-profile.php';
 require dirname(__DIR__) . '/includes/inventory-transfers.php';
-require dirname(__DIR__) . '/includes/inventory-transfers-jazz.php';
 
 inventory_transfers_require_read();
 
